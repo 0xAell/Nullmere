@@ -169,6 +169,16 @@ public enum WorldShaders {
         return total / 0.9375;
     }
 
+    // Two octaves of the same: for the broad country and glade, whose finer
+    // octaves are too faint to see, and the warp of the stone's beds, where
+    // the eye reads the sine's courses and not the warp's grain. Each saves
+    // two noise lookups a pixel the frame's most costly ground pays for.
+    float nm_fbm2(float2 p) {
+        float near = nm_noise(p);
+        float far = nm_noise(p * 2.03 + float2(17.1, 9.2));
+        return (0.5 * near + 0.25 * far) / 0.75;
+    }
+
     float3 nm_linear(float3 c) {
         return pow(max(c, float3(0.0)), float3(2.2));
     }
@@ -211,12 +221,12 @@ public enum WorldShaders {
         // its own colour: green stands over red and blue; stone is grey.
         float growth = clamp((albedo.g - max(albedo.r, albedo.b)) * 7.0, 0.0, 1.0);
         float stone = 1.0 - clamp((most - least) * 9.0, 0.0, 1.0);
-        float country = nm_fbm(p * 0.23 + float2(17.3, 5.1));
+        float country = nm_fbm2(p * 0.23 + float2(17.3, 5.1));
         float3 lush = float3(0.80, 0.96, 0.78);
         float3 dry = float3(1.04, 0.99, 0.76);
         float3 reach = mix(dry, lush, smoothstep(0.3, 0.7, country));
         // Glades: paler grass in rounds a hex or so across.
-        float glade = smoothstep(0.6, 0.8, nm_fbm(p * 0.9 + float2(41.0, 8.0)));
+        float glade = smoothstep(0.6, 0.8, nm_fbm2(p * 0.9 + float2(41.0, 8.0)));
         reach = mix(reach, float3(1.05, 1.03, 0.86), glade * 0.55);
         float3 shown = c * mix(float3(1.0), reach, growth);
         // The land's colours were chosen to be read by the moon, whose
@@ -227,7 +237,7 @@ public enum WorldShaders {
         shown = pow(max(shown, float3(0.0)), float3(1.45));
         // Stone's beds across a slope, broken where the rock is sound.
         float steep = clamp((1.0 - n.y) * 3.0, 0.0, 1.0);
-        float beds = 0.5 + 0.5 * sin(world.y * 15.0 + nm_fbm(p * 2.3 + float2(2.0, 31.0)) * 9.0);
+        float beds = 0.5 + 0.5 * sin(world.y * 15.0 + nm_fbm2(p * 2.3 + float2(2.0, 31.0)) * 9.0);
         float broken = smoothstep(0.3, 0.7, nm_noise(p * 1.1 + float2(23.0, 4.0)));
         shown *= mix(1.0, 0.72 + 0.4 * beds, stone * steep * broken);
         // Blades and grit, close to.
