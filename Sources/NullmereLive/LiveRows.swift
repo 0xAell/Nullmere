@@ -508,6 +508,9 @@ public struct LiveReport: Equatable, Sendable, Identifiable {
     /// player's own: `foe` is the other player's number.
     public static let attack = 2
     public static let defence = 3
+    /// Another's army is marching on the player's city: `foe` is that
+    /// player's number, and the words say when it arrives.
+    public static let warning = 4
 
     public let id: UInt64
     public let at: Int

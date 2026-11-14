@@ -491,6 +491,9 @@ impl Report {
     /// player's own: `foe` is the other player's number.
     pub const ATTACK: u8 = 2;
     pub const DEFENCE: u8 = 3;
+    /// Another's army is marching on the player's city: `foe` is that
+    /// player's number, and the report says when it arrives.
+    pub const WARNING: u8 = 4;
 }
 
 /// An alliance of players. Everyone may read it.

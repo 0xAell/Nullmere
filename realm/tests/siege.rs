@@ -110,7 +110,8 @@ fn an_army_takes_a_city_by_storm_and_carries_off_what_it_can() {
     let fighting = Table::<March>::get(&db, march.id).unwrap();
     assert_eq!((fighting.state, fighting.arrives - fighting.departed), (March::FIGHTING, catalog::ASSAULT_SECONDS));
     assert_eq!(db.call(|db| rules::recall(db, ada, march.id)), Err(Refusal::Fighting));
-    assert!(reports(&db, ada).is_empty() && reports(&db, bryn).is_empty());
+    assert!(reports(&db, ada).is_empty(), "Ada's army has not yet fought");
+    assert!(reports(&db, bryn).iter().all(|report| report.kind == Report::WARNING), "Bryn has only been warned");
     until(&mut db, fighting.arrives);
 
     // Ada is told: her losses, half of the fallen carried home wounded
@@ -267,4 +268,26 @@ fn an_army_that_finds_its_city_at_peace_comes_home() {
     assert_eq!(reports(&db, ada).len(), 1, "only the first fought");
     until(&mut db, second.arrives + 10_000);
     assert_eq!(rules::troop(&db, rules::city_of(&db, ada).unwrap().id, Troops::Spearmen, 1).ready, 400);
+}
+
+#[test]
+fn the_owner_of_a_city_is_warned_when_an_army_sets_out_against_it() {
+    let (mut db, (ada, _hers), (bryn, his)) = neighbours(&[(Troops::Spearmen, 1, 300)], &[(Troops::Spearmen, 1, 100)]);
+    end_peace(&mut db, his.id);
+    let march = db.call(|db| rules::send(db, ada, Hex::unpacked(his.hex), March::ATTACK, &spears(300))).unwrap();
+
+    // Bryn hears of it at once, in words, and before anything is fought.
+    let warned = reports(&db, bryn);
+    assert_eq!(warned.len(), 1);
+    let warning = &warned[0];
+    assert_eq!((warning.kind, warning.won, warning.foe, warning.hex, warning.read), (Report::WARNING, false, ada, his.hex, false));
+    assert_eq!(warning.fought, 300, "how many march");
+    assert!(warning.words.starts_with("Ada's army is marching on your city, and arrives in "), "{}", warning.words);
+    assert!(warning.words.ends_with("."), "{}", warning.words);
+    // Ada, who sent it, hears nothing of her own warning.
+    assert!(reports(&db, ada).is_empty());
+
+    // And it is only a warning: the army is still on its way.
+    let on_the_way = Table::<March>::get(&db, march.id).unwrap();
+    assert_eq!(on_the_way.state, March::GOING);
 }

@@ -48,6 +48,40 @@ pub(super) fn break_peace(db: &mut impl Db, mut city: City) {
     }
 }
 
+/// The owner of a city is warned when an army sets out against it: whose
+/// it is, and when it arrives. Nothing is done about it; the realm only
+/// tells.
+pub(super) fn warn_of_attack(db: &mut impl Db, march: &March) {
+    let Some(city) = Table::<City>::get(db, march.target) else { return };
+    let now = db.now();
+    let attacker = name_of(db, march.owner);
+    let words = format!("{attacker}'s army is marching on your city, and arrives in {}.", catalog::spoken((march.arrives - now).max(0)));
+    report(
+        db,
+        Report {
+            id: 0,
+            player: city.owner,
+            at: now,
+            kind: Report::WARNING,
+            hex: city.hex,
+            won: false,
+            foe: march.owner,
+            rounds: 0,
+            fought: march.soldiers,
+            wounded: 0,
+            dead: 0,
+            stood: 0,
+            fell: 0,
+            grain: 0,
+            timber: 0,
+            stone: 0,
+            moonsalt: 0,
+            words,
+            read: false,
+        },
+    );
+}
+
 /// An army has reached the city it set out against: if it still stands
 /// there and is not at peace, the assault begins, and lasts a while.
 /// False if there is nothing to attack.

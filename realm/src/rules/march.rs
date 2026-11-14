@@ -204,6 +204,9 @@ pub fn send_led(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked
     march.arrives = now + travel(db, &march, &squads(db, march.id), way.len() - 1);
     march.timer = db.after(march.arrives, TIMER_MARCH, march.id);
     db.update(march.clone());
+    if kind == March::ATTACK {
+        super::siege::warn_of_attack(db, &march);
+    }
     Ok(march)
 }
 
