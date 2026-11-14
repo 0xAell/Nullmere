@@ -47,3 +47,9 @@ Blender-authored unit models landed through the day: spearman, archer, lantern-b
 - Full rework started: the Claude session moves to Fable 5.2 xHigh to rebuild weak systems, art, UI and code toward Rise of Kingdoms level, per docs/rework-plan.md.
 - No new Claude pushes to main since 017c200 (Nov 11); main CI green.
 - Still open: on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
+
+## 2026-11-15
+
+- Rework landed on Nov 14: alliances and chat, first tasks, Academy research and its screen, a second builder, commanders, a richer daytime ground and water, map panning by pointer step, and city-under-attack warnings (tip 390c9ed).
+- Main CI is red on the Mac "Build, test and bundle" job (runs 973, 974, 976); the realm, phone and accessibility jobs pass.
+- Still open: on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
