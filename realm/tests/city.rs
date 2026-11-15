@@ -436,3 +436,47 @@ fn a_city_grows_through_its_first_day() {
     assert!(buildings.len() >= 8, "a town about the Keep by then: {}", buildings.len());
     assert_eq!(city.power, buildings.iter().map(|b| catalog::power(Kind::of(b.kind).unwrap(), b.level)).sum::<u64>());
 }
+
+#[test]
+fn a_city_moves_to_new_ground_for_goods_and_its_buildings_go_with_it() {
+    let mut db = opened(60);
+    let (ada, city) = joined(&mut db, "Ada");
+    let old = city.hex;
+    // Not on its own hex, nor beyond the realm's edge.
+    assert_eq!(db.call(|db| rules::relocate(db, ada, Hex::unpacked(old))), Err(Refusal::NoSiteThere));
+    assert_eq!(db.call(|db| rules::relocate(db, ada, Hex::new(60, 0))), Err(Refusal::NoSiteThere));
+    assert_eq!(Refusal::NoSiteThere.to_string(), "No city can stand there.");
+
+    // Clear ground is found a few rings out; a hex that is not is refused, and nothing is paid for it.
+    let mut moved = None;
+    'search: for q in -20..=20 {
+        for r in -20..=20 {
+            let hex = Hex::new(q, r);
+            if hex.length() < 6 {
+                continue;
+            }
+            loop {
+                match db.call(|db| rules::relocate(db, ada, hex)) {
+                    Ok(city) => {
+                        moved = Some(city);
+                        break 'search;
+                    }
+                    Err(Refusal::TooFast) => wait(&mut db, 10),
+                    Err(Refusal::NoSiteThere) => break,
+                    Err(other) => panic!("{other:?}"),
+                }
+            }
+        }
+    }
+    let moved = moved.expect("some clear ground to move to");
+
+    // The city stands on the new hex; the old one is empty; its Keep came along.
+    assert_ne!(moved.hex, old);
+    assert!(Table::<Place>::get(&db, old).is_none(), "the old hex is empty");
+    assert_eq!(Table::<Place>::get(&db, moved.hex).map(|place| (place.kind, place.id)), Some((Place::CITY, city.id)));
+    assert_eq!(rules::city_of(&db, ada).unwrap().hex, moved.hex);
+    assert_eq!(building(&db, city.id, Kind::Keep).level, 1);
+    // At peace for a new city's days, and no other city may stand within the spacing.
+    assert!(moved.shield > db.clock, "a city that moves is at peace for a while");
+    assert_eq!(catalog::RELOCATION.grain, 3_000);
+}

@@ -122,6 +122,11 @@ pub enum Refusal {
     AllysCity,
     /// Only an ally's city may be reinforced.
     NotAnAlly,
+    /// No city can stand on the hex named: it is not buildable land, or
+    /// another city is too near.
+    NoSiteThere,
+    /// Armies are out: they must come home before the city moves.
+    ArmyOut,
     AlreadyAllied,
     NotAllied,
     NoSuchAlliance,
@@ -248,6 +253,8 @@ impl fmt::Display for Refusal {
             Refusal::NoCityThere => "There is no city to attack there.",
             Refusal::OwnCity => "That is your own city.",
             Refusal::NotAnAlly => "Only an ally's city can be reinforced.",
+            Refusal::NoSiteThere => "No city can stand there.",
+            Refusal::ArmyOut => "Bring your armies home before your city moves.",
             Refusal::NotTheOwner => "Only the realm's owner may do that.",
             _ => "",
         })

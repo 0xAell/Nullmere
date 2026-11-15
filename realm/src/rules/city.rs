@@ -286,3 +286,34 @@ pub fn finish(db: &mut impl Db, job: u64) {
         reckon(db, job.city);
     }
 }
+
+/// A player moves their city to new ground: a buildable hex, clear of
+/// other cities by the spacing they keep, paid for in goods. Its buildings,
+/// troops and stock go with it, and it is at peace for a new city's days.
+/// No army may be out.
+pub fn relocate(db: &mut impl Db, player: u64, to: Hex) -> Result<City, Refusal> {
+    asking(db, player)?;
+    let mut city = super::city_of(db, player)?;
+    let realm = realm(db)?;
+    if !super::city_marches(db, &city).is_empty() {
+        return Err(Refusal::ArmyOut);
+    }
+    let fits = to.length() <= realm.radius && land::ground(realm.seed, realm.radius, to).is_buildable() && clear_for_city(db, to, CITY_SPACING);
+    if !fits {
+        return Err(Refusal::NoSiteThere);
+    }
+    let mut stock = settle(db, city.id)?;
+    let have = goods(&stock);
+    if !have.covers(catalog::RELOCATION) {
+        return Err(Refusal::CannotAfford(have.short_of(catalog::RELOCATION)));
+    }
+    set_goods(&mut stock, have.minus(catalog::RELOCATION));
+    db.update(stock);
+
+    Table::<Place>::delete(db, city.hex);
+    db.insert(Place { hex: to.packed(), kind: Place::CITY, id: city.id });
+    city.hex = to.packed();
+    city.shield = db.now() + catalog::paced(catalog::NEW_CITY_PEACE, realm.pace);
+    db.update(city.clone());
+    Ok(city)
+}
