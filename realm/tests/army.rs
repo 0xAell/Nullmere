@@ -173,3 +173,22 @@ fn troops_are_kept_only_while_there_are_any() {
     assert_ne!(Troop::key(1, 2, 3), Troop::key(1, 3, 2));
     assert_ne!(Troop::key(1, 2, 3), Troop::key(2, 2, 3));
 }
+
+#[test]
+fn a_speedup_hastens_a_batch_of_troops_training() {
+    let (mut db, ada, city) = grown(2);
+    let barracks = rules::building_of(&db, city.id, Kind::Barracks).unwrap();
+    let job = db.call(|db| rules::train(db, ada, barracks.id, 1, 40)).unwrap();
+    wait(&mut db, 40);
+    // Of the 280 seconds left, a quarter comes off; the troops stand ready at the new end.
+    let left = job.ends - db.clock;
+    let now = db.clock;
+    let hastened = db.call(|db| rules::speed_up(db, ada, job.id)).unwrap();
+    assert_eq!(hastened.kind, Job::TRAIN);
+    assert_eq!(hastened.ends, now + left - left / 4);
+    let to_end = hastened.ends - db.clock - 1;
+    wait(&mut db, to_end);
+    assert!(Table::<Troop>::by(&db, 0, city.id).iter().all(|row| row.ready == 0), "not yet, a second early");
+    wait(&mut db, 1);
+    assert_eq!(Table::<Troop>::by(&db, 0, city.id).iter().map(|row| row.ready).sum::<u64>(), 40);
+}
