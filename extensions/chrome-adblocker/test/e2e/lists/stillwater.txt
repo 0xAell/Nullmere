@@ -1,0 +1,3 @@
+[Adblock Plus 2.0]
+! Title: Fixture supplement
+#@#.never-hidden

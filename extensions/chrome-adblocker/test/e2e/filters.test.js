@@ -1,0 +1,206 @@
+// A build from the small list in test/e2e/lists, one filter for each
+// thing the converter and the extension are meant to do, in a real
+// Chromium: what each kind of filter blocks, lets through and hides.
+
+import assert from 'node:assert/strict';
+import { join } from 'node:path';
+import { after, before, test } from 'node:test';
+import { build } from '../../tools/build.js';
+import { launch, open, root, startServer, until } from './harness.js';
+
+let server;
+let browser;
+
+before(async () => {
+  const out = join(root, 'build-test');
+  build({ lists: join(root, 'test', 'e2e', 'lists'), out, quiet: true });
+  server = await startServer();
+  browser = await launch(out);
+});
+
+after(async () => {
+  await browser?.close();
+  await server?.close();
+});
+
+const script = (host, path = '/x.js') => `<script src="${server.url(host, path)}"></script>`;
+const image = (host, path = '/x.gif') => `<img src="${server.url(host, path)}">`;
+
+/** Loads a page of `body` on `host` and returns which hosts' requests the extension stopped, and which scripts ran. */
+async function visit(host, body, path = '/') {
+  server.page(host, path, `<!doctype html><title>${host}</title><body>${body}</body>`);
+  const { page, blocked } = await open(browser.context, server.url(host, path));
+  const stopped = blocked().map((url) => `${new URL(url).hostname}${new URL(url).pathname}`).sort();
+  const ran = (await page.evaluate(() => window.ran)) ?? [];
+  return { page, stopped, ran };
+}
+
+/** Which of the elements with these ids are hidden. */
+const hidden = (page, ids) => page.evaluate((list) => list.filter((id) => getComputedStyle(document.getElementById(id)).display === 'none'), ids);
+
+test('a host is blocked whole, with its subdomains; a path anywhere; an exception lets its one script by', async () => {
+  const { page, stopped, ran } = await visit('news.test', [script('ads.test', '/tag.js'), image('img.ads.test'), script('cdn.test', '/banner-ads/x.js'), script('ads.test', '/allowed.js'), script('cdn.test', '/lib.js')].join(''));
+  assert.deepEqual(stopped, ['ads.test/tag.js', 'cdn.test/banner-ads/x.js', 'img.ads.test/x.gif']);
+  assert.deepEqual(ran, ['ads.test/allowed.js', 'cdn.test/lib.js']);
+  await page.close();
+});
+
+test('third-party: blocked from another site, not from its own', async () => {
+  let { page, stopped } = await visit('news.test', script('third.test'));
+  assert.deepEqual(stopped, ['third.test/x.js']);
+  await page.close();
+  ({ page, stopped } = await visit('third.test', script('third.test') + script('static.third.test')));
+  assert.deepEqual(stopped, []);
+  await page.close();
+});
+
+test('domain= and types: only on the pages named, only the types named', async () => {
+  let { page, stopped, ran } = await visit('news.test', script('scripts.test') + image('scripts.test') + script('typed.test') + image('typed.test'));
+  assert.deepEqual(stopped, ['scripts.test/x.js', 'typed.test/x.gif']);
+  assert.deepEqual(ran, ['typed.test/x.js']);
+  await page.close();
+  ({ page, stopped } = await visit('other.test', script('scripts.test')));
+  assert.deepEqual(stopped, [], 'scripts.test is blocked on news.test alone');
+  await page.close();
+});
+
+test('important outranks its exception; a regular expression matches; a popup-only filter makes no rule', async () => {
+  const { page, stopped, ran } = await visit('news.test', script('important.test') + script('cdn.regex.test', '/ad42.js') + script('cdn.regex.test', '/adx.js') + script('popup-only.test'));
+  assert.deepEqual(stopped, ['cdn.regex.test/ad42.js', 'important.test/x.js']);
+  assert.deepEqual(ran, ['cdn.regex.test/adx.js', 'popup-only.test/x.js']);
+  await page.close();
+});
+
+test('csp= adds a policy to the page: its scripts do not run', async () => {
+  let { page, ran } = await visit('csp.test', script('csp.test', '/own.js'));
+  assert.deepEqual(ran, [], 'script-src none');
+  await page.close();
+  ({ page, ran } = await visit('plain.test', script('plain.test', '/own.js')));
+  assert.deepEqual(ran, ['plain.test/own.js']);
+  await page.close();
+});
+
+test('a document exception lets everything through on its pages, frames included', async () => {
+  server.page('trusted.test', '/frame', `<!doctype html><body>${script('ads.test', '/in-frame.js')}</body>`);
+  const { page, stopped, ran } = await visit('trusted.test', `${script('ads.test', '/tag.js')}<iframe src="/frame"></iframe>`);
+  assert.deepEqual(stopped, []);
+  assert.deepEqual(ran, ['ads.test/tag.js']);
+  await until(() => server.reached('ads.test', '/in-frame.js'), 'the frame\'s ad script to be asked for');
+  await page.close();
+});
+
+const SLOTS = `
+  <div id="banner" class="ad-banner">ad</div>
+  <div id="ad_top">ad</div>
+  <div class="ad-wrap"><div id="inner" class="inner">ad</div></div>
+  <div id="slot" data-ad-slot="1">ad</div>
+  <div id="mixed" class="Mixed-Case-Ad">ad</div>
+  <div id="story" class="sponsored-story">ad</div>
+  <div id="rail" class="promo-rail">ad</div>
+  <div id="entity" class="entity-ad">ad</div>
+  <div id="pixel" class="tracking-pixel">ad</div>
+  <section id="labelled"><span class="ad-label">Advertisement</span></section>
+  <section id="unlabelled"><p>Words</p></section>
+  <div id="never" class="never-hidden">kept</div>
+  <article id="content" class="story">The news itself.</article>`;
+const ALL = ['banner', 'ad_top', 'inner', 'slot', 'mixed', 'story', 'rail', 'entity', 'pixel', 'labelled', 'unlabelled', 'never', 'content'];
+const GENERIC = ['banner', 'ad_top', 'inner', 'slot', 'mixed', 'pixel'];
+
+test('generic and site filters hide their slots; the rest of the page is left alone', async () => {
+  const { page } = await visit('news.test', SLOTS);
+  await until(async () => (await hidden(page, ALL)).length >= 9, 'the slots to be hidden');
+  assert.deepEqual(await hidden(page, ALL), [...GENERIC.slice(0, 5), 'story', 'rail', 'pixel', 'labelled']);
+  await page.close();
+});
+
+test('a site\'s filters are not another site\'s; an excluded subdomain and a site\'s exception are honoured', async () => {
+  let { page } = await visit('other.test', SLOTS);
+  await until(async () => (await hidden(page, ALL)).length >= GENERIC.length, 'the generic slots to be hidden');
+  assert.deepEqual(await hidden(page, ALL), GENERIC);
+  await page.close();
+
+  ({ page } = await visit('live.news.test', SLOTS));
+  await until(async () => (await hidden(page, ALL)).length >= 8, 'the slots to be hidden');
+  assert.deepEqual(await hidden(page, ALL), [...GENERIC.slice(0, 5), 'story', 'pixel', 'labelled'], 'all of news.test\'s but the promo rail');
+  await page.close();
+
+  ({ page } = await visit('www.shop.test', SLOTS));
+  await until(async () => (await hidden(page, ALL)).length >= GENERIC.length - 1, 'the slots to be hidden');
+  assert.deepEqual(await hidden(page, ALL), GENERIC.filter((id) => id !== 'banner'), 'shop.test keeps its .ad-banner');
+  await page.close();
+});
+
+test('an entity filter is for the name under any suffix', async () => {
+  for (const host of ['entity.test', 'www.entity.co.test']) {
+    const { page } = await visit(host, SLOTS);
+    await until(async () => (await hidden(page, ['entity'])).length === 1, `the entity slot on ${host}`);
+    await page.close();
+  }
+});
+
+test('generichide leaves a site its generic slots; elemhide leaves it everything', async () => {
+  server.page('quiet.test', '/', `<!doctype html><body>${SLOTS}</body>`);
+  server.page('nohide.test', '/', `<!doctype html><body>${SLOTS}</body>`);
+  for (const host of ['quiet.test', 'nohide.test']) {
+    const { page } = await open(browser.context, server.url(host));
+    // Nothing is to happen: give it the time the others take, then look.
+    await page.waitForTimeout(700);
+    assert.deepEqual(await hidden(page, ALL), [], host);
+    await page.close();
+  }
+});
+
+test('slots added after the page loads are hidden as they come', async () => {
+  const { page } = await visit('other.test', '<main id="main"><p>Words</p></main>');
+  await page.evaluate(() => {
+    document.getElementById('main').insertAdjacentHTML('beforeend', '<div id="late" class="ad-banner">ad</div><div class="ad-wrap"><p id="late-inner" class="inner">ad</p></div>');
+    document.querySelector('#main p').id = 'ad_top';
+  });
+  await until(async () => (await hidden(page, ['late', 'late-inner', 'ad_top'])).length === 3, 'the late slots to be hidden');
+  await page.close();
+});
+
+test('a page\'s own !important cannot bring a slot back', async () => {
+  const { page } = await visit('other.test', '<style>.ad-banner { display: block !important }</style><div id="stubborn" class="ad-banner" style="display: block !important">ad</div>');
+  await until(async () => (await hidden(page, ['stubborn'])).length === 1, 'the stubborn slot to be hidden');
+  await page.close();
+});
+
+test('frames are filtered too: another site\'s, and one with no address of its own', async () => {
+  server.page('frames.test', '/inner', `<!doctype html><body><div id="banner" class="ad-banner">ad</div><p id="content">kept</p></body>`);
+  const { page } = await visit('news.test', `<iframe id="cross" src="${server.url('frames.test', '/inner')}"></iframe><iframe id="blank" srcdoc='<div id="banner" class="ad-banner">ad</div><p id="content">kept</p>'></iframe>`);
+  for (const name of ['cross', 'blank']) {
+    const frame = await (await page.$(`#${name}`)).contentFrame();
+    await until(() => frame.evaluate(() => getComputedStyle(document.getElementById('banner')).display === 'none'), `the slot in the ${name} frame to be hidden`);
+    assert.equal(await frame.evaluate(() => getComputedStyle(document.getElementById('content')).display), 'block');
+  }
+  await page.close();
+});
+
+test('nothing is hidden on a site let through, with hiding switched off, or from a list switched off', async () => {
+  server.page('news.test', '/', `<!doctype html><body>${SLOTS}</body>`);
+  const look = async () => {
+    const { page } = await open(browser.context, server.url('news.test'));
+    await page.waitForTimeout(700);
+    const result = await hidden(page, ALL);
+    await page.close();
+    return result;
+  };
+
+  await browser.ask({ type: 'site:set', site: 'news.test', allowed: true });
+  assert.deepEqual(await look(), []);
+  await browser.ask({ type: 'site:set', site: 'news.test', allowed: false });
+
+  await browser.ask({ type: 'settings:set', patch: { cosmetic: false } });
+  assert.deepEqual(await look(), []);
+  await browser.ask({ type: 'settings:set', patch: { cosmetic: true } });
+
+  const off = await browser.ask({ type: 'ruleset:set', id: 'easyprivacy', enabled: false });
+  assert.deepEqual(off.enabled.sort(), ['easylist', 'stillwater']);
+  assert.deepEqual(await look(), [...GENERIC.slice(0, 5), 'story', 'rail', 'labelled'], 'the tracker list\'s pixel is no longer hidden');
+  const { page, stopped } = await visit('other.test', script('tracker.test'));
+  assert.deepEqual(stopped, [], 'nor its host blocked');
+  await page.close();
+  await browser.ask({ type: 'ruleset:set', id: 'easyprivacy', enabled: true });
+  assert.deepEqual(await look(), [...GENERIC.slice(0, 5), 'story', 'rail', 'pixel', 'labelled']);
+});

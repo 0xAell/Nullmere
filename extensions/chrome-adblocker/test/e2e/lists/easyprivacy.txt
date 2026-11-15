@@ -1,0 +1,4 @@
+[Adblock Plus 1.1]
+! Title: Fixture trackers
+||tracker.test^
+##.tracking-pixel

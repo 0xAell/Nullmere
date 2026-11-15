@@ -84,6 +84,28 @@ test('ad hosts and trackers are blocked; the site\'s own requests go through', a
   await page.close();
 });
 
+test('the real lists\' selectors hide their slots: generic ones by the classes and ids a page has, a site\'s own on that site', async () => {
+  const data = JSON.parse(readFileSync(join(root, 'build', 'cosmetic', 'easylist.json'), 'utf8'));
+  assert.ok(data.generic.simple.length > 5000 && Object.keys(data.specific).length > 1000, 'the real list was built');
+  const plain = /^[.#][a-zA-Z][\w-]*$/;
+  const step = Math.floor(data.generic.simple.length / 8);
+  const generic = Array.from({ length: 8 }, (_, index) => data.generic.simple[index * step]).filter((selector) => plain.test(selector));
+  const [site, own] = Object.entries(data.specific).find(([host, selectors]) => /^[a-z0-9-]+\.[a-z]+$/.test(host) && plain.test(selectors[0]) && !data.generic.simple.includes(selectors[0]) && !data.exceptions[host]);
+  const element = (selector, index) => (selector.startsWith('#') ? `<div id="${selector.slice(1)}" data-slot="${index}">ad</div>` : `<div class="${selector.slice(1)}" data-slot="${index}">ad</div>`);
+  const body = `<p data-slot="content">The page itself.</p>${[...generic, own[0]].map(element).join('')}`;
+  const hiddenOn = async (host) => {
+    server.page(host, '/', `<!doctype html><body>${body}</body>`);
+    const { page } = await open(browser.context, server.url(host));
+    await until(() => page.evaluate((n) => [...document.querySelectorAll('[data-slot]')].filter((slot) => getComputedStyle(slot).display === 'none').length >= n, generic.length), `the generic slots on ${host}`);
+    const result = await page.evaluate(() => [...document.querySelectorAll('[data-slot]')].filter((slot) => getComputedStyle(slot).display === 'none').map((slot) => slot.dataset.slot));
+    await page.close();
+    return result;
+  };
+  assert.ok(generic.length >= 5, 'enough plain generic selectors were sampled');
+  assert.deepEqual(await hiddenOn('elsewhere.test'), generic.map((_, index) => String(index)), 'the generic slots, and neither the page nor another site\'s slot');
+  assert.deepEqual(await hiddenOn(site), [...generic, own[0]].map((_, index) => String(index)), `${site}'s own slot too, on ${site}`);
+});
+
 test('a site let through gets everything, and is filtered again when taken back', async () => {
   const ad = 'adnxs.com';
   server.page('shop.test', '/', `<!doctype html><title>Shop</title><body><script src="${server.url(ad, '/tag.js')}"></script></body>`);

@@ -1,0 +1,33 @@
+[Adblock Plus 2.0]
+! Title: Fixture ads
+! A small list written for the browser tests: one filter for each thing
+! the converter and the extension are meant to do, on hosts under .test.
+!
+! --- network ---
+||ads.test^
+||third.test^$third-party
+/banner-ads/*
+! (The stand-in server is on a port of its own, so a path is written after a wildcard.)
+@@||ads.test^*/allowed.js$script
+||scripts.test^$script,domain=news.test
+||typed.test^$image
+||important.test^$important
+@@||important.test^
+/^https?:\/\/[a-z]+\.regex\.test(:\d+)?\/ad[0-9]+\.js/$script
+||csp.test^$csp=script-src 'none'
+@@||trusted.test^$document
+@@||quiet.test^$generichide
+@@||nohide.test^$elemhide
+||popup-only.test^$popup
+! --- cosmetic ---
+##.ad-banner
+###ad_top
+##.ad-wrap > .inner
+##[data-ad-slot]
+##.Mixed-Case-Ad
+news.test##.sponsored-story
+news.test,~live.news.test##.promo-rail
+shop.test#@#.ad-banner
+entity.*##.entity-ad
+news.test#?#section:-abp-has(> .ad-label)
+news.test##.sponsored-story:has-text(Sponsored)

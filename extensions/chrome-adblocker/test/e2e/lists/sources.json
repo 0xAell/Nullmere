@@ -1,0 +1,10 @@
+{
+  "repository": "test/e2e/lists",
+  "commit": "fixture",
+  "committed": "2026-01-01T00:00:00.000Z",
+  "licence": "AGPL-3.0-or-later (written for these tests)",
+  "lists": [
+    { "id": "easylist", "title": "Fixture ads", "file": "easylist.txt", "homepage": "" },
+    { "id": "easyprivacy", "title": "Fixture trackers", "file": "easyprivacy.txt", "homepage": "" }
+  ]
+}
