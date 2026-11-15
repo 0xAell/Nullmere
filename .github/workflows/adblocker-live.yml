@@ -1,0 +1,52 @@
+# Nullmere Stillwater on the live web: the built extension in Chromium on
+# real pages (news sites, two with no ads, and YouTube), each loaded with
+# and without it, from a runner that can reach the web. A report, not a
+# gate: the web changes under it. It fails only where the extension is at
+# fault, and is run by hand.
+name: Ad blocker, on the live web
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adblocker-live
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: Real pages, with and without the extension
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: extensions/chrome-adblocker
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extensions/chrome-adblocker/package-lock.json
+
+      - name: Install Playwright and its Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Build from the pinned lists
+        run: npm run build
+
+      - name: Visit the pages
+        run: node tools/live-check.js
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: live-report
+          path: extensions/chrome-adblocker/live-report.json
+          if-no-files-found: ignore

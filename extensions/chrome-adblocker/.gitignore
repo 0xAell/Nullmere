@@ -3,3 +3,4 @@ build/
 build-test/
 test-results/
 *.log
+live-report.json
