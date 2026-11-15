@@ -13,6 +13,12 @@ export const DEFAULTS = Object.freeze({
   youtube: true,
   /** Show the count of what was kept from a page on the toolbar icon. */
   badge: true,
+  /**
+   * Filter lists switched off, by ruleset id. Chrome remembers which
+   * rulesets are enabled only until the extension is next updated, and
+   * then goes back to the manifest's; this is what the user chose.
+   */
+  listsOff: [],
 });
 
 const KEY = 'settings';
@@ -20,7 +26,9 @@ const KEY = 'settings';
 export async function readSettings() {
   const stored = (await chrome.storage.local.get(KEY))[KEY] ?? {};
   const settings = { ...DEFAULTS, ...stored };
-  settings.allowlist = Array.isArray(settings.allowlist) ? settings.allowlist.filter((site) => typeof site === 'string') : [];
+  for (const key of ['allowlist', 'listsOff']) {
+    settings[key] = Array.isArray(settings[key]) ? settings[key].filter((item) => typeof item === 'string') : [];
+  }
   return settings;
 }
 

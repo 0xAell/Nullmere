@@ -185,7 +185,7 @@ test('putting everything back as installed is asked twice, and does it', async (
   await page.click('#reset');
   await until(async () => (await switches(page, 'switches')).map((item) => item[1]).join() === 'true,true,true,false', 'the switches to go back');
   const state = await browser.ask({ type: 'overview' });
-  assert.deepEqual(state.settings, { allowlist: [], paused: false, cosmetic: true, youtube: true, badge: true });
+  assert.deepEqual(state.settings, { allowlist: [], paused: false, cosmetic: true, youtube: true, badge: true, listsOff: [] });
   assert.deepEqual(state.enabled.sort(), ['easylist', 'easyprivacy', 'stillwater']);
   assert.deepEqual(await browser.worker.evaluate(() => chrome.declarativeNetRequest.getDynamicRules()), []);
   await page.close();

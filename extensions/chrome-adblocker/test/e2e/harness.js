@@ -119,8 +119,10 @@ export async function startServer({ secure = false } = {}) {
  * the extension's service worker, `ask` sends it a message as one of the
  * extension's own pages would.
  */
-export async function launch(directory = join(root, 'build'), { insecure = false, scale = undefined } = {}) {
-  const profile = mkdtempSync(join(tmpdir(), 'stillwater-'));
+export async function launch(directory = join(root, 'build'), { insecure = false, scale = undefined, profile: kept = undefined } = {}) {
+  // A profile handed in is the caller's to keep and to remove: a browser
+  // started twice on it is the same browser, restarted.
+  const profile = kept ?? mkdtempSync(join(tmpdir(), 'stillwater-'));
   const context = await chromium.launchPersistentContext(profile, {
     // The new headless mode is the one that loads extensions; Playwright's
     // own headless shell does not.
@@ -157,7 +159,7 @@ export async function launch(directory = join(root, 'build'), { insecure = false
     ask,
     async close() {
       await context.close();
-      rmSync(profile, { recursive: true, force: true });
+      if (!kept) rmSync(profile, { recursive: true, force: true });
     },
   };
 }

@@ -14,12 +14,36 @@ const ICONS = {
   off: { 16: '/icons/off-16.png', 32: '/icons/off-32.png', 48: '/icons/off-48.png' },
 };
 
+/** What the enabled lists hide, once it has been read; null whenever the enabled lists change. */
+let index = null;
+
 // ---------------------------------------------------------------------------
 // The user's choices, put into effect.
 
-/** Makes Chrome's dynamic rules and the badge follow the settings. */
+/** The ids of the filter lists the extension is built with. */
+function listIds() {
+  return chrome.runtime.getManifest().declarative_net_request.rule_resources.map((resource) => resource.id);
+}
+
+/**
+ * Has Chrome enable the lists the user left on and no others. Chrome
+ * keeps the enabled set itself, but only until the extension is next
+ * updated, when every list in the manifest comes back on.
+ */
+async function applyLists(settings) {
+  const off = new Set(settings.listsOff);
+  const enabled = new Set(await dnr.getEnabledRulesets());
+  const enableRulesetIds = listIds().filter((id) => !off.has(id) && !enabled.has(id));
+  const disableRulesetIds = listIds().filter((id) => off.has(id) && enabled.has(id));
+  if (!enableRulesetIds.length && !disableRulesetIds.length) return;
+  await dnr.updateEnabledRulesets({ enableRulesetIds, disableRulesetIds });
+  index = null;
+}
+
+/** Makes Chrome's rules, lists and the badge follow the settings. */
 async function apply(settings) {
   await dnr.updateDynamicRules({ removeRuleIds: Object.values(RULE), addRules: userRules(settings) });
+  await applyLists(settings);
   // Chrome counts what it blocked on each tab's page and writes it on the
   // icon. With the badge off the count is still kept (the popup reads it)
   // and only drawn in next to no colour: Chrome refuses a text colour of
@@ -91,16 +115,33 @@ async function paintAll(settings) {
   await Promise.all(tabs.map((tab) => paint(tab.id, tab.url, settings)));
 }
 
-chrome.runtime.onInstalled.addListener(async () => {
-  const settings = await readSettings();
-  await apply(settings);
-  await paintAll(settings);
-});
+let woken = null;
 
-chrome.runtime.onStartup.addListener(async () => {
-  const settings = await readSettings();
-  await apply(settings);
-});
+/**
+ * Puts the settings into effect once each time Chrome starts the extension
+ * anew: installed, updated, the browser started, or switched off and on
+ * again. Chrome forgets the badge's colours and the tabs' icons at every
+ * one of those and tells the worker of only some of them. It empties
+ * storage.session at all of them, so a mark kept there says whether this
+ * has been done since.
+ */
+function wake() {
+  woken ??= inTurn(async () => {
+    const { awake } = await chrome.storage.session.get('awake');
+    if (awake) return;
+    const settings = await readSettings();
+    await apply(settings);
+    await paintAll(settings);
+    await chrome.storage.session.set({ awake: true });
+  }).catch(() => {
+    woken = null;
+  });
+  return woken;
+}
+
+chrome.runtime.onInstalled.addListener(wake);
+chrome.runtime.onStartup.addListener(wake);
+wake();
 
 chrome.tabs.onUpdated.addListener(async (tabId, change, tab) => {
   // A tab's own icon is forgotten when it navigates.
@@ -109,8 +150,6 @@ chrome.tabs.onUpdated.addListener(async (tabId, change, tab) => {
 
 // ---------------------------------------------------------------------------
 // Cosmetic filtering: which elements a page hides.
-
-let index = null;
 
 /** The cosmetic data of the lists now enabled, read once for as long as the worker lives. */
 function cosmeticIndex() {
@@ -260,27 +299,21 @@ const fromExtension = {
     return { settings };
   },
 
-  /** Turns a filter list on or off. Chrome remembers which are on. */
+  /** Turns a filter list on or off. */
   async 'ruleset:set'({ id, enabled }) {
-    const known = chrome.runtime.getManifest().declarative_net_request.rule_resources.map((resource) => resource.id);
-    if (!known.includes(id)) return { error: 'There is no such list.' };
+    if (!listIds().includes(id)) return { error: 'There is no such list.' };
     return inTurn(async () => {
-      await dnr.updateEnabledRulesets(enabled ? { enableRulesetIds: [id] } : { disableRulesetIds: [id] });
-      index = null;
+      const kept = await readSettings();
+      kept.listsOff = listIds().filter((list) => (list === id ? !enabled : kept.listsOff.includes(list)));
+      await save(kept);
       return overview();
     });
   },
 
   /** Back to how Stillwater was installed. */
   async reset() {
-    const known = chrome.runtime.getManifest().declarative_net_request.rule_resources;
     return inTurn(async () => {
-      await dnr.updateEnabledRulesets({
-        enableRulesetIds: known.filter((resource) => resource.enabled).map((resource) => resource.id),
-        disableRulesetIds: known.filter((resource) => !resource.enabled).map((resource) => resource.id),
-      });
-      index = null;
-      await save({ ...DEFAULTS, allowlist: [] });
+      await save({ ...DEFAULTS, allowlist: [], listsOff: [] });
       return overview();
     });
   },
@@ -291,6 +324,10 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const own = typeof sender.url === 'string' && sender.url.startsWith(chrome.runtime.getURL(''));
   const handler = (own ? fromExtension[message?.type] : undefined) ?? fromPage[message?.type];
   if (!handler) return false;
-  handler(message, sender).then(respond, (error) => respond({ error: String(error?.message ?? error) }));
+  // Not before the settings are in effect: a page asking in the first
+  // moment after a start would be told of lists Chrome had just put back.
+  wake()
+    .then(() => handler(message, sender))
+    .then(respond, (error) => respond({ error: String(error?.message ?? error) }));
   return true;
 });
