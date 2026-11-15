@@ -127,6 +127,10 @@ pub enum Refusal {
     NoSiteThere,
     /// Armies are out: they must come home before the city moves.
     ArmyOut,
+    /// No building is being raised by the city under that number.
+    NoSuchJob,
+    /// The raising is nearly done: nothing to hasten.
+    NothingToSpeed,
     AlreadyAllied,
     NotAllied,
     NoSuchAlliance,
@@ -255,6 +259,8 @@ impl fmt::Display for Refusal {
             Refusal::NotAnAlly => "Only an ally's city can be reinforced.",
             Refusal::NoSiteThere => "No city can stand there.",
             Refusal::ArmyOut => "Bring your armies home before your city moves.",
+            Refusal::NoSuchJob => "No such work is under way in your city.",
+            Refusal::NothingToSpeed => "That is nearly done. There is nothing to hasten.",
             Refusal::NotTheOwner => "Only the realm's owner may do that.",
             _ => "",
         })

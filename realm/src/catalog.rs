@@ -634,6 +634,9 @@ pub fn healing(soldier: Soldier) -> (Goods, i64) {
 /// within its own walls is, and how long an assault on a city lasts, as
 /// written.
 pub const NEW_CITY_PEACE: i64 = 3 * 86_400;
+/// What one speedup costs: it cuts a quarter of what is left of a
+/// building's raising, and is paid in goods.
+pub const SPEEDUP: Goods = Goods::of(300, 300, 300, 0);
 /// What a city pays to move to new ground: its goods, and its people go with it.
 pub const RELOCATION: Goods = Goods::of(3_000, 3_000, 3_000, 0);
 pub const BEATEN_PEACE: i64 = 4 * 3_600;

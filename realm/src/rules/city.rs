@@ -317,3 +317,30 @@ pub fn relocate(db: &mut impl Db, player: u64, to: Hex) -> Result<City, Refusal>
     db.update(city.clone());
     Ok(city)
 }
+
+/// A player hastens a building being raised in their city: a quarter of
+/// what is left of it is taken off, for a speedup's goods. Its timer is
+/// reset to the new end.
+pub fn speed_up(db: &mut impl Db, player: u64, job: u64) -> Result<Job, Refusal> {
+    asking(db, player)?;
+    let city = super::city_of(db, player)?;
+    let mut job = Table::<Job>::get(db, job).filter(|row| row.city == city.id && row.kind == Job::RAISE).ok_or(Refusal::NoSuchJob)?;
+    let now = db.now();
+    let left = job.ends - now;
+    if left <= 1 {
+        return Err(Refusal::NothingToSpeed);
+    }
+    let mut stock = settle(db, city.id)?;
+    let have = goods(&stock);
+    if !have.covers(catalog::SPEEDUP) {
+        return Err(Refusal::CannotAfford(have.short_of(catalog::SPEEDUP)));
+    }
+    set_goods(&mut stock, have.minus(catalog::SPEEDUP));
+    db.update(stock);
+
+    db.cancel(job.timer);
+    job.ends = now + (left - left / 4);
+    job.timer = db.after(job.ends, TIMER_JOB, job.id);
+    db.update(job.clone());
+    Ok(job)
+}

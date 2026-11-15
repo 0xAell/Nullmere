@@ -480,3 +480,36 @@ fn a_city_moves_to_new_ground_for_goods_and_its_buildings_go_with_it() {
     assert!(moved.shield > db.clock, "a city that moves is at peace for a while");
     assert_eq!(catalog::RELOCATION.grain, 3_000);
 }
+
+#[test]
+fn a_speedup_takes_a_quarter_of_what_is_left_of_a_raising_for_goods() {
+    let mut db = opened(1);
+    let (ada, city) = joined(&mut db, "Ada");
+    let keep = building(&db, city.id, Kind::Keep);
+    let job = db.call(|db| rules::upgrade(db, ada, keep.id)).unwrap();
+    wait(&mut db, 4);
+
+    // Of the four seconds left, a quarter (one) is taken off; the goods are paid, to the coin.
+    let before = rules::goods(&stock(&db, city.id));
+    let hastened = db.call(|db| rules::speed_up(db, ada, job.id)).unwrap();
+    assert_eq!(hastened.ends, db.clock + 3);
+    assert_eq!(rules::goods(&stock(&db, city.id)), before.minus(catalog::SPEEDUP));
+    assert_eq!(db.timers.len(), 1, "one timer, reset to the new end");
+    assert_eq!(db.timers[&hastened.timer].at, hastened.ends);
+
+    // Still rising at the old end, done at the new one.
+    wait(&mut db, 2);
+    assert_eq!(building(&db, city.id, Kind::Keep).level, 1);
+    wait(&mut db, 1);
+    assert_eq!(building(&db, city.id, Kind::Keep).level, 2);
+
+    // Not someone else's raising; nothing to hasten once nearly done.
+    let (bryn, _) = joined(&mut db, "Bryn");
+    assert_eq!(db.call(|db| rules::speed_up(db, bryn, job.id)), Err(Refusal::NoSuchJob));
+    let farm = building(&db, rules::city_of(&db, ada).unwrap().id, Kind::Farm);
+    let next = db.call(|db| rules::upgrade(db, ada, farm.id)).unwrap();
+    let left = next.ends - db.clock - 1;
+    wait(&mut db, left);
+    assert_eq!(db.call(|db| rules::speed_up(db, ada, next.id)), Err(Refusal::NothingToSpeed));
+    assert_eq!(Refusal::NothingToSpeed.to_string(), "That is nearly done. There is nothing to hasten.");
+}

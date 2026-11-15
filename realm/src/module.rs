@@ -256,6 +256,13 @@ pub fn upgrade(ctx: &ReducerContext, building: u64) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::upgrade(&mut Stdb(ctx), player, building)))
 }
 
+/// Hasten a building being raised in the caller's city: a quarter of what
+/// is left of it, for a speedup's goods.
+#[reducer]
+pub fn speed_up(ctx: &ReducerContext, job: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::speed_up(&mut Stdb(ctx), player, job)))
+}
+
 /// Train a batch of troops of a tier in one of the caller's training
 /// buildings.
 #[reducer]
