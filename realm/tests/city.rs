@@ -513,3 +513,28 @@ fn a_speedup_takes_a_quarter_of_what_is_left_of_a_raising_for_goods() {
     assert_eq!(db.call(|db| rules::speed_up(db, ada, next.id)), Err(Refusal::NothingToSpeed));
     assert_eq!(Refusal::NothingToSpeed.to_string(), "That is nearly done. There is nothing to hasten.");
 }
+
+#[test]
+fn an_ally_hastens_a_raising_in_another_city_with_their_own_goods() {
+    let mut db = opened(1);
+    let (ada, ada_city) = joined(&mut db, "Ada");
+    let (bryn, bryn_city) = joined(&mut db, "Bryn");
+    // Not yet allies: no help.
+    let keep = building(&db, bryn_city.id, Kind::Keep);
+    let job = db.call(|db| rules::upgrade(db, bryn, keep.id)).unwrap();
+    wait(&mut db, 4);
+    assert_eq!(db.call(|db| rules::speed_up(db, ada, job.id)), Err(Refusal::NoSuchJob));
+
+    // Allies: Ada hastens Bryn's Keep, paid from Ada's own city.
+    db.insert(Building { id: 0, city: ada_city.id, kind: Kind::Embassy as u8, level: 1 });
+    let alliance = db.call(|db| rules::found_alliance(db, ada, "Keepers", "KEP")).unwrap();
+    db.call(|db| rules::join_alliance(db, bryn, alliance.id)).unwrap();
+    let before = rules::goods(&stock(&db, ada_city.id));
+    let bryns_before = rules::goods(&stock(&db, bryn_city.id));
+    let hastened = db.call(|db| rules::speed_up(db, ada, job.id)).unwrap();
+    assert_eq!(hastened.ends, db.clock + 3);
+    assert_eq!(rules::goods(&stock(&db, ada_city.id)), before.minus(catalog::SPEEDUP));
+    assert_eq!(rules::goods(&stock(&db, bryn_city.id)), bryns_before, "Bryn pays nothing");
+    wait(&mut db, 3);
+    assert_eq!(building(&db, bryn_city.id, Kind::Keep).level, 2);
+}
