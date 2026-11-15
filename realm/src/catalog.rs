@@ -616,6 +616,15 @@ pub const ENERGY_SECONDS: u64 = 8;
 /// How long a fight at a barrow lasts, as written.
 pub const FIGHT_SECONDS: i64 = 15;
 
+/// How many allies may help with one work: more with a higher Embassy.
+pub fn helps(embassy: u32) -> u32 {
+    (4 + embassy).min(30)
+}
+
+/// The least a help takes off a work, at the written pace; it takes a
+/// hundredth of what is left where that is more.
+pub const HELP_SECONDS: i64 = 60;
+
 /// How long a rally musters before it sets out, at the written pace.
 pub const RALLY_MUSTER: i64 = 300;
 /// How many levels above the strongest barrow its caller may attack alone

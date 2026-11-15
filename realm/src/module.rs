@@ -10,12 +10,12 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 use crate::hex::Hex;
 use crate::rows::{
     alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
-    chest as _, daily as _, daily__view as _, duty as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _,
+    chest as _, daily as _, daily__view as _, duty as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _,
     building__view as _, city as _, city__view as _, commander as _, commander__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
     march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
     realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
-    troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Building, Chest, City, Commander, Daily, Duty, Favour, Grace, Haul, Hunt, Job, Land, Lore, March, Member, Muster, Rally,
-    Pace, Place, Player, Prize, Progress, Realm, RealmChat, Report, Satchel, Site, Soldier, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware,
+    troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Building, Chest, City, Commander, Daily, Duty, Favour, Grace, Haul, Helper, Hunt, Job, Land, Lore, March, Member, Muster, Rally,
+    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Report, Satchel, Site, Soldier, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
@@ -161,6 +161,8 @@ stored!(Prize in prize by id);
 stored!(Tally in tally by id, player);
 stored!(Rally in rally by id, alliance);
 stored!(Muster in muster by march, rally);
+stored!(Plea in plea by job, alliance);
+stored!(Helper in helper by id, job, player);
 stored!(Lore in lore by id, city);
 stored!(Study in study by id);
 stored!(Commander in commander by id, owner);
@@ -316,6 +318,24 @@ pub fn call_rally(ctx: &ReducerContext, q: i32, r: i32, soldiers: Vec<Soldiers>,
 pub fn join_rally(ctx: &ReducerContext, rally: u64, soldiers: Vec<Soldiers>, leader: u64) -> Result<(), String> {
     let asked: Vec<rules::Asked> = soldiers.iter().map(|s| rules::Asked { kind: s.kind, tier: s.tier, count: s.count }).collect();
     said(caller(ctx).and_then(|player| rules::join_rally(&mut Stdb(ctx), player, rally, &asked, leader)))
+}
+
+/// Ask the caller's alliance to help with a work under way in their city.
+#[reducer]
+pub fn ask_help(ctx: &ReducerContext, job: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::ask_help(&mut Stdb(ctx), player, job)))
+}
+
+/// Help with an ally's work, by its job's number; or with 0, with every
+/// work of the alliance's the caller has not yet helped with.
+#[reducer]
+pub fn help(ctx: &ReducerContext, job: u64) -> Result<(), String> {
+    let player = caller(ctx);
+    if job == 0 {
+        said(player.and_then(|player| rules::help_all(&mut Stdb(ctx), player)))
+    } else {
+        said(player.and_then(|player| rules::help(&mut Stdb(ctx), player, job)))
+    }
 }
 
 /// Take on another commander.
@@ -528,6 +548,19 @@ fn my_applicants(ctx: &ViewContext) -> Vec<Applicant> {
         Some(_) => Vec::new(),
         None => ctx.db.applicant().player().find(player).into_iter().collect(),
     }
+}
+
+/// The works the caller's alliance has been asked to help with.
+#[view(accessor = my_pleas, public)]
+fn my_pleas(ctx: &ViewContext) -> Vec<Plea> {
+    let Some(member) = viewer(ctx).and_then(|player| ctx.db.member().player().find(player)) else { return Vec::new() };
+    ctx.db.plea().alliance().filter(member.alliance).collect()
+}
+
+/// The works the caller has helped with, while they last.
+#[view(accessor = my_helps, public)]
+fn my_helps(ctx: &ViewContext) -> Vec<Helper> {
+    viewer(ctx).map(|player| ctx.db.helper().player().filter(player).collect()).unwrap_or_default()
 }
 
 /// The rallies of the caller's alliance.

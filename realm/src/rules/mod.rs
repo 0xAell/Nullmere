@@ -13,6 +13,7 @@ mod command;
 mod daily;
 mod entry;
 mod favour;
+mod help;
 mod items;
 mod march;
 mod rally;
@@ -29,6 +30,7 @@ pub use command::*;
 pub use daily::*;
 pub use entry::*;
 pub use favour::*;
+pub use help::*;
 pub use items::*;
 pub use march::*;
 pub use rally::*;
@@ -177,6 +179,11 @@ pub enum Refusal {
     NoSuchChest,
     NoSuchItem,
     NoSuchPrize,
+    HelpAsked,
+    NoSuchPlea,
+    YourOwnWork,
+    AlreadyHelped,
+    HelpedEnough,
     /// A rally may go no further above what its caller may attack alone: the level it may reach.
     RallyTooStrong(u32),
     AlreadyRallying,
@@ -284,6 +291,11 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchChest => "There is no such chest.",
             Refusal::NoSuchItem => "There is no such thing to use.",
             Refusal::NoSuchPrize => "There is no such prize.",
+            Refusal::HelpAsked => "You have asked your alliance's help with that already.",
+            Refusal::NoSuchPlea => "Your alliance has no such work to help with.",
+            Refusal::YourOwnWork => "That work is your own. Your allies help with it.",
+            Refusal::AlreadyHelped => "You have helped with that already.",
+            Refusal::HelpedEnough => "That work has had all the help it may.",
             Refusal::AlreadyRallying => "You have an army in a rally already.",
             Refusal::RallyCalled => "Your alliance is rallying against that barrow already. Join it.",
             Refusal::NoSuchRally => "Your alliance has no such rally.",

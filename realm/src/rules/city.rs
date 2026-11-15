@@ -270,7 +270,13 @@ pub fn upgrade(db: &mut impl Db, player: u64, building: u64) -> Result<Job, Refu
 /// A job's timer has come due: the work is done.
 pub fn finish(db: &mut impl Db, job: u64) {
     let Some(job) = Table::<Job>::get(db, job) else { return };
+    // A timer set before the work was hastened, called off since but
+    // fired all the same, finishes nothing early.
+    if db.now() < job.ends {
+        return;
+    }
     Table::<Job>::delete(db, job.id);
+    super::forget_plea(db, job.id);
     if job.kind == Job::RAISE {
         if let Some(mut building) = Table::<Building>::get(db, job.subject) {
             building.level = job.level;

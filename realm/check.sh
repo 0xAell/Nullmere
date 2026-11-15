@@ -278,6 +278,8 @@ check("no one reads another's tallies", isinstance(rows(ada, "SELECT * FROM tall
 check("a rally is called by a member of an alliance", call(ada, "call_rally", adas[0], adas[1], [{"kind": 1, "tier": 1, "count": 1}], 0), "You are in no alliance.")
 check("and joined by one", call(ada, "join_rally", 1, [{"kind": 1, "tier": 1, "count": 1}], 0), "You are in no alliance.")
 check("an army is not sent to a rally by an order of its own", call(ada, "send", adas[0], adas[1], 6, [{"kind": 1, "tier": 1, "count": 1}], 0), "The realm knows no such order.")
+check("help is asked of an alliance, and given within one", (call(ada, "ask_help", 1), call(ada, "help", 0)), ("You are in no alliance.", "You are in no alliance."))
+check("one in no alliance sees no asking for help, and no one reads the table itself", (rows(ada, "SELECT * FROM my_pleas"), rows(ada, "SELECT * FROM my_helps"), isinstance(rows(ada, "SELECT * FROM plea"), str)), ([], [], True))
 check("one in no alliance sees no rallies, and no one reads the table itself", (rows(ada, "SELECT * FROM my_rallies"), rows(ada, "SELECT * FROM my_musters"), isinstance(rows(ada, "SELECT * FROM rally"), str)), ([], [], True))
 
 # Commanders: one to begin with, more from a Tavern.

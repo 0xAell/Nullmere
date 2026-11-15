@@ -669,6 +669,46 @@ pub struct Chest {
 }
 row!(Chest in chest, by id);
 
+/// A work its owner has asked their alliance's help with: the alliance's
+/// alone to read. Keyed by the work's job. It lasts as long as the work.
+#[spacetimedb::table(accessor = plea)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Plea {
+    #[primary_key]
+    pub job: u64,
+    #[index(btree)]
+    pub alliance: u64,
+    /// Who asked, and their name as it was then.
+    pub asker: u64,
+    pub name: String,
+    /// What kind of work it is (`Job::RAISE` and the rest).
+    pub work: u8,
+    /// How many have helped, and how many may.
+    pub helped: u32,
+    pub most: u32,
+}
+row!(Plea in plea, by job, alliance);
+
+/// That a player has helped with a work: they may once. Keyed by the
+/// work's job and the player.
+#[spacetimedb::table(accessor = helper)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Helper {
+    #[primary_key]
+    pub id: u64,
+    #[index(btree)]
+    pub job: u64,
+    #[index(btree)]
+    pub player: u64,
+}
+row!(Helper in helper, by id, job, player);
+
+impl Helper {
+    pub fn key(job: u64, player: u64) -> u64 {
+        (job << 24) | (player & 0xFF_FFFF)
+    }
+}
+
 /// A rally: allies' armies against a barrow too strong for one of them.
 /// Each musters in its own city until the rally sets out, marches from
 /// there, waits at the barrow for the last, and they fight as one. Its
@@ -973,6 +1013,8 @@ pub trait Db:
     + Table<Tally>
     + Table<Rally>
     + Table<Muster>
+    + Table<Plea>
+    + Table<Helper>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1019,6 +1061,8 @@ impl<
             + Table<Tally>
             + Table<Rally>
             + Table<Muster>
+            + Table<Plea>
+            + Table<Helper>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,
