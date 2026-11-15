@@ -3,9 +3,29 @@
   <head>
     <meta charset="utf-8">
     <title>Nullmere Stillwater</title>
+    <link rel="stylesheet" href="../shared/theme.css">
+    <link rel="stylesheet" href="popup.css">
   </head>
   <body>
-    <main id="app"></main>
+    <main class="lake" id="lake" data-state="loading">
+      <div class="sky stars">
+        <h1 class="caps name">Nullmere Stillwater</h1>
+        <button class="moon" id="moon" type="button" aria-pressed="true"></button>
+      </div>
+      <div class="shore" aria-hidden="true"></div>
+      <div class="water">
+        <div class="reflection" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        <p class="count" id="count" aria-live="polite">&nbsp;</p>
+        <p class="caps" id="count-label">&nbsp;</p>
+        <p class="site" id="site">&nbsp;</p>
+        <p class="words" id="words">&nbsp;</p>
+        <button class="caps act" id="act" type="button" hidden></button>
+      </div>
+      <footer>
+        <a class="caps" id="options" href="../options/options.html" target="_blank">Options</a>
+        <span class="caps version" id="version"></span>
+      </footer>
+    </main>
     <script type="module" src="popup.js"></script>
   </body>
 </html>

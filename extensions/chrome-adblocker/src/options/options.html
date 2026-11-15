@@ -2,10 +2,58 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Nullmere Stillwater</title>
+    <link rel="stylesheet" href="../shared/theme.css">
+    <link rel="stylesheet" href="options.css">
   </head>
   <body>
-    <main id="app"></main>
+    <header class="masthead stars">
+      <span class="moon" aria-hidden="true"></span>
+      <h1 class="caps">Nullmere Stillwater</h1>
+      <p class="lead">Keeps the web as still as the lake.</p>
+    </header>
+
+    <main class="page">
+      <section aria-labelledby="lists-title">
+        <h2 class="caps" id="lists-title">The lists</h2>
+        <p class="note">What is blocked and hidden is decided by these filter lists. Each can be switched off.</p>
+        <ul class="rows" id="lists"></ul>
+        <p class="fine" id="lists-foot"></p>
+      </section>
+
+      <section aria-labelledby="sites-title">
+        <h2 class="caps" id="sites-title">Sites let through</h2>
+        <p class="note">Nothing is blocked or hidden on these sites, or on their subdomains.</p>
+        <ul class="rows" id="sites"></ul>
+        <form id="site-form" novalidate>
+          <input id="site-input" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="example.com" aria-label="A site to let through">
+          <button class="caps act" type="submit">Let through</button>
+        </form>
+        <p class="fine bad" id="site-error" role="alert"></p>
+      </section>
+
+      <section aria-labelledby="switches-title">
+        <h2 class="caps" id="switches-title">Switches</h2>
+        <ul class="rows" id="switches"></ul>
+      </section>
+
+      <section aria-labelledby="limits-title">
+        <h2 class="caps" id="limits-title">What it cannot do</h2>
+        <ul class="plain" id="limits"></ul>
+      </section>
+
+      <section aria-labelledby="about-title">
+        <h2 class="caps" id="about-title">About</h2>
+        <p class="note" id="about"></p>
+        <p class="note">
+          EasyList and EasyPrivacy are the work of <a href="https://easylist.to/" target="_blank" rel="noreferrer">the EasyList authors</a>, used under the GNU General Public License, version 3 or later.
+          Stillwater itself is part of <a href="https://github.com/ael-dev3/Nullmere" target="_blank" rel="noreferrer">Nullmere</a>, under the GNU Affero General Public License, version 3 or later.
+          <a href="../THIRD-PARTY-NOTICES.md" target="_blank">Notices</a>.
+        </p>
+        <button class="caps act" id="reset" type="button">Put everything back as installed</button>
+      </section>
+    </main>
     <script type="module" src="options.js"></script>
   </body>
 </html>

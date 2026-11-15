@@ -114,6 +114,18 @@ export async function open(context, url) {
   return { page, failed, blocked: () => failed.filter((failure) => failure.error === 'net::ERR_BLOCKED_BY_CLIENT').map((failure) => failure.url) };
 }
 
+/**
+ * Markup that asks for these addresses a moment after the page has begun,
+ * as images. For tests that read Chrome's count of what was blocked:
+ * Chrome starts a tab's count afresh as it finishes with a navigation, and
+ * a request blocked in the page's very first instant can be counted
+ * before that and lost (seen here in about one load in seven). What is
+ * blocked is not in doubt, only that count.
+ */
+export function later(urls) {
+  return `<script>setTimeout(() => { for (const url of ${JSON.stringify(urls)}) document.body.appendChild(new Image()).src = url; }, 80);</script>`;
+}
+
 /** The id of the tab a page is in, as the extension knows it. */
 export async function tabIdOf(worker, page) {
   return worker.evaluate(async (url) => (await chrome.tabs.query({})).find((tab) => tab.url === url)?.id, page.url());

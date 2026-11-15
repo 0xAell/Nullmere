@@ -1,0 +1,154 @@
+/* The popup: the lake at night. The sky and its moon above the far shore,
+   the moon's light on the water below, and on the water the few words
+   there are to say. */
+
+body {
+  width: 340px;
+}
+
+.lake {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(var(--night-high) 0%, #05070d 46%, var(--night-low) 100%);
+}
+
+.sky {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 0 26px;
+}
+
+.name {
+  margin: 0 0 30px;
+  font-size: 10px;
+  color: var(--faint);
+}
+
+#moon {
+  width: 78px;
+  height: 78px;
+  padding: 0;
+  cursor: pointer;
+}
+
+#moon:disabled {
+  cursor: default;
+}
+
+/* The far shore: one line, fading out toward either side. */
+.shore {
+  height: 1px;
+  margin: 0 38px;
+  background: linear-gradient(90deg, transparent, var(--line-strong) 30%, var(--line-strong) 70%, transparent);
+}
+
+.water {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 28px 20px;
+  text-align: center;
+}
+
+/* The moon on the water: strokes that shorten and fade with depth. */
+.reflection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  height: 46px;
+  padding-top: 8px;
+  transition: opacity 0.5s ease;
+}
+
+.reflection i {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--moon);
+}
+
+.reflection i:nth-child(1) { width: 58px; opacity: 0.9; }
+.reflection i:nth-child(2) { width: 44px; opacity: 0.72; }
+.reflection i:nth-child(3) { width: 31px; opacity: 0.52; }
+.reflection i:nth-child(4) { width: 19px; opacity: 0.36; }
+.reflection i:nth-child(5) { width: 9px; opacity: 0.22; }
+
+.count {
+  margin: 14px 0 4px;
+  font-size: 46px;
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.site {
+  margin: 26px 0 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--words);
+}
+
+.words {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--quiet);
+}
+
+.act {
+  margin-top: 20px;
+  padding: 9px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--words);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.act:hover {
+  border-color: var(--glow);
+  background: rgb(150 180 225 / 0.08);
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px 14px;
+  border-top: 1px solid var(--line);
+}
+
+footer .caps {
+  font-size: 9.5px;
+}
+
+.version {
+  color: var(--faint);
+}
+
+#count-label {
+  margin: 0;
+}
+
+.count[hidden] + #count-label {
+  margin-top: 6px;
+}
+
+/* Where Stillwater is not at work, the moon is new and nothing lies on the water. */
+.lake[data-state='allowed'] .reflection,
+.lake[data-state='paused'] .reflection,
+.lake[data-state='none'] .reflection,
+.lake[data-state='loading'] .reflection {
+  opacity: 0;
+}

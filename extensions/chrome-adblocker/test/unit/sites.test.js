@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { grouped, hostOf, isAllowed, RULE, siteFromInput, siteOf, userRules, USER_PRIORITY, withSite } from '../../src/shared/sites.js';
-import { PRIORITY, problemsWith } from '../../tools/lib/dnr.js';
+import { PRIORITY, problemsWith, RESOURCE_TYPES } from '../../tools/lib/dnr.js';
 
 test('the host of a page that can be filtered', () => {
   assert.equal(hostOf('https://News.Example.com/a?b#c'), 'news.example.com');
@@ -47,12 +47,17 @@ test('the user\'s rules outrank every rule a list can make, and are rules Chrome
   assert.ok(USER_PRIORITY === PRIORITY.user && USER_PRIORITY > PRIORITY.important);
   assert.deepEqual(userRules({ allowlist: [], paused: false }), []);
   const rules = userRules({ allowlist: ['example.com', 'news.test'], paused: true });
-  assert.deepEqual(rules.map((rule) => rule.id), [RULE.allowlist, RULE.paused]);
+  assert.deepEqual(rules.map((rule) => rule.id), [RULE.allowlist, RULE.allowlistRequests, RULE.paused]);
+  assert.equal(new Set(Object.values(RULE)).size, 3, 'each rule has a number of its own');
+  // A site's pages, with every frame in them; and whatever a document of the site asks for.
   assert.deepEqual(rules[0], { id: 1, priority: 1000, action: { type: 'allowAllRequests' }, condition: { requestDomains: ['example.com', 'news.test'], resourceTypes: ['main_frame'] } });
+  assert.deepEqual(rules[1], { id: 3, priority: 1000, action: { type: 'allow' }, condition: { initiatorDomains: ['example.com', 'news.test'] } });
   assert.deepEqual(problemsWith(rules[0]), []);
-  // The pause is meant to match every page: the one thing problemsWith would call too broad.
-  assert.deepEqual(problemsWith(rules[1]), ['matches every request']);
-  assert.deepEqual(rules[1].condition, { resourceTypes: ['main_frame', 'sub_frame'] });
+  assert.deepEqual(problemsWith(rules[1]), []);
+  // The pause is meant to match every request: the one thing problemsWith would call too broad.
+  assert.deepEqual(problemsWith(rules[2]), ['matches every request']);
+  assert.deepEqual([rules[2].action.type, rules[2].priority], ['allow', 1000]);
+  assert.deepEqual([...rules[2].condition.resourceTypes].sort(), [...RESOURCE_TYPES].sort(), 'every type Chrome knows, the page itself among them');
 });
 
 test('counts are grouped in threes', () => {

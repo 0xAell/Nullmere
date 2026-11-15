@@ -22,16 +22,30 @@ async function apply(settings) {
   await dnr.updateDynamicRules({ removeRuleIds: Object.values(RULE), addRules: userRules(settings) });
   // Chrome counts what it blocked on each tab's page and writes it on the
   // icon. With the badge off the count is still kept (the popup reads it)
-  // and only drawn in no colour at all.
+  // and only drawn in next to no colour: Chrome refuses a text colour of
+  // none at all, so it is given the faintest there is, on no background.
   await dnr.setExtensionActionOptions({ displayActionCountAsBadgeText: true });
   await chrome.action.setBadgeBackgroundColor({ color: settings.badge ? [22, 35, 58, 255] : [0, 0, 0, 0] });
-  await chrome.action.setBadgeTextColor({ color: settings.badge ? [228, 234, 242, 255] : [0, 0, 0, 0] });
+  await chrome.action.setBadgeTextColor({ color: settings.badge ? [228, 234, 242, 255] : [0, 0, 0, 1] });
 }
 
 async function save(settings) {
   await writeSettings(settings);
   await apply(settings);
   await paintAll(settings);
+}
+
+let last = Promise.resolve();
+
+/**
+ * Runs changes to the settings one after another. Each reads what is
+ * kept, changes it and writes it back; two at once (two switches pressed
+ * in a breath) would each write over the other's change.
+ */
+function inTurn(change) {
+  const mine = last.then(change, change);
+  last = mine.catch(() => {});
+  return mine;
 }
 
 /** The toolbar icon of a tab: the new moon where its site is let through. */
@@ -182,9 +196,12 @@ const fromExtension = {
   async 'site:set'({ site, allowed, tabId }) {
     const clean = siteFromInput(site);
     if (!clean) return { error: 'That is not a site.' };
-    const settings = await readSettings();
-    settings.allowlist = withSite(settings.allowlist, clean, Boolean(allowed));
-    await save(settings);
+    const settings = await inTurn(async () => {
+      const kept = await readSettings();
+      kept.allowlist = withSite(kept.allowlist, clean, Boolean(allowed));
+      await save(kept);
+      return kept;
+    });
     if (Number.isInteger(tabId)) {
       try {
         await chrome.tabs.reload(tabId);
@@ -197,11 +214,14 @@ const fromExtension = {
 
   /** Changes the switches: paused, cosmetic, youtube, badge. */
   async 'settings:set'({ patch }) {
-    const settings = await readSettings();
-    for (const key of ['paused', 'cosmetic', 'youtube', 'badge']) {
-      if (typeof patch?.[key] === 'boolean') settings[key] = patch[key];
-    }
-    await save(settings);
+    const settings = await inTurn(async () => {
+      const kept = await readSettings();
+      for (const key of ['paused', 'cosmetic', 'youtube', 'badge']) {
+        if (typeof patch?.[key] === 'boolean') kept[key] = patch[key];
+      }
+      await save(kept);
+      return kept;
+    });
     return { settings };
   },
 
@@ -209,21 +229,25 @@ const fromExtension = {
   async 'ruleset:set'({ id, enabled }) {
     const known = chrome.runtime.getManifest().declarative_net_request.rule_resources.map((resource) => resource.id);
     if (!known.includes(id)) return { error: 'There is no such list.' };
-    await dnr.updateEnabledRulesets(enabled ? { enableRulesetIds: [id] } : { disableRulesetIds: [id] });
-    index = null;
-    return overview();
+    return inTurn(async () => {
+      await dnr.updateEnabledRulesets(enabled ? { enableRulesetIds: [id] } : { disableRulesetIds: [id] });
+      index = null;
+      return overview();
+    });
   },
 
   /** Back to how Stillwater was installed. */
   async reset() {
     const known = chrome.runtime.getManifest().declarative_net_request.rule_resources;
-    await dnr.updateEnabledRulesets({
-      enableRulesetIds: known.filter((resource) => resource.enabled).map((resource) => resource.id),
-      disableRulesetIds: known.filter((resource) => !resource.enabled).map((resource) => resource.id),
+    return inTurn(async () => {
+      await dnr.updateEnabledRulesets({
+        enableRulesetIds: known.filter((resource) => resource.enabled).map((resource) => resource.id),
+        disableRulesetIds: known.filter((resource) => !resource.enabled).map((resource) => resource.id),
+      });
+      index = null;
+      await save({ ...DEFAULTS, allowlist: [] });
+      return overview();
     });
-    index = null;
-    await save({ ...DEFAULTS, allowlist: [] });
-    return overview();
   },
 };
 

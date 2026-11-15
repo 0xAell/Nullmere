@@ -4,8 +4,11 @@
 /** Above every rule a filter list can make (tools/lib/dnr.js: PRIORITY). */
 export const USER_PRIORITY = 1000;
 
-/** The dynamic rules Stillwater keeps: one for the sites let through, one for the pause. */
-export const RULE = { allowlist: 1, paused: 2 };
+/** The dynamic rules Stillwater keeps: two for the sites let through, one for the pause. */
+export const RULE = { allowlist: 1, paused: 2, allowlistRequests: 3 };
+
+/** Every resource type, the page itself included: for a rule meant to match everything. */
+const EVERY_TYPE = ['main_frame', 'sub_frame', 'stylesheet', 'script', 'image', 'font', 'object', 'xmlhttprequest', 'ping', 'csp_report', 'media', 'websocket', 'webtransport', 'webbundle', 'other'];
 
 /** The host of a page Stillwater can filter (http or https), or ''. */
 export function hostOf(url) {
@@ -56,8 +59,17 @@ export function withSite(allowlist, site, allowed) {
 }
 
 /**
- * The dynamic rules for the user's own choices: every request of a page
- * of a site let through is allowed, and of every page while paused.
+ * The dynamic rules for the user's own choices.
+ *
+ * A site let through gets two rules. The first allows every request of
+ * its pages, frames of other sites inside them included. Chrome works out
+ * which frames that covers as each navigation finishes, and a request a
+ * page makes in its very first instant can be judged before it has: so a
+ * second rule allows whatever a document of the site asks for, which
+ * needs no such bookkeeping.
+ *
+ * Paused, one rule allows every request there is.
+ *
  * A page already open keeps what it was loaded with until it is reloaded.
  */
 export function userRules({ allowlist = [], paused = false } = {}) {
@@ -69,13 +81,19 @@ export function userRules({ allowlist = [], paused = false } = {}) {
       action: { type: 'allowAllRequests' },
       condition: { requestDomains: [...allowlist], resourceTypes: ['main_frame'] },
     });
+    rules.push({
+      id: RULE.allowlistRequests,
+      priority: USER_PRIORITY,
+      action: { type: 'allow' },
+      condition: { initiatorDomains: [...allowlist] },
+    });
   }
   if (paused) {
     rules.push({
       id: RULE.paused,
       priority: USER_PRIORITY,
-      action: { type: 'allowAllRequests' },
-      condition: { resourceTypes: ['main_frame', 'sub_frame'] },
+      action: { type: 'allow' },
+      condition: { resourceTypes: EVERY_TYPE },
     });
   }
   return rules;
