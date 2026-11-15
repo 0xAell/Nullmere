@@ -1,0 +1,66 @@
+# Nullmere Stillwater, the ad blocker for Chrome in
+# extensions/chrome-adblocker: its unit tests, its build from the pinned
+# filter lists, and the browser tests that load the unpacked extension in
+# Chromium and check that ads are blocked and their slots hidden on
+# fixture pages. The packed extension is kept from every run.
+name: Ad blocker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - extensions/chrome-adblocker/**
+      - .github/workflows/adblocker.yml
+  pull_request:
+    paths:
+      - extensions/chrome-adblocker/**
+      - .github/workflows/adblocker.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adblocker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  extension:
+    name: Build, test in Chromium, pack
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: extensions/chrome-adblocker
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extensions/chrome-adblocker/package-lock.json
+
+      - name: Install Playwright and its Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build from the pinned lists
+        run: npm run build
+
+      - name: Browser tests on the unpacked extension
+        run: npm run test:e2e
+
+      - name: Pack
+        run: npm run package
+
+      - name: Keep the packed extension
+        uses: actions/upload-artifact@v6
+        with:
+          name: nullmere-stillwater
+          path: extensions/chrome-adblocker/dist/*.zip
+          if-no-files-found: error
