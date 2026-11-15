@@ -23,8 +23,8 @@ after(async () => {
   await server?.close();
 });
 
-/** The addresses of every tab, as the extension sees them. */
-const tabs = () => browser.worker.evaluate(async () => (await chrome.tabs.query({})).map((tab) => tab.pendingUrl || tab.url || ''));
+/** Every tab as the extension sees it: [{ url, status }]. */
+const tabs = () => browser.worker.evaluate(async () => (await chrome.tabs.query({})).map((tab) => ({ url: tab.pendingUrl || tab.url || '', status: tab.status })));
 
 /** How many tabs have been opened since the worker was last asked to count them. */
 async function counting() {
@@ -38,34 +38,39 @@ async function counting() {
 /**
  * Opens a page of `host` holding `body`, does `act` on it, and says what
  * became of the tab that opened: { closed } or { kept: its address }.
+ * A tab counts as kept once it has loaded a page of the web and is still
+ * there `grace` milliseconds later: closing, where it happens, happens
+ * before the page shows, however slow the machine.
  */
-async function opening(host, body, act) {
+async function opening(host, body, act, { grace = 500 } = {}) {
   server.page(host, '/', `<!doctype html><title>${host}</title><body>${body}</body>`);
   const { page } = await open(browser.context, server.url(host));
   const before = (await tabs()).length;
   const made = await counting();
   await act(page);
   await until(async () => (await made()) >= 1, 'a tab to be opened');
-  // Closed, or still there once it has had the time closing takes many times over.
-  let closed = false;
-  try {
-    await until(async () => (await tabs()).length === before, 'the tab to be closed', { timeout: 1500 });
-    closed = true;
-  } catch {
-    closed = false;
-  }
+  const closed = await until(async () => {
+    const now = await tabs();
+    if (now.length === before) return 'closed';
+    return now.length > before && now.every((tab) => tab.status === 'complete') && now.at(-1).url.startsWith('http') ? 'loaded' : null;
+  }, 'the opened tab to be closed or to load');
   let kept = null;
-  if (!closed) {
-    const extra = browser.context.pages().filter((other) => other !== page && !other.url().startsWith('chrome-extension://'));
-    kept = extra.map((other) => other.url()).at(-1) ?? null;
-    for (const other of extra) await other.close();
+  if (closed === 'loaded') {
+    await page.waitForTimeout(grace);
+    if ((await tabs()).length > before) {
+      const extra = browser.context.pages().filter((other) => other !== page && !other.url().startsWith('chrome-extension://'));
+      kept = extra.map((other) => other.url()).at(-1) ?? null;
+      for (const other of extra) await other.close();
+    }
   }
   await page.close();
-  return closed ? { closed } : { kept };
+  return kept === null ? { closed: true } : { kept };
 }
 
 const link = (url) => `<a id="go" target="_blank" href="${url}">a link that opens a tab</a>`;
-const click = (page) => page.click('#go');
+// Pressed from inside the page, and not waited on: Playwright's own click
+// waits for the tab it opens, and can wait for ever on one closed at once.
+const click = (page) => page.evaluate(() => void setTimeout(() => document.getElementById('go').click(), 0));
 
 test('a tab opened straight to a pop-up address is closed; one opened to any other is left', async () => {
   assert.deepEqual(await opening('news.test', link(server.url('popup-only.test', '/landing')), click), { closed: true });
@@ -80,7 +85,7 @@ test('a window opened by script is closed too: straight there, opened empty and 
   assert.deepEqual(await opening('news.test', button(`const made = window.open('about:blank'); setTimeout(() => { made.location = '${target}'; }, 150)`), click), { closed: true }, 'opened empty, then sent there');
   // By way of a page that sends it on once it has loaded.
   server.page('plain.test', '/out', `<!doctype html><body><script>setTimeout(() => { location.href = ${JSON.stringify(target)}; }, 100);</script></body>`);
-  assert.deepEqual(await opening('news.test', button(`window.open('${server.url('plain.test', '/out')}')`), click), { closed: true }, 'by way of another page');
+  assert.deepEqual(await opening('news.test', button(`window.open('${server.url('plain.test', '/out')}')`), click, { grace: 3000 }), { closed: true }, 'by way of another page');
 });
 
 test('a pop-up filter is for the pages it names, of other sites where it says so, and an exception takes it back', async () => {
