@@ -505,3 +505,24 @@ fn a_player_is_kept_their_latest_reports() {
     assert_eq!(kept.len(), rules::REPORTS_KEPT);
     assert_eq!((kept[0].foe, kept.last().unwrap().foe), (5, rules::REPORTS_KEPT as u64 + 4), "the oldest five are gone");
 }
+
+#[test]
+fn a_speedup_hastens_the_healing_of_the_wounded() {
+    let (mut db, player, city) = armed(3, &[(Troops::Spearmen, 1, 20)]);
+    let mut row = rules::troop(&db, city.id, Troops::Spearmen, 1);
+    row.wounded = 40;
+    rules::keep_troop(&mut db, row);
+    let job = db.call(|db| rules::heal(db, player, 1, 1, 10)).unwrap();
+    wait(&mut db, 10);
+    // Of the ten seconds left, a quarter comes off; the wounded are healed at the new end.
+    let left = job.ends - db.clock;
+    let now = db.clock;
+    let hastened = db.call(|db| rules::speed_up(db, player, job.id)).unwrap();
+    assert_eq!(hastened.kind, Job::HEAL);
+    assert_eq!(hastened.ends, now + left - left / 4);
+    let to_end = hastened.ends - db.clock - 1;
+    wait(&mut db, to_end);
+    assert_eq!(rules::troop(&db, city.id, Troops::Spearmen, 1).wounded, 40, "not yet, a second early");
+    wait(&mut db, 1);
+    assert_eq!(rules::troop(&db, city.id, Troops::Spearmen, 1).wounded, 30);
+}

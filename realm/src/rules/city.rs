@@ -318,15 +318,15 @@ pub fn relocate(db: &mut impl Db, player: u64, to: Hex) -> Result<City, Refusal>
     Ok(city)
 }
 
-/// A player hastens a building being raised, a study at the Academy, or a
-/// batch of troops training, in their city or an ally's: a quarter of what is left of it is taken off, for a speedup's goods from
+/// A player hastens a building being raised, a study at the Academy, a batch
+/// of troops training, or wounded being healed, in their city or an ally's: a quarter of what is left of it is taken off, for a speedup's goods from
 /// the player's own city. Its timer is reset to the new end.
 pub fn speed_up(db: &mut impl Db, player: u64, job: u64) -> Result<Job, Refusal> {
     asking(db, player)?;
     let city = super::city_of(db, player)?;
     // Their own raising, or an ally's: the goods are the helper's own.
     let mut job = Table::<Job>::get(db, job)
-        .filter(|row| row.kind == Job::RAISE || row.kind == Job::STUDY || row.kind == Job::TRAIN)
+        .filter(|row| matches!(row.kind, Job::RAISE | Job::STUDY | Job::TRAIN | Job::HEAL))
         .filter(|row| Table::<City>::get(db, row.city).is_some_and(|raising| raising.owner == player || super::allied(db, player, raising.owner)))
         .ok_or(Refusal::NoSuchJob)?;
     let now = db.now();
