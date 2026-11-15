@@ -17,6 +17,11 @@
 //   noGeneric        hosts where the generic selectors are off
 //   noCosmetic       hosts where nothing is hidden
 
+// Labels that with a country's two letters after them make a public
+// suffix (`co.uk`, `com.au`). The whole suffix list is thousands of lines;
+// the entities the lists name are large sites under suffixes like these.
+const SECOND_LEVEL = new Set(['co', 'com', 'net', 'org', 'gov', 'edu', 'ac', 'or', 'ne', 'go']);
+
 /** The hosts and entities a hostname answers to: itself, each parent, and `name.*` forms. */
 export function namesOf(host) {
   const labels = host.toLowerCase().split('.').filter(Boolean);
@@ -24,11 +29,11 @@ export function namesOf(host) {
   for (let start = 0; start < labels.length; start++) {
     const rest = labels.slice(start);
     names.push(rest.join('.'));
-    // An entity (`google.*`) stands for a name under any public suffix.
-    // Without the suffix list, the last one or two labels are taken as it.
-    for (let cut = 1; cut <= 2 && cut < rest.length; cut++) {
-      names.push(`${rest.slice(0, rest.length - cut).join('.')}.*`);
-    }
+    // An entity (`google.*`) stands for a name under any public suffix:
+    // the last label, or the last two where they look like `co.uk`. So
+    // `google.*` is google.com and google.co.uk, and not google.some-host.com.
+    if (rest.length > 1) names.push(`${rest.slice(0, -1).join('.')}.*`);
+    if (rest.length > 2 && rest.at(-1).length === 2 && SECOND_LEVEL.has(rest.at(-2))) names.push(`${rest.slice(0, -2).join('.')}.*`);
   }
   return [...new Set(names)];
 }

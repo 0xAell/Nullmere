@@ -49,6 +49,10 @@ test('the hosts where hiding is off come from the network exceptions', () => {
 test('the names a host answers to', () => {
   assert.deepEqual(namesOf('www.google.co.uk'), ['www.google.co.uk', 'www.google.co.*', 'www.google.*', 'google.co.uk', 'google.co.*', 'google.*', 'co.uk', 'co.*', 'uk']);
   assert.deepEqual(namesOf('Example.com'), ['example.com', 'example.*', 'com']);
+  assert.ok(namesOf('smile.amazon.com.au').includes('amazon.*'));
+  // Two labels are a suffix only where they look like one: a name on someone's host is not that name's site.
+  assert.equal(namesOf('amazon.shop-host.com').includes('amazon.*'), false);
+  assert.equal(namesOf('google.example.io').includes('google.*'), false);
   assert.equal(covers(['example.com'], 'a.b.example.com'), true);
   assert.equal(covers(['b.example.com'], 'example.com'), false);
   assert.equal(covers([], 'example.com'), false);

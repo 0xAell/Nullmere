@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { grouped, hostOf, isAllowed, RULE, siteFromInput, siteOf, userRules, USER_PRIORITY, withSite } from '../../src/shared/sites.js';
+import { allowedBy, grouped, hostOf, isAllowed, RULE, siteFromInput, siteOf, userRules, USER_PRIORITY, withSite } from '../../src/shared/sites.js';
 import { PRIORITY, problemsWith, RESOURCE_TYPES } from '../../tools/lib/dnr.js';
 
 test('the host of a page that can be filtered', () => {
@@ -41,6 +41,20 @@ test('adding and removing a site keeps the list in order, each once', () => {
   assert.deepEqual(withSite(['a.test', 'b.test'], 'a.test', true), ['a.test', 'b.test']);
   assert.deepEqual(withSite(['a.test', 'b.test'], 'a.test', false), ['b.test']);
   assert.deepEqual(withSite(undefined, 'a.test', false), []);
+  // Stilling a site takes out whatever lets it through, and nothing that doesn't.
+  assert.deepEqual(withSite(['example.com', 'other.test'], 'shop.example.com', false), ['other.test']);
+  assert.deepEqual(withSite(['example.com', 'shop.example.com', 'deep.shop.example.com'], 'shop.example.com', false), ['deep.shop.example.com']);
+  assert.deepEqual(withSite(['notexample.com'], 'example.com', false), ['notexample.com']);
+  // Letting a site through drops the sites under it.
+  assert.deepEqual(withSite(['shop.example.com', 'other.test'], 'example.com', true), ['example.com', 'other.test']);
+});
+
+test('the site that lets a host through is named, the widest if several do', () => {
+  assert.equal(allowedBy(['example.com'], 'shop.example.com'), 'example.com');
+  assert.equal(allowedBy(['shop.example.com', 'example.com'], 'www.shop.example.com'), 'example.com');
+  assert.equal(allowedBy(['shop.example.com'], 'example.com'), '');
+  assert.equal(allowedBy([], 'example.com'), '');
+  assert.equal(allowedBy(['example.com'], ''), '');
 });
 
 test('the user\'s rules outrank every rule a list can make, and are rules Chrome takes', () => {

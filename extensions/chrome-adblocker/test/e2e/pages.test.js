@@ -81,6 +81,25 @@ test('the popup shows what was kept from the page in front, and lets its site th
   await page.close();
 });
 
+test('on a subdomain of a site let through, the popup names that site and stills it', async () => {
+  await browser.ask({ type: 'site:set', site: 'news.test', allowed: true });
+  server.page('live.news.test', '/', `<!doctype html><title>Live</title><body>${later([server.url(AD, '/a.gif'), server.url('ad.doubleclick.net', '/b.gif')])}</body>`);
+  server.forget();
+  const { page } = await open(browser.context, server.url('live.news.test'));
+  await until(() => server.reached(AD, '/a.gif'), 'the subdomain to be let through with its site');
+  const popup = await popupFor(await tabIdOf(browser.worker, page));
+  assert.deepEqual([(await read(popup)).state, (await read(popup)).site, (await read(popup)).moon], ['allowed', 'news.test', 'news.test is let through. Press to filter it again.']);
+
+  // Pressing stills it: it is news.test that goes, since nothing less would.
+  await popup.click('#act');
+  await until(async () => (await read(popup)).state === 'still', 'the popup to show the page filtered again');
+  assert.deepEqual((await browser.ask({ type: 'overview' })).settings.allowlist, []);
+  assert.equal((await read(popup)).site, 'live.news.test');
+  await until(async () => (await read(popup)).count === '2', 'the reloaded page to be filtered again');
+  await popup.close();
+  await page.close();
+});
+
 test('the popup says when Stillwater is paused, and resumes', async () => {
   const { page } = await open(browser.context, server.url('news.test'));
   const tabId = await tabIdOf(browser.worker, page);
@@ -173,6 +192,26 @@ test('the switches keep their settings, and the pause is a rule of its own', asy
   const rules = await browser.worker.evaluate(() => chrome.declarativeNetRequest.getDynamicRules());
   assert.deepEqual(rules.map((rule) => [rule.id, rule.action.type, rule.priority]), [[2, 'allow', 1000]]);
   await page.close();
+});
+
+test('a change Chrome refuses is not kept: the rules and the page stay as they were, and the page is told', async () => {
+  // Have Chrome refuse the last thing a change does, once.
+  await browser.worker.evaluate(() => {
+    const real = chrome.action.setBadgeTextColor;
+    chrome.action.setBadgeTextColor = () => {
+      chrome.action.setBadgeTextColor = real;
+      return Promise.reject(new Error('Refused, for the test.'));
+    };
+  });
+  const before = (await browser.ask({ type: 'overview' })).settings;
+  const answer = await browser.ask({ type: 'settings:set', patch: { paused: !before.paused } });
+  assert.equal(answer.error, 'Refused, for the test.');
+  assert.deepEqual((await browser.ask({ type: 'overview' })).settings, before, 'nothing was kept');
+  const rules = await browser.worker.evaluate(() => chrome.declarativeNetRequest.getDynamicRules());
+  assert.equal(rules.some((rule) => rule.id === 2), before.paused, 'and the pause rule, already made when Chrome refused, was taken back');
+  // The next change goes through.
+  const again = await browser.ask({ type: 'settings:set', patch: { paused: before.paused } });
+  assert.equal(again.error, undefined);
 });
 
 test('putting everything back as installed is asked twice, and does it', async () => {

@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { build } from '../../tools/build.js';
+import { blocksHosts, build } from '../../tools/build.js';
 
 const root = new URL('../../', import.meta.url).pathname;
 const grouped = (number) => number.toLocaleString('en-US');
@@ -19,7 +19,7 @@ test('the README\'s numbers are the build\'s', (t) => {
   const says = (words) => assert.ok(readme.includes(words), `README.md should say: ${words}`);
 
   const rules = lists.flatMap((list) => JSON.parse(readFileSync(join(out, 'rules', `${list.id}.json`), 'utf8')));
-  const hostRules = rules.filter((rule) => rule.condition.requestDomains && !rule.condition.urlFilter && !rule.condition.regexFilter);
+  const hostRules = rules.filter(blocksHosts);
   const hosts = lists.reduce((sum, list) => sum + list.hosts, 0);
   says(`${grouped(totals.filters)} filters from EasyList`);
   says(`become ${grouped(totals.rules)} rules`);

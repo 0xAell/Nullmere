@@ -5,6 +5,9 @@
 
 import { domainToASCII } from 'node:url';
 import { isProcedural, planFor, styleRule } from './procedural.js';
+import { isBalanced, isContained, splitSelectors } from './selectors.js';
+
+export { isBalanced, isContained, splitSelectors };
 
 // A cosmetic filter: optional domains, a separator, a selector. The domain
 // part can't hold the characters a network pattern would (as in ABP itself).
@@ -77,58 +80,6 @@ function domainList(text, separator) {
   return list;
 }
 
-/** Whether brackets, parentheses and quotes are balanced: a selector that is not could break out of the rule it is put in. */
-export function isBalanced(selector) {
-  const closers = { ')': '(', ']': '[' };
-  const open = [];
-  let quote = '';
-  for (let i = 0; i < selector.length; i++) {
-    const c = selector[i];
-    if (c === '\\') {
-      i++;
-      continue;
-    }
-    if (quote) {
-      if (c === quote) quote = '';
-      continue;
-    }
-    if (c === '"' || c === "'") quote = c;
-    else if (c === '(' || c === '[') open.push(c);
-    else if (c === ')' || c === ']') {
-      if (open.pop() !== closers[c]) return false;
-    }
-  }
-  return !quote && open.length === 0;
-}
-
-/** Splits a selector list at its top-level commas. */
-export function splitSelectors(text) {
-  const parts = [];
-  let depth = 0;
-  let quote = '';
-  let start = 0;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === '\\') {
-      i++;
-      continue;
-    }
-    if (quote) {
-      if (c === quote) quote = '';
-      continue;
-    }
-    if (c === '"' || c === "'") quote = c;
-    else if (c === '(' || c === '[') depth++;
-    else if (c === ')' || c === ']') depth--;
-    else if (c === ',' && depth === 0) {
-      parts.push(text.slice(start, i).trim());
-      start = i + 1;
-    }
-  }
-  parts.push(text.slice(start).trim());
-  return parts.filter(Boolean);
-}
-
 /**
  * Reads a cosmetic filter. Returns
  *   { kind: 'cosmetic', exception, selectors, include, exclude, entities }
@@ -155,7 +106,7 @@ function cosmetic(domains, separator, body) {
   // `selector {declarations}` is Adblock Plus's way to restyle an element.
   if (/\{[^{}]*\}\s*$/.test(selector)) {
     const rule = styleRule(selector);
-    if (!rule || !isBalanced(selector)) return unsupported('malformed');
+    if (!rule) return unsupported('malformed');
     if (list.bad.length) return unsupported('domain');
     // Only for sites that are named: a style for every page is too much to take on trust.
     if (!named || filter.exception) return unsupported('style');
@@ -175,7 +126,8 @@ function cosmetic(domains, separator, body) {
   if (selector.includes(':-abp-') || PROCEDURAL.test(selector)) return unsupported('procedural');
   if (list.bad.length) return unsupported('domain');
   filter.selectors = splitSelectors(selector);
-  if (!filter.selectors.length) return unsupported('malformed');
+  // Each is written out on its own, so each has to hold by itself.
+  if (!filter.selectors.length || !filter.selectors.every(isContained)) return unsupported('malformed');
   return filter;
 }
 
@@ -251,6 +203,8 @@ function network(text) {
       // Chrome can't match an entity (`google.*`) as an initiator. Dropping
       // one from the included domains only narrows where the filter applies.
       if (!list.include.length && list.entities.length) return unsupported('option:domain-entity');
+      // Dropping one from the excluded domains would widen it, so the filter goes.
+      if (list.exclude.some((domain) => domain.endsWith('.*'))) return unsupported('option:domain-entity');
       if (list.include.length || list.exclude.length) filter.domains = { include: list.include, exclude: list.exclude };
     } else if (key === 'to' || key === 'denyallow') {
       const list = domainList(value, '|');

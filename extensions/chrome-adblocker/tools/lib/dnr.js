@@ -31,8 +31,13 @@ export const RESOURCE_TYPES = [
  * Priorities. At one priority Chrome lets `allow` win over `block`, which
  * is how an exception filter beats a blocking one. `$important` blocks sit
  * above the exceptions, and the user's own allowlist above everything.
+ *
+ * `$csp` filters sit below all of them. Chrome leaves out a header rule
+ * when an `allow` of its priority or higher matches, which is the only
+ * way to say `@@...$csp`; down here that `allow` takes the policy back and
+ * is outranked by every blocking rule, so it lets nothing else through.
  */
-export const PRIORITY = { normal: 1, important: 3, user: 1000 };
+export const PRIORITY = { csp: 1, normal: 2, important: 3, user: 1000 };
 
 const unique = (list) => [...new Set(list)].sort();
 
@@ -117,6 +122,33 @@ function typesOf(types, notTypes) {
   return {};
 }
 
+/** The kinds of document a `$csp` filter is for: those it names, or both. */
+function framesOf(filter) {
+  const frames = filter.types.filter((type) => FRAMES.includes(type));
+  return frames.length ? unique(frames) : FRAMES;
+}
+
+/**
+ * A `$csp` filter's `domain=` names the documents the policy is for. For
+ * a frame that is the page it is in, which Chrome calls the request's
+ * initiator. For a page it is the page's own host, and to Chrome that is
+ * the request's domain: its initiator is whichever page held the link
+ * that led there. So such a filter is read as two, one for each kind of
+ * document. Returns null where that can't be said (`to=` is taken).
+ */
+function byDocument(filter) {
+  const named = filter.domains && filter.domains.include.length + filter.domains.exclude.length > 0;
+  if (filter.csp === undefined || !named) return [filter];
+  const frames = framesOf(filter);
+  const filters = [];
+  if (frames.includes('main_frame')) {
+    if (filter.to) return null;
+    filters.push({ ...filter, types: ['main_frame'], domains: null, to: filter.domains });
+  }
+  if (frames.includes('sub_frame')) filters.push({ ...filter, types: ['sub_frame'] });
+  return filters;
+}
+
 /**
  * What a filter asks for, as one or more { action, priority, types }:
  * an exception for a whole document is its own rule beside the exception
@@ -125,12 +157,11 @@ function typesOf(types, notTypes) {
 function actionsOf(filter) {
   const priority = filter.important ? PRIORITY.important : PRIORITY.normal;
   if (filter.csp !== undefined) {
-    const frames = filter.types.filter((type) => FRAMES.includes(type));
-    const types = { resourceTypes: frames.length ? unique(frames) : FRAMES };
-    if (filter.exception) return [{ action: { type: 'allow' }, priority, types }];
+    const types = { resourceTypes: framesOf(filter) };
+    if (filter.exception) return [{ action: { type: 'allow' }, priority: PRIORITY.csp, types }];
     if (!filter.csp) return [];
     const header = { header: 'content-security-policy', operation: 'append', value: filter.csp };
-    return [{ action: { type: 'modifyHeaders', responseHeaders: [header] }, priority, types }];
+    return [{ action: { type: 'modifyHeaders', responseHeaders: [header] }, priority: filter.important ? PRIORITY.important : PRIORITY.csp, types }];
   }
   if (!filter.exception) return [{ action: { type: 'block' }, priority, types: typesOf(filter.types, filter.notTypes) }];
 
@@ -186,7 +217,14 @@ export function toRules(filters, options = {}) {
   // Hosts whose every page is excepted, by the priority of the exception.
   const excepted = new Map();
 
+  const each = [];
   for (const filter of filters) {
+    const read = byDocument(filter);
+    if (read) each.push(...read);
+    else drop('csp:domain-and-to');
+  }
+
+  for (const filter of each) {
     const url = urlPart(filter, rejected);
     if (url.drop) {
       drop(url.drop);
@@ -204,6 +242,12 @@ export function toRules(filters, options = {}) {
         if (filter.generichide) hide.generichide.add(host);
       }
     }
+    // A host whose every page is excepted, with nothing else said of it.
+    const wholeHost = url.host && Object.keys(base).length === 0;
+    // An exception for a whole document (`@@||site^$document`) lets through
+    // what the page asks for and leaves its elements alone as well.
+    const documentException = filter.exception && filter.csp === undefined && filter.types.includes('main_frame');
+    if (documentException && wholeHost) hide.elemhide.add(url.host);
 
     const actions = actionsOf(filter);
     if (!actions.length) {
@@ -217,8 +261,8 @@ export function toRules(filters, options = {}) {
     }
     for (const { action, priority, types } of actions) {
       const rule = { action, condition: { ...base, ...types } };
-      if (priority !== PRIORITY.normal) rule.priority = priority;
-      if (action.type === 'allowAllRequests' && url.host && !base.initiatorDomains && !base.domainType) {
+      if (priority !== 1) rule.priority = priority;
+      if (action.type === 'allowAllRequests' && wholeHost) {
         if (!excepted.has(priority)) excepted.set(priority, []);
         excepted.get(priority).push(url.host);
       }
@@ -248,9 +292,7 @@ export function toRules(filters, options = {}) {
   // where a whole host is excepted, whatever its documents ask for is
   // allowed by a rule that needs no such bookkeeping as well.
   for (const priority of [...excepted.keys()].sort((a, b) => a - b)) {
-    const rule = { id: id++, action: { type: 'allow' }, condition: { initiatorDomains: withoutCovered(excepted.get(priority)) } };
-    if (priority !== PRIORITY.normal) rule.priority = priority;
-    rules.push(rule);
+    rules.push({ id: id++, action: { type: 'allow' }, condition: { initiatorDomains: withoutCovered(excepted.get(priority)) }, priority });
   }
   // Filters written twice (a list repeats some across its sections) are one rule.
   const seen = new Set();

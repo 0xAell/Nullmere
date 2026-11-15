@@ -16,7 +16,44 @@
   }
   if (!host) return;
 
+  // The host of the page this frame is in, which decides whether the site
+  // is let through. The frame says it itself: the worker knows only which
+  // tab a frame is in, and a page Chrome is loading ahead of a visit is in
+  // the tab of the page still showing.
+  let top = host;
+  if (window !== window.top) {
+    try {
+      const origins = location.ancestorOrigins;
+      top = new URL(origins[origins.length - 1]).hostname;
+    } catch {
+      top = '';
+    }
+  }
+
+  // A page can give a form fields named `style`, `id` or `querySelectorAll`,
+  // and the form then answers to those names with its fields. So the DOM
+  // is asked through the prototypes' own methods, which no page can reach
+  // from here, never through an element's properties.
+  const bound = (method) => Function.prototype.call.bind(method);
+  const getter = (prototype, name) => bound(Object.getOwnPropertyDescriptor(prototype, name).get);
+  const attributeOf = bound(Element.prototype.getAttribute);
+  const allIn = bound(Element.prototype.querySelectorAll);
+  const matches = bound(Element.prototype.matches);
+  const nextOf = getter(Element.prototype, 'nextElementSibling');
+  const textOf = getter(Node.prototype, 'textContent');
+  const styleOf = { html: getter(HTMLElement.prototype, 'style'), svg: getter(SVGElement.prototype, 'style') };
+  const setProperty = bound(CSSStyleDeclaration.prototype.setProperty);
+
+  /** Hides an element by its own style, which outranks the page's style sheets. */
+  function conceal(element) {
+    const style = element instanceof HTMLElement ? styleOf.html(element) : element instanceof SVGElement ? styleOf.svg(element) : null;
+    if (style) setProperty(style, 'display', 'none', 'important');
+  }
+
   const LONGEST = 128;
+  // More names than any page made by hand has: past this the page is
+  // minting them, and looking up each new one would go on for ever.
+  const MOST = 50_000;
   const seen = new Set();
   let waiting = [];
   let timer = 0;
@@ -35,31 +72,43 @@
   // --- The classes and ids the document has -------------------------------
 
   function note(token) {
-    if (token.length > LONGEST || seen.has(token)) return;
+    if (token.length > LONGEST || seen.size >= MOST || seen.has(token)) return;
     seen.add(token);
     waiting.push(token);
   }
 
   function look(element) {
-    if (element.id) note(`#${element.id}`);
-    const classes = element.classList;
-    for (let i = 0; i < classes.length; i++) note(`.${classes[i]}`);
+    const id = attributeOf(element, 'id');
+    if (id) note(`#${id}`);
+    const classes = attributeOf(element, 'class');
+    if (!classes) return;
+    for (const name of classes.split(/\s+/)) {
+      if (name) note(`.${name}`);
+    }
   }
 
   function survey(root) {
-    if (root.nodeType !== Node.ELEMENT_NODE) return;
+    if (!(root instanceof Element)) return;
     look(root);
-    for (const element of root.querySelectorAll('[id],[class]')) look(element);
+    for (const element of allIn(root, '[id],[class]')) look(element);
   }
+
+  let wait = 40;
+  let sent = 0;
 
   function send() {
     timer = 0;
+    // A page that keeps bringing new names is answered less often, down to
+    // once a second; one that has been quiet is answered at once again.
+    const now = performance.now();
+    wait = now - sent < 500 ? Math.min(1000, wait * 2) : 40;
+    sent = now;
     // In lots the worker will take, however many a large page has.
-    while (waiting.length) ask({ type: 'cosmetic:tokens', host, tokens: waiting.splice(0, 4000) });
+    while (waiting.length) ask({ type: 'cosmetic:tokens', host, top, tokens: waiting.splice(0, 4000) });
   }
 
   function soon() {
-    if (waiting.length && !timer) timer = setTimeout(send, 40);
+    if (waiting.length && !timer) timer = setTimeout(send, wait);
   }
 
   // --- Filters that pick an element by its words ---------------------------
@@ -94,11 +143,11 @@
   function onward(element, css) {
     const rest = css.trimStart();
     const lead = rest[0];
-    if (lead !== '+' && lead !== '~') return [...element.querySelectorAll(`:scope ${rest}`)];
+    if (lead !== '+' && lead !== '~') return [...allIn(element, `:scope ${rest}`)];
     const [compound, more] = split(rest.slice(1).trimStart());
     const found = [];
-    for (let sibling = element.nextElementSibling; sibling; sibling = sibling.nextElementSibling) {
-      if (!compound || sibling.matches(compound)) found.push(...(more ? onward(sibling, more) : [sibling]));
+    for (let sibling = nextOf(element); sibling; sibling = nextOf(sibling)) {
+      if (!compound || matches(sibling, compound)) found.push(...(more ? onward(sibling, more) : [sibling]));
       if (lead === '+') break;
     }
     return found;
@@ -115,16 +164,18 @@
           const [compound, more] = split(step.css);
           const next = new Set();
           for (const element of found) {
-            if (compound && !element.matches(compound)) continue;
+            if (compound && !matches(element, compound)) continue;
             for (const reached of more ? onward(element, more) : [element]) next.add(reached);
           }
           found = [...next];
         }
       } else if (step.text !== undefined) {
-        found = found.filter((element) => element.textContent.includes(step.text));
+        found = found.filter((element) => textOf(element).includes(step.text));
       } else if (step.re !== undefined) {
-        const expression = new RegExp(step.re, step.flags);
-        found = found.filter((element) => expression.test(element.textContent));
+        // Asked of one element after another, so never with a flag that
+        // makes it remember where it last stopped.
+        const expression = new RegExp(step.re, String(step.flags ?? '').replace(/[gy]/g, ''));
+        found = found.filter((element) => expression.test(textOf(element)));
       } else if (step.has) {
         found = found.filter((element) => follow(step.has, element).length > 0);
       }
@@ -143,14 +194,15 @@
     const began = performance.now();
     plans = plans.filter((steps) => {
       try {
-        for (const element of follow(steps, null)) element.style.setProperty('display', 'none', 'important');
+        for (const element of follow(steps, null)) conceal(element);
         return true;
       } catch {
         return false;
       }
     });
-    // A page that is slow to search is searched less often.
-    pause = Math.min(5000, Math.max(300, (performance.now() - began) * 20));
+    // A page that is slow to search is searched less often: the searching
+    // is kept to a twentieth of the time, for as long as that can be done.
+    pause = Math.min(30_000, Math.max(300, (performance.now() - began) * 20));
   }
 
   function sweepSoon() {
@@ -179,7 +231,7 @@
     observer.observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'id'], characterData: plans.length > 0 });
   }
 
-  ask({ type: 'cosmetic:start', host }).then((answer) => {
+  ask({ type: 'cosmetic:start', host, top }).then((answer) => {
     if (!answer?.active) return;
     plans = Array.isArray(answer.procedural) ? answer.procedural : [];
     if (answer.generic || plans.length) watch(Boolean(answer.generic));

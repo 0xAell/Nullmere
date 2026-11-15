@@ -12,7 +12,9 @@ export function wording(state) {
     return { name: 'paused', count: '', label: 'Paused', site: state.site, words: 'Stillwater is paused everywhere.', act: 'Resume', moon: 'Stillwater is paused everywhere. Press to resume.' };
   }
   if (state.allowed) {
-    return { name: 'allowed', count: '', label: 'Let through', site: state.site, words: 'Nothing is kept from this site.', act: 'Still this site again', moon: `${state.site} is let through. Press to filter it again.` };
+    // Named as it is let through, which may be a site above this page's.
+    const site = state.through || state.site;
+    return { name: 'allowed', count: '', label: 'Let through', site, words: 'Nothing is kept from this site.', act: 'Still this site again', moon: `${site} is let through. Press to filter it again.` };
   }
   return {
     name: 'still',

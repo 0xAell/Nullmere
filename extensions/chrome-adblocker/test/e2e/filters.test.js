@@ -80,12 +80,46 @@ test('csp= adds a policy to the page: its scripts do not run', async () => {
   await page.close();
 });
 
-test('a document exception lets everything through on its pages, frames included', async () => {
+test('csp= with domain= is for that site\'s own pages and the frames in them, not for where its links lead', async () => {
+  // The site's own page, come to with no page before it.
+  let { page, ran } = await visit('cspsite.test', `${script('cspsite.test', '/own.js')}<a id="out" href="${server.url('elsewhere.test', '/landing')}">out</a><iframe src="${server.url('framed.test', '/embed')}"></iframe>`);
+  assert.deepEqual(ran, [], 'the policy is on the site\'s own page');
+  // A frame in it, of another site.
+  server.page('framed.test', '/embed', `<!doctype html><body>${script('framed.test', '/in-frame.js')}</body>`);
+  await page.reload();
+  await page.waitForTimeout(300);
+  assert.equal(server.reached('framed.test', '/in-frame.js'), false, 'and on a frame in it');
+  // Where one of its links leads has no policy put on it.
+  server.page('elsewhere.test', '/landing', `<!doctype html><body>${script('elsewhere.test', '/own.js')}</body>`);
+  await Promise.all([page.waitForURL('**/landing'), page.click('#out')]);
+  await until(() => page.evaluate(() => window.ran?.length === 1), 'the script of the page the link led to, to run');
+  await page.close();
+  // The same frame in another site's page has none either.
+  server.forget();
+  ({ page, ran } = await visit('plain.test', `<iframe src="${server.url('framed.test', '/embed')}"></iframe>`));
+  await until(() => server.reached('framed.test', '/in-frame.js'), 'the frame\'s script to be asked for in a page the filter does not name');
+  await page.close();
+});
+
+test('a csp exception takes the policy back, and lets nothing through that another filter blocks', async () => {
+  let { page, ran } = await visit('csp.test', script('csp.test', '/own.js'), '/ok/');
+  assert.deepEqual(ran, ['csp.test/own.js'], 'no policy on the pages the exception names');
+  await page.close();
+  let stopped;
+  ({ page, stopped } = await visit('news.test', `<iframe src="${server.url('barred.test', '/embed')}"></iframe>`));
+  assert.deepEqual(stopped, ['barred.test/embed'], 'the frame is still blocked: its exception was only for a policy');
+  await page.close();
+});
+
+test('a document exception lets everything through on its pages, frames included, and hides nothing there', async () => {
   server.page('trusted.test', '/frame', `<!doctype html><body>${script('ads.test', '/in-frame.js')}</body>`);
-  const { page, stopped, ran } = await visit('trusted.test', `${script('ads.test', '/tag.js')}<iframe src="/frame"></iframe>`);
+  const { page, stopped, ran } = await visit('trusted.test', `${script('ads.test', '/tag.js')}<iframe src="/frame"></iframe><div id="banner" class="ad-banner">ad</div>`);
   assert.deepEqual(stopped, []);
   assert.deepEqual(ran, ['ads.test/tag.js']);
   await until(() => server.reached('ads.test', '/in-frame.js'), 'the frame\'s ad script to be asked for');
+  // Nothing is to happen to the slot: give it the time hiding takes elsewhere, then look.
+  await page.waitForTimeout(700);
+  assert.deepEqual(await hidden(page, ['banner']), []);
   await page.close();
 });
 
@@ -131,7 +165,7 @@ test('a site\'s filters are not another site\'s; an excluded subdomain and a sit
 });
 
 test('an entity filter is for the name under any suffix', async () => {
-  for (const host of ['entity.test', 'www.entity.co.test']) {
+  for (const host of ['entity.test', 'www.entity.co.uk']) {
     const { page } = await visit(host, SLOTS);
     await until(async () => (await hidden(page, ['entity'])).length === 1, `the entity slot on ${host}`);
     await page.close();
@@ -213,13 +247,15 @@ const WORDS = `
     <h2 id="heading" class="heading">Our partners</h2><ul id="partners"><li>One</li></ul><ul id="after">kept</ul>
     <div id="row-ad" class="row">Promoted <div id="media-ad" class="media">ad</div></div>
     <div id="row-own" class="row own">Promoted <div id="media-own" class="media">own</div></div>
+    <div id="feed" class="feed"><div id="feed-ad">Paid post</div><div id="feed-story">A story.</div></div>
   </div>`;
-const WORD_IDS = ['card-ad', 'card', 'li-ad', 'li-deep', 'li', 'heading', 'partners', 'after', 'row-ad', 'media-ad', 'row-own', 'media-own'];
+const WORD_IDS = ['card-ad', 'card', 'li-ad', 'li-deep', 'li', 'heading', 'partners', 'after', 'row-ad', 'media-ad', 'row-own', 'media-own', 'feed', 'feed-ad', 'feed-story'];
 
 test('filters that pick an element by its words hide it: plain, by expression, inside :has, and going on to a sibling or child', async () => {
   const { page } = await visit('words.test', WORDS);
-  await until(async () => (await hidden(page, WORD_IDS)).length >= 4, 'the worded slots to be hidden');
-  assert.deepEqual(await hidden(page, WORD_IDS), ['card-ad', 'li-ad', 'partners', 'media-ad']);
+  await until(async () => (await hidden(page, WORD_IDS)).length >= 5, 'the worded slots to be hidden');
+  // The last is found among a feed's children: the feed itself, which holds the words too, is left.
+  assert.deepEqual(await hidden(page, WORD_IDS), ['card-ad', 'li-ad', 'partners', 'media-ad', 'feed-ad']);
 
   // Words that arrive later are found too.
   await page.evaluate(() => {
@@ -243,8 +279,25 @@ test('a restyling filter restyles what is left, over the page\'s own style', asy
 
 test('an exception takes a worded filter back for its site', async () => {
   const { page } = await visit('quiet.words.test', WORDS);
-  await until(async () => (await hidden(page, WORD_IDS)).length >= 3, 'the other worded slots to be hidden');
-  assert.deepEqual(await hidden(page, WORD_IDS), ['li-ad', 'partners', 'media-ad']);
+  await until(async () => (await hidden(page, WORD_IDS)).length >= 4, 'the other worded slots to be hidden');
+  assert.deepEqual(await hidden(page, WORD_IDS), ['li-ad', 'partners', 'media-ad', 'feed-ad']);
+  await page.close();
+});
+
+test('a form whose fields are named for the DOM\'s own properties is read and hidden like anything else', async () => {
+  // A form answers to its fields' names before its own properties: `form.style` is then a field.
+  const fields = ['style', 'id', 'classList', 'className', 'nodeType', 'querySelectorAll', 'matches', 'getAttribute', 'textContent', 'nextElementSibling'].map((name) => `<input name="${name}">`).join('');
+  const { page } = await visit(
+    'words.test',
+    `<form id="form-generic" class="ad-banner">${fields}</form>
+     <form id="form-worded" class="card">${fields}Sponsored</form>
+     <div class="heading">Our partners</div><form id="form-sibling">${fields}</form><ul id="list-after">kept</ul>
+     <div id="card-after" class="card">Sponsored too</div>`,
+  );
+  const ids = ['form-generic', 'form-worded', 'form-sibling', 'list-after', 'card-after'];
+  await until(async () => (await hidden(page, ids)).length >= 3, 'the forms to be hidden');
+  // The sibling filter is for a list after the heading; the form between them is passed over and the list is not its next sibling.
+  assert.deepEqual(await hidden(page, ids), ['form-generic', 'form-worded', 'card-after'], 'and the plans after the form\'s go on working');
   await page.close();
 });
 

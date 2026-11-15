@@ -86,7 +86,7 @@ test('the count on the icon is what was kept from the page in front', async () =
     const answer = await browser.ask({ type: 'state', tabId });
     return answer.count === hosts.length ? answer : null;
   }, 'the count of what was blocked');
-  assert.deepEqual(state, { host: 'counted.test', site: 'counted.test', filterable: true, allowed: false, paused: false, count: 3 });
+  assert.deepEqual(state, { host: 'counted.test', site: 'counted.test', through: '', filterable: true, allowed: false, paused: false, count: 3 });
   assert.equal(await browser.worker.evaluate((id) => chrome.action.getBadgeText({ tabId: id }), tabId), '3', 'as Chrome writes it on the icon');
   await page.close();
 });

@@ -29,6 +29,12 @@ const OWN = { id: 'stillwater', title: 'Stillwater supplement', file: 'stillwate
 
 const count = (map) => Object.fromEntries([...map].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])));
 
+/** Whether a rule blocks every request to the hosts it names. */
+export function blocksHosts(rule) {
+  const { condition } = rule;
+  return rule.action.type === 'block' && Boolean(condition.requestDomains) && !condition.urlFilter && !condition.regexFilter;
+}
+
 /**
  * Builds into `out` from the lists in `lists`. Returns what was built:
  * { lists: [{ id, title, filters, rules, regexRules, cosmetic, dropped }], totals }.
@@ -83,7 +89,8 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
       filters: parsed.lines,
       rules: rules.length,
       regexRules: rules.filter((rule) => rule.condition.regexFilter !== undefined).length,
-      hosts: rules.reduce((sum, rule) => sum + (rule.condition.requestDomains?.length ?? 0), 0),
+      // Hosts blocked whole: not those an exception or a policy names.
+      hosts: rules.reduce((sum, rule) => sum + (blocksHosts(rule) ? rule.condition.requestDomains.length : 0), 0),
       cosmetic: cosmetic.counts.generic + cosmetic.counts.specific + cosmetic.counts.procedural + cosmetic.counts.styles,
       procedural: cosmetic.counts.procedural,
       dropped: count(dropped),

@@ -8,6 +8,32 @@
   let wasMuted = null;
   let timer = 0;
 
+  // The script in the page's own world (content/youtube-main.js) tells this
+  // one the name of the event that stops it, now, before the page's own
+  // scripts can run. Whichever of the two starts first, the other finds it.
+  let word = '';
+  const hear = (event) => {
+    if (typeof event.detail !== 'string' || !event.detail.startsWith('stillwater:')) return;
+    word = event.detail;
+    event.preventDefault();
+    document.removeEventListener('stillwater:word', hear);
+  };
+  document.addEventListener('stillwater:word', hear);
+  document.dispatchEvent(new CustomEvent('stillwater:ready'));
+  // Where that script is not at work (the switch is off) nobody will tell.
+  setTimeout(() => document.removeEventListener('stillwater:word', hear), 0);
+
+  // The host of the page this frame is in (see content/cosmetic.js).
+  let top = location.hostname;
+  if (window !== window.top) {
+    try {
+      const origins = location.ancestorOrigins;
+      top = new URL(origins[origins.length - 1]).hostname;
+    } catch {
+      top = '';
+    }
+  }
+
   function look() {
     timer = 0;
     const player = document.querySelector('.html5-video-player');
@@ -31,10 +57,12 @@
     if (!timer) timer = setTimeout(look, 60);
   }
 
-  chrome.runtime.sendMessage({ type: 'youtube:start' }).then(
+  chrome.runtime.sendMessage({ type: 'youtube:start', top }).then(
     (answer) => {
       if (!answer?.active) {
-        document.dispatchEvent(new CustomEvent('stillwater:rest'));
+        // What the page read before this answer came has had its ad lists
+        // taken out already; from here on it is left as YouTube sent it.
+        if (word) document.dispatchEvent(new CustomEvent(word));
         return;
       }
       new MutationObserver(soon).observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });

@@ -5,7 +5,7 @@
 
 import { CosmeticIndex, hidingCSS, merged } from '../shared/cosmetic-lookup.js';
 import { DEFAULTS, readSettings, writeSettings } from '../shared/settings.js';
-import { hostOf, isAllowed, RULE, siteFromInput, siteOf, userRules, withSite } from '../shared/sites.js';
+import { allowedBy, hostOf, isAllowed, RULE, siteFromInput, siteOf, userRules, withSite } from '../shared/sites.js';
 
 const dnr = chrome.declarativeNetRequest;
 
@@ -80,9 +80,20 @@ async function applyYouTube(settings) {
   await chrome.scripting.registerContentScripts([script]);
 }
 
+/**
+ * Puts settings into effect and keeps them. If Chrome refuses any part,
+ * what was in effect before is put back and nothing is kept, so what the
+ * pages show is always what Chrome is doing.
+ */
 async function save(settings) {
+  const before = await readSettings();
+  try {
+    await apply(settings);
+  } catch (error) {
+    await apply(before).catch(() => {});
+    throw error;
+  }
   await writeSettings(settings);
-  await apply(settings);
   await paintAll(settings);
 }
 
@@ -178,15 +189,24 @@ async function hide(sender, selectors, more = '') {
   }
 }
 
-/** What cosmetic filtering does for a frame of `host` in a tab showing `tabUrl`. */
-async function cosmeticFor(host, tabUrl) {
+/**
+ * The host of the page a frame is in: as the frame's own script gave it,
+ * or failing that the tab's. The tab's alone would be wrong for a page
+ * Chrome loads ahead of a visit, which is in the tab of the page before it.
+ */
+function pageOf(top, sender) {
+  return (typeof top === 'string' && top) || hostOf(sender.tab?.url);
+}
+
+/** What cosmetic filtering does for a frame of `host` in a page of `top`. */
+async function cosmeticFor(host, top, sender) {
   const settings = await readSettings();
-  const page = hostOf(tabUrl) || host;
+  const page = pageOf(top, sender) || host;
   if (settings.paused || !settings.cosmetic || isAllowed(settings.allowlist, page)) return { active: false, generic: false };
   const lookup = await cosmeticIndex();
   const own = lookup.switches(host);
-  const top = lookup.switches(page);
-  return { active: own.cosmetic && top.cosmetic, generic: own.generic && top.generic, lookup };
+  const whole = lookup.switches(page);
+  return { active: own.cosmetic && whole.cosmetic, generic: own.generic && whole.generic, lookup };
 }
 
 // ---------------------------------------------------------------------------
@@ -195,24 +215,24 @@ async function cosmeticFor(host, tabUrl) {
 
 const fromPage = {
   /** A document has begun: hide what is written for its site, and say whether to go on looking. */
-  async 'cosmetic:start'({ host }, sender) {
-    const { active, generic, lookup } = await cosmeticFor(String(host), sender.tab?.url);
+  async 'cosmetic:start'({ host, top }, sender) {
+    const { active, generic, lookup } = await cosmeticFor(String(host), top, sender);
     if (!active) return { active: false, generic: false };
     await hide(sender, lookup.selectorsFor(String(host), { generic }), lookup.stylesFor(String(host)));
     return { active, generic, procedural: lookup.proceduralFor(String(host)) };
   },
 
   /** A YouTube frame asks whether to get its ads over with. */
-  async 'youtube:start'(message, sender) {
+  async 'youtube:start'({ top }, sender) {
     const settings = await readSettings();
-    const through = isAllowed(settings.allowlist, hostOf(sender.tab?.url)) || isAllowed(settings.allowlist, hostOf(sender.url));
+    const through = isAllowed(settings.allowlist, pageOf(top, sender)) || isAllowed(settings.allowlist, hostOf(sender.url));
     return { active: settings.youtube && !settings.paused && !through };
   },
 
   /** Classes and ids a document has: hide what the generic filters say of them. */
-  async 'cosmetic:tokens'({ host, tokens }, sender) {
+  async 'cosmetic:tokens'({ host, top, tokens }, sender) {
     if (!Array.isArray(tokens) || tokens.length > 20_000) return {};
-    const { generic, lookup } = await cosmeticFor(String(host), sender.tab?.url);
+    const { generic, lookup } = await cosmeticFor(String(host), top, sender);
     if (generic) await hide(sender, lookup.selectorsForTokens(String(host), tokens));
     return {};
   },
@@ -236,11 +256,14 @@ async function stateOf(tabId) {
       count = 0;
     }
   }
+  // The site that lets this page through may be one above it.
+  const through = allowedBy(settings.allowlist, host);
   return {
     host,
     site: siteOf(host),
+    through,
     filterable: host !== '',
-    allowed: host !== '' && isAllowed(settings.allowlist, host),
+    allowed: through !== '',
     paused: settings.paused,
     count,
   };

@@ -12,7 +12,7 @@ function rules(lines, options) {
 
 test('filters for whole hosts become one rule, covered hosts left out', () => {
   const { rules: out } = rules(['||ads.example^', '||tracker.example^', '||banner.ads.example^', '||zeta.example^']);
-  assert.deepEqual(out, [{ id: 1, action: { type: 'block' }, condition: { requestDomains: ['ads.example', 'tracker.example', 'zeta.example'] } }]);
+  assert.deepEqual(out, [{ id: 1, priority: PRIORITY.normal, action: { type: 'block' }, condition: { requestDomains: ['ads.example', 'tracker.example', 'zeta.example'] } }]);
 });
 
 test('hosts are grouped only with filters otherwise alike', () => {
@@ -63,11 +63,19 @@ test('exceptions allow; one for a document allows everything in it', () => {
   assert.deepEqual(asked.map((rule) => rule.condition), [{ initiatorDomains: ['mixed.example', 'trusted.example'] }]);
 });
 
+test('a document exception narrowed by anything else is not widened to all its documents ask for', () => {
+  const result = rules(['@@||plain.example^$document', '@@||narrow.example^$document,domain=~foo.example', '@@||posted.example^$document,method=post', '@@||third.example^$document,third-party']);
+  const asked = result.rules.filter((rule) => rule.action.type === 'allow' && rule.condition.initiatorDomains);
+  assert.deepEqual(asked.map((rule) => rule.condition), [{ initiatorDomains: ['plain.example'] }]);
+  // And only the plain one turns hiding off for its host: the others except some of its pages' loads, not the host.
+  assert.deepEqual(result.hide.elemhide, ['plain.example']);
+});
+
 test('important blocks outrank exceptions', () => {
   const { rules: out } = rules(['||ads.example^$important', '@@||ads.example^']);
   assert.equal(out.find((rule) => rule.action.type === 'block').priority, PRIORITY.important);
-  assert.equal(out.find((rule) => rule.action.type === 'allow').priority, undefined, 'the default priority is left unwritten');
-  assert.ok(PRIORITY.user > PRIORITY.important && PRIORITY.important > PRIORITY.normal);
+  assert.equal(out.find((rule) => rule.action.type === 'allow').priority, PRIORITY.normal);
+  assert.ok(PRIORITY.user > PRIORITY.important && PRIORITY.important > PRIORITY.normal && PRIORITY.normal > PRIORITY.csp);
 });
 
 test('csp adds a response header on documents and frames; its exception allows them', () => {
@@ -79,9 +87,46 @@ test('csp adds a response header on documents and frames; its exception allows t
   assert.deepEqual(allow.condition, { resourceTypes: ['main_frame', 'sub_frame'], requestDomains: ['ok.site.example'] });
 });
 
+test('a csp exception takes the policy back and lets nothing through that a filter blocks', () => {
+  // Chrome leaves a header rule out when an allow of its priority or higher matches, and
+  // lets a block of higher priority win over an allow: so the exception sits with the
+  // policies, under every block.
+  const { rules: out } = rules(["||frames.example^$csp=script-src 'none'", '@@||frames.example/ok/$csp,subdocument', '||frames.example^$subdocument', '||loud.example^$csp=x,important']);
+  const policy = out.find((rule) => rule.action.type === 'modifyHeaders' && rule.condition.requestDomains.includes('frames.example'));
+  const exception = out.find((rule) => rule.action.type === 'allow');
+  const block = out.find((rule) => rule.action.type === 'block');
+  assert.deepEqual(exception.condition, { resourceTypes: ['sub_frame'], urlFilter: '||frames.example/ok/' });
+  assert.equal(policy.priority ?? 1, PRIORITY.csp);
+  assert.equal(exception.priority ?? 1, PRIORITY.csp);
+  assert.ok(block.priority > (exception.priority ?? 1), 'the block outranks the csp exception');
+  // An important policy is out of an exception's reach.
+  assert.equal(out.find((rule) => rule.condition.requestDomains?.includes('loud.example')).priority, PRIORITY.important);
+});
+
+test('csp with domain= is for those sites\' own pages, and for frames in them', () => {
+  // The page's own host is the request's domain to Chrome; its initiator would be
+  // whichever page held the link that led there.
+  const { rules: out } = rules(["$csp=worker-src 'none',domain=a.example|b.example|~x.a.example", "||cdn.example^$csp=script-src 'self',domain=c.example,subdocument", '@@$csp,domain=a.example']);
+  const added = out.filter((rule) => rule.action.type === 'modifyHeaders');
+  assert.deepEqual(added.map((rule) => rule.condition), [
+    { resourceTypes: ['sub_frame'], initiatorDomains: ['c.example'], requestDomains: ['cdn.example'] },
+    { resourceTypes: ['main_frame'], requestDomains: ['a.example', 'b.example'], excludedRequestDomains: ['x.a.example'] },
+    { resourceTypes: ['sub_frame'], initiatorDomains: ['a.example', 'b.example'], excludedInitiatorDomains: ['x.a.example'] },
+  ]);
+  const taken = out.filter((rule) => rule.action.type === 'allow');
+  assert.deepEqual(taken.map((rule) => rule.condition), [
+    { resourceTypes: ['main_frame'], requestDomains: ['a.example'] },
+    { resourceTypes: ['sub_frame'], initiatorDomains: ['a.example'] },
+  ]);
+  // With to= as well there is no way to say it.
+  const result = rules(["$csp=x,domain=a.example,to=b.example"]);
+  assert.deepEqual([result.rules.length, [...result.dropped]], [0, [['csp:domain-and-to', 1]]]);
+});
+
 test('exceptions that only turn hiding off make no rule, and name their hosts', () => {
   const result = rules(['@@||news.example^$generichide', '@@||shop.example^$elemhide', '@@||both.example^$elemhide,generichide', '@@$generichide,domain=by-domain.example', '@@||path.example/page$generichide', '@@||doc.example^$generichide,document']);
-  assert.deepEqual(result.hide, { elemhide: ['both.example', 'shop.example'], generichide: ['both.example', 'by-domain.example', 'doc.example', 'news.example'] });
+  // The last excepts its whole document as well, and with it all hiding there, as Adblock Plus does.
+  assert.deepEqual(result.hide, { elemhide: ['both.example', 'doc.example', 'shop.example'], generichide: ['both.example', 'by-domain.example', 'doc.example', 'news.example'] });
   assert.deepEqual(result.rules.map((rule) => [rule.action.type, rule.condition.requestDomains ?? rule.condition.initiatorDomains]), [['allowAllRequests', ['doc.example']], ['allow', ['doc.example']]]);
   assert.deepEqual([...result.dropped], [['hide-exception:pattern', 1]]);
 });

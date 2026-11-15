@@ -4,6 +4,7 @@
 // which requests reached it.
 
 import { execFileSync } from 'node:child_process';
+import { createHash, createPublicKey } from 'node:crypto';
 import { createServer } from 'node:http';
 import { createServer as createSecureServer } from 'node:https';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -38,6 +39,12 @@ function silence(seconds) {
   wav.write('data', 36, 'latin1');
   wav.writeUInt32LE(samples, 40);
   return wav;
+}
+
+/** A certificate's public key as Chromium's flags name it: the SHA-256 of its SPKI, in base64. */
+function keyOf(cert) {
+  const spki = createPublicKey(cert).export({ type: 'spki', format: 'der' });
+  return createHash('sha256').update(spki).digest('base64');
 }
 
 let made = null;
@@ -138,8 +145,10 @@ export async function launch(directory = join(root, 'build'), { insecure = false
       '--host-resolver-rules=MAP * 127.0.0.1',
       '--no-proxy-server',
       '--disable-features=HttpsUpgrades,HttpsFirstBalancedModeAutoEnable',
-      // For the stand-in of a host Chromium will only ask over HTTPS.
-      ...(insecure ? ['--ignore-certificate-errors'] : []),
+      // For the stand-in of a host Chromium will only ask over HTTPS: the
+      // certificate made for the run is taken by its key, as if it were
+      // signed, and no other certificate error is overlooked.
+      ...(insecure ? [`--ignore-certificate-errors-spki-list=${keyOf(certificate().cert)}`] : []),
     ],
   });
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));

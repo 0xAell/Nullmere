@@ -45,17 +45,32 @@ export function siteFromInput(text) {
   return /^(?:[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?\.)*[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(site) ? site : '';
 }
 
-/** Whether a host is one of the sites let through, or under one. */
-export function isAllowed(allowlist, host) {
+/** Whether `site` is `under`, or a subdomain of it. */
+const within = (site, under) => site === under || site.endsWith(`.${under}`);
+
+/** The site let through that lets a host through, the widest if several do; '' if none does. */
+export function allowedBy(allowlist, host) {
   const site = siteOf(host);
-  if (!site) return false;
-  return (allowlist ?? []).some((allowed) => site === allowed || site.endsWith(`.${allowed}`));
+  if (!site) return '';
+  return (allowlist ?? []).filter((allowed) => within(site, allowed)).sort((a, b) => a.length - b.length)[0] ?? '';
 }
 
-/** The list with a site added or taken out, in order, each site once. */
+/** Whether a host is one of the sites let through, or under one. */
+export function isAllowed(allowlist, host) {
+  return allowedBy(allowlist, host) !== '';
+}
+
+/**
+ * The list with a site let through or stilled again, in order, each site
+ * once. Letting a site through drops the sites under it, which it now
+ * covers. Stilling one takes out whatever lets it through: asked of
+ * `shop.example.com` while `example.com` is let through, it is
+ * `example.com` that goes, since nothing less would still it.
+ */
 export function withSite(allowlist, site, allowed) {
-  const rest = (allowlist ?? []).filter((other) => other !== site);
-  return (allowed ? [...rest, site] : rest).sort();
+  const list = allowlist ?? [];
+  if (!allowed) return list.filter((other) => !within(site, other)).sort();
+  return [...list.filter((other) => !within(other, site)), site].sort();
 }
 
 /**

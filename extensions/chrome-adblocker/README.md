@@ -59,7 +59,7 @@ front. Press it for the popup:
 
 | | |
 |---|---|
-| **Blocks requests** | 135,154 filters from EasyList, EasyPrivacy and a short list of Stillwater's own become 12,973 rules for Chrome's `declarativeNetRequest`, inside the 30,000 Chrome guarantees every extension. Filters for whole hosts are merged, so 94,503 hosts are blocked by 341 of those rules. |
+| **Blocks requests** | 135,154 filters from EasyList, EasyPrivacy and a short list of Stillwater's own become 12,977 rules for Chrome's `declarativeNetRequest`, inside the 30,000 Chrome guarantees every extension. Filters for whole hosts are merged, so 94,309 hosts are blocked by 184 of those rules. |
 | **Hides ad slots** | 30,934 selectors. A site's own are applied as its pages begin. The 13,637 generic ones are not thrown at every page: a content script tells the extension which classes and ids a page has, and only the selectors that could match are added. They are added as the user's own style, so a page's `!important` can't undo them. |
 | **Follows worded filters** | 283 filters pick an element by the words in it (*hide the card whose label says Sponsored*). No style sheet can; the content script follows them as short plans. |
 | **Lets sites through** | Per site, from the popup or the options page, subdomains included. |
@@ -146,7 +146,7 @@ reads the number, and no history.
 lists/        EasyList and EasyPrivacy at a named commit, and Stillwater's own short list
 tools/        refresh-lists.js, build.js, validate.js, package.js, make-icons.js, shots.js
   lib/        filters.js (reads the lists)   dnr.js (makes Chrome's rules)
-              cosmetic.js, procedural.js (what to hide)   zip.js, png.js
+              cosmetic.js, procedural.js, selectors.js (what to hide)   zip.js, png.js
 src/          the extension as written: manifest, service worker, content scripts, pages, icons
 build/        the extension as Chrome loads it: src/ plus rules/ and cosmetic/ (not kept in git)
 dist/         the packed build

@@ -10,6 +10,8 @@
 //   { re, flags }    keep those whose text matches the expression
 //   { has: [steps] } keep those in which the steps find something
 
+import { isContained, splitSelectors } from './selectors.js';
+
 const TEXT = [':has-text(', ':-abp-contains(', ':contains('];
 
 /** The end of the parenthesis that opens at `open`, or -1. */
@@ -50,7 +52,9 @@ function textStep(argument) {
     } catch {
       return null;
     }
-    return { re: regex[1], flags: regex[2] };
+    // Only the flags that change what matches: with `g` or `y` an
+    // expression remembers where it stopped, and would miss every other element.
+    return { re: regex[1], flags: [...new Set(regex[2])].filter((flag) => 'imsu'.includes(flag)).join('') };
   }
   const quoted = /^(["'])(.*)\1$/s.exec(argument);
   const text = quoted ? quoted[2] : argument;
@@ -64,8 +68,17 @@ function textStep(argument) {
 export function planFor(selector) {
   const steps = [];
   let css = '';
-  const flush = () => {
-    if (css.trim()) steps.push({ css: css.trim() === css ? css : css.replace(/\s+$/, '') });
+  // `narrowing`: what comes next keeps some of the elements found. Where
+  // the selector before it ends at a combinator (`.feed :has-text(x)`,
+  // `.feed > :has-text(x)`) the element the words are looked for in was
+  // left unsaid: it is any element there, not `.feed` itself.
+  const flush = (narrowing = false) => {
+    let part = css.trimEnd();
+    // An escaped space is the end of a name, not space after it.
+    if (/(?:^|[^\\])(?:\\\\)*\\$/.test(part)) part = css.slice(0, part.length + 1);
+    const open = part.length < css.length || /(?:^|[^\\])[>+~]$/.test(part);
+    if (narrowing && open) part += ' *';
+    if (part.trim()) steps.push({ css: part });
     css = '';
   };
   let i = 0;
@@ -98,7 +111,7 @@ export function planFor(selector) {
         if (operator) {
           const step = textStep(argument);
           if (!step) return null;
-          flush();
+          flush(true);
           steps.push(step);
           i = close + 1;
           continue;
@@ -106,7 +119,7 @@ export function planFor(selector) {
         if (isProcedural(argument)) {
           const inner = planFor(argument);
           if (!inner) return null;
-          flush();
+          flush(true);
           steps.push({ has: inner });
           i = close + 1;
           continue;
@@ -144,7 +157,7 @@ export function styleRule(text) {
   const parts = /^(.+?)\s*\{([^{}]*)\}\s*$/s.exec(text);
   if (!parts) return null;
   const selector = parts[1].trim();
-  if (!selector || /[{}]|\/\*/.test(selector) || isProcedural(selector)) return null;
+  if (!selector || isProcedural(selector) || !splitSelectors(selector).every(isContained)) return null;
   const declarations = [];
   for (const piece of parts[2].split(';')) {
     const declaration = piece.trim();

@@ -15,6 +15,12 @@
 @@||important.test^
 /^https?:\/\/[a-z]+\.regex\.test(:\d+)?\/ad[0-9]+\.js/$script
 ||csp.test^$csp=script-src 'none'
+! (A policy for one site's own pages and the frames in them; one taken back for some pages;
+! and an exception to a policy that must not let a blocked frame through.)
+$csp=script-src 'none',domain=cspsite.test
+@@||csp.test^*/ok/$csp
+||barred.test^$subdocument
+@@||barred.test^$csp
 @@||trusted.test^$document
 @@||quiet.test^$generichide
 @@||nohide.test^$elemhide
@@ -35,6 +41,7 @@ words.test##.card:has-text(Sponsored)
 words.test##li:has(> .label:has-text(/^Ad(vert)?$/i))
 words.test##.heading:has-text(Our partners) + ul
 words.test##.row:has-text(Promoted):not(.own) > .media
+words.test##.feed > :has-text(Paid post)
 quiet.words.test#@#.card:has-text(Sponsored)
 ! --- restyling what is left ---
 words.test##.page {padding-top: 0px !important}

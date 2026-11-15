@@ -16,6 +16,9 @@ test('the popup\'s words for a page being filtered', () => {
 test('the popup\'s words where nothing is kept: let through, paused, not a page to filter', () => {
   const allowed = wording({ ...still, allowed: true, count: 0 });
   assert.deepEqual([allowed.name, allowed.count, allowed.label, allowed.act], ['allowed', '', 'Let through', 'Still this site again']);
+  // Under a site let through, the popup names that site: it is what pressing will still.
+  const under = wording({ ...still, host: 'shop.example.com', site: 'shop.example.com', through: 'example.com', allowed: true });
+  assert.deepEqual([under.site, under.moon], ['example.com', 'example.com is let through. Press to filter it again.']);
   const paused = wording({ ...still, paused: true, allowed: true });
   assert.deepEqual([paused.name, paused.label, paused.act], ['paused', 'Paused', 'Resume'], 'the pause is said first: resuming is what to do about it');
   const none = wording({ host: '', site: '', filterable: false, allowed: false, paused: true, count: 0 });

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { hostname, isBalanced, parseLine, parseList, splitSelectors } from '../../tools/lib/filters.js';
+import { hostname, isBalanced, isContained, parseLine, parseList, splitSelectors } from '../../tools/lib/filters.js';
 
 test('comments, headers and blank lines are nothing', () => {
   for (const line of ['', '   ', '! a comment', '[Adblock Plus 2.0]', '# hosts comment']) {
@@ -68,6 +68,8 @@ test('what Chrome cannot express is refused with its reason', () => {
     '@@||ads.example^$genericblock': 'option:genericblock',
     '||ads.example^$sitekey=abc': 'option:sitekey',
     '||ads.example^$domain=google.*': 'option:domain-entity',
+    // Leaving an excluded entity out would block on sites the filter spares.
+    '||ads.example^$domain=news.example|~google.*': 'option:domain-entity',
     '||ads.example^$badfilter': 'option:badfilter',
     'реклама.example/баннер': 'pattern:non-ascii',
   };
@@ -139,6 +141,17 @@ test('cosmetic filters that pick an element by its words become plans', () => {
     { has: [{ css: '> .name' }, { text: 'Shop' }] },
     { css: ':not(.own)' },
   ]);
+  // Where the words are looked for in whatever is under, or beside, what was found.
+  assert.deepEqual(plan('example.com##.feed :has-text(Sponsored)').steps, [{ css: '.feed *' }, { text: 'Sponsored' }]);
+  assert.deepEqual(plan('example.com##.holder > center > :has-text(Advert)').steps, [{ css: '.holder > center > *' }, { text: 'Advert' }]);
+  assert.deepEqual(plan('example.com##.holder >:has-text(Advert)').steps, [{ css: '.holder > *' }, { text: 'Advert' }]);
+  assert.deepEqual(plan('example.com##.a:has-text(One) :has-text(Two)').steps, [{ css: '.a' }, { text: 'One' }, { css: ' *' }, { text: 'Two' }]);
+  assert.deepEqual(plan('example.com##.a:has-text(One) + :has-text(Two)').steps, [{ css: '.a' }, { text: 'One' }, { css: ' + *' }, { text: 'Two' }]);
+  assert.deepEqual(plan('example.com##.feed :has(> b:has-text(Ad))').steps, [{ css: '.feed *' }, { has: [{ css: '> b' }, { text: 'Ad' }] }]);
+  assert.deepEqual(plan('example.com##.wide\\ :has-text(Ad)').steps, [{ css: '.wide\\ ' }, { text: 'Ad' }], 'an escaped space is the end of a name');
+  // Flags that make an expression remember where it stopped are left off: it is asked of one element after another.
+  assert.deepEqual(plan('example.com##.card:has-text(/ad/gi)').steps, [{ css: '.card' }, { re: 'ad', flags: 'i' }]);
+  assert.deepEqual(plan('example.com##.card:has-text(/ad/y)').steps, [{ css: '.card' }, { re: 'ad', flags: '' }]);
   assert.equal(parseLine('example.com##.card:has-text(/(unclosed/)').kind, 'unsupported', 'an expression that does not compile');
   assert.equal(parseLine('example.com##:has-text(Sponsored)').kind, 'unsupported', 'nothing to find before narrowing');
   const taken = parseLine('example.com#@#.card:has-text(Sponsored)');
@@ -152,6 +165,34 @@ test('restyling filters become CSS rules for the sites they name, and only plain
   for (const bad of ['example.com##.a { color: red; background: URL(x) }', 'example.com##.a { }', 'example.com##.a { @import "x" }', 'example.com##.a { content: "\\61" }']) {
     assert.equal(parseLine(bad).kind, 'unsupported', bad);
   }
+});
+
+test('a selector that would not stay inside its rule is refused', () => {
+  // Each selector is written into `a, b, c {display: none}` for every page it is for.
+  const refused = [
+    '##@import url(https://x.example/a.css);a',
+    'example.com##.a, @import "x";b',
+    'example.com##.a;.b',
+    'example.com##.a\\',
+    'example.com##.a /* note',
+    'example.com##.a */ .b',
+    'example.com##.a}',
+    'example.com##a[href="x]',
+    'example.com##.a)',
+  ];
+  for (const line of refused) assert.deepEqual([parseLine(line).kind, parseLine(line).reason], ['unsupported', 'cosmetic:malformed'], line);
+  // What only looks like one of those is kept: inside quotes, or escaped.
+  const kept = ['example.com##div[style="width:300px;height:250px"]', 'example.com##a[href*=";ad="]', 'example.com##.a\\;b', 'example.com##.w-1\\/2', "example.com##a[title='}']"];
+  assert.deepEqual(parseLine(kept[0]).selectors, ['div[style="width:300px;height:250px"]']);
+  assert.deepEqual(parseLine(kept[1]).selectors, ['a[href*=";ad="]']);
+  assert.deepEqual(parseLine(kept[2]).selectors, ['.a\\;b']);
+  assert.deepEqual(parseLine(kept[3]).selectors, ['.w-1\\/2']);
+  assert.equal(parseLine(kept[4]).kind, 'unsupported', 'a brace is refused even in quotes: nothing in the lists needs one');
+  assert.equal(isContained('.a, .b'), true);
+  assert.equal(isContained(''), false);
+  // A restyling filter's selector is held to the same.
+  assert.equal(parseLine('example.com##.a;.b { top: 0 }').kind, 'unsupported');
+  assert.equal(parseLine('example.com##@media x { top: 0 }').kind, 'unsupported');
 });
 
 test('selector lists split at top-level commas only', () => {

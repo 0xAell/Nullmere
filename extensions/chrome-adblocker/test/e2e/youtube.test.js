@@ -36,9 +36,22 @@ const WATCH = `<!doctype html><title>Watch</title><body>
     fetch('/youtubei/v1/player').then((response) => response.json()).then((json) => { window.report.fetched = Object.keys(json).sort(); });
   </script></body>`;
 
+// The same page, whose first script tries to overhear the extension's two
+// scripts and to tell the one in its own world to stop.
+const HOSTILE = WATCH.replace(
+  '<body>',
+  `<body><script>
+    window.heard = [];
+    document.addEventListener('stillwater:word', (event) => window.heard.push(event.detail));
+    window.unanswered = document.dispatchEvent(new CustomEvent('stillwater:word', { detail: 'stillwater:page', cancelable: true }));
+    for (const name of ['stillwater:ready', 'stillwater:rest', 'stillwater:page']) document.dispatchEvent(new CustomEvent(name));
+  </script>`,
+);
+
 before(async () => {
   server = await startServer({ secure: true });
   server.page(HOST, '/watch', WATCH);
+  server.page(HOST, '/hostile', HOSTILE);
   server.page(HOST, '/youtubei/v1/player', JSON.stringify(RESPONSE), { type: 'application/json' });
   server.page('blog.test', '/', `<!doctype html><body><iframe id="embed" src="${server.url(HOST, '/watch')}"></iframe></body>`);
   browser = await launch(undefined, { insecure: true });
@@ -128,6 +141,15 @@ test('with the YouTube switch off, or YouTube let through, the page is left as i
 
   const { page } = await open(browser.context, server.url(HOST, '/watch'));
   assert.deepEqual((await report(page)).initial, KEPT, 'and at work again once switched back');
+  await page.close();
+});
+
+test('the page can neither overhear the extension\'s two scripts nor tell the one in its world to stop', async () => {
+  const { page } = await open(browser.context, server.url(HOST, '/hostile'));
+  const seen = await report(page);
+  assert.deepEqual([seen.initial, seen.parsed, seen.fetched], [KEPT, KEPT, KEPT], 'the ad lists are still taken out');
+  assert.deepEqual(await page.evaluate(() => window.heard), ['stillwater:page'], 'it hears only what it said itself');
+  assert.equal(await page.evaluate(() => window.unanswered), true, 'and nothing answers it');
   await page.close();
 });
 
