@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Nullmere Stillwater: an ad blocker for Chrome (Manifest V3) in the Nullmere theme.",
-  "license": "AGPL-3.0-or-later",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "engines": {
     "node": ">=20.15"

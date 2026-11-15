@@ -1,7 +1,7 @@
 [Adblock Plus 2.0]
 ! Title: Stillwater supplement
 ! Homepage: https://github.com/ael-dev3/Nullmere/tree/main/extensions/chrome-adblocker
-! Licence: AGPL-3.0-or-later, as the rest of Nullmere Stillwater
+! Licence: AGPL-3.0-only, as the rest of Nullmere Stillwater
 !
 ! Nullmere Stillwater's own short list, beside EasyList and EasyPrivacy:
 ! filters for a few common sites, written in the same syntax and converted

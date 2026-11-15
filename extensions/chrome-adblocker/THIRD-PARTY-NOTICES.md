@@ -2,8 +2,8 @@
 
 Nullmere Stillwater's own code, art and supplement list are part of
 Nullmere and are licensed, like the rest of it, under the GNU Affero
-General Public License, version 3 or later (the `LICENSE` file at the root
-of the repository, and of the packaged extension).
+General Public License, version 3 only (the `LICENSE` file at the root of
+the repository, and of the packaged extension).
 
 It could not block anything without the work of others. That work is
 named here, with the terms it is used under.
@@ -21,7 +21,8 @@ named here, with the terms it is used under.
   Attribution-ShareAlike 3.0 Unported licence or later; either may be
   chosen. See <https://easylist.to/pages/licence.html>. Stillwater uses
   them under the **GNU General Public License, version 3 or later**, whose
-  text is in `licences/GPL-3.0.txt`.
+  text is in `licences/GPL-3.0.txt`. (That licence's section 13 is what
+  lets a work under it be combined with one under the Affero licence.)
 
 **Where they are, and how they are changed:**
 

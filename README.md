@@ -113,6 +113,14 @@ the new realm; it is not yet what Play opens, it has not been published,
 and its screens are a first cut. The plan's status table says what is
 done, what is unverified, and what has not been started.
 
+## Also in this repository
+
+[Nullmere Stillwater](extensions/chrome-adblocker/) is an ad blocker for
+Chrome in Nullmere's look: the lake, the moon, and nothing moving on the
+water. It blocks ads and trackers with EasyList and EasyPrivacy under
+Manifest V3, hides the slots they leave, and says plainly what Manifest V3
+keeps it from doing. Its README has the install steps.
+
 ## Documentation
 
 | Document | What it covers |

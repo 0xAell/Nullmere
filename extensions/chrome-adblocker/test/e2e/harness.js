@@ -119,13 +119,14 @@ export async function startServer({ secure = false } = {}) {
  * the extension's service worker, `ask` sends it a message as one of the
  * extension's own pages would.
  */
-export async function launch(directory = join(root, 'build'), { insecure = false } = {}) {
+export async function launch(directory = join(root, 'build'), { insecure = false, scale = undefined } = {}) {
   const profile = mkdtempSync(join(tmpdir(), 'stillwater-'));
   const context = await chromium.launchPersistentContext(profile, {
     // The new headless mode is the one that loads extensions; Playwright's
     // own headless shell does not.
     headless: false,
     executablePath: process.env.CHROMIUM_PATH || undefined,
+    deviceScaleFactor: scale,
     args: [
       '--headless=new',
       `--disable-extensions-except=${directory}`,
