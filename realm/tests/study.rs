@@ -249,3 +249,23 @@ fn what_is_learnt_of_arms_tells_in_a_fight() {
     };
     assert!(lost_with(10) < lost_with(0), "{} against {}", lost_with(10), lost_with(0));
 }
+
+#[test]
+fn a_speedup_hastens_a_study_as_it_does_a_raising() {
+    let (mut db, player, city) = joined();
+    academy(&mut db, city.id, 1);
+    let job = db.call(|db| rules::study(db, player, Topic::Tillage as u8)).unwrap();
+    wait(&mut db, 2);
+    let before = stock(&db, city.id);
+    // A quarter of what is left comes off, and the study lands at the new end.
+    let left = job.ends - db.clock;
+    let hastened = db.call(|db| rules::speed_up(db, player, job.id)).unwrap();
+    assert_eq!(hastened.kind, Job::STUDY);
+    let now = db.clock;
+    assert_eq!(stock(&db, city.id), before.minus(catalog::SPEEDUP));
+    assert_eq!(hastened.ends, now + left - left / 4);
+    assert!(Table::<Lore>::get(&db, Lore::key(city.id, Topic::Tillage as u8)).is_none());
+    let to_end = hastened.ends - db.clock;
+    wait(&mut db, to_end);
+    assert_eq!(Table::<Lore>::get(&db, Lore::key(city.id, Topic::Tillage as u8)).map(|lore| lore.level), Some(1));
+}
