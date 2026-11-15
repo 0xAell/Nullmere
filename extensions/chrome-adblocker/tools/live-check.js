@@ -27,10 +27,12 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /** The pages visited: some that carry many ads, two that carry none, and YouTube. */
 export const PAGES = [
   { name: 'The Guardian', url: 'https://www.theguardian.com/international' },
-  { name: 'CNN', url: 'https://edition.cnn.com/' },
-  { name: 'Daily Mail', url: 'https://www.dailymail.co.uk/home/index.html' },
   { name: 'Speedtest', url: 'https://www.speedtest.net/' },
-  { name: 'Fandom', url: 'https://harrypotter.fandom.com/wiki/Main_Page' },
+  { name: 'BBC', url: 'https://www.bbc.com/news' },
+  { name: 'The Independent', url: 'https://www.independent.co.uk/' },
+  { name: 'Stack Overflow', url: 'https://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-processing-an-unsorted-array' },
+  { name: 'IGN', url: 'https://www.ign.com/' },
+  { name: 'AccuWeather', url: 'https://www.accuweather.com/' },
   { name: 'Wikipedia (no ads)', url: 'https://en.wikipedia.org/wiki/Lake' },
   { name: 'GitHub (no ads)', url: 'https://github.com/' },
   { name: 'YouTube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', youtube: true },
@@ -87,7 +89,7 @@ async function start(directory) {
 /** What a page came to: whether it loaded, what it asked for, what was kept back, what it shows. */
 async function visit(browser, page, hosts) {
   const tab = await browser.context.newPage();
-  const seen = { requests: 0, toBlockedHosts: 0, blocked: 0, blockedHosts: new Map(), errors: 0 };
+  const seen = { requests: 0, toBlockedHosts: 0, blocked: 0, blockedHosts: new Map(), errors: 0, said: [] };
   tab.on('request', (request) => {
     seen.requests++;
     try {
@@ -106,7 +108,10 @@ async function visit(browser, page, hosts) {
       // As above.
     }
   });
-  tab.on('pageerror', () => seen.errors++);
+  tab.on('pageerror', (error) => {
+    seen.errors++;
+    if (seen.said.length < 4) seen.said.push(String(error.message ?? error).split('\n')[0].slice(0, 140));
+  });
   const result = { name: page.name, url: page.url };
   try {
     const response = await tab.goto(page.url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -131,9 +136,11 @@ async function visit(browser, page, hosts) {
   } catch (error) {
     result.failed = String(error.message ?? error).split('\n')[0].slice(0, 160);
   }
-  Object.assign(result, { requests: seen.requests, toBlockedHosts: seen.toBlockedHosts, blocked: seen.blocked, errors: seen.errors });
+  Object.assign(result, { requests: seen.requests, toBlockedHosts: seen.toBlockedHosts, blocked: seen.blocked, errors: seen.errors, said: seen.said });
   result.topBlocked = [...seen.blockedHosts].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([host, count]) => `${host} ${count}`);
-  await tab.close();
+  await Promise.race([tab.close(), new Promise((done) => setTimeout(done, 5_000))]);
+  // As it goes, so that a run cut short still says what it saw.
+  console.error(`${browser.worker ? 'with' : 'without'}  ${JSON.stringify(result)}`);
   return result;
 }
 
@@ -142,12 +149,16 @@ async function youtube(tab) {
   await tab.waitForFunction(() => window.ytInitialPlayerResponse || document.querySelector('#movie_player'), null, { timeout: 15_000 }).catch(() => {});
   const told = await tab.evaluate((keys) => {
     const response = window.ytInitialPlayerResponse;
-    if (!response || typeof response !== 'object') return { response: false };
+    // Whether the page as sent carried a player response at all: a page that
+    // asks to be signed in, or for consent, carries none.
+    const written = [...document.scripts].some((script) => script.text.includes('ytInitialPlayerResponse'));
+    if (!response || typeof response !== 'object') return { response: false, written };
     return {
       response: true,
       playable: response.playabilityStatus?.status ?? null,
       adKeys: keys.filter((key) => key in response),
       title: response.videoDetails?.title ?? null,
+      written,
     };
   }, AD_KEYS);
   // Ten seconds of the player, looking for an ad showing in it.
@@ -181,15 +192,26 @@ async function complaints(browser) {
 
 function table(withExtension, without) {
   const rows = [
-    '| Page | Loaded with / without | Requests with / without | To hosts the lists block, without | Kept back | Count on the icon | Ad-sized frames with / without | Page errors with / without |',
-    '|---|---|---|---|---|---|---|---|',
+    '| Page | Loaded with / without | Letters of text with / without | Requests with / without | To hosts the lists block, without | Kept back | Count on the icon | Ad-sized frames with / without | Page errors with / without |',
+    '|---|---|---|---|---|---|---|---|---|',
   ];
   for (const [index, one] of withExtension.entries()) {
     const other = without[index];
     const loaded = (visit) => (visit.failed ? `no (${visit.failed})` : `${visit.status}`);
-    rows.push(`| ${one.name} | ${loaded(one)} / ${loaded(other)} | ${one.requests} / ${other.requests} | ${other.toBlockedHosts} | ${one.blocked} | ${one.badge ?? '-'} | ${one.frames ?? '-'} / ${other.frames ?? '-'} | ${one.errors} / ${other.errors} |`);
+    rows.push(`| ${one.name} | ${loaded(one)} / ${loaded(other)} | ${one.words ?? '-'} / ${other.words ?? '-'} | ${one.requests} / ${other.requests} | ${other.toBlockedHosts} | ${one.blocked} | ${one.badge ?? '-'} | ${one.frames ?? '-'} / ${other.frames ?? '-'} | ${one.errors} / ${other.errors} |`);
   }
   return rows.join('\n');
+}
+
+/** Where a page threw more errors with the extension than without: what they said, and its title both ways. */
+function errorWords(withExtension, without) {
+  const lines = [];
+  for (const [index, one] of withExtension.entries()) {
+    const other = without[index];
+    if (one.errors <= other.errors) continue;
+    lines.push(`- ${one.name} ("${one.title ?? ''}" with, "${other.title ?? ''}" without): ${one.said.map((words) => `\`${words.replaceAll('`', "'")}\``).join('; ')}`);
+  }
+  return lines.length ? `Pages that threw more errors with the extension than without:\n\n${lines.join('\n')}` : 'No page threw more errors with the extension than without it.';
 }
 
 function youtubeWords(one, other) {
@@ -197,8 +219,8 @@ function youtubeWords(one, other) {
   const say = (run) =>
     run.response
       ? `the player's response came through (${run.playable ?? 'no status'}), with ${run.adKeys.length ? `its ad lists: ${run.adKeys.join(', ')}` : 'no ad lists in it'}; an ad ${run.adShowing ? 'showed' : 'did not show'} in ten seconds; video ${run.video ? (run.playing ? 'playing' : 'present, not playing') : 'absent'}`
-      : 'no player response was found on the page';
-  return `YouTube, without the extension: ${say(other)}.\n\nYouTube, with it: ${say(one)}.`;
+      : `no player response was found on the page (${run.written ? 'though the page as sent had one' : 'nor in the page as sent'}; player ${run.player ? 'present' : 'absent'})`;
+  return `YouTube, without the extension: ${say(other)}; titled "${other.title ?? ''}".\n\nYouTube, with it: ${say(one)}; titled "${one.title ?? ''}".`;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -238,6 +260,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     `Chromium ${version || '(version not reported)'}, headless, ${process.env.GITHUB_ACTIONS ? 'from a GitHub runner' : 'from the machine it was run on'}. Each page was loaded once without the extension and once with it, and given ${SETTLE / 1000} seconds after loading.`,
     '',
     table(withExtension, without),
+    '',
+    errorWords(withExtension, without),
     '',
     youtubeWords(withExtension.find((one) => one.youtube) ?? {}, without.find((one) => one.youtube) ?? {}),
     '',
