@@ -13,6 +13,7 @@ mod command;
 mod daily;
 mod entry;
 mod favour;
+mod items;
 mod march;
 mod siege;
 mod study;
@@ -26,6 +27,7 @@ pub use command::*;
 pub use daily::*;
 pub use entry::*;
 pub use favour::*;
+pub use items::*;
 pub use march::*;
 pub use siege::*;
 pub use study::*;
@@ -169,6 +171,9 @@ pub enum Refusal {
     TaskNotDone(String),
     NoTasksLeft,
     NoSuchChest,
+    NoSuchItem,
+    /// The player has none of the item they would use.
+    NoneLeft,
     /// The chest asks more marks than the player has earned today: how many it asks.
     ChestNotEarned(u32),
     ChestOpened,
@@ -259,6 +264,8 @@ impl fmt::Display for Refusal {
             Refusal::SayingTooFast => "Wait a moment before you say more.",
             Refusal::NoTasksLeft => "You have done every task there is.",
             Refusal::NoSuchChest => "There is no such chest.",
+            Refusal::NoSuchItem => "There is no such thing to use.",
+            Refusal::NoneLeft => "You have none of that left.",
             Refusal::ChestOpened => "You have opened that chest today.",
             Refusal::NoSuchTopic => "There is no such study.",
             Refusal::NoSuchCommander => "You have no such commander.",

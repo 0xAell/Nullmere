@@ -656,8 +656,46 @@ pub struct Chest {
     pub timber: u64,
     pub stone: u64,
     pub moonsalt: u64,
+    /// How many of each haste it holds: five minutes', an hour's, eight hours'.
+    pub haste5: u64,
+    pub haste60: u64,
+    pub haste480: u64,
 }
 row!(Chest in chest, by id);
+
+/// An item, for clients to show: its name, what it does, and the time it
+/// takes off a work as written (in a realm that runs faster, as much less
+/// as everything there takes less). Keyed by item.
+#[spacetimedb::table(accessor = ware, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Ware {
+    #[primary_key]
+    pub item: u64,
+    pub name: String,
+    pub words: String,
+    pub seconds: Seconds,
+}
+row!(Ware in ware, by item);
+
+/// How many of an item a player keeps: theirs alone to read. Keyed by
+/// player and item.
+#[spacetimedb::table(accessor = satchel)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Satchel {
+    #[primary_key]
+    pub id: u64,
+    #[index(btree)]
+    pub player: u64,
+    pub item: u8,
+    pub count: u64,
+}
+row!(Satchel in satchel, by id, player);
+
+impl Satchel {
+    pub fn key(player: u64, item: u8) -> u64 {
+        (player << 8) | item as u64
+    }
+}
 
 /// What a player has done of the day's work: theirs alone to read. Keyed
 /// by player. It holds for the day it names, and is begun afresh the
@@ -807,6 +845,8 @@ pub trait Db:
     + Table<Daily>
     + Table<Grace>
     + Table<Favour>
+    + Table<Ware>
+    + Table<Satchel>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -846,6 +886,8 @@ impl<
             + Table<Daily>
             + Table<Grace>
             + Table<Favour>
+            + Table<Ware>
+            + Table<Satchel>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

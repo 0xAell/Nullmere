@@ -258,6 +258,14 @@ graces = sorted(rows(nobody, "SELECT * FROM grace"), key=lambda grace: grace["le
 check("the levels of favour are written out for all to read", (len(graces), graces[0]["points"], graces[-1]["sooner"]), (11, 0, 10))
 check("a player has none until they open a chest", (rows(ada, "SELECT * FROM my_favour"), isinstance(rows(ada, "SELECT * FROM favour"), str)), ([], True))
 
+# Items: the hastes a chest holds, kept in a satchel until they are used.
+wares = sorted(rows(nobody, "SELECT * FROM ware"), key=lambda ware: ware["item"])
+check("the items are written out for all to read", [(ware["name"], ware["seconds"]) for ware in wares], [("Five minutes' haste", 300), ("An hour's haste", 3600), ("Eight hours' haste", 28800)])
+check("and every chest says what hastes it holds", all(chest["haste5"] + chest["haste60"] + chest["haste480"] > 0 for chest in chests), True)
+check("a satchel begins empty, and is its owner's alone to read", (rows(ada, "SELECT * FROM my_satchel"), isinstance(rows(ada, "SELECT * FROM satchel"), str)), ([], True))
+check("a haste a player has not got is refused", call(ada, "use_item", 1, 1), "No such work is under way in your city.")
+check("and a thing that is no item", call(ada, "use_item", 9, 1), "There is no such thing to use.")
+
 # Commanders: one to begin with, more from a Tavern.
 captains = rows(bryn, "SELECT * FROM my_commanders")
 check("a player begins with one commander, in the city", [(c["level"], c["march"], 1 <= c["way"] <= 6, len(c["name"]) >= 4) for c in captains], [(1, 0, True, True)])

@@ -2,8 +2,8 @@
 //! each day of the realm. A deed done earns marks, and marks open the
 //! day's three chests.
 
-use super::{asking, city_of, earn_favour, goods, realm, set_goods, settle, Refusal};
-use crate::catalog::{self, Deed, Goods};
+use super::{asking, city_of, earn_favour, give, goods, realm, set_goods, settle, Refusal};
+use crate::catalog::{self, Deed, Goods, Item};
 use crate::rows::{Chest, Daily, Db, Duty};
 use crate::store::Table;
 
@@ -14,7 +14,19 @@ pub fn write_days(db: &mut impl Db) {
         db.insert(Duty { deed: deed as u64, asks: deed.asks(), marks: deed.marks(), words: deed.words() });
     }
     for (index, (marks, holds)) in catalog::chests().into_iter().enumerate() {
-        db.insert(Chest { id: index as u64 + 1, marks, grain: holds.grain, timber: holds.timber, stone: holds.stone, moonsalt: holds.moonsalt });
+        let items = catalog::chest_items(index as u8 + 1);
+        let count = |item: Item| items.iter().filter(|(held, _)| *held == item).map(|(_, count)| count).sum();
+        db.insert(Chest {
+            id: index as u64 + 1,
+            marks,
+            grain: holds.grain,
+            timber: holds.timber,
+            stone: holds.stone,
+            moonsalt: holds.moonsalt,
+            haste5: count(Item::Haste5),
+            haste60: count(Item::Haste60),
+            haste480: count(Item::Haste480),
+        });
     }
 }
 
@@ -69,7 +81,8 @@ pub(super) fn did(db: &mut impl Db, player: u64, deed: Deed, amount: u64) {
 
 /// A player opens one of the day's chests: if they have earned the marks
 /// it asks and have not opened it today, what it holds goes into their
-/// stock, though it overfill it, and they rise in favour.
+/// stock, though it overfill it, its hastes into their satchel, and they
+/// rise in favour.
 pub fn open_chest(db: &mut impl Db, player: u64, chest: u8) -> Result<Goods, Refusal> {
     asking(db, player)?;
     let city = city_of(db, player)?;
@@ -92,6 +105,9 @@ pub fn open_chest(db: &mut impl Db, player: u64, chest: u8) -> Result<Goods, Ref
         db.update(row);
     } else {
         db.insert(row);
+    }
+    for (item, count) in catalog::chest_items(chest) {
+        give(db, player, item, count);
     }
     earn_favour(db, player, catalog::chest_favour(chest));
     Ok(holds)

@@ -797,6 +797,55 @@ pub fn chests() -> [(u32, Goods); 3] {
     [(40, Goods::of(2_000, 2_000, 1_000, 0)), (70, Goods::of(5_000, 5_000, 2_500, 0)), (100, Goods::of(10_000, 10_000, 5_000, 200))]
 }
 
+/// Something a player keeps in their satchel until they use it: so much
+/// time taken off a work in their city.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Item {
+    Haste5 = 1,
+    Haste60 = 2,
+    Haste480 = 3,
+}
+
+impl Item {
+    pub const ALL: [Item; 3] = [Item::Haste5, Item::Haste60, Item::Haste480];
+
+    pub fn of(code: u8) -> Option<Item> {
+        Item::ALL.into_iter().find(|item| *item as u8 == code)
+    }
+
+    /// The time it takes off a work, at the written pace.
+    pub fn seconds(self) -> i64 {
+        match self {
+            Item::Haste5 => 300,
+            Item::Haste60 => 3_600,
+            Item::Haste480 => 28_800,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Item::Haste5 => "Five minutes' haste",
+            Item::Haste60 => "An hour's haste",
+            Item::Haste480 => "Eight hours' haste",
+        }
+    }
+
+    /// What it does, in a player's words.
+    pub fn words(self) -> String {
+        format!("Takes {} off a work under way in your city.", spoken(self.seconds()))
+    }
+}
+
+/// What each of the day's chests holds besides goods, in their order.
+pub fn chest_items(chest: u8) -> Vec<(Item, u64)> {
+    match chest {
+        1 => vec![(Item::Haste5, 2)],
+        2 => vec![(Item::Haste5, 3), (Item::Haste60, 1)],
+        3 => vec![(Item::Haste60, 2), (Item::Haste480, 1)],
+        _ => Vec::new(),
+    }
+}
+
 /// The highest favour rises.
 pub const TOP_FAVOUR: u32 = 10;
 
