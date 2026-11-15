@@ -99,13 +99,14 @@ function cosmeticIndex() {
 }
 
 /** Adds a style sheet to the document that asked. As the user's own, so a page's `!important` can't undo it. */
-async function hide(sender, selectors) {
-  if (!selectors.length || !sender.tab) return;
+async function hide(sender, selectors, more = '') {
+  const css = hidingCSS(selectors) + more;
+  if (!css || !sender.tab) return;
   const target = { tabId: sender.tab.id };
   if (sender.documentId) target.documentIds = [sender.documentId];
   else target.frameIds = [sender.frameId ?? 0];
   try {
-    await chrome.scripting.insertCSS({ target, css: hidingCSS(selectors), origin: 'USER' });
+    await chrome.scripting.insertCSS({ target, css, origin: 'USER' });
   } catch {
     // The document went away before its answer came.
   }
@@ -131,8 +132,8 @@ const fromPage = {
   async 'cosmetic:start'({ host }, sender) {
     const { active, generic, lookup } = await cosmeticFor(String(host), sender.tab?.url);
     if (!active) return { active: false, generic: false };
-    await hide(sender, lookup.selectorsFor(String(host), { generic }));
-    return { active, generic };
+    await hide(sender, lookup.selectorsFor(String(host), { generic }), lookup.stylesFor(String(host)));
+    return { active, generic, procedural: lookup.proceduralFor(String(host)) };
   },
 
   /** Classes and ids a document has: hide what the generic filters say of them. */

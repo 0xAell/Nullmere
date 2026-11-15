@@ -8,6 +8,10 @@
 //   generic.keyed    { token: selectors } that can only match a page that
 //                    has the class or id the token names
 //   specific         { host or entity: selectors } for named sites
+//   procedural       { host or entity: [{ raw, steps }] }: filters that pick
+//                    an element by its words, as plans the content script
+//                    follows (tools/lib/procedural.js)
+//   styles           { host or entity: [CSS rules] } restyling what is left
 //   exceptions       { host or entity: selectors } not to hide there
 //   never            selectors a list says are never to be hidden anywhere
 //   noGeneric        hosts where the generic selectors are off
@@ -61,7 +65,7 @@ export function hidingCSS(selectors, perRule = 20) {
  * exceptions held against all the others' selectors too.
  */
 export function merged(lists) {
-  const data = { generic: { always: [], simple: [], keyed: {} }, specific: {}, exceptions: {}, never: [], noGeneric: [], noCosmetic: [] };
+  const data = { generic: { always: [], simple: [], keyed: {} }, specific: {}, procedural: {}, styles: {}, exceptions: {}, never: [], noGeneric: [], noCosmetic: [] };
   const into = (target, source) => {
     for (const [key, selectors] of Object.entries(source ?? {})) target[key] = [...(target[key] ?? []), ...selectors];
   };
@@ -70,6 +74,8 @@ export function merged(lists) {
     data.generic.simple.push(...list.generic.simple);
     into(data.generic.keyed, list.generic.keyed);
     into(data.specific, list.specific);
+    into(data.procedural, list.procedural);
+    into(data.styles, list.styles);
     into(data.exceptions, list.exceptions);
     data.never.push(...(list.never ?? []));
     data.noGeneric.push(...(list.noGeneric ?? []));
@@ -82,6 +88,7 @@ export function merged(lists) {
     data.generic.simple = keep(data.generic.simple);
     for (const key of Object.keys(data.generic.keyed)) data.generic.keyed[key] = keep(data.generic.keyed[key]);
     for (const key of Object.keys(data.specific)) data.specific[key] = keep(data.specific[key]);
+    for (const key of Object.keys(data.procedural)) data.procedural[key] = data.procedural[key].filter((plan) => !never.has(plan.raw));
   }
   return data;
 }
@@ -135,6 +142,27 @@ export class CosmeticIndex {
       for (const selector of this.data.generic.always) out.add(selector);
     }
     return [...out].filter((selector) => !except.has(selector));
+  }
+
+  /** The plans for a host's filters that pick elements by their words. */
+  proceduralFor(host) {
+    const except = this.exceptionsFor(host);
+    const out = new Map();
+    for (const name of namesOf(host)) {
+      for (const plan of this.data.procedural?.[name] ?? []) {
+        if (!except.has(plan.raw)) out.set(plan.raw, plan.steps);
+      }
+    }
+    return [...out.values()];
+  }
+
+  /** The CSS that restyles what is left on a host's pages once its ads are gone. */
+  stylesFor(host) {
+    const out = new Set();
+    for (const name of namesOf(host)) {
+      for (const rule of this.data.styles?.[name] ?? []) out.add(rule);
+    }
+    return [...out].join('\n');
   }
 
   /**

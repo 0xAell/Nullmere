@@ -12,6 +12,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { splitSelectors } from './lib/filters.js';
+import { isProcedural } from './lib/procedural.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -27,7 +29,12 @@ export function candidates(build = join(root, 'build')) {
     const data = JSON.parse(readFileSync(join(build, 'cosmetic', `${id}.json`), 'utf8'));
     for (const selector of [...data.generic.always, ...data.generic.simple]) selectors.add(selector);
     for (const group of [data.generic.keyed, data.specific, data.exceptions]) {
-      for (const list of Object.values(group)) for (const selector of list) selectors.add(selector);
+      // (An exception may name a worded filter, which is not a selector at all.)
+      for (const list of Object.values(group)) for (const selector of list) if (!isProcedural(selector)) selectors.add(selector);
+    }
+    // What a restyling rule restyles is a selector too, or a list of them.
+    for (const list of Object.values(data.styles)) {
+      for (const rule of list) for (const selector of splitSelectors(rule.slice(0, rule.indexOf('{')))) selectors.add(selector);
     }
   }
   return { regex: [...regex].map(([source, isCaseSensitive]) => ({ source, isCaseSensitive })), selectors: [...selectors] };

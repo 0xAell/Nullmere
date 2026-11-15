@@ -30,4 +30,11 @@ news.test,~live.news.test##.promo-rail
 shop.test#@#.ad-banner
 entity.*##.entity-ad
 news.test#?#section:-abp-has(> .ad-label)
-news.test##.sponsored-story:has-text(Sponsored)
+! --- cosmetic, by the words in an element ---
+words.test##.card:has-text(Sponsored)
+words.test##li:has(> .label:has-text(/^Ad(vert)?$/i))
+words.test##.heading:has-text(Our partners) + ul
+words.test##.row:has-text(Promoted):not(.own) > .media
+quiet.words.test#@#.card:has-text(Sponsored)
+! --- restyling what is left ---
+words.test##.page {padding-top: 0px !important}

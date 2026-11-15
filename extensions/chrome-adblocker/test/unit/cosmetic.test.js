@@ -99,3 +99,19 @@ test('lists are merged, and one list\'s exception with no site holds against the
   const index = new CosmeticIndex(all);
   assert.deepEqual(index.selectorsForTokens('shop.example', ['.ad-box', '.banner']), ['.banner']);
 });
+
+test('plans and styles are kept for their sites, taken back by exceptions, and merged', () => {
+  const first = build(['news.example##.card:has-text(Sponsored)', 'news.example,shop.*##li:has(> b:has-text(/^Ad$/))', 'live.news.example#@#.card:has-text(Sponsored)', 'news.example##.nav {top: 0 !important}']);
+  assert.deepEqual(Object.keys(first.data.procedural), ['news.example', 'shop.*']);
+  assert.deepEqual(first.data.procedural['news.example'].map((plan) => plan.raw), ['.card:has-text(Sponsored)', 'li:has(> b:has-text(/^Ad$/))']);
+  assert.deepEqual(first.data.styles, { 'news.example': ['.nav{top:0 !important}'] });
+  assert.deepEqual([first.counts.procedural, first.counts.styles], [3, 1]);
+
+  const index = new CosmeticIndex(merged([first.data, build(['blog.example##.post:has-text(Promoted)', '#@#li:has(> b:has-text(/^Ad$/))']).data]));
+  assert.deepEqual(index.proceduralFor('www.news.example'), [[{ css: '.card' }, { text: 'Sponsored' }]], 'the other list took the second filter back everywhere');
+  assert.deepEqual(index.proceduralFor('live.news.example'), [], 'and the site\'s own exception the first');
+  assert.deepEqual(index.proceduralFor('blog.example'), [[{ css: '.post' }, { text: 'Promoted' }]]);
+  assert.deepEqual(index.proceduralFor('elsewhere.example'), []);
+  assert.equal(index.stylesFor('www.news.example'), '.nav{top:0 !important}');
+  assert.equal(index.stylesFor('elsewhere.example'), '');
+});

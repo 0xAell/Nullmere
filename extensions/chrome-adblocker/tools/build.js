@@ -12,7 +12,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildCosmetic } from './lib/cosmetic.js';
 import { problemsWith, toRules } from './lib/dnr.js';
-import { parseList } from './lib/filters.js';
+import { parseList, splitSelectors } from './lib/filters.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -64,9 +64,14 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
       const kept = filter.selectors.filter((selector) => !rejectedSelectors.has(selector));
       refused += filter.selectors.length - kept.length;
       filter.selectors = kept;
+      if (filter.styles) {
+        const styles = filter.styles.filter((rule) => !splitSelectors(rule.slice(0, rule.indexOf('{'))).some((selector) => rejectedSelectors.has(selector)));
+        refused += filter.styles.length - styles.length;
+        filter.styles = styles.length ? styles : undefined;
+      }
     }
     if (refused) dropped.set('cosmetic:rejected-by-chrome', refused);
-    const cosmetic = buildCosmetic(parsed.cosmetic.filter((filter) => filter.selectors.length), hide);
+    const cosmetic = buildCosmetic(parsed.cosmetic.filter((filter) => filter.selectors.length || filter.procedural || filter.styles), hide);
 
     // One rule to a line: a rule can be found, and a refresh compared.
     writeFileSync(join(out, 'rules', `${list.id}.json`), `[\n${rules.map((rule) => JSON.stringify(rule)).join(',\n')}\n]\n`);
@@ -79,7 +84,8 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
       rules: rules.length,
       regexRules: rules.filter((rule) => rule.condition.regexFilter !== undefined).length,
       hosts: rules.reduce((sum, rule) => sum + (rule.condition.requestDomains?.length ?? 0), 0),
-      cosmetic: cosmetic.counts.generic + cosmetic.counts.specific,
+      cosmetic: cosmetic.counts.generic + cosmetic.counts.specific + cosmetic.counts.procedural + cosmetic.counts.styles,
+      procedural: cosmetic.counts.procedural,
       dropped: count(dropped),
     });
   }

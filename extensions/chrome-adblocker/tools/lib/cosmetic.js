@@ -52,17 +52,29 @@ export function buildCosmetic(filters, hide = { elemhide: [], generichide: [] })
   const neverHide = new Set();
   const specific = new Map();
   const exceptions = new Map();
+  const procedural = new Map();
+  const plans = new Map();
+  const styles = new Map();
 
   for (const filter of filters) {
     const named = [...filter.include, ...filter.entities];
+    // A procedural filter is known by its own words, as a selector is.
+    const selectors = [...filter.selectors, ...(filter.procedural ?? []).map((plan) => plan.raw)];
     if (filter.exception) {
-      if (named.length) for (const host of named) push(exceptions, host, filter.selectors);
-      else for (const selector of filter.selectors) neverHide.add(selector);
+      if (named.length) for (const host of named) push(exceptions, host, selectors);
+      else for (const selector of selectors) neverHide.add(selector);
       continue;
     }
-    if (named.length) for (const host of named) push(specific, host, filter.selectors);
-    else for (const selector of filter.selectors) generic.add(selector);
-    for (const host of filter.exclude) push(exceptions, host, filter.selectors);
+    for (const plan of filter.procedural ?? []) {
+      plans.set(plan.raw, plan.steps);
+      for (const host of named) push(procedural, host, [plan.raw]);
+    }
+    for (const host of named) {
+      if (filter.styles) push(styles, host, filter.styles);
+      if (filter.selectors.length) push(specific, host, filter.selectors);
+    }
+    if (!named.length) for (const selector of filter.selectors) generic.add(selector);
+    for (const host of filter.exclude) push(exceptions, host, selectors);
   }
 
   // An exception with no site named takes the selector out everywhere.
@@ -72,6 +84,11 @@ export function buildCosmetic(filters, hide = { elemhide: [], generichide: [] })
   }
   for (const [host, selectors] of specific) {
     if (!selectors.size) specific.delete(host);
+  }
+  const planned = {};
+  for (const host of [...procedural.keys()].sort()) {
+    const kept = sorted(procedural.get(host)).filter((raw) => !neverHide.has(raw));
+    if (kept.length) planned[host] = kept.map((raw) => ({ raw, steps: plans.get(raw) }));
   }
 
   const simple = [];
@@ -89,6 +106,8 @@ export function buildCosmetic(filters, hide = { elemhide: [], generichide: [] })
   const data = {
     generic: { always, simple, keyed: toObject(keyed) },
     specific: toObject(specific),
+    procedural: planned,
+    styles: toObject(styles),
     exceptions: toObject(exceptions),
     never: sorted(neverHide),
     noGeneric: [...new Set(hide.generichide)].sort(),
@@ -102,6 +121,8 @@ export function buildCosmetic(filters, hide = { elemhide: [], generichide: [] })
     genericKeyed: count(data.generic.keyed),
     specific: count(data.specific),
     specificHosts: Object.keys(data.specific).length,
+    procedural: count(data.procedural),
+    styles: count(data.styles),
     exceptions: count(data.exceptions),
   };
   return { data, counts };

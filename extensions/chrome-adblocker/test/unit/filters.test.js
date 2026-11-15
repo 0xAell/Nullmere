@@ -104,22 +104,53 @@ test('cosmetic filters: generic, for named sites, exceptions, entities', () => {
   assert.equal(parseLine('#@#.ad-banner').exception, true);
 });
 
-test('cosmetic filters: :-abp-has becomes :has; what CSS cannot say is refused', () => {
+test('cosmetic filters: :-abp-has becomes :has; what neither CSS nor a plan can say is refused', () => {
   assert.deepEqual(parseLine('example.com#?#div:-abp-has(> .label)').selectors, ['div:has(> .label)']);
   const reasons = {
-    'example.com#?#div:-abp-contains(Sponsored)': 'cosmetic:procedural',
-    'example.com##div:has-text(Sponsored)': 'cosmetic:procedural',
     'example.com##div:upward(2)': 'cosmetic:procedural',
+    'example.com##div:xpath(//a)': 'cosmetic:procedural',
+    'example.com#?#div:-abp-properties(width: 300px)': 'cosmetic:procedural',
+    'example.com##div:has-text(Sponsored):upward(1)': 'cosmetic:procedural',
+    '##div:has-text(Sponsored)': 'cosmetic:procedural',
     'example.com##+js(aopr, ads)': 'cosmetic:scriptlet',
     'example.com#$#abort-on-property-read ads': 'cosmetic:snippet',
     'example.com#%#window.ads = 1': 'cosmetic:snippet',
-    'example.com##.a { display: block }': 'cosmetic:style',
     'example.com##.a { display: block } .b': 'cosmetic:malformed',
+    'example.com##.a { background: url(https://x.example/) }': 'cosmetic:malformed',
+    '##.a { display: block }': 'cosmetic:style',
     'example.com##div[title="x"': 'cosmetic:malformed',
     'exam ple.com##.a': 'cosmetic:domain',
   };
   for (const [line, reason] of Object.entries(reasons)) {
     assert.deepEqual([parseLine(line).kind, parseLine(line).reason], ['unsupported', reason], line);
+  }
+});
+
+test('cosmetic filters that pick an element by its words become plans', () => {
+  const plan = (line) => parseLine(line).procedural?.[0];
+  assert.deepEqual(plan('example.com##.card:has-text(Sponsored)'), { raw: '.card:has-text(Sponsored)', steps: [{ css: '.card' }, { text: 'Sponsored' }] });
+  assert.deepEqual(plan('example.com#?#.card:-abp-contains(Sponsored)').steps, [{ css: '.card' }, { text: 'Sponsored' }]);
+  assert.deepEqual(plan('example.com##.card:has-text("Sponsored post")').steps, [{ css: '.card' }, { text: 'Sponsored post' }]);
+  assert.deepEqual(plan('example.com##.card:has-text(/^Ad(vert)?$/i)').steps, [{ css: '.card' }, { re: '^Ad(vert)?$', flags: 'i' }]);
+  assert.deepEqual(plan('example.*##a[role="button"]:has(p:has-text(Sponsored))').steps, [{ css: 'a[role="button"]' }, { has: [{ css: 'p' }, { text: 'Sponsored' }] }]);
+  assert.deepEqual(plan('example.com##.heading:has-text(Partners) + ul').steps, [{ css: '.heading' }, { text: 'Partners' }, { css: ' + ul' }]);
+  assert.deepEqual(plan('example.com##li:has(.logo[src*="id=1"]):has(> .name:has-text(Shop)):not(.own)').steps, [
+    { css: 'li:has(.logo[src*="id=1"])' },
+    { has: [{ css: '> .name' }, { text: 'Shop' }] },
+    { css: ':not(.own)' },
+  ]);
+  assert.equal(parseLine('example.com##.card:has-text(/(unclosed/)').kind, 'unsupported', 'an expression that does not compile');
+  assert.equal(parseLine('example.com##:has-text(Sponsored)').kind, 'unsupported', 'nothing to find before narrowing');
+  const taken = parseLine('example.com#@#.card:has-text(Sponsored)');
+  assert.deepEqual([taken.exception, taken.procedural[0].raw], [true, '.card:has-text(Sponsored)']);
+});
+
+test('restyling filters become CSS rules for the sites they name, and only plain declarations', () => {
+  assert.deepEqual(parseLine('example.com##.nav.sticky {top:0px;}').styles, ['.nav.sticky{top:0px}']);
+  assert.deepEqual(parseLine('example.com###wrap > [id][style*="height"] { height: 100% !important; margin : 0 }').styles, ['#wrap > [id][style*="height"]{height:100% !important;margin:0}']);
+  assert.deepEqual(parseLine('example.com##.a { display: block }').selectors, []);
+  for (const bad of ['example.com##.a { color: red; background: URL(x) }', 'example.com##.a { }', 'example.com##.a { @import "x" }', 'example.com##.a { content: "\\61" }']) {
+    assert.equal(parseLine(bad).kind, 'unsupported', bad);
   }
 });
 

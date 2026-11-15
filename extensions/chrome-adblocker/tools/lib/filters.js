@@ -4,6 +4,7 @@
 // data is built in cosmetic.js.
 
 import { domainToASCII } from 'node:url';
+import { isProcedural, planFor, styleRule } from './procedural.js';
 
 // A cosmetic filter: optional domains, a separator, a selector. The domain
 // part can't hold the characters a network pattern would (as in ABP itself).
@@ -131,6 +132,8 @@ export function splitSelectors(text) {
 /**
  * Reads a cosmetic filter. Returns
  *   { kind: 'cosmetic', exception, selectors, include, exclude, entities }
+ * with, where the filter is of that kind, `procedural: [{ raw, steps }]`
+ * (see procedural.js) or `styles: [rule]` and no selectors;
  * or { kind: 'unsupported', reason }.
  */
 function cosmetic(domains, separator, body) {
@@ -138,26 +141,42 @@ function cosmetic(domains, separator, body) {
   if (separator.includes('$') || separator.includes('%')) return unsupported('snippet');
   let selector = body.trim();
   if (selector.startsWith('+js(') || selector.startsWith('^')) return unsupported('scriptlet');
-  if (separator.includes('?') || selector.includes(':-abp-')) {
-    selector = selector.replaceAll(':-abp-has(', ':has(');
-    if (selector.includes(':-abp-')) return unsupported('procedural');
-  }
-  if (PROCEDURAL.test(selector)) return unsupported('procedural');
-  // `selector {declarations}` is Adblock Plus's way to restyle an element.
-  if (/\{[^{}]*\}\s*$/.test(selector)) return unsupported('style');
-  if (/[{}]|\/\*/.test(selector) || !isBalanced(selector)) return unsupported('malformed');
   const list = domainList(domains, ',');
-  if (list.bad.length) return unsupported('domain');
-  const selectors = splitSelectors(selector);
-  if (!selectors.length) return unsupported('malformed');
-  return {
+  const filter = {
     kind: 'cosmetic',
     exception: separator.includes('@'),
-    selectors,
+    selectors: [],
     include: list.include,
     exclude: list.exclude,
     entities: list.entities,
   };
+  const named = list.include.length + list.entities.length > 0;
+
+  // `selector {declarations}` is Adblock Plus's way to restyle an element.
+  if (/\{[^{}]*\}\s*$/.test(selector)) {
+    const rule = styleRule(selector);
+    if (!rule || !isBalanced(selector)) return unsupported('malformed');
+    if (list.bad.length) return unsupported('domain');
+    // Only for sites that are named: a style for every page is too much to take on trust.
+    if (!named || filter.exception) return unsupported('style');
+    return { ...filter, styles: [rule] };
+  }
+
+  if (separator.includes('?') || selector.includes(':-abp-')) selector = selector.replaceAll(':-abp-has(', ':has(');
+  if (/[{}]|\/\*/.test(selector) || !isBalanced(selector)) return unsupported('malformed');
+  if (isProcedural(selector)) {
+    const steps = PROCEDURAL.test(selector.replaceAll(/:(?:has-text|contains|-abp-contains)\(/g, ':x(')) ? null : planFor(selector);
+    if (!steps) return unsupported('procedural');
+    if (list.bad.length) return unsupported('domain');
+    // An exception takes a filter back by its own words, wherever it is named.
+    if (!named && !filter.exception) return unsupported('procedural');
+    return { ...filter, procedural: [{ raw: selector, steps }] };
+  }
+  if (selector.includes(':-abp-') || PROCEDURAL.test(selector)) return unsupported('procedural');
+  if (list.bad.length) return unsupported('domain');
+  filter.selectors = splitSelectors(selector);
+  if (!filter.selectors.length) return unsupported('malformed');
+  return filter;
 }
 
 /**

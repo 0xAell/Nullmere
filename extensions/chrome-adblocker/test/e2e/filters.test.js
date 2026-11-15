@@ -204,3 +204,46 @@ test('nothing is hidden on a site let through, with hiding switched off, or from
   await browser.ask({ type: 'ruleset:set', id: 'easyprivacy', enabled: true });
   assert.deepEqual(await look(), [...GENERIC.slice(0, 5), 'story', 'rail', 'pixel', 'labelled']);
 });
+
+const WORDS = `
+  <div class="page" id="page" style="padding-top: 90px">
+    <div id="card-ad" class="card"><span>Sponsored</span> A thing to buy.</div>
+    <div id="card" class="card">A story.</div>
+    <ul><li id="li-ad"><span class="label">Advert</span> Buy it.</li><li id="li-deep"><p><span class="label">Ad</span></p> Not a child.</li><li id="li">A link.</li></ul>
+    <h2 id="heading" class="heading">Our partners</h2><ul id="partners"><li>One</li></ul><ul id="after">kept</ul>
+    <div id="row-ad" class="row">Promoted <div id="media-ad" class="media">ad</div></div>
+    <div id="row-own" class="row own">Promoted <div id="media-own" class="media">own</div></div>
+  </div>`;
+const WORD_IDS = ['card-ad', 'card', 'li-ad', 'li-deep', 'li', 'heading', 'partners', 'after', 'row-ad', 'media-ad', 'row-own', 'media-own'];
+
+test('filters that pick an element by its words hide it: plain, by expression, inside :has, and going on to a sibling or child', async () => {
+  const { page } = await visit('words.test', WORDS);
+  await until(async () => (await hidden(page, WORD_IDS)).length >= 4, 'the worded slots to be hidden');
+  assert.deepEqual(await hidden(page, WORD_IDS), ['card-ad', 'li-ad', 'partners', 'media-ad']);
+
+  // Words that arrive later are found too.
+  await page.evaluate(() => {
+    document.getElementById('card').insertAdjacentHTML('afterend', '<div id="late" class="card">Sponsored again</div>');
+    document.getElementById('li').insertAdjacentHTML('afterbegin', '<span class="label">ad</span>');
+  });
+  await until(async () => (await hidden(page, ['late', 'li'])).length === 2, 'the late worded slots to be hidden');
+  await page.close();
+});
+
+test('a restyling filter restyles what is left, over the page\'s own style', async () => {
+  const { page } = await visit('words.test', WORDS);
+  await until(() => page.evaluate(() => getComputedStyle(document.getElementById('page')).paddingTop === '0px'), 'the page\'s padding to be taken away');
+  await page.close();
+  const other = await visit('other.test', WORDS);
+  await other.page.waitForTimeout(500);
+  assert.equal(await other.page.evaluate(() => getComputedStyle(document.getElementById('page')).paddingTop), '90px', 'only on the site named');
+  assert.deepEqual(await hidden(other.page, WORD_IDS), []);
+  await other.page.close();
+});
+
+test('an exception takes a worded filter back for its site', async () => {
+  const { page } = await visit('quiet.words.test', WORDS);
+  await until(async () => (await hidden(page, WORD_IDS)).length >= 3, 'the other worded slots to be hidden');
+  assert.deepEqual(await hidden(page, WORD_IDS), ['li-ad', 'partners', 'media-ad']);
+  await page.close();
+});
