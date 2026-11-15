@@ -301,6 +301,19 @@ test('a form whose fields are named for the DOM\'s own properties is read and hi
   await page.close();
 });
 
+test('a page whose images are named for the document\'s own properties is read and hidden like any other', async () => {
+  // The document answers to the names of images in it before its own properties: `document.querySelectorAll` is then an image.
+  const images = ['querySelectorAll', 'querySelector', 'documentElement', 'readyState', 'addEventListener', 'body'].map((name) => `<img name="${name}" alt="">`).join('');
+  const { page } = await visit('words.test', `${images}<div id="generic" class="ad-banner">ad</div><div id="worded" class="card">Sponsored</div><div id="kept" class="card">A story.</div>`);
+  assert.equal(await page.evaluate(() => typeof document.querySelectorAll), 'object', 'the page itself can no longer ask its document');
+  await until(async () => (await page.evaluate(() => ['generic', 'worded'].filter((id) => getComputedStyle(document.getElementById(id)).display === 'none').length)) === 2, 'both slots to be hidden');
+  assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('kept')).display), 'block');
+  // And what comes later is still seen.
+  await page.evaluate(() => document.getElementById('kept').insertAdjacentHTML('afterend', '<div id="late" class="card">Sponsored later</div><div id="late-generic" class="ad-banner">ad</div>'));
+  await until(async () => (await page.evaluate(() => ['late', 'late-generic'].filter((id) => getComputedStyle(document.getElementById(id)).display === 'none').length)) === 2, 'the later slots to be hidden');
+  await page.close();
+});
+
 test('after all of that, Chromium holds nothing against the extension', async (t) => {
   const held = await complaints(browser);
   if (!held) return t.skip('this Chromium has no extensions page to ask');

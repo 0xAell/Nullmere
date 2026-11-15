@@ -99,10 +99,13 @@ rules made ahead of time. So:
 **A pop-up is closed, not prevented.** No rule of Chrome's can stop a page
 opening a window, so Stillwater closes it as soon as it sees where it is
 going: it may show for a moment, and its first request may already have
-left. A tab is watched for ten seconds after a page opens it, and not at
-all once you go somewhere in it by the address bar. A link you click
-yourself that opens a new tab to one of these addresses is closed too, as
-it is by other blockers using these lists. An ad that takes over the tab
+left. A tab is watched for ten seconds after a page opens it: wherever it
+is redirected in that time, and wherever it goes in the two seconds after
+it first shows a page, is taken for the page's doing, since Chrome does
+not say whether a person pressed something. After that a link you press
+in it is yours, and so is anywhere you go by the address bar. A link you
+click yourself that opens a new tab to one of these addresses is closed
+too, as it is by other blockers using these lists. An ad that takes over the tab
 you were in, having moved the page you wanted into a new one, is not
 caught.
 
@@ -113,8 +116,11 @@ like YouTube's where it matters (see `test/e2e/youtube.test.js`), from a
 machine that could not reach YouTube. Whether YouTube still has that shape
 today is unverified. YouTube changes its player often and works against ad
 blockers; expect this part to break first, and to need the *YouTube*
-switch turned off, or `youtube.com` let through, if YouTube objects. A
-player embedded in a site you have let through is left alone only from
+switch turned off, or `youtube.com` let through, if YouTube objects. It
+does not hide what it does: a page that looks can tell that the functions
+it reads its data with have been wrapped. With the switch off, or
+YouTube let through, nothing of that part runs in YouTube's pages at all.
+A player embedded in a site you have let through is left alone only from
 the moment the extension has looked the site up, which is after the
 player has read its first data.
 
@@ -154,7 +160,7 @@ history of either.
 | `declarativeNetRequestFeedback` | Reading Chrome's count of what it blocked on a tab, for the popup. |
 | `storage` | The sites let through and the switches. Kept on this computer. |
 | `webNavigation` | Being told when a page opens a tab or window, and where it goes in its first seconds, so a pop-up ad can be closed. |
-| `scripting` | Adding the style that hides ad slots to a page, and registering the YouTube script only while its switch is on. |
+| `scripting` | Adding the style that hides ad slots to a page, and registering the two YouTube scripts only while their switch is on. |
 | Access to all sites | The content script that reports a page's classes and ids and follows the worded filters. It reads class names, ids, and for worded filters the text of the elements a list points at; none of it leaves the browser. |
 
 ## How it is put together
@@ -189,7 +195,7 @@ test/e2e/     the unpacked extension in Chromium against a stand-in for every ho
 ## Working on it
 
 ```sh
-npm test             # some 75 unit tests, Node alone
+npm test             # some 80 unit tests, Node alone
 npm run build        # lists/ -> build/
 npm run test:e2e     # the unpacked build in Chromium (needs Playwright: npm ci && npx playwright install chromium)
 npm run package      # build, then dist/nullmere-stillwater-<version>.zip

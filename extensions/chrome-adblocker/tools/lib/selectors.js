@@ -31,8 +31,9 @@ export function isBalanced(selector) {
 /**
  * Whether a selector, written into `selector, selector {declarations}`,
  * stays a selector of that rule: balanced, with no block, comment or
- * at-rule of its own, nothing that ends a statement, and no escape left
- * hanging to swallow what is written after it.
+ * at-rule of its own, nothing that ends a statement, no address written
+ * outside quotes, and no escape left hanging to swallow what is written
+ * after it.
  */
 export function isContained(selector) {
   if (!selector || selector.startsWith('@') || /[{}]|\/\*|\*\/|[\n\r\f]/.test(selector) || !isBalanced(selector)) return false;
@@ -47,6 +48,10 @@ export function isContained(selector) {
     } else if (c === '"' || c === "'") {
       quote = c;
     } else if (c === ';') {
+      return false;
+    } else if ((c === 'u' || c === 'U') && /^url\(/i.test(selector.slice(i, i + 4))) {
+      // An unquoted url( reads on to the next ) whatever is between, and a
+      // quote left over after it would then run on into the rule's block.
       return false;
     }
   }

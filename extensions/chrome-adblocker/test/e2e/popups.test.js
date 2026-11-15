@@ -134,6 +134,17 @@ test('a tab the person opens for themselves is theirs, whatever its address', as
   await made.waitForTimeout(400);
   assert.equal(made.isClosed(), false, 'gone to by hand, it is left');
   await made.close();
+
+  // And one in which they press a link, having had the time to read what it showed.
+  server.page('plain.test', '/article', `<!doctype html><title>Article</title><body><a id="on" href="${server.url('popup-only.test', '/landing')}">a link</a></body>`);
+  const [again] = await Promise.all([browser.context.waitForEvent('page'), opener.click('#go')]);
+  await again.waitForLoadState();
+  await again.waitForTimeout(2300);
+  await again.click('#on');
+  await again.waitForURL('**/landing');
+  await again.waitForTimeout(400);
+  assert.equal(again.isClosed(), false, 'a link pressed in it is the person\'s doing');
+  await again.close();
   await opener.close();
 });
 

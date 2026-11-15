@@ -34,13 +34,20 @@
     }
   }
 
+  // The document and its elements are asked through the prototypes' own
+  // methods: a page can make either answer to a name with something else.
+  const find = Function.prototype.call.bind(Document.prototype.querySelector);
+  const findIn = Function.prototype.call.bind(Element.prototype.querySelector);
+  const classOf = Function.prototype.call.bind(Element.prototype.getAttribute);
+
   function look() {
     timer = 0;
-    const player = document.querySelector('.html5-video-player');
+    const player = find(document, '.html5-video-player');
     if (!player) return;
-    const video = player.querySelector('video');
-    if (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting')) {
-      document.querySelector(SKIP)?.click();
+    const video = findIn(player, 'video');
+    const classes = ` ${classOf(player, 'class') ?? ''} `;
+    if (classes.includes(' ad-showing ') || classes.includes(' ad-interrupting ')) {
+      find(document, SKIP)?.click();
       if (!video) return;
       if (wasMuted === null) {
         wasMuted = video.muted;

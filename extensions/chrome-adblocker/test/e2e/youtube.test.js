@@ -45,6 +45,12 @@ const HOSTILE = WATCH.replace(
     document.addEventListener('stillwater:word', (event) => window.heard.push(event.detail));
     window.unanswered = document.dispatchEvent(new CustomEvent('stillwater:word', { detail: 'stillwater:page', cancelable: true }));
     for (const name of ['stillwater:ready', 'stillwater:rest', 'stillwater:page']) document.dispatchEvent(new CustomEvent(name));
+    // And puts its own in place of what the extension's script might use after it has started.
+    window.reached = [];
+    const apply = Reflect.apply;
+    Reflect.apply = function (...given) { window.reached.push('Reflect.apply'); return Object.freeze(apply(...given)); };
+    const iterate = Array.prototype[Symbol.iterator];
+    Array.prototype[Symbol.iterator] = function () { if (this.length === 4 && this[0] === 'adPlacements' && this[3] === 'adBreakHeartbeatParams') { window.reached.push('its list of keys'); this.length = 0; } return iterate.call(this); };
   </script>`,
 );
 
@@ -150,7 +156,32 @@ test('the page can neither overhear the extension\'s two scripts nor tell the on
   assert.deepEqual([seen.initial, seen.parsed, seen.fetched], [KEPT, KEPT, KEPT], 'the ad lists are still taken out');
   assert.deepEqual(await page.evaluate(() => window.heard), ['stillwater:page'], 'it hears only what it said itself');
   assert.equal(await page.evaluate(() => window.unanswered), true, 'and nothing answers it');
+  assert.deepEqual(await page.evaluate(() => window.reached), [], 'what it put in place of the browser\'s own was never used');
   await page.close();
+});
+
+test('a response the page has made unchangeable is given back as a copy without its ad lists', async () => {
+  server.page(HOST, '/frozen', `<!doctype html><body><script>
+    var ytInitialPlayerResponse = Object.freeze(${JSON.stringify(RESPONSE)});
+    window.report = { initial: Object.keys(ytInitialPlayerResponse).sort(), fetched: [] };
+  </script></body>`);
+  const { page } = await open(browser.context, server.url(HOST, '/frozen'));
+  assert.deepEqual(await page.evaluate(() => window.report.initial), KEPT);
+  await page.close();
+});
+
+test('with the YouTube switch off nothing of the extension answers a page that calls for it', async () => {
+  await browser.ask({ type: 'settings:set', patch: { youtube: false } });
+  const { page } = await open(browser.context, server.url(HOST, '/hostile'));
+  const seen = await report(page);
+  assert.deepEqual([seen.initial, seen.fetched], [ALL, ALL], 'the page is as YouTube sent it');
+  assert.equal(await page.evaluate(() => window.unanswered), true, 'its call goes unanswered');
+  await page.waitForTimeout(300);
+  assert.deepEqual(await page.evaluate(() => window.heard), ['stillwater:page'], 'and nothing is said back, then or later');
+  assert.deepEqual(await browser.worker.evaluate(async () => (await chrome.scripting.getRegisteredContentScripts()).map((script) => script.id)), [], 'neither script is registered');
+  await page.close();
+  await browser.ask({ type: 'settings:set', patch: { youtube: true } });
+  assert.deepEqual(await browser.worker.evaluate(async () => (await chrome.scripting.getRegisteredContentScripts()).map((script) => script.id).sort()), ['youtube', 'youtube-main']);
 });
 
 test('a player embedded in another site is handled there too, and left alone where that site is let through', async () => {

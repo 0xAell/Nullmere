@@ -74,7 +74,7 @@ test('closed and started again, the browser has the sites let through, the switc
     assert.deepEqual(now.background, BADGE.unseen, 'the badge is unseen again, as it was left');
     assert.deepEqual(now.dynamic, [1, 3], 'the two rules that let a site through');
     assert.deepEqual(now.lists, ['easylist', 'stillwater'], 'the list switched off is still off');
-    assert.deepEqual(now.scripts, [], 'the YouTube script is not registered while its switch is off');
+    assert.deepEqual(now.scripts, [], 'the YouTube scripts are not registered while their switch is off');
     assert.equal(await keptFrom(browser, 'shop.test'), 0, 'the site let through still is');
     assert.equal(await keptFrom(browser, 'other.test'), 1, 'and another site is still filtered');
 
@@ -111,7 +111,7 @@ test('switched off and on again in chrome://extensions, the extension is as it w
       return state && state.background.join() === BADGE.shown.join() ? state : null;
     }, 'the badge to have its colours again');
     assert.deepEqual(now.dynamic, [1, 3]);
-    assert.deepEqual(now.scripts, ['youtube-main']);
+    assert.deepEqual(now.scripts.sort(), ['youtube', 'youtube-main']);
     assert.equal(await keptFrom(browser, 'shop.test'), 0, 'the site let through still is');
     assert.equal(await keptFrom(browser, 'other.test'), 1, 'and another site is filtered again');
     await cards.close();

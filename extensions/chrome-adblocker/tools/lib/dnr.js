@@ -129,21 +129,32 @@ function framesOf(filter) {
 }
 
 /**
- * A `$csp` filter's `domain=` names the documents the policy is for. For
- * a frame that is the page it is in, which Chrome calls the request's
- * initiator. For a page it is the page's own host, and to Chrome that is
- * the request's domain: its initiator is whichever page held the link
- * that led there. So such a filter is read as two, one for each kind of
- * document. Returns null where that can't be said (`to=` is taken).
+ * A `$csp` filter is for documents, and what it says of them means one
+ * thing for a page and another for a frame, where Chrome's conditions
+ * mean the same for both. So a filter that says either is read as two.
+ *
+ * `domain=` names the documents the policy is for. For a frame that is
+ * the page it is in, which Chrome calls the request's initiator. For a
+ * page it is the page's own host, and to Chrome that is the request's
+ * domain: its initiator is whichever page held the link that led there.
+ *
+ * `third-party` is the document against the page it is in. A frame may
+ * be of another site than its page. A page is never of another site than
+ * itself, where Chrome would compare it with the page before it (or with
+ * nothing, for an address typed): so `~third-party` says nothing of a
+ * page, and `third-party` leaves no page for the filter to be for.
+ *
+ * Returns null where it can't be said (`to=` is taken).
  */
 function byDocument(filter) {
   const named = filter.domains && filter.domains.include.length + filter.domains.exclude.length > 0;
-  if (filter.csp === undefined || !named) return [filter];
+  if (filter.csp === undefined || (!named && filter.thirdParty === null)) return [filter];
   const frames = framesOf(filter);
   const filters = [];
-  if (frames.includes('main_frame')) {
-    if (filter.to) return null;
-    filters.push({ ...filter, types: ['main_frame'], domains: null, to: filter.domains });
+  if (frames.includes('main_frame') && filter.thirdParty !== true) {
+    if (named && filter.to) return null;
+    const page = { ...filter, types: ['main_frame'], thirdParty: null };
+    filters.push(named ? { ...page, domains: null, to: filter.domains } : page);
   }
   if (frames.includes('sub_frame')) filters.push({ ...filter, types: ['sub_frame'] });
   return filters;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { Popups, siteName } from '../../src/shared/popups.js';
+import { LONGEST, Popups, siteName } from '../../src/shared/popups.js';
 import { parseLine } from '../../tools/lib/filters.js';
 import { buildPopups, patternSource } from '../../tools/lib/popups.js';
 
@@ -88,6 +88,28 @@ test('a tab a page opens is closed where the lists name its address, and nowhere
   assert.equal(closes('https://partner.example/', 'site.example'), true);
   // Only addresses of the web are judged.
   for (const url of ['about:blank', '', 'chrome://newtab/', 'data:text/html,x', 'not an address']) assert.equal(closes(url), false, url);
+});
+
+test('a filter that would close every tab a page opens is not taken unless it says whose pages it is for', () => {
+  const { data, count, dropped } = popups('|*|$popup', '/$popup', '|http$popup', '/^https?:/$popup', '*$popup,third-party', '|http*://*?$popup,domain=tracker.example', '$popup,third-party,domain=tracker.example', '@@|http$popup');
+  assert.deepEqual(data.hosts, []);
+  assert.deepEqual(data.patterns.map((entry) => entry.on), [['tracker.example'], ['tracker.example']], 'the two that name a site are kept');
+  assert.equal(data.exceptions.length, 1, 'an exception may be as wide as it likes');
+  assert.equal(count, 3);
+  assert.deepEqual([...dropped], [['popup:too-broad', 5]]);
+});
+
+test('an address too long to try expressions on is judged by its host alone, and quickly', () => {
+  const { match } = popups('||pop.example^$popup', '&sseq=*&dseq=$popup', '@@||pop.example/account/$popup');
+  const long = (host, path = '/') => `https://${host}${path}?${'&sseq='.repeat(60_000)}`;
+  assert.ok(long('other.example').length > LONGEST);
+  const began = performance.now();
+  assert.equal(match.closes(long('other.example'), 'site.example'), false, 'no expression is tried on it');
+  assert.equal(match.closes(long('pop.example'), 'site.example'), true, 'a host the lists name whole is still closed');
+  assert.equal(match.closes(long('pop.example', '/account/'), 'site.example'), false, 'and still excepted by what its beginning shows');
+  assert.ok(performance.now() - began < 500, 'in well under a second, not minutes');
+  // The same pattern on an address of ordinary length still closes it.
+  assert.equal(match.closes('https://other.example/?a=1&sseq=2&dseq=3', 'site.example'), true);
 });
 
 test('lists are read together: an exception in one holds against the others', () => {

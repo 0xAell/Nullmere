@@ -198,6 +198,10 @@ test('a selector that would not stay inside its rule is refused', () => {
   assert.deepEqual(parseLine(kept[2]).selectors, ['.a\\;b']);
   assert.deepEqual(parseLine(kept[3]).selectors, ['.w-1\\/2']);
   assert.equal(parseLine(kept[4]).kind, 'unsupported', 'a brace is refused even in quotes: nothing in the lists needs one');
+  // An address written outside quotes reads on to the next `)` whatever is between.
+  assert.equal(parseLine("example.com##.b:not(url(x')'))").kind, 'unsupported');
+  assert.equal(parseLine('example.com##.b:not(URL(x))').kind, 'unsupported');
+  assert.deepEqual(parseLine('example.com##div[style*="background: url(https://x.example/a.png)"]').selectors, ['div[style*="background: url(https://x.example/a.png)"]'], 'inside quotes it is a string like any other');
   assert.equal(isContained('.a, .b'), true);
   assert.equal(isContained(''), false);
   // A restyling filter's selector is held to the same.

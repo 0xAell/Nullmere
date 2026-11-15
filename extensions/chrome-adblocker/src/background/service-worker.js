@@ -61,27 +61,34 @@ async function apply(settings) {
 const YOUTUBE = ['youtube.com', 'youtube-nocookie.com'];
 
 /**
- * Keeps the script that runs in YouTube's own pages (content/youtube-main.js)
- * registered only while it is wanted, and never for a YouTube host that
- * is let through. It has to be there before the page's first script, so
- * it can't wait to ask.
+ * Keeps the two scripts for YouTube registered only while they are
+ * wanted, and never for a YouTube host that is let through: the one in
+ * the page's own world (content/youtube-main.js), which has to be there
+ * before the page's first script and so can't wait to ask, and the
+ * extension's own beside it (content/youtube.js). They are always there
+ * together or not at all, so neither is ever left waiting for the other
+ * where a page could notice; and with YouTube switched off nothing of
+ * the extension runs in YouTube's pages but what hides ad slots.
  */
 async function applyYouTube(settings) {
-  const id = 'youtube-main';
-  const registered = await chrome.scripting.getRegisteredContentScripts({ ids: [id] });
-  if (registered.length) await chrome.scripting.unregisterContentScripts({ ids: [id] });
+  const ids = ['youtube-main', 'youtube'];
+  const registered = await chrome.scripting.getRegisteredContentScripts({ ids });
+  if (registered.length) await chrome.scripting.unregisterContentScripts({ ids: registered.map((script) => script.id) });
   if (!settings.youtube || settings.paused) return;
-  const script = {
-    id,
-    js: ['content/youtube-main.js'],
+  const where = {
     matches: YOUTUBE.flatMap((host) => [`*://${host}/*`, `*://*.${host}/*`]),
     runAt: 'document_start',
-    world: 'MAIN',
     allFrames: true,
+    // A frame with no address of its own inside YouTube has its own copy
+    // of what the first script wraps, and is given the scripts too.
+    matchOriginAsFallback: true,
   };
   const through = settings.allowlist.filter((site) => YOUTUBE.some((host) => site === host || site.endsWith(`.${host}`)));
-  if (through.length) script.excludeMatches = through.flatMap((site) => [`*://${site}/*`, `*://*.${site}/*`]);
-  await chrome.scripting.registerContentScripts([script]);
+  if (through.length) where.excludeMatches = through.flatMap((site) => [`*://${site}/*`, `*://*.${site}/*`]);
+  await chrome.scripting.registerContentScripts([
+    { ...where, id: 'youtube-main', js: ['content/youtube-main.js'], world: 'MAIN' },
+    { ...where, id: 'youtube', js: ['content/youtube.js'] },
+  ]);
 }
 
 /**
@@ -93,11 +100,11 @@ async function save(settings) {
   const before = await readSettings();
   try {
     await apply(settings);
+    await writeSettings(settings);
   } catch (error) {
     await apply(before).catch(() => {});
     throw error;
   }
-  await writeSettings(settings);
   await paintAll(settings);
 }
 
@@ -158,9 +165,13 @@ chrome.runtime.onInstalled.addListener(wake);
 chrome.runtime.onStartup.addListener(wake);
 wake();
 
-chrome.tabs.onUpdated.addListener(async (tabId, change, tab) => {
+chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
   // A tab's own icon is forgotten when it navigates.
-  if (change.status === 'loading' || change.url !== undefined) await paint(tabId, tab.url, await readSettings());
+  if (change.status === 'loading' || change.url !== undefined) {
+    readSettings()
+      .then((settings) => paint(tabId, tab.url, settings))
+      .catch(() => {});
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -221,7 +232,7 @@ async function cosmeticFor(host, top, sender) {
 
 /** How long a tab a page opened is watched for where it goes. */
 const WATCHED = 10_000;
-/** Tabs pages have opened: tab id to { opener: the host of the page that opened it, since, settled }. */
+/** Tabs pages have opened: tab id to { opener: the host of the page that opened it, since, settled, shown: when it first showed a page }. */
 const opened = new Map();
 
 /** The pop-up filters of the lists now enabled, read once for as long as the worker lives. */
@@ -236,8 +247,12 @@ function popupIndex() {
   return popups;
 }
 
-/** Closes a watched tab if the address it is going to is one the lists name. */
-async function judge(tabId, url) {
+/** Closes a watched tab if the address it is going to is one the lists name. A failure here closes nothing. */
+function judge(tabId, url) {
+  return judged(tabId, url).catch(() => {});
+}
+
+async function judged(tabId, url) {
   const tab = opened.get(tabId);
   if (!tab) return;
   if (Date.now() - tab.since > WATCHED) {
@@ -264,27 +279,40 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener(async (details) => {
   }
   const opener = hostOf(source?.url);
   if (!opener) return;
-  opened.set(details.tabId, { opener, since: Date.now(), settled: false });
+  opened.set(details.tabId, { opener, since: Date.now(), settled: false, shown: 0 });
+  // The address a page opens a tab to is the page's doing. Wherever the
+  // tab goes after that is judged as it arrives, when Chrome says how it
+  // came to go there: an address typed into a tab still empty is not.
   await judge(details.tabId, details.url);
-});
-
-chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-  // Until the tab has shown a page of its own, wherever it sets out for is the page's doing.
-  if (details.frameId === 0 && opened.get(details.tabId)?.settled === false) judge(details.tabId, details.url);
 });
 
 /** Ways of going somewhere that are the person's own doing, not the page's. */
 const BY_HAND = new Set(['typed', 'auto_bookmark', 'generated', 'keyword', 'keyword_generated', 'reload', 'start_page']);
 
+/**
+ * How long after an opened tab first shows a page a move it makes is
+ * still taken for the page's doing. A page that means to send its tab on
+ * does it at once; a person reads before they press a link, and Chrome
+ * does not say which of the two it was.
+ */
+const SENT_ON = 2_000;
+
 chrome.webNavigation.onCommitted.addListener((details) => {
   const tab = opened.get(details.tabId);
   if (details.frameId !== 0 || !tab) return;
-  if (BY_HAND.has(details.transitionType) || details.transitionQualifiers.some((how) => how === 'from_address_bar' || how === 'forward_back')) {
+  const how = details.transitionQualifiers;
+  const byHand = BY_HAND.has(details.transitionType) || how.includes('from_address_bar') || how.includes('forward_back');
+  const redirected = how.includes('client_redirect') || how.includes('server_redirect');
+  const lingered = tab.settled && Date.now() - tab.shown > SENT_ON;
+  if (byHand || (lingered && !redirected)) {
     // The person has taken the tab over: it is theirs from here.
     opened.delete(details.tabId);
     return;
   }
-  if (hostOf(details.url)) tab.settled = true;
+  if (hostOf(details.url) && !tab.settled) {
+    tab.settled = true;
+    tab.shown = Date.now();
+  }
   judge(details.tabId, details.url);
 });
 

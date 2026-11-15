@@ -123,6 +123,23 @@ test('csp with domain= is for those sites\' own pages, and for frames in them', 
   assert.deepEqual([result.rules.length, [...result.dropped]], [0, [['csp:domain-and-to', 1]]]);
 });
 
+test('csp with third-party is for frames of another site, and says nothing of a page', () => {
+  // A page is never of another site than itself. Chrome would compare it with the page
+  // before it, or with nothing for an address typed, and call that another site.
+  const first = rules(["$csp=script-src 'self',domain=a.example,~third-party"]).rules;
+  assert.deepEqual(first.map((rule) => rule.condition), [
+    { resourceTypes: ['main_frame'], requestDomains: ['a.example'] },
+    { resourceTypes: ['sub_frame'], domainType: 'firstParty', initiatorDomains: ['a.example'] },
+  ]);
+  const third = rules(["$csp=script-src 'self',domain=a.example,third-party", "||b.example^$csp=worker-src 'none',third-party"]).rules;
+  assert.deepEqual(third.map((rule) => rule.condition), [
+    { resourceTypes: ['sub_frame'], domainType: 'thirdParty', requestDomains: ['b.example'] },
+    { resourceTypes: ['sub_frame'], domainType: 'thirdParty', initiatorDomains: ['a.example'] },
+  ], 'no rule for a page at all');
+  // Without either, a filter is one rule for both kinds of document, as before.
+  assert.deepEqual(rules(["||c.example^$csp=worker-src 'none'"]).rules.map((rule) => rule.condition), [{ resourceTypes: ['main_frame', 'sub_frame'], requestDomains: ['c.example'] }]);
+});
+
 test('exceptions that only turn hiding off make no rule, and name their hosts', () => {
   const result = rules(['@@||news.example^$generichide', '@@||shop.example^$elemhide', '@@||both.example^$elemhide,generichide', '@@$generichide,domain=by-domain.example', '@@||path.example/page$generichide', '@@||doc.example^$generichide,document']);
   // The last excepts its whole document as well, and with it all hiding there, as Adblock Plus does.

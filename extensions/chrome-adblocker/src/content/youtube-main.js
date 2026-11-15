@@ -6,11 +6,18 @@
 // it, so the player is never told of an ad. It is the approach the uBlock
 // Origin project found; YouTube changes its player often, and has other
 // ways to put an ad in, so this is a best effort that will need mending.
+// It does not hide: a page that looks can tell its functions are wrapped.
 // The switch for it is on the options page.
 
 (() => {
   const AD_KEYS = ['adPlacements', 'adSlots', 'playerAds', 'adBreakHeartbeatParams'];
   let active = true;
+
+  // Everything this script will use is taken now, while it is still what
+  // the browser made: the page's scripts run after this one, and may put
+  // their own in place of any of it.
+  const { apply, defineProperty, deleteProperty, has, ownKeys } = Reflect;
+  const then = Function.prototype.call.bind(Promise.prototype.then);
 
   // The extension's own script in this frame (content/youtube.js) says so
   // if this site is let through after all: a player embedded in a site
@@ -34,22 +41,43 @@
     { once: true },
   );
 
+  /** A response without its ad lists: itself, or a copy where the page has made it one that can't be changed. */
+  function without(response) {
+    let stuck = false;
+    for (let i = 0; i < AD_KEYS.length; i++) {
+      if (has(response, AD_KEYS[i]) && !deleteProperty(response, AD_KEYS[i])) stuck = true;
+    }
+    if (!stuck) return response;
+    const copy = {};
+    const keys = ownKeys(response);
+    for (let i = 0; i < keys.length; i++) {
+      let ad = false;
+      for (let j = 0; j < AD_KEYS.length; j++) ad ||= keys[i] === AD_KEYS[j];
+      if (!ad) copy[keys[i]] = response[keys[i]];
+    }
+    return copy;
+  }
+
   /** Takes the ad lists out of a player response, or of one carried inside another object. */
   function prune(value) {
     if (!active || value === null || typeof value !== 'object') return value;
-    for (const response of [value, value.playerResponse]) {
-      if (response === null || typeof response !== 'object') continue;
-      for (const key of AD_KEYS) {
-        if (key in response) delete response[key];
+    try {
+      const inner = value.playerResponse;
+      if (inner !== null && typeof inner === 'object') {
+        const pruned = without(inner);
+        if (pruned !== inner) value.playerResponse = pruned;
       }
+      return without(value);
+    } catch {
+      // Something that is not what a player response is: left as it came.
+      return value;
     }
-    return value;
   }
 
   // The response written into the page itself.
   let initial;
   try {
-    Object.defineProperty(window, 'ytInitialPlayerResponse', {
+    defineProperty(window, 'ytInitialPlayerResponse', {
       configurable: true,
       enumerable: true,
       get: () => initial,
@@ -63,9 +91,9 @@
 
   // Responses that arrive later, however they are read.
   JSON.parse = new Proxy(JSON.parse, {
-    apply: (target, self, args) => prune(Reflect.apply(target, self, args)),
+    apply: (target, self, args) => prune(apply(target, self, args)),
   });
   Response.prototype.json = new Proxy(Response.prototype.json, {
-    apply: (target, self, args) => Reflect.apply(target, self, args).then(prune),
+    apply: (target, self, args) => then(apply(target, self, args), prune),
   });
 })();

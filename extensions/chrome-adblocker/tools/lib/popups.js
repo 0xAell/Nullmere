@@ -44,6 +44,15 @@ export function patternSource(pattern) {
   return source + end;
 }
 
+/** Addresses with nothing of an ad about them: an expression that matches them all matches anything. */
+const ORDINARY = ['https://example.com/', 'http://news.example.org/story/42', 'https://www.shop.example/basket?item=7#top'];
+
+/** Whether an expression matches every address there is, as far as a few ordinary ones can tell. */
+function matchesAnything(source) {
+  const expression = new RegExp(source, 'i');
+  return ORDINARY.every((url) => expression.test(url));
+}
+
 /**
  * Builds the pop-up data from parsed filters that are for pop-ups.
  * Returns { data, count, dropped }: `count` filters taken, and a Map of
@@ -95,6 +104,12 @@ export function buildPopups(filters) {
       source = '';
     } else {
       source = patternSource(filter.pattern);
+    }
+    // One that would close every tab a page opens, whatever the page, is
+    // not taken on a list's word: it has to say whose pages it is for.
+    if (!filter.exception && !conditions.on && matchesAnything(source)) {
+      drop('popup:too-broad');
+      continue;
     }
     const entry = { re: source, ...conditions };
     if (filter.matchCase) entry.cased = true;

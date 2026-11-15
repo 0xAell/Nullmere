@@ -38,6 +38,12 @@
   const getter = (prototype, name) => bound(Object.getOwnPropertyDescriptor(prototype, name).get);
   const attributeOf = bound(Element.prototype.getAttribute);
   const allIn = bound(Element.prototype.querySelectorAll);
+  // The document answers to the names of images and forms in it the
+  // same way, so it is asked the same way.
+  const allInDocument = bound(Document.prototype.querySelectorAll);
+  const rootOf = getter(Document.prototype, 'documentElement');
+  const stateOf = getter(Document.prototype, 'readyState');
+  const listen = bound(EventTarget.prototype.addEventListener);
   const matches = bound(Element.prototype.matches);
   const nextOf = getter(Element.prototype, 'nextElementSibling');
   const textOf = getter(Node.prototype, 'textContent');
@@ -99,9 +105,13 @@
   function send() {
     timer = 0;
     // A page that keeps bringing new names is answered less often, down to
-    // once a second; one that has been quiet is answered at once again.
+    // once a second; one that then stays quiet for a second is answered
+    // at once again. (This was called `wait` after the first new name, so
+    // the quiet before that name is what is left of the time since the
+    // last lot went.)
     const now = performance.now();
-    wait = now - sent < 500 ? Math.min(1000, wait * 2) : 40;
+    const quiet = now - sent - wait;
+    wait = quiet < 1000 ? Math.min(1000, wait * 2) : 40;
     sent = now;
     // In lots the worker will take, however many a large page has.
     while (waiting.length) ask({ type: 'cosmetic:tokens', host, top, tokens: waiting.splice(0, 4000) });
@@ -159,7 +169,7 @@
     for (const step of steps) {
       if (step.css !== undefined) {
         if (found === null) {
-          found = root ? onward(root, step.css) : [...document.querySelectorAll(step.css)];
+          found = root ? onward(root, step.css) : [...allInDocument(document, step.css)];
         } else {
           const [compound, more] = split(step.css);
           const next = new Set();
@@ -212,10 +222,11 @@
   // --- Watching the document ---------------------------------------------
 
   function watch(generic) {
-    if (generic && document.documentElement) survey(document.documentElement);
+    const root = rootOf(document);
+    if (generic && root) survey(root);
     soon();
     if (plans.length) {
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sweep, { once: true });
+      if (stateOf(document) === 'loading') listen(document, 'DOMContentLoaded', sweep, { once: true });
       else sweep();
     }
     observer = new MutationObserver((changes) => {

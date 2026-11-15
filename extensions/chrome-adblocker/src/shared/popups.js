@@ -13,6 +13,14 @@ export function siteName(host) {
   return labels.slice(-(suffixLength(labels) + 1)).join('.');
 }
 
+/**
+ * The longest address a filter's expression is tried on. An expression
+ * with a wildcard in it takes time that grows with the square of the
+ * address's length, and the address is the page's to choose: one of a
+ * megabyte would hold the worker for minutes.
+ */
+export const LONGEST = 4096;
+
 export class Popups {
   /** `lists`: the pop-up data of each enabled list. An exception in one holds against them all. */
   constructor(lists) {
@@ -44,8 +52,12 @@ export class Popups {
       return false;
     }
     const third = siteName(host) !== siteName(opener);
+    // An address too long to try expressions on is judged by its host
+    // alone, and excepted by what its beginning shows.
+    const short = url.length <= LONGEST;
+    const tried = short ? url : url.slice(0, LONGEST);
     const applies = (entry) =>
-      (entry.third === undefined || entry.third === third) && (!entry.on || covers(entry.on, opener)) && !(entry.notOn && covers(entry.notOn, opener)) && entry.expression.test(url);
-    return (covers(this.hosts, host) || this.patterns.some(applies)) && !this.exceptions.some(applies);
+      (entry.third === undefined || entry.third === third) && (!entry.on || covers(entry.on, opener)) && !(entry.notOn && covers(entry.notOn, opener)) && entry.expression.test(tried);
+    return (covers(this.hosts, host) || (short && this.patterns.some(applies))) && !this.exceptions.some(applies);
   }
 }
