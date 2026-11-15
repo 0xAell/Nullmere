@@ -53,3 +53,9 @@ Blender-authored unit models landed through the day: spearman, archer, lantern-b
 - Rework landed on Nov 14: alliances and chat, first tasks, Academy research and its screen, a second builder, commanders, a richer daytime ground and water, map panning by pointer step, and city-under-attack warnings (tip 390c9ed).
 - Main CI is red on the Mac "Build, test and bundle" job (runs 973, 974, 976); the realm, phone and accessibility jobs pass.
 - Still open: on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
+
+## 2026-11-16
+
+- Late Nov 15 the top priority became a Nullmere-themed Chrome ad blocker in extensions/chrome-adblocker/. Landed on main: packing and its own CI job, every filter kind checked in Chromium, themed popup and options page, text-matching and restyling filters, YouTube handling, README and art, settings that survive restart and update, an independent code review's fixes, pop-up ad closing, and the packed extension kept in the repo (tip of that work 3dd1e35). The Ad blocker CI job is green on it.
+- Also landed: 1ff0d03 "Realm: the day's work" (daily realm rules); its Realm rules run was still in progress at time of writing.
+- Still open: the ad blocker is not yet called done; on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
