@@ -2,7 +2,7 @@
 //! real time, gathering what lies at a site, and carrying it home.
 
 use super::{
-    siege::{self, may_scout},
+    siege::{self, may_reinforce, may_scout},
     asking, besiege, boost, break_peace, city_of, engage, fought, goods, keep_troop, leader_for, leading_of, may_attack, may_hunt, realm, release, seen_by_leader,
     set_goods, settle, spend_energy, stormed, troop, Refusal,
 };
@@ -135,6 +135,7 @@ pub fn send_led(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked
         March::HUNT => may_hunt(db, player, to)?.id,
         March::ATTACK => may_attack(db, player, to)?.id,
         March::SCOUT => may_scout(db, player, to, city.id)?.id,
+        March::REINFORCE => may_reinforce(db, player, to)?.id,
         _ => return Err(Refusal::NoSuchOrder),
     };
     // What was asked, each kind and tier once.
@@ -271,6 +272,16 @@ pub fn arrive(db: &mut impl Db, march: u64) {
                 db.update(march);
             } else {
                 // Cleared already, or another army is at it: home again.
+                let way = way_back(&march);
+                turn_home(db, march, way);
+            }
+        }
+        March::GOING if march.kind == March::REINFORCE => {
+            // Soldiers who reach an ally's city stay in it; the rest of the way is theirs no more.
+            if siege::reinforced(db, &march) {
+                release(db, &march);
+                Table::<March>::delete(db, march.id);
+            } else {
                 let way = way_back(&march);
                 turn_home(db, march, way);
             }

@@ -129,6 +129,8 @@ impl March {
     pub const ATTACK: u8 = 3;
     /// To see what a city's garrison is, from its walls, without a fight.
     pub const SCOUT: u8 = 4;
+    /// To join an ally's city as its garrison, and stay there.
+    pub const REINFORCE: u8 = 5;
 
     pub const GOING: u8 = 1;
     pub const WORKING: u8 = 2;
@@ -499,6 +501,9 @@ impl Report {
     /// What the player's scouts saw of another's city: `stood` is how many
     /// soldiers were ready in it, and `foe` its owner's number.
     pub const SCOUTED: u8 = 5;
+    /// An ally's soldiers have joined the player's city as its garrison:
+    /// `foe` is the ally's number, and `stood` how many came.
+    pub const REINFORCED: u8 = 6;
 }
 
 /// An alliance of players. Everyone may read it.

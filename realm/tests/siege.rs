@@ -316,3 +316,31 @@ fn scouts_from_a_scout_camp_see_a_garrison_and_come_home_unhurt() {
     let home = Table::<March>::get(&db, march.id).unwrap();
     assert_eq!((home.state, home.soldiers), (March::RETURNING, 1));
 }
+
+#[test]
+fn an_ally_sends_soldiers_to_reinforce_a_city_and_they_stay_in_it() {
+    let (mut db, (ada, hers), (bryn, _his)) = neighbours(&[(Troops::Spearmen, 1, 300)], &[(Troops::Spearmen, 1, 5)]);
+    // Not allies: no soldiers may join the other's garrison.
+    assert_eq!(db.call(|db| rules::send(db, ada, Hex::unpacked(_his.hex), March::REINFORCE, &spears(100))), Err(Refusal::NotAnAlly));
+    assert_eq!(db.call(|db| rules::send(db, ada, Hex::unpacked(hers.hex), March::REINFORCE, &spears(100))), Err(Refusal::OwnCity));
+
+    // Ada founds an alliance; Bryn joins it at once.
+    let city = rules::city_of(&db, ada).unwrap();
+    db.insert(Building { id: 0, city: city.id, kind: Kind::Embassy as u8, level: 1 });
+    let alliance = db.call(|db| rules::found_alliance(db, ada, "Keepers", "KEP")).unwrap();
+    db.call(|db| rules::join_alliance(db, bryn, alliance.id)).unwrap();
+
+    let march = db.call(|db| rules::send(db, ada, Hex::unpacked(_his.hex), March::REINFORCE, &spears(100))).unwrap();
+    assert_eq!((march.kind, march.soldiers), (March::REINFORCE, 100));
+    until(&mut db, march.arrives);
+
+    // The soldiers are in Bryn's garrison, ready; the march is gone; Bryn is told.
+    let garrison: u64 = Table::<Troop>::by(&db, 0, _his.id).iter().map(|row| row.ready).sum();
+    assert_eq!(garrison, 105, "five there, and the hundred who came");
+    assert!(Table::<March>::get(&db, march.id).is_none(), "they stay, and the march is over");
+    let told = reports(&db, bryn).pop().unwrap();
+    assert_eq!((told.kind, told.foe, told.stood), (Report::REINFORCED, ada, 100));
+    assert_eq!(told.words, "Ada's army joined your city's garrison with 100 soldiers.");
+    assert_eq!(Table::<Troop>::by(&db, 0, hers.id).iter().map(|row| row.ready).sum::<u64>(), 200);
+    let _ = bryn;
+}

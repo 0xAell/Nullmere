@@ -120,6 +120,8 @@ pub enum Refusal {
     AtPeace(i64),
     /// A city of the player's own alliance.
     AllysCity,
+    /// Only an ally's city may be reinforced.
+    NotAnAlly,
     AlreadyAllied,
     NotAllied,
     NoSuchAlliance,
@@ -245,6 +247,7 @@ impl fmt::Display for Refusal {
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",
             Refusal::OwnCity => "That is your own city.",
+            Refusal::NotAnAlly => "Only an ally's city can be reinforced.",
             Refusal::NotTheOwner => "Only the realm's owner may do that.",
             _ => "",
         })

@@ -1,7 +1,7 @@
 //! A city under attack: another player's army at its walls, the fight,
 //! what is carried off, and the peace that follows.
 
-use super::{allied, building_of, fallen, fight_learned, goods, leading_of, led, load, mastery, seen_by_leader, keep_troop, realm, reckon, report, room_for_wounded, set_goods, settle, squads, Refusal, MOST_ROUNDS};
+use super::{allied, building_of, fallen, fight_learned, goods, leading_of, led, load, mastery, seen_by_leader, keep_troop, realm, reckon, report, room_for_wounded, set_goods, settle, squads, troop, Refusal, MOST_ROUNDS};
 use crate::catalog::{self, Building as Kind, Goods, Troops, Unit};
 use crate::hex::Hex;
 use crate::rows::{City, Db, Haul, March, Place, Player, Report, Squad, Troop};
@@ -92,6 +92,66 @@ pub(super) fn scouted(db: &mut impl Db, march: &March) {
             read: false,
         },
     );
+}
+
+/// Whether a player may send soldiers to reinforce the city at a hex: one
+/// stands there, it is an ally's, and it is not the player's own.
+pub(super) fn may_reinforce(db: &impl Db, player: u64, to: Hex) -> Result<City, Refusal> {
+    let city = city_at(db, to).ok_or(Refusal::NoCityThere)?;
+    if city.owner == player {
+        return Err(Refusal::OwnCity);
+    }
+    if !allied(db, player, city.owner) {
+        return Err(Refusal::NotAnAlly);
+    }
+    Ok(city)
+}
+
+/// Soldiers who reached an ally's city join its garrison, ready, and stay
+/// there. False if the city is gone, or no longer an ally's: then they
+/// march home instead.
+pub(super) fn reinforced(db: &mut impl Db, march: &March) -> bool {
+    let Some(city) = Table::<City>::get(db, march.target) else { return false };
+    if !allied(db, march.owner, city.owner) {
+        return false;
+    }
+    let mut came = 0;
+    for squad in squads(db, march.id) {
+        if let Some(kind) = Troops::of(squad.kind) {
+            let mut row = troop(db, city.id, kind, squad.tier);
+            row.ready += squad.count;
+            keep_troop(db, row);
+            came += squad.count;
+        }
+        Table::<Squad>::delete(db, squad.id);
+    }
+    let now = db.now();
+    let words = format!("{}'s army joined your city's garrison with {} soldiers.", name_of(db, march.owner), catalog::grouped(came));
+    report(
+        db,
+        Report {
+            id: 0,
+            player: city.owner,
+            at: now,
+            kind: Report::REINFORCED,
+            hex: city.hex,
+            won: true,
+            foe: march.owner,
+            rounds: 0,
+            fought: 0,
+            wounded: 0,
+            dead: 0,
+            stood: came,
+            fell: 0,
+            grain: 0,
+            timber: 0,
+            stone: 0,
+            moonsalt: 0,
+            words,
+            read: false,
+        },
+    );
+    true
 }
 
 /// The owner of a city is warned when an army sets out against it: whose
