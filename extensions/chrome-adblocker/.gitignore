@@ -3,4 +3,3 @@ build/
 build-test/
 test-results/
 *.log
-dist/

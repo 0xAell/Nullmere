@@ -368,8 +368,9 @@ const fromExtension = {
     return stateOf(tabId);
   },
 
+  /** Asked in turn, so it is never answered from the middle of a change. */
   async overview() {
-    return overview();
+    return inTurn(() => overview());
   },
 
   /** Lets a site through, or stops letting it; reloads the tab that asked, so the choice shows. */

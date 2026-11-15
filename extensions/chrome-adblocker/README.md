@@ -63,7 +63,7 @@ front. Press it for the popup:
 | **Blocks requests** | 135,154 filters from EasyList, EasyPrivacy and a short list of Stillwater's own become 12,977 rules for Chrome's `declarativeNetRequest`, inside the 30,000 Chrome guarantees every extension. Filters for whole hosts are merged, so 94,309 hosts are blocked by 184 of those rules. |
 | **Hides ad slots** | 30,934 selectors. A site's own are applied as its pages begin. The 13,637 generic ones are not thrown at every page: a content script tells the extension which classes and ids a page has, and only the selectors that could match are added. They are added as the user's own style, so a page's `!important` can't undo them. |
 | **Follows worded filters** | 283 filters pick an element by the words in it (*hide the card whose label says Sponsored*). No style sheet can; the content script follows them as short plans. |
-| **Closes pop-up ads** | 2,977 filters name the addresses of pop-up ads. A tab or window a page opens to one is closed: at once if it is opened straight there, or as it gets there if it is opened empty or by way of another address. A tab you open yourself is never touched. |
+| **Closes pop-up ads** | 2,977 filters name the addresses of pop-up ads. A tab or window a page opens to one is closed: at once if it is opened straight there, or as it gets there if it is opened empty or by way of another address. A tab you open yourself (a new tab, a bookmark, an address you type) is never touched. |
 | **Lets sites through** | Per site, from the popup or the options page, subdomains included. |
 | **YouTube** | Takes the ad lists out of the data YouTube's player reads, skips or runs out an ad that plays anyway, and hides promoted tiles. Best effort: see below. |
 | **Sends nothing anywhere** | The extension makes no request of its own. No account, no telemetry, no remote code, no "acceptable ads". |
@@ -113,7 +113,10 @@ like YouTube's where it matters (see `test/e2e/youtube.test.js`), from a
 machine that could not reach YouTube. Whether YouTube still has that shape
 today is unverified. YouTube changes its player often and works against ad
 blockers; expect this part to break first, and to need the *YouTube*
-switch turned off, or `youtube.com` let through, if YouTube objects.
+switch turned off, or `youtube.com` let through, if YouTube objects. A
+player embedded in a site you have let through is left alone only from
+the moment the extension has looked the site up, which is after the
+player has read its first data.
 
 **The count is Chrome's.** Chrome counts what it blocked on each tab and
 starts afresh as a navigation finishes. A request blocked in a page's very
@@ -177,8 +180,9 @@ test/e2e/     the unpacked extension in Chromium against a stand-in for every ho
   hundred expressions; `src/shared/popups.js` judges an address by them.
 - `src/background/service-worker.js` keeps three dynamic rules (the sites
   let through, and the pause), chooses what each frame hides, closes the
-  pop-ups, and answers the pages. It holds nothing that can't be made
-  again, since Chrome stops it when idle.
+  pop-ups, and answers the pages. Chrome stops it when idle, so it holds
+  nothing it can't make again, but for which tabs pages have opened in
+  the last ten seconds.
 - The icons are drawn by `tools/make-icons.js` from a few shapes: nothing
   is traced or taken from anywhere.
 

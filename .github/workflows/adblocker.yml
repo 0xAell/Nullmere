@@ -2,7 +2,8 @@
 # extensions/chrome-adblocker: its unit tests, its build from the pinned
 # filter lists, and the browser tests that load the unpacked extension in
 # Chromium and check that ads are blocked and their slots hidden on
-# fixture pages. The packed extension is kept from every run.
+# fixture pages. The packed extension kept in dist/ is held to a fresh
+# build, and kept from every run.
 name: Ad blocker
 
 on:
@@ -52,11 +53,14 @@ jobs:
       - name: Build from the pinned lists
         run: npm run build
 
-      - name: Browser tests on the unpacked extension
-        run: npm run test:e2e
+      # The zip kept in dist/ is what people install: it must hold exactly
+      # what these sources build, file for file. Checked before the browser
+      # tests, one of which unpacks that zip and loads it.
+      - name: The packed extension in dist/ is a fresh build
+        run: node tools/package.js --check
 
-      - name: Pack
-        run: npm run package
+      - name: Browser tests on the unpacked extension, and on the zip unpacked
+        run: npm run test:e2e
 
       - name: Keep the packed extension
         uses: actions/upload-artifact@v6
