@@ -294,8 +294,11 @@ check("and it can't be called away", call(bryn, "recall", hunting["id"]), "That 
 until("the fight ends and it turns for home", lambda: [m["state"] for m in rows(nobody, "SELECT * FROM march")] == [3], 60)
 told = rows(bryn, "SELECT * FROM my_reports")
 check("its player is told how it went", [(r["won"], r["foe"], r["fought"], r["stood"], r["fell"], r["dead"], r["read"]) for r in told], [(True, 1, 70, 25, 25, 0, False)])
-# As much of the barrow's 800 grain and 800 timber as those still standing carry, twelve each.
-carried = min(800, (70 - told[0]["wounded"]) * 12 // 2)
+# As much of the barrow's 800 grain and 800 timber as those still standing carry, twelve each,
+# and more by the leader's bonus: a gleaner (way 6) carries five hundredths and one more a level,
+# and this commander is still at level 1. The way is chosen by the realm's seed, so it is read.
+carries = 5 + 1 if captains[0]["way"] == 6 else 0
+carried = min(800, (70 - told[0]["wounded"]) * 12 * (100 + carries) // 100 // 2)
 check("in plain words", told[0]["words"], f"Your army cleared a level 1 barrow of the Unquiet. Of your 70 soldiers, {told[0]['wounded']} {'was' if told[0]['wounded'] == 1 else 'were'} wounded. It is bringing home {carried} grain and {carried} timber.")
 check("and it carries the spoils", [(h["grain"], h["timber"]) for h in rows(bryn, "SELECT * FROM my_hauls")], [(carried, carried)])
 check("and no one else is", rows(ada, "SELECT * FROM my_reports"), [])
