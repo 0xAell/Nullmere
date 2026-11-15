@@ -37,15 +37,25 @@ async function main() {
 
   const press = async () => {
     if (!state.filterable) return;
-    if (state.paused) await ask({ type: 'settings:set', patch: { paused: false } });
-    else await ask({ type: 'site:set', site: state.site, allowed: !state.allowed, tabId });
-    await refresh();
+    try {
+      if (state.paused) await ask({ type: 'settings:set', patch: { paused: false } });
+      else await ask({ type: 'site:set', site: state.site, allowed: !state.allowed, tabId });
+      await refresh();
+    } catch (error) {
+      $('words').textContent = `Stillwater could not do that: ${error.message ?? error}`;
+    }
   };
   $('moon').addEventListener('click', press);
   $('act').addEventListener('click', press);
 
+  // The options page, in the tab it already has if it is open.
+  $('options').addEventListener('click', (event) => {
+    event.preventDefault();
+    chrome.runtime.openOptionsPage();
+  });
+
   // The count goes on rising while the page loads.
-  setInterval(refresh, 1000);
+  setInterval(() => refresh().catch(() => {}), 1000);
 }
 
 main();

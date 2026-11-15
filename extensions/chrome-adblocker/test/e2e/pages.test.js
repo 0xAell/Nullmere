@@ -191,6 +191,36 @@ test('putting everything back as installed is asked twice, and does it', async (
   await page.close();
 });
 
+test('a switch pressed from the keyboard keeps the keyboard, and a change made elsewhere shows on the page', async () => {
+  const page = await optionsPage();
+  await page.focus('#switches li:nth-child(3) .switch');
+  await page.keyboard.press('Space');
+  await until(async () => (await switches(page, 'switches'))[2][1] === 'false', 'the switch to turn off');
+  assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Count on the icon', 'still on the switch that was pressed');
+  await page.keyboard.press('Space');
+  await until(async () => (await switches(page, 'switches'))[2][1] === 'true', 'the switch to turn back on');
+
+  // From the popup's side, while the options page is open.
+  await browser.ask({ type: 'site:set', site: 'elsewhere.test', allowed: true });
+  await until(() => page.evaluate(() => [...document.querySelectorAll('#sites .title')].some((title) => title.textContent === 'elsewhere.test')), 'the site let through elsewhere to be listed');
+  // Taking the last site back gives the keyboard to the field.
+  await page.focus('#sites li:first-child button');
+  await page.keyboard.press('Enter');
+  await until(() => page.evaluate(() => document.querySelector('#sites .empty') !== null), 'the list to empty');
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'site-input');
+  assert.equal(await page.textContent('#problem'), '');
+  await page.close();
+});
+
+test('a big page\'s classes are sent in lots, and its slots still hidden', async () => {
+  // More classes than one message may carry, and after them all one EasyList hides everywhere.
+  const classes = Array.from({ length: 25000 }, (_, index) => `<i class="c${index}"></i>`).join('');
+  server.page('big.test', '/', `<!doctype html><body>${classes}<div id="slot" class="ad--banner">ad</div></body>`);
+  const { page } = await open(browser.context, server.url('big.test'));
+  await until(() => page.evaluate(() => getComputedStyle(document.getElementById('slot')).display === 'none'), 'the slot on the big page to be hidden');
+  await page.close();
+});
+
 test('the options page says what it cannot do with the build\'s own numbers, and names the lists\' authors', async () => {
   const page = await optionsPage();
   const limits = await page.evaluate(() => [...document.querySelectorAll('#limits li')].map((item) => item.textContent));

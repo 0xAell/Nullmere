@@ -54,10 +54,8 @@
 
   function send() {
     timer = 0;
-    if (!waiting.length) return;
-    const tokens = waiting;
-    waiting = [];
-    ask({ type: 'cosmetic:tokens', host, tokens });
+    // In lots the worker will take, however many a large page has.
+    while (waiting.length) ask({ type: 'cosmetic:tokens', host, tokens: waiting.splice(0, 4000) });
   }
 
   function soon() {

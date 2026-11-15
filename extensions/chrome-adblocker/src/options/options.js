@@ -29,42 +29,67 @@ function row(title, detail, control) {
 }
 
 let overview = null;
+const switches = { lists: new Map(), settings: new Map() };
 
-function show() {
-  const { settings, enabled, lists, version } = overview;
+/** Says what went wrong where it will be read, and heard. */
+function problem(error) {
+  $('problem').textContent = error ? `Stillwater could not do that: ${error.message ?? error}` : '';
+}
 
+/** Asks the worker for something that changes what is shown, and shows what came of it. */
+async function change(message) {
+  try {
+    const answer = await ask(message);
+    overview = answer.lists ? answer : { ...overview, settings: answer.settings };
+    problem(null);
+  } catch (error) {
+    problem(error);
+  }
+  show();
+}
+
+/** Lays the page out, once. What changes after is changed in place, so a switch just pressed keeps the keyboard. */
+function lay() {
+  const { lists, version } = overview;
   $('lists').replaceChildren(
-    ...lists.lists.map((list) =>
-      row(list.title, listDetail(list), switchFor(list.title, enabled.includes(list.id), async (on) => {
-        overview = await ask({ type: 'ruleset:set', id: list.id, enabled: on });
-        show();
-      })),
-    ),
+    ...lists.lists.map((list) => {
+      const control = switchFor(list.title, false, (on) => change({ type: 'ruleset:set', id: list.id, enabled: on }));
+      switches.lists.set(list.id, control);
+      return row(list.title, listDetail(list), control);
+    }),
   );
-  $('lists-foot').textContent = sourceWords(lists, enabled);
-
-  const sites = settings.allowlist.map((site) => {
-    const remove = make('button', { className: 'caps act quiet-act', type: 'button', text: 'Still again', 'aria-label': `Stop letting ${site} through` });
-    remove.addEventListener('click', () => change({ type: 'site:set', site, allowed: false }));
-    return make('li', {}, [make('div', { className: 'about' }, [make('p', { className: 'title', text: site })]), remove]);
-  });
-  $('sites').replaceChildren(...(sites.length ? sites : [make('li', {}, [make('p', { className: 'detail empty', text: 'No site is let through.' })])]));
-
   $('switches').replaceChildren(
-    ...SWITCHES.map(({ key, title, detail }) => row(title, detail, switchFor(title, settings[key], (on) => change({ type: 'settings:set', patch: { [key]: on } })))),
+    ...SWITCHES.map(({ key, title, detail }) => {
+      const control = switchFor(title, false, (on) => change({ type: 'settings:set', patch: { [key]: on } }));
+      switches.settings.set(key, control);
+      return row(title, detail, control);
+    }),
   );
-
-  $('limits').replaceChildren(
-    ...limitWords(lists).map(([lead, rest]) => make('li', {}, [make('strong', { text: lead }), ` ${rest}`])),
-  );
+  $('limits').replaceChildren(...limitWords(lists).map(([lead, rest]) => make('li', {}, [make('strong', { text: lead }), ` ${rest}`])));
   $('about').textContent = `Nullmere Stillwater ${version}.`;
 }
 
-/** Asks the worker for a change to the settings and shows what came of it. */
-async function change(message) {
-  const answer = await ask(message);
-  overview = { ...overview, settings: answer.settings };
-  show();
+function show() {
+  const { settings, enabled, lists } = overview;
+  for (const [id, control] of switches.lists) control.setAttribute('aria-checked', String(enabled.includes(id)));
+  for (const [key, control] of switches.settings) control.setAttribute('aria-checked', String(settings[key]));
+  $('lists-foot').textContent = sourceWords(lists, enabled);
+
+  // The sites: laid out afresh only when they have changed.
+  const listed = [...$('sites').querySelectorAll('.title')].map((title) => title.textContent);
+  if (listed.join('\n') === settings.allowlist.join('\n') && $('sites').children.length) return;
+  const sites = settings.allowlist.map((site) => {
+    const remove = make('button', { className: 'caps act quiet-act', type: 'button', text: 'Still again', 'aria-label': `Stop letting ${site} through` });
+    remove.addEventListener('click', async () => {
+      const after = settings.allowlist[settings.allowlist.indexOf(site) + 1];
+      await change({ type: 'site:set', site, allowed: false });
+      // The keyboard goes to the site that took this one's place, or to the field.
+      const next = [...$('sites').querySelectorAll('button')].find((button) => button.getAttribute('aria-label') === `Stop letting ${after} through`);
+      (next ?? $('site-input')).focus();
+    });
+    return make('li', {}, [make('div', { className: 'about' }, [make('p', { className: 'title', text: site })]), remove]);
+  });
+  $('sites').replaceChildren(...(sites.length ? sites : [make('li', {}, [make('p', { className: 'detail empty', text: 'No site is let through.' })])]));
 }
 
 $('site-form').addEventListener('submit', async (event) => {
@@ -96,10 +121,16 @@ $('reset').addEventListener('click', async () => {
   }
   armed = 0;
   $('reset').textContent = 'Put everything back as installed';
-  overview = await ask({ type: 'reset' });
-  show();
+  await change({ type: 'reset' });
 });
 
 overview = await ask({ type: 'overview' });
+lay();
 show();
 document.body.dataset.ready = 'true';
+
+// A change made elsewhere (the popup, another window) shows here too.
+chrome.storage.onChanged.addListener(async () => {
+  overview = await ask({ type: 'overview' });
+  show();
+});
