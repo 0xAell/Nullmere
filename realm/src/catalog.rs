@@ -846,6 +846,56 @@ pub fn chest_items(chest: u8) -> Vec<(Item, u64)> {
     }
 }
 
+/// A contest of the realm: something every player may score in while it
+/// runs, with prizes for those who score enough. It comes round again
+/// every so many days and lasts the first few of them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Contest {
+    /// Barrows of the Unquiet cleared: ten points for each level of each.
+    Hunt = 1,
+}
+
+impl Contest {
+    pub const ALL: [Contest; 1] = [Contest::Hunt];
+
+    pub fn of(code: u8) -> Option<Contest> {
+        Contest::ALL.into_iter().find(|contest| *contest as u8 == code)
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Contest::Hunt => "The Long Hunt",
+        }
+    }
+
+    /// How it is scored, in a player's words.
+    pub fn words(self) -> &'static str {
+        match self {
+            Contest::Hunt => "Clear barrows of the Unquiet: ten points for each level of each one you clear.",
+        }
+    }
+
+    /// Every how many days of the realm it comes round, and for how many
+    /// of them it runs.
+    pub fn round(self) -> (u64, u64) {
+        match self {
+            Contest::Hunt => (7, 3),
+        }
+    }
+
+    /// Its prizes, least first: the points each asks, the goods and the
+    /// hastes it gives.
+    pub fn prizes(self) -> Vec<(u64, Goods, Vec<(Item, u64)>)> {
+        match self {
+            Contest::Hunt => vec![
+                (100, Goods::of(3_000, 3_000, 1_500, 0), vec![(Item::Haste5, 2)]),
+                (400, Goods::of(8_000, 8_000, 4_000, 0), vec![(Item::Haste60, 1)]),
+                (1_000, Goods::of(20_000, 20_000, 10_000, 300), vec![(Item::Haste480, 1)]),
+            ],
+        }
+    }
+}
+
 /// The highest favour rises.
 pub const TOP_FAVOUR: u32 = 10;
 

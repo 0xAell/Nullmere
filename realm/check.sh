@@ -266,6 +266,14 @@ check("a satchel begins empty, and is its owner's alone to read", (rows(ada, "SE
 check("a haste a player has not got is refused", call(ada, "use_item", 1, 1), "No such work is under way in your city.")
 check("and a thing that is no item", call(ada, "use_item", 9, 1), "There is no such thing to use.")
 
+# The realm's contests: the Long Hunt, running as the realm opens.
+trials = rows(nobody, "SELECT * FROM trial")
+prizes = sorted(rows(nobody, "SELECT * FROM prize"), key=lambda prize: prize["place"])
+check("the contests and their prizes are written out for all to read", ([(trial["name"], trial["every"], trial["lasts"]) for trial in trials], [prize["points"] for prize in prizes]), ([("The Long Hunt", 7, 3)], [100, 400, 1000]))
+check("a prize not yet earned is refused", call(ada, "claim_prize", 1, 1), "That prize is for 100 points.")
+check("and one that is not there", call(ada, "claim_prize", 1, 9), "There is no such prize.")
+check("no one reads another's tallies", isinstance(rows(ada, "SELECT * FROM tally"), str), True)
+
 # Commanders: one to begin with, more from a Tavern.
 captains = rows(bryn, "SELECT * FROM my_commanders")
 check("a player begins with one commander, in the city", [(c["level"], c["march"], 1 <= c["way"] <= 6, len(c["name"]) >= 4) for c in captains], [(1, 0, True, True)])

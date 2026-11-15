@@ -663,6 +663,73 @@ pub struct Chest {
 }
 row!(Chest in chest, by id);
 
+/// A contest of the realm, for clients to show: how it is scored, every
+/// how many days it comes round and for how many of them it runs. Keyed
+/// by contest.
+#[spacetimedb::table(accessor = trial, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Trial {
+    #[primary_key]
+    pub id: u64,
+    pub name: String,
+    pub words: String,
+    pub every: u64,
+    pub lasts: u64,
+}
+row!(Trial in trial, by id);
+
+/// A prize of a contest, for clients to show: the points it asks and what
+/// it gives. Keyed by contest and its place among that contest's prizes,
+/// from 1.
+#[spacetimedb::table(accessor = prize, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Prize {
+    #[primary_key]
+    pub id: u64,
+    pub trial: u8,
+    pub place: u8,
+    pub points: u64,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+    pub haste5: u64,
+    pub haste60: u64,
+    pub haste480: u64,
+}
+row!(Prize in prize, by id);
+
+impl Prize {
+    pub fn key(trial: u8, place: u8) -> u64 {
+        ((trial as u64) << 8) | place as u64
+    }
+}
+
+/// What a player has scored in a contest's round: theirs alone to read.
+/// Keyed by player and contest. It holds for the round it names, and is
+/// begun afresh when they score in a later one.
+#[spacetimedb::table(accessor = tally)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Tally {
+    #[primary_key]
+    pub id: u64,
+    #[index(btree)]
+    pub player: u64,
+    pub trial: u8,
+    /// Which coming-round of the contest these were scored in, from 0.
+    pub round: u64,
+    pub points: u64,
+    /// Which prizes have been claimed: a bit for each, the first the lowest.
+    pub claimed: u8,
+}
+row!(Tally in tally, by id, player);
+
+impl Tally {
+    pub fn key(player: u64, trial: u8) -> u64 {
+        (player << 8) | trial as u64
+    }
+}
+
 /// An item, for clients to show: its name, what it does, and the time it
 /// takes off a work as written (in a realm that runs faster, as much less
 /// as everything there takes less). Keyed by item.
@@ -847,6 +914,9 @@ pub trait Db:
     + Table<Favour>
     + Table<Ware>
     + Table<Satchel>
+    + Table<Trial>
+    + Table<Prize>
+    + Table<Tally>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -888,6 +958,9 @@ impl<
             + Table<Favour>
             + Table<Ware>
             + Table<Satchel>
+            + Table<Trial>
+            + Table<Prize>
+            + Table<Tally>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

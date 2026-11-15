@@ -1,6 +1,6 @@
 //! Opening the realm, joining it, and being seen in it.
 
-use super::{enlist, found, hunt_of, keep_hunt, reckon, scatter_barrows, scatter_sites, write_days, write_graces, write_studies, write_tasks, write_wares, Refusal};
+use super::{enlist, found, hunt_of, keep_hunt, reckon, scatter_barrows, scatter_sites, write_days, write_graces, write_studies, write_tasks, write_trials, write_wares, Refusal};
 use crate::catalog::{self, Building, Troops};
 use crate::land;
 use crate::rows::{Blueprint, City, Db, Hunt, Land, Pace, Player, Progress, Realm, Soldier};
@@ -33,6 +33,7 @@ pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
     write_days(db);
     write_graces(db);
     write_wares(db);
+    write_trials(db);
     scatter_sites(db);
     scatter_barrows(db);
 }

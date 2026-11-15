@@ -18,6 +18,7 @@ mod march;
 mod siege;
 mod study;
 mod tasks;
+mod trials;
 
 pub use alliance::*;
 pub use army::*;
@@ -32,6 +33,7 @@ pub use march::*;
 pub use siege::*;
 pub use study::*;
 pub use tasks::*;
+pub use trials::*;
 
 use crate::catalog::{Building, Goods, Topic, Troops};
 use crate::rows::Db;
@@ -172,6 +174,10 @@ pub enum Refusal {
     NoTasksLeft,
     NoSuchChest,
     NoSuchItem,
+    NoSuchPrize,
+    /// The prize asks more points than the player has scored this round: how many it asks.
+    PrizeNotEarned(u64),
+    PrizeClaimed,
     /// The player has none of the item they would use.
     NoneLeft,
     /// The chest asks more marks than the player has earned today: how many it asks.
@@ -208,6 +214,7 @@ impl fmt::Display for Refusal {
             Refusal::NothingMoreToLearn(topic) => return write!(f, "You have learnt all there is of {}.", topic.name()),
             Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
             Refusal::ChestNotEarned(marks) => return write!(f, "That chest opens at {marks} marks of the day's work."),
+            Refusal::PrizeNotEarned(points) => return write!(f, "That prize is for {} points.", crate::catalog::grouped(*points)),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
             Refusal::NoFreeMarch(1) => return write!(f, "Your one army is out. Raise your Keep to send more."),
             Refusal::NoFreeMarch(most) => return write!(f, "All {most} of your armies are out."),
@@ -265,6 +272,8 @@ impl fmt::Display for Refusal {
             Refusal::NoTasksLeft => "You have done every task there is.",
             Refusal::NoSuchChest => "There is no such chest.",
             Refusal::NoSuchItem => "There is no such thing to use.",
+            Refusal::NoSuchPrize => "There is no such prize.",
+            Refusal::PrizeClaimed => "You have claimed that prize this round.",
             Refusal::NoneLeft => "You have none of that left.",
             Refusal::ChestOpened => "You have opened that chest today.",
             Refusal::NoSuchTopic => "There is no such study.",
