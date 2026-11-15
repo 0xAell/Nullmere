@@ -183,6 +183,8 @@ export function toRules(filters, options = {}) {
   const grouped = new Map();
   const single = [];
   const hide = { elemhide: new Set(), generichide: new Set() };
+  // Hosts whose every page is excepted, by the priority of the exception.
+  const excepted = new Map();
 
   for (const filter of filters) {
     const url = urlPart(filter, rejected);
@@ -216,6 +218,10 @@ export function toRules(filters, options = {}) {
     for (const { action, priority, types } of actions) {
       const rule = { action, condition: { ...base, ...types } };
       if (priority !== PRIORITY.normal) rule.priority = priority;
+      if (action.type === 'allowAllRequests' && url.host && !base.initiatorDomains && !base.domainType) {
+        if (!excepted.has(priority)) excepted.set(priority, []);
+        excepted.get(priority).push(url.host);
+      }
       if (url.host) {
         const key = JSON.stringify(rule);
         if (!grouped.has(key)) grouped.set(key, { rule, hosts: [] });
@@ -235,6 +241,16 @@ export function toRules(filters, options = {}) {
     const { rule, hosts } = grouped.get(key);
     rule.condition.requestDomains = withoutCovered(hosts);
     rules.push({ id: id++, ...rule });
+  }
+  // Chrome works out which frames an allowAllRequests rule covers as each
+  // navigation finishes, and a request a page makes in its first instant
+  // can be judged before it has (seen in this extension's own tests). So
+  // where a whole host is excepted, whatever its documents ask for is
+  // allowed by a rule that needs no such bookkeeping as well.
+  for (const priority of [...excepted.keys()].sort((a, b) => a - b)) {
+    const rule = { id: id++, action: { type: 'allow' }, condition: { initiatorDomains: withoutCovered(excepted.get(priority)) } };
+    if (priority !== PRIORITY.normal) rule.priority = priority;
+    rules.push(rule);
   }
   // Filters written twice (a list repeats some across its sections) are one rule.
   const seen = new Set();

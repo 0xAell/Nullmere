@@ -48,12 +48,19 @@ test('domain= becomes the initiators, included and excluded', () => {
 });
 
 test('exceptions allow; one for a document allows everything in it', () => {
-  const { rules: out } = rules(['@@||site.example/player.js$script', '@@||trusted.example^$document', '@@||mixed.example^$document,script']);
-  assert.deepEqual(out.find((rule) => rule.condition.urlFilter).action, { type: 'allow' });
+  const { rules: out } = rules(['@@||site.example/player.js$script', '@@||trusted.example^$document', '@@||mixed.example^$document,script', '@@||paged.example/app/$document']);
+  assert.deepEqual(out.find((rule) => rule.condition.urlFilter === '||site.example/player.js').action, { type: 'allow' });
   const whole = out.filter((rule) => rule.action.type === 'allowAllRequests');
-  assert.deepEqual(whole.map((rule) => rule.condition), [{ resourceTypes: ['main_frame', 'sub_frame'], requestDomains: ['mixed.example', 'trusted.example'] }]);
+  assert.deepEqual(whole.map((rule) => rule.condition), [
+    { resourceTypes: ['main_frame', 'sub_frame'], requestDomains: ['mixed.example', 'trusted.example'] },
+    { resourceTypes: ['main_frame', 'sub_frame'], urlFilter: '||paged.example/app/' },
+  ]);
   const script = out.find((rule) => rule.action.type === 'allow' && rule.condition.requestDomains);
   assert.deepEqual(script.condition, { resourceTypes: ['script'], requestDomains: ['mixed.example'] });
+  // Where a whole host is excepted, what its documents ask for is allowed outright too;
+  // an exception for some of a host's pages can't be said that way, and is left as it is.
+  const asked = out.filter((rule) => rule.action.type === 'allow' && rule.condition.initiatorDomains);
+  assert.deepEqual(asked.map((rule) => rule.condition), [{ initiatorDomains: ['mixed.example', 'trusted.example'] }]);
 });
 
 test('important blocks outrank exceptions', () => {
@@ -75,7 +82,7 @@ test('csp adds a response header on documents and frames; its exception allows t
 test('exceptions that only turn hiding off make no rule, and name their hosts', () => {
   const result = rules(['@@||news.example^$generichide', '@@||shop.example^$elemhide', '@@||both.example^$elemhide,generichide', '@@$generichide,domain=by-domain.example', '@@||path.example/page$generichide', '@@||doc.example^$generichide,document']);
   assert.deepEqual(result.hide, { elemhide: ['both.example', 'shop.example'], generichide: ['both.example', 'by-domain.example', 'doc.example', 'news.example'] });
-  assert.deepEqual(result.rules.map((rule) => [rule.action.type, rule.condition.requestDomains]), [['allowAllRequests', ['doc.example']]]);
+  assert.deepEqual(result.rules.map((rule) => [rule.action.type, rule.condition.requestDomains ?? rule.condition.initiatorDomains]), [['allowAllRequests', ['doc.example']], ['allow', ['doc.example']]]);
   assert.deepEqual([...result.dropped], [['hide-exception:pattern', 1]]);
 });
 
