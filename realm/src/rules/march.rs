@@ -3,10 +3,10 @@
 
 use super::{
     siege::{self, may_reinforce, may_scout},
-    asking, besiege, boost, break_peace, city_of, engage, fought, goods, keep_troop, leader_for, leading_of, may_attack, may_hunt, realm, release, seen_by_leader,
+    asking, besiege, boost, break_peace, city_of, did, engage, fought, goods, keep_troop, leader_for, leading_of, may_attack, may_hunt, realm, release, seen_by_leader,
     set_goods, settle, spend_energy, stormed, troop, Refusal,
 };
-use crate::catalog::{self, Goods, Topic, Troops, TOP_TIER};
+use crate::catalog::{self, Deed, Goods, Topic, Troops, TOP_TIER};
 use crate::hex::{self, Hex};
 use crate::land::{self, Ground};
 use crate::rows::{City, Commander, Db, Haul, March, Place, Site, Squad};
@@ -366,6 +366,7 @@ fn home(db: &mut impl Db, march: &March) {
             let more = goods(&stock).plus(Goods::of(haul.grain, haul.timber, haul.stone, haul.moonsalt));
             set_goods(&mut stock, more);
             db.update(stock);
+            did(db, march.owner, Deed::Gather, haul.grain + haul.timber + haul.stone + haul.moonsalt);
         }
         Table::<Haul>::delete(db, march.id);
     }

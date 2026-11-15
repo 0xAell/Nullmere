@@ -631,6 +631,54 @@ pub struct Progress {
 }
 row!(Progress in progress, by player);
 
+/// A deed of the day's work, for clients to show: what it asks and the
+/// marks it earns. Keyed by deed.
+#[spacetimedb::table(accessor = duty, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Duty {
+    #[primary_key]
+    pub deed: u64,
+    pub asks: u64,
+    pub marks: u32,
+    pub words: String,
+}
+row!(Duty in duty, by deed);
+
+/// One of the day's chests, for clients to show: the marks it asks and
+/// what it holds. Keyed by its place among them, from 1.
+#[spacetimedb::table(accessor = chest, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Chest {
+    #[primary_key]
+    pub id: u64,
+    pub marks: u32,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+}
+row!(Chest in chest, by id);
+
+/// What a player has done of the day's work: theirs alone to read. Keyed
+/// by player. It holds for the day it names, and is begun afresh the
+/// first time they do something on a later one.
+#[spacetimedb::table(accessor = daily)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Daily {
+    #[primary_key]
+    pub player: u64,
+    /// The day of the realm these were done on, counted from its opening.
+    pub day: u64,
+    pub trained: u64,
+    pub gathered: u64,
+    pub cleared: u64,
+    pub begun: u64,
+    pub hastened: u64,
+    /// Which chests have been opened: a bit for each, the first the lowest.
+    pub opened: u8,
+}
+row!(Daily in daily, by player);
+
 /// What a city has learnt of a topic: its owner's alone to read. Keyed
 /// by city and topic.
 #[spacetimedb::table(accessor = lore)]
@@ -730,6 +778,9 @@ pub trait Db:
     + Table<AllianceChat>
     + Table<Task>
     + Table<Progress>
+    + Table<Duty>
+    + Table<Chest>
+    + Table<Daily>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -764,6 +815,9 @@ impl<
             + Table<AllianceChat>
             + Table<Task>
             + Table<Progress>
+            + Table<Duty>
+            + Table<Chest>
+            + Table<Daily>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

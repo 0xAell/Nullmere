@@ -2,8 +2,8 @@
 //! the barrows of the Unquiet that players clear, and the energy that
 //! takes; the wounded and their healing; and the reports of what happened.
 
-use super::{asking, boost, city_of, goods, keep_troop, leading_of, load, mastery, realm, seen_by_leader, set_goods, settle, squads, troop, Mastery, Refusal, TIMER_JOB};
-use crate::catalog::{self, Building as Kind, Goods, Topic, Troops, Unit, TOP_TIER};
+use super::{asking, boost, city_of, did, goods, keep_troop, leading_of, load, mastery, realm, seen_by_leader, set_goods, settle, squads, troop, Mastery, Refusal, TIMER_JOB};
+use crate::catalog::{self, Building as Kind, Deed, Goods, Topic, Troops, Unit, TOP_TIER};
 use crate::hex::Hex;
 use crate::land::{self, Ground};
 use crate::rows::{Barrow, Building, Db, Hunt, Job, March, Place, Report, Squad, Troop};
@@ -290,6 +290,7 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
         let mut hunt = hunt_of(db, march.owner);
         hunt.cleared = hunt.cleared.max(barrow.level);
         keep_hunt(db, hunt);
+        did(db, march.owner, Deed::Clear, 1);
     } else {
         // The Unquiet who fell rise again: the barrow stands as it stood.
         barrow.fighter = 0;

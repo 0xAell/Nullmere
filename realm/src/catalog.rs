@@ -738,6 +738,65 @@ pub fn tasks() -> Vec<(Goal, Goods)> {
     ]
 }
 
+/// A deed of the day's work: something every player may do each day of
+/// the realm, counted from the day's beginning.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Deed {
+    /// Soldiers set to train.
+    Train = 1,
+    /// Goods brought home from the land.
+    Gather = 2,
+    /// Barrows of the Unquiet cleared.
+    Clear = 3,
+    /// Works begun: a building raised or a study taken up.
+    Begin = 4,
+    /// Works hastened, one's own or an ally's.
+    Hasten = 5,
+}
+
+impl Deed {
+    pub const ALL: [Deed; 5] = [Deed::Train, Deed::Gather, Deed::Clear, Deed::Begin, Deed::Hasten];
+
+    pub fn of(code: u8) -> Option<Deed> {
+        Deed::ALL.into_iter().find(|deed| *deed as u8 == code)
+    }
+
+    /// How much of it the day asks.
+    pub fn asks(self) -> u64 {
+        match self {
+            Deed::Train => 50,
+            Deed::Gather => 5_000,
+            Deed::Clear => 1,
+            Deed::Begin => 2,
+            Deed::Hasten => 1,
+        }
+    }
+
+    /// The marks it earns when done: all five make a hundred.
+    pub fn marks(self) -> u32 {
+        20
+    }
+
+    /// The deed in a player's words.
+    pub fn words(self) -> String {
+        match self {
+            Deed::Train => format!("Set {} soldiers to train.", grouped(self.asks())),
+            Deed::Gather => format!("Bring home {} goods from the land.", grouped(self.asks())),
+            Deed::Clear => "Clear a barrow of the Unquiet.".to_string(),
+            Deed::Begin => "Begin two works: raise a building, or take up a study.".to_string(),
+            Deed::Hasten => "Hasten a work, your own or an ally's.".to_string(),
+        }
+    }
+}
+
+/// How long a day of the realm lasts, at the written pace.
+pub const DAY: i64 = 86_400;
+
+/// The day's chests: the marks each asks, and what it holds.
+pub fn chests() -> [(u32, Goods); 3] {
+    [(40, Goods::of(2_000, 2_000, 1_000, 0)), (70, Goods::of(5_000, 5_000, 2_500, 0)), (100, Goods::of(10_000, 10_000, 5_000, 200))]
+}
+
 /// What an Academy studies. Each topic is learnt level by level, and
 /// each level adds the same again to what it gives.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

@@ -243,6 +243,16 @@ check("and gives what it promised", (rows(ada, "SELECT * FROM my_stock")[0]["gra
 check("the next is not done yet", call(ada, "claim_task"), "Not done yet: Build a Barracks.")
 check("no one reads another's progress", isinstance(rows(ada, "SELECT * FROM progress"), str), True)
 
+# The day's work: five deeds and three chests, the same for everyone.
+duties = rows(nobody, "SELECT * FROM duty")
+chests = rows(nobody, "SELECT * FROM chest")
+check("the day's deeds and chests are written out for all to read", (len(duties), sum(duty["marks"] for duty in duties), sorted(chest["marks"] for chest in chests)), (5, 100, [40, 70, 100]))
+today = rows(ada, "SELECT * FROM my_daily")
+check("what a player has begun today is counted", (len(today), today[0]["begun"] >= 1 if today else None), (1, True))
+check("a chest not yet earned is refused", call(ada, "open_chest", 3), "That chest opens at 100 marks of the day's work.")
+check("and one that is not there", call(ada, "open_chest", 9), "There is no such chest.")
+check("no one reads another's day", isinstance(rows(ada, "SELECT * FROM daily"), str), True)
+
 # Commanders: one to begin with, more from a Tavern.
 captains = rows(bryn, "SELECT * FROM my_commanders")
 check("a player begins with one commander, in the city", [(c["level"], c["march"], 1 <= c["way"] <= 6, len(c["name"]) >= 4) for c in captains], [(1, 0, True, True)])

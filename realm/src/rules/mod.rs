@@ -10,6 +10,7 @@ mod army;
 mod battle;
 mod city;
 mod command;
+mod daily;
 mod entry;
 mod march;
 mod siege;
@@ -21,6 +22,7 @@ pub use army::*;
 pub use battle::*;
 pub use city::*;
 pub use command::*;
+pub use daily::*;
 pub use entry::*;
 pub use march::*;
 pub use siege::*;
@@ -164,6 +166,10 @@ pub enum Refusal {
     /// The task the player is on is not done: what it asks.
     TaskNotDone(String),
     NoTasksLeft,
+    NoSuchChest,
+    /// The chest asks more marks than the player has earned today: how many it asks.
+    ChestNotEarned(u32),
+    ChestOpened,
     /// Something only the realm's owner may do.
     NotTheOwner,
 }
@@ -194,6 +200,7 @@ impl fmt::Display for Refusal {
             Refusal::CommanderAway(name) => return write!(f, "{name} is out with another army."),
             Refusal::NothingMoreToLearn(topic) => return write!(f, "You have learnt all there is of {}.", topic.name()),
             Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
+            Refusal::ChestNotEarned(marks) => return write!(f, "That chest opens at {marks} marks of the day's work."),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
             Refusal::NoFreeMarch(1) => return write!(f, "Your one army is out. Raise your Keep to send more."),
             Refusal::NoFreeMarch(most) => return write!(f, "All {most} of your armies are out."),
@@ -249,6 +256,8 @@ impl fmt::Display for Refusal {
             Refusal::SaidTooLong => "That is too long to say at once: 200 letters at most.",
             Refusal::SayingTooFast => "Wait a moment before you say more.",
             Refusal::NoTasksLeft => "You have done every task there is.",
+            Refusal::NoSuchChest => "There is no such chest.",
+            Refusal::ChestOpened => "You have opened that chest today.",
             Refusal::NoSuchTopic => "There is no such study.",
             Refusal::NoSuchCommander => "You have no such commander.",
             Refusal::NoMoreCommanders => "Your city keeps as many commanders as it can.",

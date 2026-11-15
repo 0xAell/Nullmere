@@ -1,7 +1,7 @@
 //! Cities: founding one, raising its buildings on timers, and its goods.
 
 use super::{asking, boost, clear_for_city, healed, marching_power, realm, sooner, studied, trained, troop_power, Refusal};
-use crate::catalog::{self, Building as Kind, Goods, Topic, TOP_LEVEL};
+use crate::catalog::{self, Building as Kind, Deed, Goods, Topic, TOP_LEVEL};
 use crate::hex::Hex;
 use crate::land;
 use crate::rows::{Building, City, Db, Job, Place, Player, Stock};
@@ -212,6 +212,7 @@ fn raise(db: &mut impl Db, city: &City, building: &Building, kind: Kind, level: 
     let mut job = db.insert(Job { id: 0, city: city.id, kind: Job::RAISE, subject: building.id, level, amount: 0, started: now, ends, timer: 0 });
     job.timer = db.after(ends, TIMER_JOB, job.id);
     db.update(job.clone());
+    super::did(db, city.owner, Deed::Begin, 1);
     Ok(job)
 }
 
@@ -346,5 +347,6 @@ pub fn speed_up(db: &mut impl Db, player: u64, job: u64) -> Result<Job, Refusal>
     job.ends = now + (left - left / 4);
     job.timer = db.after(job.ends, TIMER_JOB, job.id);
     db.update(job.clone());
+    super::did(db, player, Deed::Hasten, 1);
     Ok(job)
 }
