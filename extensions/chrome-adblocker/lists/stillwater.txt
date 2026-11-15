@@ -8,3 +8,18 @@
 ! by the same tools. Kept small on purpose. What a filter here was checked
 ! against is said in the README; none is claimed to be more than that.
 !
+! --- YouTube ---
+! Slots beside the player and above the feed that EasyList's own YouTube
+! filters do not name. Written from YouTube's markup as it was known when
+! this list was written, and not checked against the live site from where
+! Stillwater is built: a filter for an element that is no longer there
+! does nothing.
+youtube.com###player-ads
+youtube.com###masthead-ad
+youtube.com##ytd-companion-slot-renderer
+youtube.com##ytd-action-companion-ad-renderer
+youtube.com##ytd-player-legacy-desktop-watch-ads-renderer
+youtube.com##ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads"]
+youtube.com##.ytp-ad-overlay-container
+m.youtube.com##ytm-companion-ad-renderer
+m.youtube.com##ytm-promoted-sparkles-web-renderer

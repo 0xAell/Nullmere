@@ -27,6 +27,33 @@ async function apply(settings) {
   await dnr.setExtensionActionOptions({ displayActionCountAsBadgeText: true });
   await chrome.action.setBadgeBackgroundColor({ color: settings.badge ? [22, 35, 58, 255] : [0, 0, 0, 0] });
   await chrome.action.setBadgeTextColor({ color: settings.badge ? [228, 234, 242, 255] : [0, 0, 0, 1] });
+  await applyYouTube(settings);
+}
+
+const YOUTUBE = ['youtube.com', 'youtube-nocookie.com'];
+
+/**
+ * Keeps the script that runs in YouTube's own pages (content/youtube-main.js)
+ * registered only while it is wanted, and never for a YouTube host that
+ * is let through. It has to be there before the page's first script, so
+ * it can't wait to ask.
+ */
+async function applyYouTube(settings) {
+  const id = 'youtube-main';
+  const registered = await chrome.scripting.getRegisteredContentScripts({ ids: [id] });
+  if (registered.length) await chrome.scripting.unregisterContentScripts({ ids: [id] });
+  if (!settings.youtube || settings.paused) return;
+  const script = {
+    id,
+    js: ['content/youtube-main.js'],
+    matches: YOUTUBE.flatMap((host) => [`*://${host}/*`, `*://*.${host}/*`]),
+    runAt: 'document_start',
+    world: 'MAIN',
+    allFrames: true,
+  };
+  const through = settings.allowlist.filter((site) => YOUTUBE.some((host) => site === host || site.endsWith(`.${host}`)));
+  if (through.length) script.excludeMatches = through.flatMap((site) => [`*://${site}/*`, `*://*.${site}/*`]);
+  await chrome.scripting.registerContentScripts([script]);
 }
 
 async function save(settings) {
@@ -134,6 +161,13 @@ const fromPage = {
     if (!active) return { active: false, generic: false };
     await hide(sender, lookup.selectorsFor(String(host), { generic }), lookup.stylesFor(String(host)));
     return { active, generic, procedural: lookup.proceduralFor(String(host)) };
+  },
+
+  /** A YouTube frame asks whether to get its ads over with. */
+  async 'youtube:start'(message, sender) {
+    const settings = await readSettings();
+    const through = isAllowed(settings.allowlist, hostOf(sender.tab?.url)) || isAllowed(settings.allowlist, hostOf(sender.url));
+    return { active: settings.youtube && !settings.paused && !through };
   },
 
   /** Classes and ids a document has: hide what the generic filters say of them. */

@@ -3,8 +3,10 @@
 // tracker (Chromium is told to find every name at 127.0.0.1), recording
 // which requests reached it.
 
+import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { createServer as createSecureServer } from 'node:https';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -18,16 +20,56 @@ export const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 const GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
 
+/** A WAV file of so many seconds of silence: something for a <video> to have a length. */
+function silence(seconds) {
+  const rate = 8000;
+  const samples = rate * seconds;
+  const wav = Buffer.alloc(44 + samples, 128);
+  wav.write('RIFF', 0, 'latin1');
+  wav.writeUInt32LE(36 + samples, 4);
+  wav.write('WAVEfmt ', 8, 'latin1');
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20); // PCM
+  wav.writeUInt16LE(1, 22); // one channel
+  wav.writeUInt32LE(rate, 24);
+  wav.writeUInt32LE(rate, 28);
+  wav.writeUInt16LE(1, 32);
+  wav.writeUInt16LE(8, 34); // bits a sample
+  wav.write('data', 36, 'latin1');
+  wav.writeUInt32LE(samples, 40);
+  return wav;
+}
+
+let made = null;
+
+/**
+ * A certificate signed by no one, made with openssl for the life of the
+ * tests: some hosts (YouTube's among them) Chromium will only ask over
+ * HTTPS, so their stand-in has to speak it. Chromium is told not to mind.
+ */
+function certificate() {
+  if (made) return made;
+  const directory = mkdtempSync(join(tmpdir(), 'stillwater-cert-'));
+  try {
+    execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2', '-subj', '/CN=stillwater.test', '-keyout', join(directory, 'key.pem'), '-out', join(directory, 'cert.pem')], { stdio: 'ignore' });
+    made = { key: readFileSync(join(directory, 'key.pem')), cert: readFileSync(join(directory, 'cert.pem')) };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+  return made;
+}
+
 /**
  * Starts the stand-in server. `hits` lists `host/path` of every request
  * that arrived. A page is given with page(host, path, html); anything else
  * is answered by its extension: a script that records itself in
  * `window.ran`, a one-pixel image, an empty style sheet, a small document.
  */
-export async function startServer() {
+export async function startServer({ secure = false } = {}) {
   const hits = [];
   const pages = new Map();
-  const server = createServer((request, response) => {
+  const create = secure ? (handler) => createSecureServer(certificate(), handler) : createServer;
+  const server = create((request, response) => {
     const host = (request.headers.host ?? '').replace(/:\d+$/, '');
     const { pathname } = new URL(request.url, 'http://local');
     hits.push(`${host}${pathname}`);
@@ -39,6 +81,16 @@ export async function startServer() {
     if (page) send(page.type, page.body, page.headers);
     else if (pathname.endsWith('.js')) send('application/javascript', `(window.ran ??= []).push(${JSON.stringify(`${host}${pathname}`)});`);
     else if (/\.(gif|png|jpg|jpeg|webp)$/.test(pathname)) send('image/gif', GIF);
+    else if (pathname.endsWith('.wav')) {
+      // In ranges, as a player asks for media it means to seek in.
+      const sound = silence(4);
+      const range = /^bytes=(\d+)-(\d*)$/.exec(request.headers.range ?? '');
+      if (!range) return send('audio/wav', sound, { 'accept-ranges': 'bytes' });
+      const from = Number(range[1]);
+      const to = range[2] ? Math.min(Number(range[2]), sound.length - 1) : sound.length - 1;
+      response.writeHead(206, { 'content-type': 'audio/wav', 'accept-ranges': 'bytes', 'content-range': `bytes ${from}-${to}/${sound.length}`, 'content-length': to - from + 1 });
+      response.end(sound.subarray(from, to + 1));
+    }
     else if (pathname.endsWith('.css')) send('text/css', '');
     else if (pathname.endsWith('.json')) send('application/json', '{}');
     else send('text/html', `<!doctype html><title>${host}</title><body><p>${host}${pathname}</p></body>`);
@@ -49,7 +101,7 @@ export async function startServer() {
     port,
     hits,
     /** The address of a path on a host, as the browser is to ask for it. */
-    url: (host, path = '/') => `http://${host}:${port}${path}`,
+    url: (host, path = '/') => `${secure ? 'https' : 'http'}://${host}:${port}${path}`,
     page(host, path, body, { type = 'text/html', headers = {} } = {}) {
       pages.set(`${host}${path}`, { type, body, headers });
     },
@@ -67,7 +119,7 @@ export async function startServer() {
  * the extension's service worker, `ask` sends it a message as one of the
  * extension's own pages would.
  */
-export async function launch(directory = join(root, 'build')) {
+export async function launch(directory = join(root, 'build'), { insecure = false } = {}) {
   const profile = mkdtempSync(join(tmpdir(), 'stillwater-'));
   const context = await chromium.launchPersistentContext(profile, {
     // The new headless mode is the one that loads extensions; Playwright's
@@ -78,9 +130,13 @@ export async function launch(directory = join(root, 'build')) {
       '--headless=new',
       `--disable-extensions-except=${directory}`,
       `--load-extension=${directory}`,
-      // Every name is the stand-in server.
+      // Every name is the stand-in server, asked directly: nothing here
+      // goes out to the network, whatever proxy the machine is set to use.
       '--host-resolver-rules=MAP * 127.0.0.1',
+      '--no-proxy-server',
       '--disable-features=HttpsUpgrades,HttpsFirstBalancedModeAutoEnable',
+      // For the stand-in of a host Chromium will only ask over HTTPS.
+      ...(insecure ? ['--ignore-certificate-errors'] : []),
     ],
   });
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
