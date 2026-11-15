@@ -36,6 +36,7 @@ export const PAGES = [
   { name: 'Wikipedia (no ads)', url: 'https://en.wikipedia.org/wiki/Lake' },
   { name: 'GitHub (no ads)', url: 'https://github.com/' },
   { name: 'YouTube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', youtube: true },
+  { name: 'YouTube, embedded', url: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1', youtube: true },
 ];
 
 const AD_KEYS = ['adPlacements', 'adSlots', 'playerAds', 'adBreakHeartbeatParams'];
@@ -89,7 +90,7 @@ async function start(directory) {
 /** What a page came to: whether it loaded, what it asked for, what was kept back, what it shows. */
 async function visit(browser, page, hosts) {
   const tab = await browser.context.newPage();
-  const seen = { requests: 0, toBlockedHosts: 0, blocked: 0, blockedHosts: new Map(), errors: 0, said: [] };
+  const seen = { requests: 0, toBlockedHosts: 0, blocked: 0, blockedHosts: new Map(), blockedFirstParty: [], errors: 0, said: [] };
   tab.on('request', (request) => {
     seen.requests++;
     try {
@@ -102,12 +103,30 @@ async function visit(browser, page, hosts) {
     if (request.failure()?.errorText !== 'net::ERR_BLOCKED_BY_CLIENT') return;
     seen.blocked++;
     try {
-      const host = new URL(request.url()).hostname;
+      const address = new URL(request.url());
+      const host = address.hostname;
       seen.blockedHosts.set(host, (seen.blockedHosts.get(host) ?? 0) + 1);
+      // What was kept back from the site's own hosts: where a filter might have taken too much.
+      const site = new URL(page.url).hostname.split('.').slice(-2).join('.');
+      if (host === site || host.endsWith(`.${site}`)) {
+        if (seen.blockedFirstParty.length < 5) seen.blockedFirstParty.push(`${host}${address.pathname}`.slice(0, 120));
+      }
     } catch {
       // As above.
     }
   });
+  if (page.youtube) {
+    tab.on('response', (response) => {
+      if (!response.url().includes('/youtubei/v1/player')) return;
+      response
+        .json()
+        .then((json) => {
+          seen.fetchedAdKeys = AD_KEYS.filter((key) => key in json);
+          seen.fetched = true;
+        })
+        .catch(() => {});
+    });
+  }
   tab.on('pageerror', (error) => {
     seen.errors++;
     if (seen.said.length < 4) seen.said.push(String(error.message ?? error).split('\n')[0].slice(0, 140));
@@ -119,16 +138,32 @@ async function visit(browser, page, hosts) {
     await tab.waitForLoadState('load', { timeout: 20_000 }).catch(() => {});
     await tab.waitForTimeout(SETTLE);
     result.title = (await tab.title()).slice(0, 80);
-    // Frames big enough to be ad slots, as they show on the page now.
-    result.frames = await tab.evaluate(() =>
-      [...document.querySelectorAll('iframe')].filter((frame) => {
-        const box = frame.getBoundingClientRect();
-        const style = getComputedStyle(frame);
-        return box.width * box.height >= 10_000 && style.display !== 'none' && style.visibility !== 'hidden';
-      }).length,
+    // Frames big enough to be ad slots, as they show on the page now, and where each is from.
+    const shown = await tab.evaluate(() =>
+      [...document.querySelectorAll('iframe')]
+        .filter((frame) => {
+          const box = frame.getBoundingClientRect();
+          const style = getComputedStyle(frame);
+          return box.width * box.height >= 10_000 && style.display !== 'none' && style.visibility !== 'hidden';
+        })
+        .map((frame) => {
+          try {
+            return frame.src ? new URL(frame.src).hostname || frame.src.slice(0, 20) : '(no address)';
+          } catch {
+            return '(no address)';
+          }
+        }),
     );
+    result.frames = shown.length;
+    result.frameHosts = shown;
     result.words = await tab.evaluate(() => (document.body?.innerText ?? '').length);
-    if (page.youtube) result.youtube = await youtube(tab);
+    if (page.youtube) {
+      result.youtube = await youtube(tab);
+      // What YouTube sent when the player asked for its data, as it came over the wire:
+      // the extension changes what the page reads, not what is sent.
+      result.youtube.fetched = Boolean(seen.fetched);
+      result.youtube.fetchedAdKeys = seen.fetchedAdKeys ?? [];
+    }
     if (browser.worker) {
       const tabId = await browser.worker.evaluate(async (url) => (await chrome.tabs.query({})).find((one) => one.url === url)?.id, tab.url());
       result.badge = tabId ? Number(await browser.worker.evaluate((id) => chrome.action.getBadgeText({ tabId: id }), tabId)) || 0 : null;
@@ -136,7 +171,7 @@ async function visit(browser, page, hosts) {
   } catch (error) {
     result.failed = String(error.message ?? error).split('\n')[0].slice(0, 160);
   }
-  Object.assign(result, { requests: seen.requests, toBlockedHosts: seen.toBlockedHosts, blocked: seen.blocked, errors: seen.errors, said: seen.said });
+  Object.assign(result, { requests: seen.requests, toBlockedHosts: seen.toBlockedHosts, blocked: seen.blocked, errors: seen.errors, said: seen.said, ownKeptBack: seen.blockedFirstParty });
   result.topBlocked = [...seen.blockedHosts].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([host, count]) => `${host} ${count}`);
   await Promise.race([tab.close(), new Promise((done) => setTimeout(done, 5_000))]);
   // As it goes, so that a run cut short still says what it saw.
@@ -215,12 +250,13 @@ function errorWords(withExtension, without) {
 }
 
 function youtubeWords(one, other) {
-  if (!one.youtube || !other.youtube) return 'YouTube: the watch page did not load in one of the two runs.';
+  if (!one.youtube || !other.youtube) return `${one.name ?? 'YouTube'}: the page did not load in one of the two runs.`;
   const say = (run) =>
     run.response
       ? `the player's response came through (${run.playable ?? 'no status'}), with ${run.adKeys.length ? `its ad lists: ${run.adKeys.join(', ')}` : 'no ad lists in it'}; an ad ${run.adShowing ? 'showed' : 'did not show'} in ten seconds; video ${run.video ? (run.playing ? 'playing' : 'present, not playing') : 'absent'}`
       : `no player response was found on the page (${run.written ? 'though the page as sent had one' : 'nor in the page as sent'}; player ${run.player ? 'present' : 'absent'})`;
-  return `YouTube, without the extension: ${say(other)}; titled "${other.title ?? ''}".\n\nYouTube, with it: ${say(one)}; titled "${one.title ?? ''}".`;
+  const wire = (run) => (run.fetched ? `the player fetched its data, which came ${run.fetchedAdKeys.length ? `with ad lists (${run.fetchedAdKeys.join(', ')})` : 'with no ad lists'}` : 'the player fetched no data');
+  return `${one.name}, without the extension: ${say(other)}; ${wire(other)}; titled "${other.title ?? ''}".\n\n${one.name}, with it: ${say(one)}; ${wire(one)}; titled "${one.title ?? ''}".`;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -263,9 +299,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     '',
     errorWords(withExtension, without),
     '',
-    youtubeWords(withExtension.find((one) => one.youtube) ?? {}, without.find((one) => one.youtube) ?? {}),
+    ...withExtension.flatMap((one, index) => (one.youtube !== undefined || PAGES.find((page) => page.name === one.name)?.youtube ? [youtubeWords(one, without[index]), ''] : [])),
     '',
     `Most kept back, by host: ${withExtension.filter((one) => one.topBlocked.length).map((one) => `${one.name}: ${one.topBlocked.join(', ')}`).join('; ') || 'nothing'}.`,
+    '',
+    `Ad-sized frames still showing with the extension, by where they are from: ${withExtension.filter((one) => one.frames).map((one) => `${one.name}: ${one.frameHosts.join(', ')}`).join('; ') || 'none'}.`,
+    '',
+    `Kept back from a site's own hosts (where a filter might take too much): ${withExtension.filter((one) => one.ownKeptBack.length).map((one) => `${one.name}: ${one.ownKeptBack.map((url) => `\`${url}\``).join(', ')}`).join('; ') || 'nothing'}.`,
     '',
     `What Chromium holds against the extension: ${held ? JSON.stringify(held) : 'not asked (no extensions page)'}.`,
   ].join('\n');
