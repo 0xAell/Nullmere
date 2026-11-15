@@ -1,0 +1,25 @@
+{
+  "regex": [
+    "(https?:\\/\\/)104\\.154\\..{100,}",
+    "(https?:\\/\\/)104\\.197\\..{100,}",
+    "(https?:\\/\\/)104\\.198\\..{100,}",
+    "(https?:\\/\\/)130\\.211\\..{100,}",
+    "(https?:\\/\\/)142\\.91\\.159\\..{100,}",
+    "(https?:\\/\\/)213\\.32\\.115\\..{100,}",
+    "(https?:\\/\\/)216\\.21\\..{100,}",
+    "(https?:\\/\\/)217\\.182\\.11\\..{100,}",
+    "(https?:\\/\\/)51\\.195\\.31\\..{100,}",
+    "(https?:\\/\\/)\\w{30,}\\.me\\/\\w{30,}\\.",
+    "^https:\\/\\/cdn\\.jsdelivr\\.net\\/npm\\/[-a-z_]{4,22}@latest\\/dist\\/script\\.min\\.js$",
+    "^https?:\\/\\/.*\\.(club|bid|biz|xyz|site|pro|info|online|icu|monster|buzz|website|biz|re|casa|top|one|space|network|live|systems|ml|world|life|co)\\/.*",
+    "^https?:\\/\\/.*\\.(club|news|live|online|store|tech|guru|cloud|bid|xyz|site|pro|info|online|icu|monster|buzz|fun|website|photos|re|casa|top|today|space|network|live|work|systems|ml|world|life)\\/.*",
+    "^https?:\\/\\/.*\\/[a-z0-9A-Z_]{2,15}\\.(php|jx|jsx|1ph|jsf|jz|jsm|j$)",
+    "^https?:\\/\\/s3\\.*\\.amazonaws\\.com\\/[a-f0-9]{45,}\\/[a-f,0-9]{8,10}$"
+  ],
+  "selectors": [
+    "article:has(header:has(.ct-sponsored))",
+    "div > [style]:has([style]:has([href*=\"&utm\"]))",
+    "div[data-test-id=\"MainDiscoveryContent\"] li:has(> div.cb-elevated:has(button[data-test-id=\"AdvertisingLabel\"]))",
+    "p + div:has(.responsive-post:has([href^=\"https://www.semrush.com\"]))"
+  ]
+}

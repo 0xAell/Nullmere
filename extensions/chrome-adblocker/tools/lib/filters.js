@@ -143,6 +143,8 @@ function cosmetic(domains, separator, body) {
     if (selector.includes(':-abp-')) return unsupported('procedural');
   }
   if (PROCEDURAL.test(selector)) return unsupported('procedural');
+  // `selector {declarations}` is Adblock Plus's way to restyle an element.
+  if (/\{[^{}]*\}\s*$/.test(selector)) return unsupported('style');
   if (/[{}]|\/\*/.test(selector) || !isBalanced(selector)) return unsupported('malformed');
   const list = domainList(domains, ',');
   if (list.bad.length) return unsupported('domain');

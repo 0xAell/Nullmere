@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Nullmere Stillwater",
+  "short_name": "Stillwater",
+  "version": "1.0.0",
+  "description": "Keeps the web as still as the lake: blocks ads and trackers with EasyList and EasyPrivacy, and hides the slots they leave.",
+  "minimum_chrome_version": "121",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Nullmere Stillwater",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "permissions": ["declarativeNetRequest", "declarativeNetRequestFeedback", "storage", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "declarative_net_request": {
+    "rule_resources": [
+      { "id": "easylist", "enabled": true, "path": "rules/easylist.json" },
+      { "id": "easyprivacy", "enabled": true, "path": "rules/easyprivacy.json" },
+      { "id": "stillwater", "enabled": true, "path": "rules/stillwater.json" }
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content/cosmetic.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
+    }
+  ]
+}

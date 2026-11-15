@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CosmeticIndex, covers, hidingRule, namesOf } from '../../src/shared/cosmetic-lookup.js';
+import { CosmeticIndex, covers, hidingCSS, merged, namesOf } from '../../src/shared/cosmetic-lookup.js';
 import { buildCosmetic, keyToken } from '../../tools/lib/cosmetic.js';
 import { parseLine } from '../../tools/lib/filters.js';
 
@@ -80,7 +80,22 @@ test('the switches for a host', () => {
   assert.deepEqual(index.switches('other.example'), { cosmetic: true, generic: true });
 });
 
-test('the hiding rule forgives a selector Chrome cannot read', () => {
-  assert.equal(hidingRule([]), '');
-  assert.equal(hidingRule(['.a', '#b > c']), ':is(.a,#b > c){display:none!important}');
+test('the style sheet hides in rules of a few selectors each', () => {
+  assert.equal(hidingCSS([]), '');
+  assert.equal(hidingCSS(['.a', '#b > c']), '.a,#b > c{display:none!important}\n');
+  assert.equal(hidingCSS(['.a', '.b', '.c'], 2), '.a,.b{display:none!important}\n.c{display:none!important}\n');
+});
+
+test('lists are merged, and one list\'s exception with no site holds against the others', () => {
+  const first = build(['##.ad-box', '##.sponsor', 'news.example##.promo', '##.wrap > .sponsor-row']).data;
+  const second = build(['##.banner', 'news.example##.sponsor', 'news.example##.extra', '#@#.sponsor', 'shop.example#@#.ad-box'], { elemhide: ['x.example'], generichide: [] }).data;
+  assert.deepEqual(second.never, ['.sponsor']);
+  const all = merged([first, second]);
+  assert.deepEqual(all.generic.simple, ['.ad-box', '.banner']);
+  assert.deepEqual(all.generic.keyed, { '.wrap': ['.wrap > .sponsor-row'] });
+  assert.deepEqual(all.specific, { 'news.example': ['.promo', '.extra'] });
+  assert.deepEqual(all.exceptions, { 'shop.example': ['.ad-box'] });
+  assert.deepEqual(all.noCosmetic, ['x.example']);
+  const index = new CosmeticIndex(all);
+  assert.deepEqual(index.selectorsForTokens('shop.example', ['.ad-box', '.banner']), ['.banner']);
 });

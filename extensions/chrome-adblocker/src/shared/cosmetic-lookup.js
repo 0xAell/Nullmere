@@ -9,6 +9,7 @@
 //                    has the class or id the token names
 //   specific         { host or entity: selectors } for named sites
 //   exceptions       { host or entity: selectors } not to hide there
+//   never            selectors a list says are never to be hidden anywhere
 //   noGeneric        hosts where the generic selectors are off
 //   noCosmetic       hosts where nothing is hidden
 
@@ -39,9 +40,50 @@ export function covers(list, host) {
   return false;
 }
 
-/** One rule hiding every selector. `:is()` forgives a selector Chrome can't read, so one bad selector never loses the rest. */
-export function hidingRule(selectors) {
-  return selectors.length ? `:is(${selectors.join(',')}){display:none!important}` : '';
+/**
+ * The style sheet that hides every selector. Plain selector lists, so
+ * Chrome can sort each selector by the class, id or attribute it ends on
+ * and try only the few that could match an element; in rules of a few
+ * selectors each, so one selector a browser can't read loses only the
+ * handful written beside it. (The build asks a real Chromium about every
+ * selector first: lists/rejected.json.)
+ */
+export function hidingCSS(selectors, perRule = 20) {
+  let css = '';
+  for (let at = 0; at < selectors.length; at += perRule) {
+    css += `${selectors.slice(at, at + perRule).join(',')}{display:none!important}\n`;
+  }
+  return css;
+}
+
+/**
+ * The data of several lists as one: what each hides, and each one's
+ * exceptions held against all the others' selectors too.
+ */
+export function merged(lists) {
+  const data = { generic: { always: [], simple: [], keyed: {} }, specific: {}, exceptions: {}, never: [], noGeneric: [], noCosmetic: [] };
+  const into = (target, source) => {
+    for (const [key, selectors] of Object.entries(source ?? {})) target[key] = [...(target[key] ?? []), ...selectors];
+  };
+  for (const list of lists) {
+    data.generic.always.push(...list.generic.always);
+    data.generic.simple.push(...list.generic.simple);
+    into(data.generic.keyed, list.generic.keyed);
+    into(data.specific, list.specific);
+    into(data.exceptions, list.exceptions);
+    data.never.push(...(list.never ?? []));
+    data.noGeneric.push(...(list.noGeneric ?? []));
+    data.noCosmetic.push(...(list.noCosmetic ?? []));
+  }
+  if (data.never.length) {
+    const never = new Set(data.never);
+    const keep = (selectors) => selectors.filter((selector) => !never.has(selector));
+    data.generic.always = keep(data.generic.always);
+    data.generic.simple = keep(data.generic.simple);
+    for (const key of Object.keys(data.generic.keyed)) data.generic.keyed[key] = keep(data.generic.keyed[key]);
+    for (const key of Object.keys(data.specific)) data.specific[key] = keep(data.specific[key]);
+  }
+  return data;
 }
 
 /** A lookup over the cosmetic data, made once and asked for each page. */

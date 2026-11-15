@@ -90,6 +90,7 @@ export function buildCosmetic(filters, hide = { elemhide: [], generichide: [] })
     generic: { always, simple, keyed: toObject(keyed) },
     specific: toObject(specific),
     exceptions: toObject(exceptions),
+    never: sorted(neverHide),
     noGeneric: [...new Set(hide.generichide)].sort(),
     noCosmetic: [...new Set(hide.elemhide)].sort(),
   };

@@ -1,0 +1,20 @@
+{
+  "repository": "https://github.com/easylist/easylist",
+  "commit": "4f2a9139d44ec4e71d82ca48f86fc2a717ba603f",
+  "committed": "2026-11-15T20:58:48.000Z",
+  "licence": "GPL-3.0-or-later OR CC-BY-SA-3.0 (or later); see https://easylist.to/pages/licence.html",
+  "lists": [
+    {
+      "id": "easylist",
+      "title": "EasyList",
+      "file": "easylist.txt",
+      "homepage": "https://easylist.to/"
+    },
+    {
+      "id": "easyprivacy",
+      "title": "EasyPrivacy",
+      "file": "easyprivacy.txt",
+      "homepage": "https://easylist.to/"
+    }
+  ]
+}
