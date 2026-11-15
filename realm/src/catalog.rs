@@ -616,6 +616,14 @@ pub const ENERGY_SECONDS: u64 = 8;
 /// How long a fight at a barrow lasts, as written.
 pub const FIGHT_SECONDS: i64 = 15;
 
+/// How long a rally musters before it sets out, at the written pace.
+pub const RALLY_MUSTER: i64 = 300;
+/// How many levels above the strongest barrow its caller may attack alone
+/// a rally may go against.
+pub const RALLY_REACH: u32 = 3;
+/// The most armies in a rally, its caller's among them.
+pub const RALLY_ARMIES: u32 = 5;
+
 /// How many wounded a city can tend, by its Hospital's level: a few even
 /// with none.
 pub fn tends(hospital: u32) -> u64 {

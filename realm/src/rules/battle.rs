@@ -329,6 +329,126 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
     );
 }
 
+/// A rally's fight at its barrow is over. The armies fought as one,
+/// under the caller's commander (the first of `marches` is the caller's):
+/// each loses what fell of its own soldiers, and carries home as wounded
+/// as many of them as its own city has room to tend. If they won, the
+/// barrow is cleared, the spoils are shared by how many of each army
+/// still stand, as far as each can carry, and it counts for each player
+/// as a barrow cleared; what one may attack alone is as it was. Each
+/// player is told in a report.
+pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
+    let Some(mut barrow) = marches.first().and_then(|first| Table::<Barrow>::get(db, first.target)) else { return };
+    // Every squad of every army, the best first, each remembering whose it is.
+    let mut all: Vec<(usize, Squad)> = Vec::new();
+    for (index, march) in marches.iter().enumerate() {
+        all.extend(squads(db, march.id).into_iter().filter(|squad| Troops::of(squad.kind).is_some()).map(|squad| (index, squad)));
+    }
+    all.sort_by_key(|(index, squad)| (std::cmp::Reverse(squad.tier), squad.kind, *index));
+    let army: Vec<Unit> = all.iter().filter_map(|(_, squad)| Troops::of(squad.kind).map(|kind| Unit { kind, tier: squad.tier, count: squad.count })).collect();
+    let unquiet = catalog::barrow(barrow.level);
+    let mut rolls: Vec<u64> = (0..2 * MOST_ROUNDS).map(|_| db.chance()).collect();
+    let outcome = fight_learned(&army, &unquiet, [led(db, &marches[0]), Mastery::default()], 0, || rolls.pop().unwrap_or(0));
+
+    let armies = marches.len();
+    let mut room: Vec<u64> = marches.iter().map(|march| room_for_wounded(db, march.city)).collect();
+    let (mut fought, mut wounded, mut dead) = (vec![0u64; armies], vec![0u64; armies], vec![0u64; armies]);
+    for ((index, squad), lost) in all.iter_mut().zip(&outcome.attackers_lost) {
+        let saved = (*lost).min(room[*index]);
+        room[*index] -= saved;
+        fought[*index] += squad.count;
+        wounded[*index] += saved;
+        dead[*index] += lost - saved;
+        squad.count -= lost;
+        squad.wounded += saved;
+        if squad.count + squad.wounded == 0 {
+            Table::<Squad>::delete(db, squad.id);
+        } else {
+            db.update(squad.clone());
+        }
+    }
+    for (index, march) in marches.iter_mut().enumerate() {
+        march.soldiers = fought[index] - wounded[index] - dead[index];
+    }
+
+    let standing: u64 = marches.iter().map(|march| march.soldiers).sum();
+    let mut won = vec![Goods::of(0, 0, 0, 0); armies];
+    if outcome.won {
+        let spoils = catalog::spoils(barrow.level);
+        for (index, march) in marches.iter().enumerate() {
+            if standing == 0 {
+                break;
+            }
+            let share = Goods::from_parts(spoils.parts().map(|part| (part as u128 * march.soldiers as u128 / standing as u128) as u64));
+            let (load, all) = (load(db, march), share.parts().iter().sum::<u64>());
+            won[index] = Goods::from_parts(share.parts().map(|part| if all > load { (part as u128 * load as u128 / all as u128) as u64 } else { part }));
+            if !won[index].is_none() {
+                db.insert(crate::rows::Haul { march: march.id, owner: march.owner, grain: won[index].grain, timber: won[index].timber, stone: won[index].stone, moonsalt: won[index].moonsalt });
+            }
+        }
+        Table::<Place>::delete(db, barrow.hex);
+        Table::<Barrow>::delete(db, barrow.id);
+        spawn_barrow(db);
+        for march in marches.iter() {
+            did(db, march.owner, Deed::Clear, 1);
+            scored(db, march.owner, Contest::Hunt, 10 * barrow.level as u64);
+        }
+    } else {
+        // The Unquiet who fell rise again: the barrow stands as it stood.
+        barrow.fighter = 0;
+        db.update(barrow.clone());
+    }
+
+    let stood: u64 = unquiet.iter().map(|unit| unit.count).sum();
+    let fell: u64 = outcome.defenders_lost.iter().sum();
+    seen_by_leader(db, &marches[0], fell * (1 + (barrow.level as u64 - 1) / 5));
+    let together: u64 = fought.iter().sum();
+    for (index, march) in marches.iter().enumerate() {
+        let mut words = if outcome.won {
+            format!("Your alliance's rally cleared a level {} barrow of the Unquiet: {armies} armies, {} soldiers in all.", barrow.level, catalog::grouped(together))
+        } else {
+            format!(
+                "Your alliance's rally was beaten at a level {} barrow of the Unquiet: {armies} armies, {} soldiers in all. {} of the Unquiet still stood.",
+                barrow.level,
+                catalog::grouped(together),
+                catalog::grouped(stood - fell)
+            )
+        };
+        words += " ";
+        words += &fallen(fought[index], wounded[index], dead[index], "soldier", "soldiers");
+        if dead[index] > 0 {
+            words += " Your city had no room to tend more wounded.";
+        }
+        if !won[index].is_none() {
+            words += &format!(" Your army is bringing home {}.", won[index]);
+        }
+        report(
+            db,
+            Report {
+                id: 0,
+                player: march.owner,
+                at: db.now(),
+                kind: Report::HUNT,
+                hex: barrow.hex,
+                won: outcome.won,
+                foe: barrow.level as u64,
+                rounds: outcome.rounds,
+                fought: fought[index],
+                wounded: wounded[index],
+                dead: dead[index],
+                stood,
+                fell,
+                grain: won[index].grain,
+                timber: won[index].timber,
+                stone: won[index].stone,
+                moonsalt: won[index].moonsalt,
+                words,
+                read: false,
+            },
+        );
+    }
+}
+
 /// A fight at a barrow in plain words.
 fn told(level: u32, won: bool, fought: u64, wounded: u64, dead: u64, standing: u64, spoils: Goods) -> String {
     let mut words = if won {

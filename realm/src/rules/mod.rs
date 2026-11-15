@@ -15,6 +15,7 @@ mod entry;
 mod favour;
 mod items;
 mod march;
+mod rally;
 mod siege;
 mod study;
 mod tasks;
@@ -30,6 +31,7 @@ pub use entry::*;
 pub use favour::*;
 pub use items::*;
 pub use march::*;
+pub use rally::*;
 pub use siege::*;
 pub use study::*;
 pub use tasks::*;
@@ -175,6 +177,14 @@ pub enum Refusal {
     NoSuchChest,
     NoSuchItem,
     NoSuchPrize,
+    /// A rally may go no further above what its caller may attack alone: the level it may reach.
+    RallyTooStrong(u32),
+    AlreadyRallying,
+    RallyCalled,
+    NoSuchRally,
+    RallyFull,
+    RallySetOut,
+    RallyUnderWay,
     /// The prize asks more points than the player has scored this round: how many it asks.
     PrizeNotEarned(u64),
     PrizeClaimed,
@@ -215,6 +225,7 @@ impl fmt::Display for Refusal {
             Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
             Refusal::ChestNotEarned(marks) => return write!(f, "That chest opens at {marks} marks of the day's work."),
             Refusal::PrizeNotEarned(points) => return write!(f, "That prize is for {} points.", crate::catalog::grouped(*points)),
+            Refusal::RallyTooStrong(level) => return write!(f, "A rally of yours may go against a barrow of level {level} at most."),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
             Refusal::NoFreeMarch(1) => return write!(f, "Your one army is out. Raise your Keep to send more."),
             Refusal::NoFreeMarch(most) => return write!(f, "All {most} of your armies are out."),
@@ -273,6 +284,12 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchChest => "There is no such chest.",
             Refusal::NoSuchItem => "There is no such thing to use.",
             Refusal::NoSuchPrize => "There is no such prize.",
+            Refusal::AlreadyRallying => "You have an army in a rally already.",
+            Refusal::RallyCalled => "Your alliance is rallying against that barrow already. Join it.",
+            Refusal::NoSuchRally => "Your alliance has no such rally.",
+            Refusal::RallyFull => "That rally has all the armies it can take.",
+            Refusal::RallySetOut => "That rally has set out.",
+            Refusal::RallyUnderWay => "An army in a rally under way can't be called home.",
             Refusal::PrizeClaimed => "You have claimed that prize this round.",
             Refusal::NoneLeft => "You have none of that left.",
             Refusal::ChestOpened => "You have opened that chest today.",

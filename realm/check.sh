@@ -274,6 +274,12 @@ check("a prize not yet earned is refused", call(ada, "claim_prize", 1, 1), "That
 check("and one that is not there", call(ada, "claim_prize", 1, 9), "There is no such prize.")
 check("no one reads another's tallies", isinstance(rows(ada, "SELECT * FROM tally"), str), True)
 
+# Rallies are an alliance's: one in none can neither call nor join one, and an army goes to one no other way.
+check("a rally is called by a member of an alliance", call(ada, "call_rally", adas[0], adas[1], [{"kind": 1, "tier": 1, "count": 1}], 0), "You are in no alliance.")
+check("and joined by one", call(ada, "join_rally", 1, [{"kind": 1, "tier": 1, "count": 1}], 0), "You are in no alliance.")
+check("an army is not sent to a rally by an order of its own", call(ada, "send", adas[0], adas[1], 6, [{"kind": 1, "tier": 1, "count": 1}], 0), "The realm knows no such order.")
+check("one in no alliance sees no rallies, and no one reads the table itself", (rows(ada, "SELECT * FROM my_rallies"), rows(ada, "SELECT * FROM my_musters"), isinstance(rows(ada, "SELECT * FROM rally"), str)), ([], [], True))
+
 # Commanders: one to begin with, more from a Tavern.
 captains = rows(bryn, "SELECT * FROM my_commanders")
 check("a player begins with one commander, in the city", [(c["level"], c["march"], 1 <= c["way"] <= 6, len(c["name"]) >= 4) for c in captains], [(1, 0, True, True)])

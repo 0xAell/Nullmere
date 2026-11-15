@@ -131,12 +131,18 @@ impl March {
     pub const SCOUT: u8 = 4;
     /// To join an ally's city as its garrison, and stay there.
     pub const REINFORCE: u8 = 5;
+    /// To go against a barrow with allies' armies, as one (see `Rally`).
+    pub const RALLY: u8 = 6;
 
     pub const GOING: u8 = 1;
     pub const WORKING: u8 = 2;
     pub const RETURNING: u8 = 3;
     /// Fighting where it stands, at `to`, until `arrives`.
     pub const FIGHTING: u8 = 4;
+    /// In its city, gathered for a rally that sets out at `arrives`.
+    pub const MUSTERING: u8 = 5;
+    /// At the barrow, waiting for the rally's other armies to come up.
+    pub const WAITING: u8 = 6;
 }
 
 /// The soldiers of one kind and tier in a march: its owner's alone to
@@ -663,6 +669,54 @@ pub struct Chest {
 }
 row!(Chest in chest, by id);
 
+/// A rally: allies' armies against a barrow too strong for one of them.
+/// Each musters in its own city until the rally sets out, marches from
+/// there, waits at the barrow for the last, and they fight as one. Its
+/// alliance's alone to read.
+#[spacetimedb::table(accessor = rally)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Rally {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub alliance: u64,
+    /// Who called it, and their name as it was then.
+    pub caller: u64,
+    pub name: String,
+    pub barrow: u64,
+    pub hex: u64,
+    pub level: u32,
+    /// When the muster ends and the armies set out.
+    pub sets_out: Seconds,
+    /// `Rally::MUSTERING`, `MARCHING` or `FIGHTING`.
+    pub state: u8,
+    pub armies: u32,
+    pub soldiers: u64,
+}
+row!(Rally in rally, auto, by id, alliance);
+
+impl Rally {
+    pub const MUSTERING: u8 = 1;
+    pub const MARCHING: u8 = 2;
+    pub const FIGHTING: u8 = 3;
+}
+
+/// An army's place in a rally: its alliance's alone to read. Keyed by
+/// the army's march.
+#[spacetimedb::table(accessor = muster)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Muster {
+    #[primary_key]
+    pub march: u64,
+    #[index(btree)]
+    pub rally: u64,
+    pub player: u64,
+    /// Whether it has come up to the barrow.
+    pub arrived: bool,
+}
+row!(Muster in muster, by march, rally);
+
 /// A contest of the realm, for clients to show: how it is scored, every
 /// how many days it comes round and for how many of them it runs. Keyed
 /// by contest.
@@ -917,6 +971,8 @@ pub trait Db:
     + Table<Trial>
     + Table<Prize>
     + Table<Tally>
+    + Table<Rally>
+    + Table<Muster>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -961,6 +1017,8 @@ impl<
             + Table<Trial>
             + Table<Prize>
             + Table<Tally>
+            + Table<Rally>
+            + Table<Muster>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

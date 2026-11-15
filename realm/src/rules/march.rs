@@ -99,7 +99,7 @@ pub fn marching_power(db: &impl Db, city: u64) -> u64 {
 
 /// How long a march of these soldiers takes over a number of steps: at
 /// the pace of its slowest, in this realm.
-fn travel(db: &impl Db, march: &March, squads: &[Squad], steps: usize) -> Seconds {
+pub(super) fn travel(db: &impl Db, march: &March, squads: &[Squad], steps: usize) -> Seconds {
     let slowest = squads.iter().filter_map(|squad| Troops::of(squad.kind).map(|kind| kind.soldier(squad.tier).pace)).max().unwrap_or(60);
     let pace = realm(db).map(|realm| realm.pace).unwrap_or(1);
     // What the city has learnt of marching, and who leads the army, make
@@ -118,6 +118,15 @@ pub fn send(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked]) -
 /// clear a barrow of the Unquiet, or against another player's city;
 /// under one of their commanders, or with 0 under none.
 pub fn send_led(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked], leader: u64) -> Result<March, Refusal> {
+    // An army goes to a rally by being called to it or joining it, never by an order of its own.
+    if kind == March::RALLY {
+        return Err(Refusal::NoSuchOrder);
+    }
+    dispatch(db, player, to, kind, asked, leader)
+}
+
+/// Sends an army on any order there is, a rally's among them.
+pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked], leader: u64) -> Result<March, Refusal> {
     asking(db, player)?;
     let city = city_of(db, player)?;
     let realm = realm(db)?;
@@ -136,6 +145,7 @@ pub fn send_led(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked
         March::ATTACK => may_attack(db, player, to)?.id,
         March::SCOUT => may_scout(db, player, to, city.id)?.id,
         March::REINFORCE => may_reinforce(db, player, to)?.id,
+        March::RALLY => super::rally::may_go(db, player, to)?.id,
         _ => return Err(Refusal::NoSuchOrder),
     };
     // What was asked, each kind and tier once.
@@ -168,7 +178,7 @@ pub fn send_led(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked
     let from = Hex::unpacked(city.hex);
     let way = land::way(realm.seed, realm.radius, from, to).ok_or(Refusal::NoWay)?;
 
-    if kind == March::HUNT {
+    if kind == March::HUNT || kind == March::RALLY {
         spend_energy(db, player, false);
     }
     if kind == March::ATTACK {
@@ -214,7 +224,7 @@ pub fn send_led(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked
 }
 
 /// Turns a march for home along a way, from now.
-fn turn_home(db: &mut impl Db, mut march: March, way: Vec<Hex>) {
+pub(super) fn turn_home(db: &mut impl Db, mut march: March, way: Vec<Hex>) {
     let now = db.now();
     march.state = March::RETURNING;
     march.departed = now;
@@ -225,7 +235,7 @@ fn turn_home(db: &mut impl Db, mut march: March, way: Vec<Hex>) {
 }
 
 /// The way a march came, turned round.
-fn way_back(march: &March) -> Vec<Hex> {
+pub(super) fn way_back(march: &March) -> Vec<Hex> {
     let mut way = hex::decode(&march.route);
     way.reverse();
     way
@@ -265,7 +275,18 @@ fn take(db: &mut impl Db, march: &March, amount: u64) {
 /// come home.
 pub fn arrive(db: &mut impl Db, march: u64) {
     let Some(mut march) = Table::<March>::get(db, march) else { return };
+    // A timer set for an earlier leg of the march, called off since but
+    // fired all the same (two due at one moment are both on their way
+    // before the first can call the second off), changes nothing.
+    if db.now() < march.arrives {
+        return;
+    }
     match march.state {
+        // A rally's armies: the muster over, come up to the barrow, the fight done.
+        March::MUSTERING => super::rally::set_out(db, &march),
+        March::WAITING => {}
+        March::GOING if march.kind == March::RALLY => super::rally::reached(db, march),
+        March::FIGHTING if march.kind == March::RALLY => super::rally::ended(db, &march),
         March::GOING if march.kind == March::HUNT => {
             if engage(db, &mut march) {
                 march.timer = db.after(march.arrives, TIMER_MARCH, march.id);
@@ -351,7 +372,7 @@ pub fn arrive(db: &mut impl Db, march: u64) {
 /// A march is home: its soldiers stand ready again, its wounded are laid
 /// in the Hospital, and what it carried goes into the city's stock,
 /// though it overfill it.
-fn home(db: &mut impl Db, march: &March) {
+pub(super) fn home(db: &mut impl Db, march: &March) {
     for squad in squads(db, march.id) {
         if let Some(kind) = Troops::of(squad.kind) {
             let mut row = troop(db, march.city, kind, squad.tier);
@@ -381,6 +402,17 @@ pub fn recall(db: &mut impl Db, player: u64, march: u64) -> Result<March, Refusa
     let march = Table::<March>::get(db, march).ok_or(Refusal::NoSuchMarch)?;
     if march.owner != player {
         return Err(Refusal::NotYours);
+    }
+    if march.kind == March::RALLY {
+        // Mustering, it stands down where it is; once the rally has set out it goes where the rally goes.
+        return match march.state {
+            March::MUSTERING => {
+                super::rally::stand_down(db, &march);
+                Ok(march)
+            }
+            March::RETURNING => Err(Refusal::AlreadyReturning),
+            _ => Err(Refusal::RallyUnderWay),
+        };
     }
     let now = db.now();
     let (gone, whole) = ((now - march.departed).max(0) as u64, (march.arrives - march.departed).max(1) as u64);
