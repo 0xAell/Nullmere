@@ -2,6 +2,7 @@
 //! real time, gathering what lies at a site, and carrying it home.
 
 use super::{
+    siege::{self, may_scout},
     asking, besiege, boost, break_peace, city_of, engage, fought, goods, keep_troop, leader_for, leading_of, may_attack, may_hunt, realm, release, seen_by_leader,
     set_goods, settle, spend_energy, stormed, troop, Refusal,
 };
@@ -133,6 +134,7 @@ pub fn send_led(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked
         }
         March::HUNT => may_hunt(db, player, to)?.id,
         March::ATTACK => may_attack(db, player, to)?.id,
+        March::SCOUT => may_scout(db, player, to, city.id)?.id,
         _ => return Err(Refusal::NoSuchOrder),
     };
     // What was asked, each kind and tier once.
@@ -272,6 +274,12 @@ pub fn arrive(db: &mut impl Db, march: u64) {
                 let way = way_back(&march);
                 turn_home(db, march, way);
             }
+        }
+        March::GOING if march.kind == March::SCOUT => {
+            // Scouts see what they came for, and come home unhurt.
+            siege::scouted(db, &march);
+            let way = way_back(&march);
+            turn_home(db, march, way);
         }
         March::GOING if march.kind == March::ATTACK => {
             if besiege(db, &mut march) {

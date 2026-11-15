@@ -291,3 +291,28 @@ fn the_owner_of_a_city_is_warned_when_an_army_sets_out_against_it() {
     let on_the_way = Table::<March>::get(&db, march.id).unwrap();
     assert_eq!(on_the_way.state, March::GOING);
 }
+
+#[test]
+fn scouts_from_a_scout_camp_see_a_garrison_and_come_home_unhurt() {
+    let (mut db, (ada, hers), (bryn, his)) = neighbours(&[(Troops::Spearmen, 1, 300)], &[(Troops::Spearmen, 1, 5)]);
+    // Without a Scout Camp, no scouts go out.
+    assert_eq!(db.call(|db| rules::send(db, bryn, Hex::unpacked(hers.hex), March::SCOUT, &spears(1))), Err(Refusal::NeedsOther(Kind::ScoutCamp, 1)));
+    db.insert(Building { id: 0, city: his.id, kind: Kind::ScoutCamp as u8, level: 1 });
+    // Scouts can't spy on their own city.
+    assert_eq!(db.call(|db| rules::send(db, bryn, Hex::unpacked(his.hex), March::SCOUT, &spears(1))), Err(Refusal::OwnCity));
+
+    let march = db.call(|db| rules::send(db, bryn, Hex::unpacked(hers.hex), March::SCOUT, &spears(1))).unwrap();
+    assert_eq!((march.kind, march.state, march.soldiers), (March::SCOUT, March::GOING, 1));
+    // Ada's garrison is not disturbed while the scouts are on their way.
+    until(&mut db, march.arrives);
+
+    // Bryn is told how many soldiers stand ready in Ada's city: three hundred.
+    let seen = reports(&db, bryn).pop().unwrap();
+    assert_eq!((seen.kind, seen.won, seen.foe, seen.stood, seen.fought), (Report::SCOUTED, true, ada, 300, 1));
+    assert_eq!(seen.words, "Your scouts saw 300 soldiers ready in Ada's city.");
+    // Ada hears nothing; her garrison is as it was; the scouts are on their way home, whole.
+    assert!(reports(&db, ada).is_empty());
+    assert_eq!(Table::<Troop>::by(&db, 0, hers.id).iter().map(|row| row.ready).sum::<u64>(), 300);
+    let home = Table::<March>::get(&db, march.id).unwrap();
+    assert_eq!((home.state, home.soldiers), (March::RETURNING, 1));
+}

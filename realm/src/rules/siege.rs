@@ -48,6 +48,52 @@ pub(super) fn break_peace(db: &mut impl Db, mut city: City) {
     }
 }
 
+/// Whether a player may send scouts against the city at a hex: one stands
+/// there, not their own, and the player's own city has a Scout Camp.
+pub(super) fn may_scout(db: &impl Db, player: u64, to: Hex, from: u64) -> Result<City, Refusal> {
+    let city = city_at(db, to).ok_or(Refusal::NoCityThere)?;
+    if city.owner == player {
+        return Err(Refusal::OwnCity);
+    }
+    if building_of(db, from, Kind::ScoutCamp).is_none_or(|camp| camp.level < 1) {
+        return Err(Refusal::NeedsOther(Kind::ScoutCamp, 1));
+    }
+    Ok(city)
+}
+
+/// Scouts have reached a city: they see how many soldiers stand ready in
+/// it, and report it to their player. Nothing is fought.
+pub(super) fn scouted(db: &mut impl Db, march: &March) {
+    let Some(city) = Table::<City>::get(db, march.target) else { return };
+    let now = db.now();
+    let stood: u64 = Table::<Troop>::by(db, 0, city.id).iter().map(|row| row.ready).sum();
+    let words = format!("Your scouts saw {} soldiers ready in {}'s city.", catalog::grouped(stood), name_of(db, city.owner));
+    report(
+        db,
+        Report {
+            id: 0,
+            player: march.owner,
+            at: now,
+            kind: Report::SCOUTED,
+            hex: city.hex,
+            won: true,
+            foe: city.owner,
+            rounds: 0,
+            fought: march.soldiers,
+            wounded: 0,
+            dead: 0,
+            stood,
+            fell: 0,
+            grain: 0,
+            timber: 0,
+            stone: 0,
+            moonsalt: 0,
+            words,
+            read: false,
+        },
+    );
+}
+
 /// The owner of a city is warned when an army sets out against it: whose
 /// it is, and when it arrives. Nothing is done about it; the realm only
 /// tells.

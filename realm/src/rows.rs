@@ -127,6 +127,8 @@ impl March {
     pub const HUNT: u8 = 2;
     /// To take another player's city by storm and plunder it.
     pub const ATTACK: u8 = 3;
+    /// To see what a city's garrison is, from its walls, without a fight.
+    pub const SCOUT: u8 = 4;
 
     pub const GOING: u8 = 1;
     pub const WORKING: u8 = 2;
@@ -494,6 +496,9 @@ impl Report {
     /// Another's army is marching on the player's city: `foe` is that
     /// player's number, and the report says when it arrives.
     pub const WARNING: u8 = 4;
+    /// What the player's scouts saw of another's city: `stood` is how many
+    /// soldiers were ready in it, and `foe` its owner's number.
+    pub const SCOUTED: u8 = 5;
 }
 
 /// An alliance of players. Everyone may read it.
