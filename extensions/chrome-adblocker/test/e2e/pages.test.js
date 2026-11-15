@@ -184,11 +184,11 @@ test('the options page lets a site through as typed or pasted, refuses what is n
 
 test('the switches keep their settings, and the pause is a rule of its own', async () => {
   const page = await optionsPage();
-  assert.deepEqual(await switches(page, 'switches'), [['Hide the slots ads leave', 'true'], ['YouTube', 'true'], ['Count on the icon', 'true'], ['Pause everywhere', 'false']]);
-  for (const row of [1, 2, 3, 4]) await page.click(`#switches li:nth-child(${row}) .switch`);
-  await until(async () => (await switches(page, 'switches')).map((item) => item[1]).join() === 'false,false,false,true', 'every switch to change');
+  assert.deepEqual(await switches(page, 'switches'), [['Hide the slots ads leave', 'true'], ['Close pop-up ads', 'true'], ['YouTube', 'true'], ['Count on the icon', 'true'], ['Pause everywhere', 'false']]);
+  for (const row of [1, 2, 3, 4, 5]) await page.click(`#switches li:nth-child(${row}) .switch`);
+  await until(async () => (await switches(page, 'switches')).map((item) => item[1]).join() === 'false,false,false,false,true', 'every switch to change');
   const { settings } = await browser.ask({ type: 'overview' });
-  assert.deepEqual([settings.cosmetic, settings.youtube, settings.badge, settings.paused], [false, false, false, true]);
+  assert.deepEqual([settings.cosmetic, settings.popups, settings.youtube, settings.badge, settings.paused], [false, false, false, false, true]);
   const rules = await browser.worker.evaluate(() => chrome.declarativeNetRequest.getDynamicRules());
   assert.deepEqual(rules.map((rule) => [rule.id, rule.action.type, rule.priority]), [[2, 'allow', 1000]]);
   await page.close();
@@ -222,9 +222,9 @@ test('putting everything back as installed is asked twice, and does it', async (
   assert.equal(await page.textContent('#reset'), 'Press again to put everything back');
   assert.deepEqual((await browser.ask({ type: 'overview' })).settings.allowlist, ['kept.test'], 'once is not enough');
   await page.click('#reset');
-  await until(async () => (await switches(page, 'switches')).map((item) => item[1]).join() === 'true,true,true,false', 'the switches to go back');
+  await until(async () => (await switches(page, 'switches')).map((item) => item[1]).join() === 'true,true,true,true,false', 'the switches to go back');
   const state = await browser.ask({ type: 'overview' });
-  assert.deepEqual(state.settings, { allowlist: [], paused: false, cosmetic: true, youtube: true, badge: true, listsOff: [] });
+  assert.deepEqual(state.settings, { allowlist: [], paused: false, cosmetic: true, popups: true, youtube: true, badge: true, listsOff: [] });
   assert.deepEqual(state.enabled.sort(), ['easylist', 'easyprivacy', 'stillwater']);
   assert.deepEqual(await browser.worker.evaluate(() => chrome.declarativeNetRequest.getDynamicRules()), []);
   await page.close();
@@ -232,12 +232,12 @@ test('putting everything back as installed is asked twice, and does it', async (
 
 test('a switch pressed from the keyboard keeps the keyboard, and a change made elsewhere shows on the page', async () => {
   const page = await optionsPage();
-  await page.focus('#switches li:nth-child(3) .switch');
+  await page.focus('#switches li:nth-child(4) .switch');
   await page.keyboard.press('Space');
-  await until(async () => (await switches(page, 'switches'))[2][1] === 'false', 'the switch to turn off');
+  await until(async () => (await switches(page, 'switches'))[3][1] === 'false', 'the switch to turn off');
   assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Count on the icon', 'still on the switch that was pressed');
   await page.keyboard.press('Space');
-  await until(async () => (await switches(page, 'switches'))[2][1] === 'true', 'the switch to turn back on');
+  await until(async () => (await switches(page, 'switches'))[3][1] === 'true', 'the switch to turn back on');
 
   // From the popup's side, while the options page is open.
   await browser.ask({ type: 'site:set', site: 'elsewhere.test', allowed: true });
@@ -263,10 +263,15 @@ test('a big page\'s classes are sent in lots, and its slots still hidden', async
 test('the options page says what it cannot do with the build\'s own numbers, and names the lists\' authors', async () => {
   const page = await optionsPage();
   const limits = await page.evaluate(() => [...document.querySelectorAll('#limits li')].map((item) => item.textContent));
-  assert.equal(limits.length, 5);
-  const popups = lists.lists.reduce((sum, list) => sum + (list.dropped['option:popup'] ?? 0), 0);
+  assert.equal(limits.length, 6);
+  const rewrites = lists.lists.reduce((sum, list) => sum + Object.entries(list.dropped).reduce((n, [reason, count]) => n + (/^option:(rewrite|redirect|removeparam)/.test(reason) ? count : 0), 0), 0);
+  assert.ok(rewrites > 10);
+  assert.match(limits[1], new RegExp(`${rewrites.toLocaleString('en-US')} that redirect or rewrite a request`));
+  assert.match(limits[2], /A pop-up is closed, not prevented/);
+  // The list that names pop-ups says how many.
+  const popups = lists.lists.find((list) => list.id === 'easylist').popups;
   assert.ok(popups > 1000);
-  assert.match(limits[1], new RegExp(`${popups.toLocaleString('en-US')} that close pop-up windows`));
+  assert.match(await page.textContent('#lists li:first-child'), new RegExp(`${popups.toLocaleString('en-US')} pop-ups to close`));
   assert.match(await page.textContent('#about-title ~ .note:nth-of-type(2)'), /EasyList authors.*GNU General Public License/s);
   assert.equal(await page.getAttribute('a[href="https://easylist.to/"]', 'rel'), 'noreferrer');
   // Every control can be reached and named.

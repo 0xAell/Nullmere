@@ -26,16 +26,17 @@ test('the README\'s numbers are the build\'s', (t) => {
   says(`${grouped(hosts)} hosts are blocked by ${grouped(hostRules.length)} of those rules`);
   says(`| ${grouped(totals.cosmetic)} selectors.`);
 
+  const left = (...prefixes) => lists.reduce((sum, list) => sum + Object.entries(list.dropped).reduce((n, [reason, count]) => n + (prefixes.some((prefix) => reason.startsWith(prefix)) ? count : 0), 0), 0);
   const cosmetic = lists.map((list) => JSON.parse(readFileSync(join(out, 'cosmetic', `${list.id}.json`), 'utf8')));
   const generic = cosmetic.reduce((sum, data) => sum + data.generic.always.length + data.generic.simple.length + Object.values(data.generic.keyed).reduce((n, list) => n + list.length, 0), 0);
   const worded = new Set(cosmetic.flatMap((data) => Object.values(data.procedural).flatMap((plans) => plans.map((plan) => plan.raw))));
   says(`The ${grouped(generic)} generic ones`);
   says(`| ${grouped(worded.size)} filters pick an element`);
+  says(`| ${grouped(totals.popups)} filters name the addresses of pop-up ads.`);
+  assert.equal(left('option:popup', 'popup:'), 0, 'no pop-up filter is left out, so the README has no row for them');
 
   // What was left out, by the README's own rows.
-  const left = (...prefixes) => lists.reduce((sum, list) => sum + Object.entries(list.dropped).reduce((n, [reason, count]) => n + (prefixes.some((prefix) => reason.startsWith(prefix)) ? count : 0), 0), 0);
   const rows = [
-    ['Pop-up filters (`$popup`)', left('option:popup')],
     ['Redirects and rewrites (`$redirect`, `$rewrite`)', left('option:redirect', 'option:rewrite')],
     ['Scriptlets and procedural filters beyond `:has-text`', left('cosmetic:scriptlet', 'cosmetic:procedural', 'cosmetic:snippet')],
     ['Regular expressions Chrome refuses', left('regex:')],

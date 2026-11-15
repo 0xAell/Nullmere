@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { refusedBy } from '../../tools/validate.js';
-import { complaints, later, launch, open, root, startServer, tabIdOf, until } from './harness.js';
+import { complaints, later, launch, open, permissionWords, root, startServer, tabIdOf, until } from './harness.js';
 
 let server;
 let browser;
@@ -49,6 +49,17 @@ test('the extension loads with its three rulesets enabled, and Chrome takes ever
   assert.ok(lists.totals.rules < state.guaranteed, `inside the ${state.guaranteed} rules Chrome guarantees an extension`);
   assert.equal(lists.limits.guaranteedRules, state.guaranteed);
   assert.deepEqual(state.dynamic, [], 'nothing let through yet');
+});
+
+test('Chromium says of the extension what the README says it will', async (t) => {
+  const words = await permissionWords(browser);
+  if (!words) return t.skip('this Chromium has no extensions page to ask');
+  assert.deepEqual(words, { messages: ['Read your browsing history', 'Block content on any page'], allSites: true });
+  const readme = readFileSync(join(root, 'README.md'), 'utf8').replace(/\s+/g, ' ');
+  for (const said of ['*read and change all your data on all websites*', '*read your browsing history*', '*block content on any page*']) assert.ok(readme.includes(said), said);
+  // And every permission asked for is one the README accounts for.
+  const { permissions } = JSON.parse(readFileSync(join(root, 'src', 'manifest.json'), 'utf8'));
+  for (const permission of permissions) assert.ok(readme.includes(`| \`${permission}\` |`), `the README's table has a row for ${permission}`);
 });
 
 test('lists/rejected.json names exactly what this Chromium refuses', async () => {

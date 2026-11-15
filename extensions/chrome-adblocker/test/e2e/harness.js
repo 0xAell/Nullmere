@@ -216,6 +216,24 @@ export async function complaints(browser) {
   }
 }
 
+/**
+ * What Chromium tells a person the extension may do, as its extensions
+ * page words it: { messages, allSites }; null where it can't be asked.
+ */
+export async function permissionWords(browser) {
+  const page = await browser.context.newPage();
+  try {
+    await page.goto('chrome://extensions/');
+    const info = await page.evaluate((id) => (chrome.developerPrivate?.getExtensionInfo ? new Promise((done) => chrome.developerPrivate.getExtensionInfo(id, done)) : null), browser.id);
+    if (!info?.permissions) return null;
+    return { messages: info.permissions.simplePermissions.map((item) => item.message), allSites: info.permissions.runtimeHostPermissions?.hasAllHosts === true };
+  } catch {
+    return null;
+  } finally {
+    await page.close();
+  }
+}
+
 /** The id of the tab a page is in, as the extension knows it. */
 export async function tabIdOf(worker, page) {
   return worker.evaluate(async (url) => (await chrome.tabs.query({})).find((tab) => tab.url === url)?.id, page.url());

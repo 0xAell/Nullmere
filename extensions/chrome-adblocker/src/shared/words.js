@@ -30,6 +30,7 @@ export function wording(state) {
 /** The switches on the options page: the setting each one keeps, and what it says. */
 export const SWITCHES = [
   { key: 'cosmetic', title: 'Hide the slots ads leave', detail: 'Elements the lists name as ad slots are hidden on the page.' },
+  { key: 'popups', title: 'Close pop-up ads', detail: 'A tab or window a page opens to an address the lists name as a pop-up ad is closed.' },
   { key: 'youtube', title: 'YouTube', detail: 'Skip the ads that can be skipped and hide the ones that can be hidden. The part most likely to break: see below.' },
   { key: 'badge', title: 'Count on the icon', detail: 'Show how many requests were kept from the page in front.' },
   { key: 'paused', title: 'Pause everywhere', detail: 'Let everything through on every site until this is switched back.' },
@@ -40,6 +41,7 @@ export function listDetail(list) {
   const parts = [`${grouped(list.filters)} filters`];
   if (list.rules) parts.push(`${grouped(list.rules)} rules for Chrome`);
   if (list.cosmetic) parts.push(`${grouped(list.cosmetic)} selectors to hide`);
+  if (list.popups) parts.push(`${grouped(list.popups)} pop-ups to close`);
   return list.filters ? parts.join(' · ') : 'Nothing in it yet.';
 }
 
@@ -63,12 +65,12 @@ function leftOut(lists, ...prefixes) {
 
 /** What Stillwater cannot do, as [lead, rest] pairs: said on the options page as it is in the README. */
 export function limitWords(lists) {
-  const popups = leftOut(lists, 'option:popup');
   const rewrites = leftOut(lists, 'option:rewrite', 'option:redirect', 'option:removeparam');
   const scripted = leftOut(lists, 'cosmetic:procedural', 'cosmetic:scriptlet', 'cosmetic:snippet', 'cosmetic:style');
   return [
     ['Chrome applies the rules, not Stillwater.', 'Under Manifest V3 an extension can no longer look at each request and decide. It hands Chrome rules made ahead of time, so the lists are as new as this version of Stillwater, not refreshed each day.'],
-    ['Some filters have no rule to become.', `Left out of this build: ${grouped(popups)} that close pop-up windows, ${grouped(rewrites)} that redirect or rewrite a request, and ${grouped(scripted)} that need a script to find or restyle an element.`],
+    ['Some filters have no rule to become.', `Left out of this build: ${grouped(rewrites)} that redirect or rewrite a request, and ${grouped(scripted)} that need a script to find or restyle an element.`],
+    ['A pop-up is closed, not prevented.', 'Chrome\'s rules can\'t stop a page opening a window. Stillwater closes one as soon as it sees where it is going, so it may show for a moment.'],
     ['YouTube is the hardest.', 'Its ads come from the same hosts as its videos, and it changes often. Stillwater hides and skips what it can there; expect that part to break first.'],
     ['An ad written into the page itself can only be hidden,', 'and only where a list names it. Nothing an extension does can tell it from the page\'s own words otherwise.'],
     ['Chrome\'s own pages, the Web Store and other extensions', 'are closed to every extension, this one included.'],

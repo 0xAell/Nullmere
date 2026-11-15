@@ -41,7 +41,8 @@ const TYPES = {
 
 // Types Chrome's declarativeNetRequest has no way to match. A filter that
 // names only these is dropped; one that excludes them loses nothing.
-const UNMATCHABLE_TYPES = new Set(['popup', 'webrtc']);
+// (`popup` is not a request at all: see popups.js for what is made of it.)
+const UNMATCHABLE_TYPES = new Set(['webrtc']);
 
 // Procedural operators (uBlock Origin's and AdGuard's) that plain CSS can't
 // express. `:-abp-has()` is not here: it is rewritten to `:has()`.
@@ -144,6 +145,8 @@ function cosmetic(domains, separator, body) {
  *   csp          a Content-Security-Policy to add (or '' in an exception)
  *   elemhide, generichide   an exception that turns cosmetic filtering off
  *   important    outranks exceptions
+ *   popup        it is (also) for windows and tabs a page opens
+ * or the same with kind: 'popup', for a filter that is for those alone;
  * or { kind: 'unsupported', reason }.
  */
 function network(text) {
@@ -165,6 +168,7 @@ function network(text) {
     elemhide: false,
     generichide: false,
     important: false,
+    popup: false,
   };
   if (rest.startsWith('@@')) {
     filter.exception = true;
@@ -188,6 +192,8 @@ function network(text) {
     const key = name.toLowerCase();
     if (key in TYPES) {
       (negated ? notTypes : types).add(TYPES[key]);
+    } else if (key === 'popup') {
+      if (!negated) filter.popup = true;
     } else if (UNMATCHABLE_TYPES.has(key)) {
       if (!negated) unmatchable = key;
     } else if (key === 'third-party' || key === '3p') {
@@ -234,6 +240,8 @@ function network(text) {
   }
   filter.types = [...types].sort();
   filter.notTypes = [...notTypes].sort();
+  // A filter for pop-ups alone matches no request: it is kept apart, for popups.js.
+  if (filter.popup && types.size === 0 && filter.csp === undefined && !filter.elemhide && !filter.generichide) filter.kind = 'popup';
 
   if (rest.length > 1 && rest.startsWith('/') && rest.endsWith('/')) {
     filter.regex = true;
@@ -263,6 +271,7 @@ function network(text) {
  * Reads one line of a filter list:
  *   { kind: 'blank' | 'comment' }
  *   { kind: 'network', ... }      see network()
+ *   { kind: 'popup', ... }        see network()
  *   { kind: 'cosmetic', ... }     see cosmetic()
  *   { kind: 'unsupported', reason }
  */
@@ -282,15 +291,17 @@ export function parseLine(line) {
 export function parseList(text) {
   const network = [];
   const cosmetic = [];
+  const popups = [];
   const dropped = new Map();
   let lines = 0;
   for (const line of text.split(/\r?\n/)) {
     const parsed = parseLine(line);
     if (parsed.kind === 'blank' || parsed.kind === 'comment') continue;
     lines++;
+    if (parsed.popup) popups.push(parsed);
     if (parsed.kind === 'network') network.push(parsed);
     else if (parsed.kind === 'cosmetic') cosmetic.push(parsed);
-    else dropped.set(parsed.reason, (dropped.get(parsed.reason) ?? 0) + 1);
+    else if (parsed.kind !== 'popup') dropped.set(parsed.reason, (dropped.get(parsed.reason) ?? 0) + 1);
   }
-  return { network, cosmetic, dropped, lines };
+  return { network, cosmetic, popups, dropped, lines };
 }

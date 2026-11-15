@@ -4,6 +4,7 @@
 // when idle and starts it afresh for the next event.
 
 import { CosmeticIndex, hidingCSS, merged } from '../shared/cosmetic-lookup.js';
+import { Popups } from '../shared/popups.js';
 import { DEFAULTS, readSettings, writeSettings } from '../shared/settings.js';
 import { allowedBy, hostOf, isAllowed, RULE, siteFromInput, siteOf, userRules, withSite } from '../shared/sites.js';
 
@@ -16,6 +17,8 @@ const ICONS = {
 
 /** What the enabled lists hide, once it has been read; null whenever the enabled lists change. */
 let index = null;
+/** The pop-ups the enabled lists name, likewise. */
+let popups = null;
 
 // ---------------------------------------------------------------------------
 // The user's choices, put into effect.
@@ -38,6 +41,7 @@ async function applyLists(settings) {
   if (!enableRulesetIds.length && !disableRulesetIds.length) return;
   await dnr.updateEnabledRulesets({ enableRulesetIds, disableRulesetIds });
   index = null;
+  popups = null;
 }
 
 /** Makes Chrome's rules, lists and the badge follow the settings. */
@@ -210,6 +214,85 @@ async function cosmeticFor(host, top, sender) {
 }
 
 // ---------------------------------------------------------------------------
+// Pop-ups. No rule of Chrome's can stop a page opening a tab or a window,
+// so one opened to an address the lists name as a pop-up ad is closed: at
+// once if it is opened straight to that address, or as it gets there if
+// it is opened empty or by way of another address.
+
+/** How long a tab a page opened is watched for where it goes. */
+const WATCHED = 10_000;
+/** Tabs pages have opened: tab id to { opener: the host of the page that opened it, since, settled }. */
+const opened = new Map();
+
+/** The pop-up filters of the lists now enabled, read once for as long as the worker lives. */
+function popupIndex() {
+  popups ??= (async () => {
+    const enabled = await dnr.getEnabledRulesets();
+    return new Popups(await Promise.all(enabled.map(async (id) => (await fetch(chrome.runtime.getURL(`popups/${id}.json`))).json())));
+  })().catch((error) => {
+    popups = null;
+    throw error;
+  });
+  return popups;
+}
+
+/** Closes a watched tab if the address it is going to is one the lists name. */
+async function judge(tabId, url) {
+  const tab = opened.get(tabId);
+  if (!tab) return;
+  if (Date.now() - tab.since > WATCHED) {
+    opened.delete(tabId);
+    return;
+  }
+  const settings = await readSettings();
+  if (settings.paused || !settings.popups || isAllowed(settings.allowlist, tab.opener)) return;
+  if (!(await popupIndex()).closes(url, tab.opener)) return;
+  opened.delete(tabId);
+  try {
+    await chrome.tabs.remove(tabId);
+  } catch {
+    // It closed by itself meanwhile.
+  }
+}
+
+chrome.webNavigation.onCreatedNavigationTarget.addListener(async (details) => {
+  let source = null;
+  try {
+    source = await chrome.tabs.get(details.sourceTabId);
+  } catch {
+    // The tab that opened it has gone.
+  }
+  const opener = hostOf(source?.url);
+  if (!opener) return;
+  opened.set(details.tabId, { opener, since: Date.now(), settled: false });
+  await judge(details.tabId, details.url);
+});
+
+chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+  // Until the tab has shown a page of its own, wherever it sets out for is the page's doing.
+  if (details.frameId === 0 && opened.get(details.tabId)?.settled === false) judge(details.tabId, details.url);
+});
+
+/** Ways of going somewhere that are the person's own doing, not the page's. */
+const BY_HAND = new Set(['typed', 'auto_bookmark', 'generated', 'keyword', 'keyword_generated', 'reload', 'start_page']);
+
+chrome.webNavigation.onCommitted.addListener((details) => {
+  const tab = opened.get(details.tabId);
+  if (details.frameId !== 0 || !tab) return;
+  if (BY_HAND.has(details.transitionType) || details.transitionQualifiers.some((how) => how === 'from_address_bar' || how === 'forward_back')) {
+    // The person has taken the tab over: it is theirs from here.
+    opened.delete(details.tabId);
+    return;
+  }
+  if (hostOf(details.url)) tab.settled = true;
+  judge(details.tabId, details.url);
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  opened.delete(tabId);
+});
+
+// ---------------------------------------------------------------------------
 // Messages. Content scripts may only ask what to hide; the rest is for the
 // extension's own pages.
 
@@ -309,11 +392,11 @@ const fromExtension = {
     return { settings };
   },
 
-  /** Changes the switches: paused, cosmetic, youtube, badge. */
+  /** Changes the switches: paused, cosmetic, popups, youtube, badge. */
   async 'settings:set'({ patch }) {
     const settings = await inTurn(async () => {
       const kept = await readSettings();
-      for (const key of ['paused', 'cosmetic', 'youtube', 'badge']) {
+      for (const key of ['paused', 'cosmetic', 'popups', 'youtube', 'badge']) {
         if (typeof patch?.[key] === 'boolean') kept[key] = patch[key];
       }
       await save(kept);

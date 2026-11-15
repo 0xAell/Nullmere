@@ -11,6 +11,8 @@ export const DEFAULTS = Object.freeze({
   cosmetic: true,
   /** Handle YouTube's own ads as far as an extension can. */
   youtube: true,
+  /** Close the tabs and windows pages open to addresses the lists name as pop-up ads. */
+  popups: true,
   /** Show the count of what was kept from a page on the toolbar icon. */
   badge: true,
   /**

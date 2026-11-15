@@ -3,7 +3,7 @@
 An ad blocker for Chrome, in Nullmere's own look: a black lake, a full
 moon, and nothing moving on the water. It blocks ads and trackers with
 [EasyList](https://easylist.to/) and EasyPrivacy, hides the slots they
-leave, and keeps out of the way.
+leave, closes the pop-ups, and keeps out of the way.
 
 <p>
   <img src="docs/popup.png" width="300" alt="The popup: a full moon over a dark lake, its light on the water, and below it the number 27, requests kept from this page, on news.example">
@@ -50,8 +50,9 @@ front. Press it for the popup:
   through*, and the site is reloaded with nothing blocked or hidden on it
   or its subdomains; the moon turns new. Press again to still it.
 - **Options** opens a page with the filter lists (each can be switched
-  off), the sites let through, and four switches: hiding ad slots,
-  YouTube, the count on the icon, and a pause for everything.
+  off), the sites let through, and five switches: hiding ad slots,
+  closing pop-ups, YouTube, the count on the icon, and a pause for
+  everything.
 
 <img src="docs/options.png" width="640" alt="The options page: the three lists with their numbers and switches, two sites let through, and the switches">
 
@@ -62,6 +63,7 @@ front. Press it for the popup:
 | **Blocks requests** | 135,154 filters from EasyList, EasyPrivacy and a short list of Stillwater's own become 12,977 rules for Chrome's `declarativeNetRequest`, inside the 30,000 Chrome guarantees every extension. Filters for whole hosts are merged, so 94,309 hosts are blocked by 184 of those rules. |
 | **Hides ad slots** | 30,934 selectors. A site's own are applied as its pages begin. The 13,637 generic ones are not thrown at every page: a content script tells the extension which classes and ids a page has, and only the selectors that could match are added. They are added as the user's own style, so a page's `!important` can't undo them. |
 | **Follows worded filters** | 283 filters pick an element by the words in it (*hide the card whose label says Sponsored*). No style sheet can; the content script follows them as short plans. |
+| **Closes pop-up ads** | 2,977 filters name the addresses of pop-up ads. A tab or window a page opens to one is closed: at once if it is opened straight there, or as it gets there if it is opened empty or by way of another address. A tab you open yourself is never touched. |
 | **Lets sites through** | Per site, from the popup or the options page, subdomains included. |
 | **YouTube** | Takes the ad lists out of the data YouTube's player reads, skips or runs out an ad that plays anyway, and hides promoted tiles. Best effort: see below. |
 | **Sends nothing anywhere** | The extension makes no request of its own. No account, no telemetry, no remote code, no "acceptable ads". |
@@ -85,15 +87,24 @@ rules made ahead of time. So:
 
   | Left out | How many | Why |
   |---|---|---|
-  | Pop-up filters (`$popup`) | 2,969 | Chrome's rules can't close a window a page opens. |
   | Redirects and rewrites (`$redirect`, `$rewrite`) | 38 | They swap a request for a harmless stand-in; these rules can only block or allow. |
   | Scriptlets and procedural filters beyond `:has-text` | 43 | They need a script run in the page (`+js(...)`, `:xpath`, `:-abp-properties`). |
   | Regular expressions Chrome refuses | 15 | Chrome's engine has no lookahead and refuses expressions that compile too large. `tools/validate.js` asks a real Chromium which. |
   | Hiding exceptions for part of a site | 13 | Only an exception for a whole host can be looked up when a page's selectors are chosen. |
   | Others | 7 | Four selectors Chromium can't read, two filters for addresses that are not hosts, and one that would match every request. |
 
-  That is 3,085 of 135,154 filters, 2.3%. Nothing is approximated in a
+  That is 116 of 135,154 filters, 0.1%. Nothing is approximated in a
   way that blocks more than the filter meant.
+
+**A pop-up is closed, not prevented.** No rule of Chrome's can stop a page
+opening a window, so Stillwater closes it as soon as it sees where it is
+going: it may show for a moment, and its first request may already have
+left. A tab is watched for ten seconds after a page opens it, and not at
+all once you go somewhere in it by the address bar. A link you click
+yourself that opens a new tab to one of these addresses is closed too, as
+it is by other blockers using these lists. An ad that takes over the tab
+you were in, having moved the page you wanted into a new one, is not
+caught.
 
 **YouTube is the hardest, and this part is not verified against YouTube.**
 Its ads come from the same hosts as its videos, so no rule can block
@@ -129,14 +140,17 @@ pictures here are the real pages, taken in that Chromium.
 When it is loaded Chrome says Stillwater can *read and change all your
 data on all websites*, *read your browsing history* and *block content on
 any page*. Those are Chrome's words for the permissions below. The second
-is the one for reading Chrome's own count of what it blocked; Stillwater
-reads the number, and no history.
+is Chrome's name for two of them: reading its own count of what it
+blocked, and being told when a page opens a tab and where that tab goes.
+Stillwater reads the number, judges the pop-up's address, and keeps no
+history of either.
 
 | Permission | What it is used for |
 |---|---|
 | `declarativeNetRequest` | The rules that block requests. |
 | `declarativeNetRequestFeedback` | Reading Chrome's count of what it blocked on a tab, for the popup. |
 | `storage` | The sites let through and the switches. Kept on this computer. |
+| `webNavigation` | Being told when a page opens a tab or window, and where it goes in its first seconds, so a pop-up ad can be closed. |
 | `scripting` | Adding the style that hides ad slots to a page, and registering the YouTube script only while its switch is on. |
 | Access to all sites | The content script that reports a page's classes and ids and follows the worded filters. It reads class names, ids, and for worded filters the text of the elements a list points at; none of it leaves the browser. |
 
@@ -146,11 +160,12 @@ reads the number, and no history.
 lists/        EasyList and EasyPrivacy at a named commit, and Stillwater's own short list
 tools/        refresh-lists.js, build.js, validate.js, package.js, make-icons.js, shots.js
   lib/        filters.js (reads the lists)   dnr.js (makes Chrome's rules)
-              cosmetic.js, procedural.js, selectors.js (what to hide)   zip.js, png.js
+              cosmetic.js, procedural.js, selectors.js (what to hide)
+              popups.js (which pop-ups to close)   zip.js, png.js
 src/          the extension as written: manifest, service worker, content scripts, pages, icons
-build/        the extension as Chrome loads it: src/ plus rules/ and cosmetic/ (not kept in git)
+build/        the extension as Chrome loads it: src/ plus rules/, cosmetic/ and popups/ (not kept in git)
 dist/         the packed build
-test/unit/    the converter, the cosmetic data, sites, wording, the zip
+test/unit/    the converter, the cosmetic and pop-up data, sites, wording, the zip
 test/e2e/     the unpacked extension in Chromium against a stand-in for every host
 ```
 
@@ -158,17 +173,19 @@ test/e2e/     the unpacked extension in Chromium against a stand-in for every ho
   turns network filters into rules and checks each against what Chrome
   requires. `tools/lib/cosmetic.js` sorts selectors into those for named
   sites, generic ones keyed by the class or id they need, and exceptions.
+- `tools/lib/popups.js` turns pop-up filters into a set of hosts and a few
+  hundred expressions; `src/shared/popups.js` judges an address by them.
 - `src/background/service-worker.js` keeps three dynamic rules (the sites
-  let through, and the pause), chooses what each frame hides, and answers
-  the pages. It holds nothing that can't be made again, since Chrome stops
-  it when idle.
+  let through, and the pause), chooses what each frame hides, closes the
+  pop-ups, and answers the pages. It holds nothing that can't be made
+  again, since Chrome stops it when idle.
 - The icons are drawn by `tools/make-icons.js` from a few shapes: nothing
   is traced or taken from anywhere.
 
 ## Working on it
 
 ```sh
-npm test             # 60-odd unit tests, Node alone
+npm test             # some 75 unit tests, Node alone
 npm run build        # lists/ -> build/
 npm run test:e2e     # the unpacked build in Chromium (needs Playwright: npm ci && npx playwright install chromium)
 npm run package      # build, then dist/nullmere-stillwater-<version>.zip
@@ -196,8 +213,8 @@ Affero General Public License, version 3 only, like the rest of it.
 
 EasyList and EasyPrivacy are the work of the EasyList authors and their
 contributors, used under the GNU General Public License, version 3 or
-later. The rules and selectors in the packed extension are derived from
-them and carry the same licence.
+later. The rules, selectors and pop-up addresses in the packed extension
+are derived from them and carry the same licence.
 [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) says exactly what is
 taken, from where, and how it is changed. The EasyList authors do not
 endorse this extension; faults in how their filters are converted are

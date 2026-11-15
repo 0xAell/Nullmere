@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { buildCosmetic } from './lib/cosmetic.js';
 import { problemsWith, toRules } from './lib/dnr.js';
 import { parseList, splitSelectors } from './lib/filters.js';
+import { buildPopups } from './lib/popups.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -47,6 +48,7 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
   rmSync(out, { recursive: true, force: true });
   mkdirSync(join(out, 'rules'), { recursive: true });
   mkdirSync(join(out, 'cosmetic'), { recursive: true });
+  mkdirSync(join(out, 'popups'), { recursive: true });
   cpSync(join(root, 'src'), out, { recursive: true });
   for (const file of ['THIRD-PARTY-NOTICES.md', 'licences']) {
     if (existsSync(join(root, file))) cpSync(join(root, file), join(out, file), { recursive: true });
@@ -79,9 +81,13 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
     if (refused) dropped.set('cosmetic:rejected-by-chrome', refused);
     const cosmetic = buildCosmetic(parsed.cosmetic.filter((filter) => filter.selectors.length || filter.procedural || filter.styles), hide);
 
+    const popups = buildPopups(parsed.popups);
+    for (const [reason, n] of popups.dropped) dropped.set(reason, (dropped.get(reason) ?? 0) + n);
+
     // One rule to a line: a rule can be found, and a refresh compared.
     writeFileSync(join(out, 'rules', `${list.id}.json`), `[\n${rules.map((rule) => JSON.stringify(rule)).join(',\n')}\n]\n`);
     writeFileSync(join(out, 'cosmetic', `${list.id}.json`), `${JSON.stringify(cosmetic.data)}\n`);
+    writeFileSync(join(out, 'popups', `${list.id}.json`), `${JSON.stringify(popups.data)}\n`);
     built.push({
       id: list.id,
       title: list.title,
@@ -93,6 +99,7 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
       hosts: rules.reduce((sum, rule) => sum + (blocksHosts(rule) ? rule.condition.requestDomains.length : 0), 0),
       cosmetic: cosmetic.counts.generic + cosmetic.counts.specific + cosmetic.counts.procedural + cosmetic.counts.styles,
       procedural: cosmetic.counts.procedural,
+      popups: popups.count,
       dropped: count(dropped),
     });
   }
@@ -102,6 +109,7 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
     rules: built.reduce((sum, list) => sum + list.rules, 0),
     regexRules: built.reduce((sum, list) => sum + list.regexRules, 0),
     cosmetic: built.reduce((sum, list) => sum + list.cosmetic, 0),
+    popups: built.reduce((sum, list) => sum + list.popups, 0),
   };
   if (totals.regexRules > LIMITS.regexRules) throw new Error(`${totals.regexRules} regular-expression rules: Chrome takes ${LIMITS.regexRules}`);
 
@@ -120,7 +128,7 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
 
   if (!quiet) {
     for (const list of built) {
-      console.log(`${list.title}: ${list.filters} filters -> ${list.rules} rules (${list.hosts} hosts, ${list.regexRules} regular expressions), ${list.cosmetic} selectors`);
+      console.log(`${list.title}: ${list.filters} filters -> ${list.rules} rules (${list.hosts} hosts, ${list.regexRules} regular expressions), ${list.cosmetic} selectors, ${list.popups} pop-up filters`);
       for (const [reason, n] of Object.entries(list.dropped)) console.log(`    not converted: ${n} ${reason}`);
     }
     console.log(`In all ${totals.rules} rules of the ${LIMITS.guaranteedRules} Chrome guarantees, ${totals.regexRules} regular expressions of ${LIMITS.regexRules}.`);

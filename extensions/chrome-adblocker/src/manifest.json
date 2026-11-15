@@ -28,7 +28,7 @@
     "service_worker": "background/service-worker.js",
     "type": "module"
   },
-  "permissions": ["declarativeNetRequest", "declarativeNetRequestFeedback", "storage", "scripting"],
+  "permissions": ["declarativeNetRequest", "declarativeNetRequestFeedback", "storage", "scripting", "webNavigation"],
   "host_permissions": ["<all_urls>"],
   "declarative_net_request": {
     "rule_resources": [

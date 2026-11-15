@@ -32,11 +32,12 @@ named here, with the terms it is used under.
   (`easylist.template`, `easyprivacy.template`) set them out. Two comment
   lines saying so are added under each list's first line. Nothing else is
   changed.
-- `rules/easylist.json`, `rules/easyprivacy.json`, `cosmetic/easylist.json`
-  and `cosmetic/easyprivacy.json` in the built and packaged extension are
+- `rules/easylist.json`, `rules/easyprivacy.json`, `cosmetic/easylist.json`,
+  `cosmetic/easyprivacy.json`, `popups/easylist.json` and
+  `popups/easyprivacy.json` in the built and packaged extension are
   **derived from** those lists by `tools/build.js`: the same filters,
   rewritten in the form Chrome's declarativeNetRequest API and this
-  extension's content script take. Filters Chrome cannot express are left
+  extension's own scripts take. Filters that cannot be expressed are left
   out; the build prints how many, and why. These derived files are
   distributed under the same licence as the lists, the GNU General Public
   License, version 3 or later.

@@ -22,6 +22,15 @@
 // the entities the lists name are large sites under suffixes like these.
 const SECOND_LEVEL = new Set(['co', 'com', 'net', 'org', 'gov', 'edu', 'ac', 'or', 'ne', 'go']);
 
+/**
+ * How many of a host's last labels are its public suffix, as far as can
+ * be told without the suffix list: two where they look like `co.uk`,
+ * otherwise one.
+ */
+export function suffixLength(labels) {
+  return labels.length > 2 && labels.at(-1).length === 2 && SECOND_LEVEL.has(labels.at(-2)) ? 2 : 1;
+}
+
 /** The hosts and entities a hostname answers to: itself, each parent, and `name.*` forms. */
 export function namesOf(host) {
   const labels = host.toLowerCase().split('.').filter(Boolean);
@@ -33,7 +42,7 @@ export function namesOf(host) {
     // the last label, or the last two where they look like `co.uk`. So
     // `google.*` is google.com and google.co.uk, and not google.some-host.com.
     if (rest.length > 1) names.push(`${rest.slice(0, -1).join('.')}.*`);
-    if (rest.length > 2 && rest.at(-1).length === 2 && SECOND_LEVEL.has(rest.at(-2))) names.push(`${rest.slice(0, -2).join('.')}.*`);
+    if (suffixLength(rest) === 2) names.push(`${rest.slice(0, -2).join('.')}.*`);
   }
   return [...new Set(names)];
 }

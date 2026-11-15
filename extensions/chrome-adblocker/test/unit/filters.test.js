@@ -60,7 +60,6 @@ test('csp, and the exceptions that turn hiding off', () => {
 
 test('what Chrome cannot express is refused with its reason', () => {
   const reasons = {
-    '||ads.example^$popup': 'option:popup',
     '||ads.example^$webrtc': 'option:webrtc',
     '||ads.example^$rewrite=abp-resource:blank-js': 'option:rewrite',
     '||ads.example^$redirect=noop.js': 'option:redirect',
@@ -77,8 +76,19 @@ test('what Chrome cannot express is refused with its reason', () => {
     assert.deepEqual([parseLine(line).kind, parseLine(line).reason], ['unsupported', reason], line);
   }
   // Excluding a type Chrome can't match loses nothing; naming it beside others drops only it.
-  assert.equal(parseLine('||ads.example^$~popup').kind, 'network');
-  assert.deepEqual(parseLine('||ads.example^$popup,script').types, ['script']);
+  assert.equal(parseLine('||ads.example^$~webrtc').kind, 'network');
+  assert.deepEqual(parseLine('||ads.example^$webrtc,script').types, ['script']);
+});
+
+test('a filter for pop-ups is kept apart from those for requests', () => {
+  // Alone, it matches no request and must make no rule.
+  const alone = parseLine('||ads.example^$popup,third-party,domain=news.example');
+  assert.deepEqual([alone.kind, alone.popup, alone.pattern, alone.thirdParty, alone.domains], ['popup', true, '||ads.example^', true, { include: ['news.example'], exclude: [] }]);
+  assert.deepEqual([parseLine('@@||ok.example^$popup').kind, parseLine('@@||ok.example^$popup').exception], ['popup', true]);
+  // Beside a type of request, it is both.
+  const both = parseLine('||ads.example^$document,popup');
+  assert.deepEqual([both.kind, both.popup, both.types], ['network', true, ['main_frame']]);
+  assert.deepEqual([parseLine('||ads.example^$~popup').kind, parseLine('||ads.example^$~popup').popup], ['network', false]);
 });
 
 test('patterns are tidied: wildcards at the ends, ||*, and hosts outside ASCII', () => {
@@ -213,9 +223,10 @@ test('hostnames', () => {
 });
 
 test('a list is read whole, and what was dropped is counted by reason', () => {
-  const list = parseList(['[Adblock Plus 2.0]', '! Title: test', '||ads.example^', '##.ad', '||pop.example^$popup', '||pop2.example^$popup', 'x.example##+js(nowoif)'].join('\n'));
-  assert.equal(list.lines, 5);
-  assert.equal(list.network.length, 1);
+  const list = parseList(['[Adblock Plus 2.0]', '! Title: test', '||ads.example^', '##.ad', '||pop.example^$popup', '||pop2.example^$popup,document', 'x.example##+js(nowoif)', '||rtc.example^$webrtc'].join('\n'));
+  assert.equal(list.lines, 6);
+  assert.equal(list.network.length, 2, 'the plain filter, and the one that is for documents as well as pop-ups');
   assert.equal(list.cosmetic.length, 1);
-  assert.deepEqual([...list.dropped], [['option:popup', 2], ['cosmetic:scriptlet', 1]]);
+  assert.deepEqual(list.popups.map((filter) => filter.pattern), ['||pop.example^', '||pop2.example^']);
+  assert.deepEqual([...list.dropped], [['cosmetic:scriptlet', 1], ['option:webrtc', 1]]);
 });
