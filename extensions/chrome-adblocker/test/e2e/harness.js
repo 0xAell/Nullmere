@@ -183,6 +183,28 @@ export function later(urls) {
   return `<script>setTimeout(() => { for (const url of ${JSON.stringify(urls)}) document.body.appendChild(new Image()).src = url; }, 80);</script>`;
 }
 
+/**
+ * What Chromium itself holds against the extension, as its own extensions
+ * page knows it: warnings from loading it (a rule it would not take, a
+ * manifest key it does not know) and errors its worker, pages and content
+ * scripts have raised since. null where this Chromium has no such page to
+ * ask.
+ */
+export async function complaints(browser) {
+  const page = await browser.context.newPage();
+  try {
+    await page.goto('chrome://extensions/');
+    const info = await page.evaluate((id) => (chrome.developerPrivate?.getExtensionInfo ? new Promise((done) => chrome.developerPrivate.getExtensionInfo(id, done)) : null), browser.id);
+    if (!info) return null;
+    const words = (list) => (list ?? []).map((item) => item.message ?? String(item));
+    return { state: info.state, warnings: words(info.installWarnings), manifest: words(info.manifestErrors), errors: words(info.runtimeErrors) };
+  } catch {
+    return null;
+  } finally {
+    await page.close();
+  }
+}
+
 /** The id of the tab a page is in, as the extension knows it. */
 export async function tabIdOf(worker, page) {
   return worker.evaluate(async (url) => (await chrome.tabs.query({})).find((tab) => tab.url === url)?.id, page.url());

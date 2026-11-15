@@ -126,6 +126,12 @@ pictures here are the real pages, taken in that Chromium.
 
 ## Why it asks for what it asks for
 
+When it is loaded Chrome says Stillwater can *read and change all your
+data on all websites*, *read your browsing history* and *block content on
+any page*. Those are Chrome's words for the permissions below. The second
+is the one for reading Chrome's own count of what it blocked; Stillwater
+reads the number, and no history.
+
 | Permission | What it is used for |
 |---|---|
 | `declarativeNetRequest` | The rules that block requests. |

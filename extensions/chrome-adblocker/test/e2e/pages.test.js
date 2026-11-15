@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
-import { later, launch, open, root, startServer, tabIdOf, until } from './harness.js';
+import { complaints, later, launch, open, root, startServer, tabIdOf, until } from './harness.js';
 
 let server;
 let browser;
@@ -234,4 +234,10 @@ test('the options page says what it cannot do with the build\'s own numbers, and
   const unnamed = await page.evaluate(() => [...document.querySelectorAll('button, input, a')].filter((control) => !(control.textContent.trim() || control.getAttribute('aria-label'))).length);
   assert.equal(unnamed, 0);
   await page.close();
+});
+
+test('after all of that, Chromium holds nothing against the extension', async (t) => {
+  const held = await complaints(browser);
+  if (!held) return t.skip('this Chromium has no extensions page to ask');
+  assert.deepEqual(held, { state: 'ENABLED', warnings: [], manifest: [], errors: [] });
 });

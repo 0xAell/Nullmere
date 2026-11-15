@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { build } from '../../tools/build.js';
-import { launch, open, root, startServer, until } from './harness.js';
+import { complaints, launch, open, root, startServer, until } from './harness.js';
 
 let server;
 let browser;
@@ -246,4 +246,10 @@ test('an exception takes a worded filter back for its site', async () => {
   await until(async () => (await hidden(page, WORD_IDS)).length >= 3, 'the other worded slots to be hidden');
   assert.deepEqual(await hidden(page, WORD_IDS), ['li-ad', 'partners', 'media-ad']);
   await page.close();
+});
+
+test('after all of that, Chromium holds nothing against the extension', async (t) => {
+  const held = await complaints(browser);
+  if (!held) return t.skip('this Chromium has no extensions page to ask');
+  assert.deepEqual(held, { state: 'ENABLED', warnings: [], manifest: [], errors: [] });
 });

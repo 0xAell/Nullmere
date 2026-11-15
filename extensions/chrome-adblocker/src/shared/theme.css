@@ -21,6 +21,11 @@
   box-sizing: border-box;
 }
 
+html {
+  scrollbar-color: rgb(150 180 225 / 0.28) transparent;
+  scrollbar-width: thin;
+}
+
 html,
 body {
   margin: 0;

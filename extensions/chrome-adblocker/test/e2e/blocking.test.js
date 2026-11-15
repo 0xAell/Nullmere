@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { refusedBy } from '../../tools/validate.js';
-import { later, launch, open, root, startServer, tabIdOf, until } from './harness.js';
+import { complaints, later, launch, open, root, startServer, tabIdOf, until } from './harness.js';
 
 let server;
 let browser;
@@ -181,4 +181,10 @@ test('a web page cannot ask the worker to change anything', async () => {
   assert.equal(answer[0].result, 'no answer');
   assert.deepEqual((await browser.ask({ type: 'overview' })).settings, before.settings);
   await page.close();
+});
+
+test('after all of that, Chromium holds nothing against the extension', async (t) => {
+  const held = await complaints(browser);
+  if (!held) return t.skip('this Chromium has no extensions page to ask');
+  assert.deepEqual(held, { state: 'ENABLED', warnings: [], manifest: [], errors: [] });
 });

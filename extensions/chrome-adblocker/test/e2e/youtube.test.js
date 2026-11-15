@@ -10,7 +10,7 @@
 
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { launch, open, startServer, until } from './harness.js';
+import { complaints, launch, open, startServer, until } from './harness.js';
 
 let server;
 let browser;
@@ -145,4 +145,10 @@ test('a player embedded in another site is handled there too, and left alone whe
   assert.deepEqual(await frame.evaluate(() => window.report.fetched), ALL, 'what arrives after the frame has asked is left alone');
   await browser.ask({ type: 'site:set', site: 'blog.test', allowed: false });
   await page.close();
+});
+
+test('after all of that, Chromium holds nothing against the extension', async (t) => {
+  const held = await complaints(browser);
+  if (!held) return t.skip('this Chromium has no extensions page to ask');
+  assert.deepEqual(held, { state: 'ENABLED', warnings: [], manifest: [], errors: [] });
 });

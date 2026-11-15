@@ -35,7 +35,8 @@ export const SWITCHES = [
 
 /** What a list holds, in a line. */
 export function listDetail(list) {
-  const parts = [`${grouped(list.filters)} filters`, `${grouped(list.rules)} rules for Chrome`];
+  const parts = [`${grouped(list.filters)} filters`];
+  if (list.rules) parts.push(`${grouped(list.rules)} rules for Chrome`);
   if (list.cosmetic) parts.push(`${grouped(list.cosmetic)} selectors to hide`);
   return list.filters ? parts.join(' · ') : 'Nothing in it yet.';
 }

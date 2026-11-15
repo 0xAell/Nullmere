@@ -36,6 +36,7 @@ test('a list in a line', () => {
   assert.equal(listDetail(lists.lists[0]), '78,487 filters · 3,771 rules for Chrome · 30,468 selectors to hide');
   assert.equal(listDetail(lists.lists[1]), '56,658 filters · 9,201 rules for Chrome');
   assert.equal(listDetail(lists.lists[2]), 'Nothing in it yet.');
+  assert.equal(listDetail({ filters: 9, rules: 0, cosmetic: 9 }), '9 filters · 9 selectors to hide', 'a list that only hides says nothing of rules');
 });
 
 test('where the lists came from, and the rules in use of those enabled', () => {
