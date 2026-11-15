@@ -2,7 +2,7 @@
 //! each day of the realm. A deed done earns marks, and marks open the
 //! day's three chests.
 
-use super::{asking, city_of, goods, realm, set_goods, settle, Refusal};
+use super::{asking, city_of, earn_favour, goods, realm, set_goods, settle, Refusal};
 use crate::catalog::{self, Deed, Goods};
 use crate::rows::{Chest, Daily, Db, Duty};
 use crate::store::Table;
@@ -69,7 +69,7 @@ pub(super) fn did(db: &mut impl Db, player: u64, deed: Deed, amount: u64) {
 
 /// A player opens one of the day's chests: if they have earned the marks
 /// it asks and have not opened it today, what it holds goes into their
-/// stock, though it overfill it.
+/// stock, though it overfill it, and they rise in favour.
 pub fn open_chest(db: &mut impl Db, player: u64, chest: u8) -> Result<Goods, Refusal> {
     asking(db, player)?;
     let city = city_of(db, player)?;
@@ -93,5 +93,6 @@ pub fn open_chest(db: &mut impl Db, player: u64, chest: u8) -> Result<Goods, Ref
     } else {
         db.insert(row);
     }
+    earn_favour(db, player, catalog::chest_favour(chest));
     Ok(holds)
 }

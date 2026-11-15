@@ -10,11 +10,11 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 use crate::hex::Hex;
 use crate::rows::{
     alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
-    chest as _, daily as _, daily__view as _, duty as _,
+    chest as _, daily as _, daily__view as _, duty as _, favour as _, favour__view as _, grace as _,
     building__view as _, city as _, city__view as _, commander as _, commander__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
     march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
     realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
-    troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Building, Chest, City, Commander, Daily, Duty, Haul, Hunt, Job, Land, Lore, March, Member,
+    troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Building, Chest, City, Commander, Daily, Duty, Favour, Grace, Haul, Hunt, Job, Land, Lore, March, Member,
     Pace, Place, Player, Progress, Realm, RealmChat, Report, Site, Soldier, Squad, Stock, Study, Task, Troop,
 };
 use crate::rules::{self, Refusal};
@@ -152,6 +152,8 @@ stored!(Progress in progress by player);
 stored!(Duty in duty by deed);
 stored!(Chest in chest by id);
 stored!(Daily in daily by player);
+stored!(Grace in grace by level);
+stored!(Favour in favour by player);
 stored!(Lore in lore by id, city);
 stored!(Study in study by id);
 stored!(Commander in commander by id, owner);
@@ -503,6 +505,12 @@ fn my_progress(ctx: &ViewContext) -> Option<Progress> {
 #[view(accessor = my_daily, public)]
 fn my_daily(ctx: &ViewContext) -> Option<Daily> {
     ctx.db.daily().player().find(viewer(ctx)?)
+}
+
+/// The favour the caller has earned: nothing, until they have earned some.
+#[view(accessor = my_favour, public)]
+fn my_favour(ctx: &ViewContext) -> Option<Favour> {
+    ctx.db.favour().player().find(viewer(ctx)?)
 }
 
 /// What the caller's city has learnt.

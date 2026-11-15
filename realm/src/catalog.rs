@@ -797,6 +797,25 @@ pub fn chests() -> [(u32, Goods); 3] {
     [(40, Goods::of(2_000, 2_000, 1_000, 0)), (70, Goods::of(5_000, 5_000, 2_500, 0)), (100, Goods::of(10_000, 10_000, 5_000, 200))]
 }
 
+/// The highest favour rises.
+pub const TOP_FAVOUR: u32 = 10;
+
+/// The favour a player must have earned to stand at a level of it.
+pub fn favour_needs(level: u32) -> u64 {
+    [0, 50, 150, 350, 700, 1_200, 2_000, 3_200, 5_000, 7_500, 11_000][level.min(TOP_FAVOUR) as usize]
+}
+
+/// The level of favour that so much of it earned stands at.
+pub fn favour_level(points: u64) -> u32 {
+    (0..=TOP_FAVOUR).rev().find(|level| points >= favour_needs(*level)).unwrap_or(0)
+}
+
+/// The favour each of the day's chests adds when it is opened, in their
+/// order: seventy a day for one who does all the day's work.
+pub fn chest_favour(chest: u8) -> u64 {
+    [10, 20, 40].get((chest as usize).wrapping_sub(1)).copied().unwrap_or(0)
+}
+
 /// What an Academy studies. Each topic is learnt level by level, and
 /// each level adds the same again to what it gives.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

@@ -253,6 +253,11 @@ check("a chest not yet earned is refused", call(ada, "open_chest", 3), "That che
 check("and one that is not there", call(ada, "open_chest", 9), "There is no such chest.")
 check("no one reads another's day", isinstance(rows(ada, "SELECT * FROM daily"), str), True)
 
+# Favour: its levels for all to read; none earned until a chest is opened.
+graces = sorted(rows(nobody, "SELECT * FROM grace"), key=lambda grace: grace["level"])
+check("the levels of favour are written out for all to read", (len(graces), graces[0]["points"], graces[-1]["sooner"]), (11, 0, 10))
+check("a player has none until they open a chest", (rows(ada, "SELECT * FROM my_favour"), isinstance(rows(ada, "SELECT * FROM favour"), str)), ([], True))
+
 # Commanders: one to begin with, more from a Tavern.
 captains = rows(bryn, "SELECT * FROM my_commanders")
 check("a player begins with one commander, in the city", [(c["level"], c["march"], 1 <= c["way"] <= 6, len(c["name"]) >= 4) for c in captains], [(1, 0, True, True)])

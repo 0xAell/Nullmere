@@ -208,7 +208,7 @@ fn raise(db: &mut impl Db, city: &City, building: &Building, kind: Kind, level: 
     set_goods(&mut stock, left);
     db.update(stock);
     let now = db.now();
-    let ends = now + sooner(db, city.id, Topic::Building, catalog::paced(catalog::seconds(kind, level), realm(db)?.pace));
+    let ends = now + super::favoured(db, city.owner, sooner(db, city.id, Topic::Building, catalog::paced(catalog::seconds(kind, level), realm(db)?.pace)));
     let mut job = db.insert(Job { id: 0, city: city.id, kind: Job::RAISE, subject: building.id, level, amount: 0, started: now, ends, timer: 0 });
     job.timer = db.after(ends, TIMER_JOB, job.id);
     db.update(job.clone());

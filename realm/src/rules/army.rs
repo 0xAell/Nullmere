@@ -1,6 +1,6 @@
 //! Troops: counted by kind and tier, trained in batches on a timer.
 
-use super::{asking, did, goods, realm, set_goods, settle, sooner, Refusal, TIMER_JOB};
+use super::{asking, did, favoured, goods, realm, set_goods, settle, sooner, Refusal, TIMER_JOB};
 use crate::catalog::{self, Building as Kind, Deed, Topic, Troops, TOP_TIER};
 use crate::rows::{Building, City, Db, Job, Troop};
 use crate::store::Table;
@@ -75,7 +75,7 @@ pub fn train(db: &mut impl Db, player: u64, building: u64, tier: u32, count: u64
     set_goods(&mut stock, left);
     db.update(stock);
     let now = db.now();
-    let ends = now + sooner(db, city.id, Topic::Drill, catalog::paced(soldier.seconds * count as i64, realm(db)?.pace));
+    let ends = now + favoured(db, player, sooner(db, city.id, Topic::Drill, catalog::paced(soldier.seconds * count as i64, realm(db)?.pace)));
     let mut job = db.insert(Job { id: 0, city: city.id, kind: Job::TRAIN, subject: building.id, level: tier, amount: count, started: now, ends, timer: 0 });
     job.timer = db.after(ends, TIMER_JOB, job.id);
     db.update(job.clone());

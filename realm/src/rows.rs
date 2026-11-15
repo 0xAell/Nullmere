@@ -679,6 +679,30 @@ pub struct Daily {
 }
 row!(Daily in daily, by player);
 
+/// A level of favour, for clients to show: the favour it asks, and by
+/// how many hundredths it hastens every work. Keyed by level, from 0.
+#[spacetimedb::table(accessor = grace, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Grace {
+    #[primary_key]
+    pub level: u64,
+    pub points: u64,
+    pub sooner: u32,
+}
+row!(Grace in grace, by level);
+
+/// The favour a player has earned, and the level it stands at: theirs
+/// alone to read. Keyed by player; there is no row until they earn some.
+#[spacetimedb::table(accessor = favour)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Favour {
+    #[primary_key]
+    pub player: u64,
+    pub points: u64,
+    pub level: u32,
+}
+row!(Favour in favour, by player);
+
 /// What a city has learnt of a topic: its owner's alone to read. Keyed
 /// by city and topic.
 #[spacetimedb::table(accessor = lore)]
@@ -781,6 +805,8 @@ pub trait Db:
     + Table<Duty>
     + Table<Chest>
     + Table<Daily>
+    + Table<Grace>
+    + Table<Favour>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -818,6 +844,8 @@ impl<
             + Table<Duty>
             + Table<Chest>
             + Table<Daily>
+            + Table<Grace>
+            + Table<Favour>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

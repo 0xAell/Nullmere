@@ -2,7 +2,7 @@
 //! level at a time, and each level adds to what the city's works bring
 //! in, how fast it builds, trains and marches, or how its soldiers fight.
 
-use super::{asking, building_of, city_of, did, goods, realm, set_goods, settle, Refusal, TIMER_JOB};
+use super::{asking, building_of, city_of, did, favoured, goods, realm, set_goods, settle, Refusal, TIMER_JOB};
 use crate::catalog::{self, Building as Kind, Deed, Topic, Troops, TOP_STUDY};
 use crate::rows::{Db, Job, Lore, Study};
 use crate::store::Table;
@@ -99,7 +99,7 @@ pub fn study(db: &mut impl Db, player: u64, topic: u8) -> Result<Job, Refusal> {
     set_goods(&mut stock, left);
     db.update(stock);
     let now = db.now();
-    let ends = now + catalog::paced(catalog::study_seconds(level), realm(db)?.pace);
+    let ends = now + favoured(db, player, catalog::paced(catalog::study_seconds(level), realm(db)?.pace));
     let mut job = db.insert(Job { id: 0, city: city.id, kind: Job::STUDY, subject: topic as u64, level, amount: 0, started: now, ends, timer: 0 });
     job.timer = db.after(ends, TIMER_JOB, job.id);
     db.update(job.clone());
