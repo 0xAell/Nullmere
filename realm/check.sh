@@ -261,7 +261,7 @@ check("a player has none until they open a chest", (rows(ada, "SELECT * FROM my_
 # Items: the hastes a chest holds, kept in a satchel until they are used.
 wares = sorted(rows(nobody, "SELECT * FROM ware"), key=lambda ware: ware["item"])
 check("the items are written out for all to read", [(ware["name"], ware["seconds"]) for ware in wares], [("Five minutes' haste", 300), ("An hour's haste", 3600), ("Eight hours' haste", 28800)])
-check("and every chest says what hastes it holds", all(chest["haste5"] + chest["haste60"] + chest["haste480"] > 0 for chest in chests), True)
+check("and every chest says what hastes it holds", all(chest["brief_hastes"] + chest["hour_hastes"] + chest["long_hastes"] > 0 for chest in chests), True)
 check("a satchel begins empty, and is its owner's alone to read", (rows(ada, "SELECT * FROM my_satchel"), isinstance(rows(ada, "SELECT * FROM satchel"), str)), ([], True))
 check("a haste a player has not got is refused", call(ada, "use_item", 1, 1), "No such work is under way in your city.")
 check("and a thing that is no item", call(ada, "use_item", 9, 1), "There is no such thing to use.")

@@ -74,7 +74,7 @@ fn the_contests_and_their_prizes_are_written_out_for_clients() {
     let prizes = Table::<Prize>::all(&db);
     assert_eq!(prizes.iter().map(|prize| (prize.trial, prize.place, prize.points)).collect::<Vec<_>>(), vec![(1, 1, 100), (1, 2, 400), (1, 3, 1_000)]);
     assert!(prizes.windows(2).all(|pair| pair[0].grain < pair[1].grain), "a prize that asks more gives more");
-    assert_eq!((prizes[0].haste5, prizes[1].haste60, prizes[2].haste480), (2, 1, 1));
+    assert_eq!((prizes[0].brief_hastes, prizes[1].hour_hastes, prizes[2].long_hastes), (2, 1, 1));
 }
 
 #[test]

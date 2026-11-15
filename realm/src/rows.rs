@@ -657,9 +657,9 @@ pub struct Chest {
     pub stone: u64,
     pub moonsalt: u64,
     /// How many of each haste it holds: five minutes', an hour's, eight hours'.
-    pub haste5: u64,
-    pub haste60: u64,
-    pub haste480: u64,
+    pub brief_hastes: u64,
+    pub hour_hastes: u64,
+    pub long_hastes: u64,
 }
 row!(Chest in chest, by id);
 
@@ -693,9 +693,9 @@ pub struct Prize {
     pub timber: u64,
     pub stone: u64,
     pub moonsalt: u64,
-    pub haste5: u64,
-    pub haste60: u64,
-    pub haste480: u64,
+    pub brief_hastes: u64,
+    pub hour_hastes: u64,
+    pub long_hastes: u64,
 }
 row!(Prize in prize, by id);
 

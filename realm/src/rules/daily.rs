@@ -23,9 +23,9 @@ pub fn write_days(db: &mut impl Db) {
             timber: holds.timber,
             stone: holds.stone,
             moonsalt: holds.moonsalt,
-            haste5: count(Item::Haste5),
-            haste60: count(Item::Haste60),
-            haste480: count(Item::Haste480),
+            brief_hastes: count(Item::Haste5),
+            hour_hastes: count(Item::Haste60),
+            long_hastes: count(Item::Haste480),
         });
     }
 }

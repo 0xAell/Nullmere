@@ -68,8 +68,8 @@ fn the_items_are_written_out_and_the_chests_say_what_they_hold() {
     for chest in Table::<Chest>::all(&db) {
         let holds = catalog::chest_items(chest.id as u8);
         let of = |item: Item| holds.iter().filter(|(held, _)| *held == item).map(|(_, count)| *count).sum::<u64>();
-        assert_eq!((chest.haste5, chest.haste60, chest.haste480), (of(Item::Haste5), of(Item::Haste60), of(Item::Haste480)));
-        assert!(chest.haste5 + chest.haste60 + chest.haste480 > 0, "every chest holds some haste");
+        assert_eq!((chest.brief_hastes, chest.hour_hastes, chest.long_hastes), (of(Item::Haste5), of(Item::Haste60), of(Item::Haste480)));
+        assert!(chest.brief_hastes + chest.hour_hastes + chest.long_hastes > 0, "every chest holds some haste");
     }
     assert!(catalog::chest_items(0).is_empty() && catalog::chest_items(4).is_empty());
 }

@@ -26,9 +26,9 @@ pub fn write_trials(db: &mut impl Db) {
                 timber: gives.timber,
                 stone: gives.stone,
                 moonsalt: gives.moonsalt,
-                haste5: count(Item::Haste5),
-                haste60: count(Item::Haste60),
-                haste480: count(Item::Haste480),
+                brief_hastes: count(Item::Haste5),
+                hour_hastes: count(Item::Haste60),
+                long_hastes: count(Item::Haste480),
             });
         }
     }
