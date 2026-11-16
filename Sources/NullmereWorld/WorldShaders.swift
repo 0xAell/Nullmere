@@ -737,7 +737,7 @@ public enum WorldShaders {
         for (int i = 0; i < 10; i++) {
             float2 grid = (world.xz + way * t - frame.heights.xy) / frame.haze.w + 0.5;
             float over = NM_HEIGHT(grid / frame.heights.zw) - (world.y + rise * t);
-            lit = min(lit, clamp(1.0 - over * 4.0 / t, 0.0, 1.0));
+            lit = min(lit, clamp(1.0 - over * 2.0 / t, 0.0, 1.0));
             t *= 1.38;
         }
         return lit;
@@ -845,8 +845,12 @@ public enum WorldShaders {
             float3 ln = normalize(mix(n, float3(0.0, 1.0, 0.0), frame.land.x));
             // What stands on the land keeps the key light off the ground behind it.
             float moonlit = nm_moonlit(world, n, frame.shadow, frame.still NM_SHADOW_PASS);
-            // And the land itself keeps it off the ground in a ridge's lee.
-            moonlit *= nm_landShadow(world NM_FRAME_PASS NM_HEIGHTS_PASS);
+            // And the land itself keeps some of it off the ground in a
+            // ridge's lee: a shade, not a pall, so a wood on a rise or a
+            // ridge darkens the country behind it as cloud would and never
+            // to the murk of night (CI run 997's pictures: at full strength
+            // a wood's rise laid a dark pall hexes wide over the grass).
+            moonlit *= mix(1.0, nm_landShadow(world NM_FRAME_PASS NM_HEIGHTS_PASS), 0.55);
             lit += nm_light(albedo, ln, frame.key.w * frame.land.y * moonlit NM_FRAME_PASS) * shown;
             for (int i = 0; i < 4; i++) {
                 lit += nm_pointLight(albedo, world, n, frame.lights[i], frame.lights[i + 4]);
