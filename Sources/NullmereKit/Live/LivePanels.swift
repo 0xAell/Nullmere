@@ -19,8 +19,8 @@ struct LiveSidePanel: View {
         let parts = panel.destination.panels
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Caps(panel.destination.title, size: 11, weight: .medium)
-                    .foregroundStyle(Palette.ink)
+                Caps(panel.destination.title, size: LiveType.small, weight: .medium)
+                    .foregroundStyle(LiveEmphasis.primary)
                 Spacer(minLength: 0)
                 QuietButton(title: "Close", action: close)
             }
@@ -68,8 +68,8 @@ struct LiveSmall: View {
 
     var body: some View {
         Text(verbatim: words)
-            .font(.nm(11))
-            .foregroundStyle(Palette.text(dim ? 0.55 : 0.75))
+            .font(.nm(LiveType.small))
+            .foregroundStyle(dim ? LiveEmphasis.tertiary : LiveEmphasis.secondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -85,7 +85,7 @@ struct LiveProgress: View {
                 .progressViewStyle(.linear)
                 .tint(Palette.glow)
             Text(verbatim: LiveWords.clock(left))
-                .font(.nm(11, weight: .medium))
+                .font(.nm(LiveType.small, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(Palette.glowWords)
         }
@@ -105,11 +105,11 @@ struct LiveBuildings: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(verbatim: line.name)
-                        .font(.nm(13, weight: .medium))
-                        .foregroundStyle(Palette.ink)
+                        .font(.nm(LiveType.body, weight: .medium))
+                        .foregroundStyle(LiveEmphasis.primary)
                     Text(verbatim: line.building == nil ? "Not built" : "Level \(line.level)")
-                        .font(.nm(11))
-                        .foregroundStyle(Palette.text(0.65))
+                        .font(.nm(LiveType.small))
+                        .foregroundStyle(LiveEmphasis.tertiary)
                     Spacer(minLength: 0)
                     if line.job == nil, line.next != nil {
                         QuietButton(title: line.building == nil ? "Build" : "Upgrade", prominent: line.block == nil,
@@ -153,11 +153,11 @@ struct LiveCommanders: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(verbatim: commander.name)
-                        .font(.nm(13, weight: .medium))
-                        .foregroundStyle(Palette.ink)
+                        .font(.nm(LiveType.body, weight: .medium))
+                        .foregroundStyle(LiveEmphasis.primary)
                     Text(verbatim: "\(commander.wayName), level \(commander.level)")
-                        .font(.nm(11))
-                        .foregroundStyle(Palette.text(0.65))
+                        .font(.nm(LiveType.small))
+                        .foregroundStyle(LiveEmphasis.tertiary)
                     Spacer(minLength: 0)
                     LiveSmall(words: commander.isFree ? "In the city" : (commander.isHeld ? "Held prisoner" : "Out with an army"), dim: true)
                 }
@@ -196,11 +196,11 @@ struct LiveStudies: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(verbatim: line.name)
-                        .font(.nm(13, weight: .medium))
-                        .foregroundStyle(Palette.ink)
+                        .font(.nm(LiveType.body, weight: .medium))
+                        .foregroundStyle(LiveEmphasis.primary)
                     Text(verbatim: line.soFar)
-                        .font(.nm(11))
-                        .foregroundStyle(Palette.text(0.65))
+                        .font(.nm(LiveType.small))
+                        .foregroundStyle(LiveEmphasis.tertiary)
                     Spacer(minLength: 0)
                     if line.job == nil, line.next != nil {
                         QuietButton(title: "Study", prominent: line.block == nil, enabled: line.block == nil && session.asking == 0,
@@ -241,8 +241,8 @@ struct LiveTroops: View {
         ForEach(troops) { troop in
             VStack(alignment: .leading, spacing: 3) {
                 Text(verbatim: "\(troop.name), tier \(troop.tier)")
-                    .font(.nm(13, weight: .medium))
-                    .foregroundStyle(Palette.ink)
+                    .font(.nm(LiveType.body, weight: .medium))
+                    .foregroundStyle(LiveEmphasis.primary)
                 LiveSmall(words: Self.counts(troop))
                 if troop.wounded > 0 {
                     QuietButton(title: "Heal \(LiveWords.grouped(troop.wounded))", enabled: session.asking == 0,
@@ -261,8 +261,8 @@ struct LiveTroops: View {
         ForEach(world.trainLines(at: seconds)) { line in
             VStack(alignment: .leading, spacing: 5) {
                 Text(verbatim: "\(line.name), level \(line.building.level)")
-                    .font(.nm(13, weight: .medium))
-                    .foregroundStyle(Palette.ink)
+                    .font(.nm(LiveType.body, weight: .medium))
+                    .foregroundStyle(LiveEmphasis.primary)
                 if let job = line.job {
                     LiveSmall(words: "Training \(LiveWords.grouped(job.amount)) of tier \(job.level)")
                     LiveProgress(part: job.progress(at: seconds), left: Int(job.left(at: seconds).rounded(.up)))
@@ -312,8 +312,8 @@ struct LiveReports: View {
         ForEach(reports) { report in
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: report.words)
-                    .font(.nm(12, weight: report.read ? .regular : .medium))
-                    .foregroundStyle(report.read ? Palette.text(0.75) : Palette.ink)
+                    .font(.nm(LiveType.body, weight: report.read ? .regular : .medium))
+                    .foregroundStyle(report.read ? LiveEmphasis.secondary : LiveEmphasis.primary)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
                     LiveSmall(words: "\(LiveWords.spoken(max(Int(seconds) - report.at, 0))) ago", dim: true)
@@ -347,8 +347,8 @@ struct LiveField: View {
     var body: some View {
         TextField(prompt, text: $text)
             .textFieldStyle(.plain)
-            .font(.nm(12))
-            .foregroundStyle(Palette.ink)
+            .font(.nm(LiveType.body))
+            .foregroundStyle(LiveEmphasis.primary)
             .frame(width: width)
             .padding(.vertical, 4)
             .overlay(alignment: .bottom) {
@@ -371,8 +371,8 @@ struct LiveAlliancePanel: View {
         if let mine = world.myAlliance {
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: "[\(mine.tag)] \(mine.name)")
-                    .font(.nm(14, weight: .medium))
-                    .foregroundStyle(Palette.ink)
+                    .font(.nm(LiveType.title, weight: .medium))
+                    .foregroundStyle(LiveEmphasis.primary)
                 LiveSmall(words: "\(mine.members) of \(LiveWorld.allianceMost) members. \(mine.open ? "Anyone may join." : "Joining is by asking.")")
                 if !mine.words.isEmpty {
                     LiveSmall(words: mine.words)
@@ -381,8 +381,8 @@ struct LiveAlliancePanel: View {
             ForEach(world.roster(of: mine.id)) { member in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(verbatim: world.players[member.player]?.name ?? "Someone")
-                        .font(.nm(12, weight: member.player == world.me?.id ? .medium : .regular))
-                        .foregroundStyle(Palette.ink)
+                        .font(.nm(LiveType.body, weight: member.player == world.me?.id ? .medium : .regular))
+                        .foregroundStyle(LiveEmphasis.primary)
                     LiveSmall(words: member.title, dim: true)
                     Spacer(minLength: 0)
                     if world.isLeader, member.player != world.me?.id {
@@ -398,13 +398,13 @@ struct LiveAlliancePanel: View {
                 }
             }
             if world.isOfficer, !world.applicants.isEmpty {
-                Caps("Asking to join", size: 10)
-                    .foregroundStyle(Palette.text(0.7))
+                Caps("Asking to join", size: LiveType.small)
+                    .foregroundStyle(LiveEmphasis.secondary)
                 ForEach(world.applicants) { asked in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(verbatim: asked.name)
-                            .font(.nm(12))
-                            .foregroundStyle(Palette.ink)
+                            .font(.nm(LiveType.body))
+                            .foregroundStyle(LiveEmphasis.primary)
                         Spacer(minLength: 0)
                         QuietButton(title: "Let in", prominent: true, enabled: session.asking == 0, name: "Let \(asked.name) in") {
                             Task { await session.answer(applicant: asked.player, admit: true) }
@@ -424,15 +424,15 @@ struct LiveAlliancePanel: View {
 
         let others = world.allianceLines().filter { $0.standing != "Your alliance" }
         if !others.isEmpty {
-            Caps("Alliances of the realm", size: 10)
-                .foregroundStyle(Palette.text(0.7))
+            Caps("Alliances of the realm", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
         }
         ForEach(others) { line in
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(verbatim: "[\(line.alliance.tag)] \(line.alliance.name)")
-                        .font(.nm(12, weight: .medium))
-                        .foregroundStyle(Palette.ink)
+                        .font(.nm(LiveType.body, weight: .medium))
+                        .foregroundStyle(LiveEmphasis.primary)
                     Spacer(minLength: 0)
                     if let offer = line.offer {
                         QuietButton(title: offer, prominent: line.why == nil, enabled: line.why == nil && session.asking == 0,
@@ -449,8 +449,8 @@ struct LiveAlliancePanel: View {
         }
 
         if world.myAlliance == nil {
-            Caps("Found an alliance", size: 10)
-                .foregroundStyle(Palette.text(0.7))
+            Caps("Found an alliance", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
             if let block = world.foundingBlock {
                 LiveSmall(words: block, dim: true)
             } else {
@@ -496,11 +496,11 @@ struct LiveChatPanel: View {
         ForEach(lines.reversed()) { line in
             VStack(alignment: .leading, spacing: 1) {
                 Text(verbatim: line.name)
-                    .font(.nm(11, weight: .medium))
-                    .foregroundStyle(line.own ? Palette.glowWords : Palette.text(0.7))
+                    .font(.nm(LiveType.small, weight: .medium))
+                    .foregroundStyle(line.own ? Palette.glowWords : LiveEmphasis.secondary)
                 Text(verbatim: line.words)
-                    .font(.nm(12))
-                    .foregroundStyle(Palette.ink)
+                    .font(.nm(LiveType.body))
+                    .foregroundStyle(LiveEmphasis.primary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)

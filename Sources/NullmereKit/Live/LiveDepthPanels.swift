@@ -19,8 +19,8 @@ struct LiveDayPanel: View {
         let world = session.world
         let marks = world.marksToday(at: seconds)
         Text(verbatim: "\(marks) marks today")
-            .font(.nm(14, weight: .medium))
-            .foregroundStyle(Palette.ink)
+            .font(.nm(LiveType.title, weight: .medium))
+            .foregroundStyle(LiveEmphasis.primary)
         if world.duties.isEmpty {
             LiveSmall(words: "The day's work has not been told of yet.")
         }
@@ -28,8 +28,8 @@ struct LiveDayPanel: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(verbatim: deed.words)
-                        .font(.nm(12, weight: deed.isDone ? .medium : .regular))
-                        .foregroundStyle(Palette.ink)
+                        .font(.nm(LiveType.body, weight: deed.isDone ? .medium : .regular))
+                        .foregroundStyle(LiveEmphasis.primary)
                     Spacer(minLength: 0)
                     LiveSmall(words: deed.isDone ? "Done: \(deed.marks) marks" : "\(LiveWords.grouped(deed.done)) of \(LiveWords.grouped(deed.asks))", dim: !deed.isDone)
                 }
@@ -41,15 +41,15 @@ struct LiveDayPanel: View {
         }
 
         if !world.chests.isEmpty {
-            Caps("The day's chests", size: 10)
-                .foregroundStyle(Palette.text(0.7))
+            Caps("The day's chests", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
         }
         ForEach(world.chestLines(at: seconds)) { chest in
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: "At \(chest.marks) marks")
-                        .font(.nm(12, weight: .medium))
-                        .foregroundStyle(Palette.ink)
+                        .font(.nm(LiveType.body, weight: .medium))
+                        .foregroundStyle(LiveEmphasis.primary)
                     LiveSmall(words: chest.holds, dim: true)
                 }
                 Spacer(minLength: 0)
@@ -62,8 +62,8 @@ struct LiveDayPanel: View {
         }
 
         let held = world.heldItems.map { $0.ware }
-        Caps("Your satchel", size: 10)
-            .foregroundStyle(Palette.text(0.7))
+        Caps("Your satchel", size: LiveType.small)
+            .foregroundStyle(LiveEmphasis.secondary)
         if held.isEmpty {
             LiveSmall(words: "Nothing yet. The day's chests hold hastes, and the last a peace.", dim: true)
         }
@@ -71,8 +71,8 @@ struct LiveDayPanel: View {
         ForEach(held) { ware in
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(verbatim: "\(ware.name) ×\(world.satchel[ware.item] ?? 0)")
-                    .font(.nm(12))
-                    .foregroundStyle(Palette.ink)
+                    .font(.nm(LiveType.body))
+                    .foregroundStyle(LiveEmphasis.primary)
                 Spacer(minLength: 0)
                 if ware.isPeace {
                     // A peace is kept on the city itself, with no work to hasten.
@@ -104,8 +104,8 @@ struct LiveRealmPanel: View {
         ForEach(world.trials.values.sorted { $0.id < $1.id }) { trial in
             let tally = world.tallies.filter { $0.trial == trial.id }.max { $0.round < $1.round }
             VStack(alignment: .leading, spacing: 3) {
-                Caps(trial.name, size: 10)
-                    .foregroundStyle(Palette.text(0.7))
+                Caps(trial.name, size: LiveType.small)
+                    .foregroundStyle(LiveEmphasis.secondary)
                 LiveSmall(words: trial.words)
                 LiveSmall(words: "Your points: \(LiveWords.grouped(tally?.points ?? 0)).", dim: true)
                 ForEach(world.prizes.filter { $0.trial == trial.id }) { prize in
@@ -171,7 +171,7 @@ struct LiveTalentControls: View {
                 .menuStyle(.button)
                 .buttonStyle(.borderless)
                 .fixedSize()
-                .font(.nm(10))
+                .font(.nm(LiveType.small))
             }
             if !learnt.isEmpty {
                 QuietButton(title: "Forget", enabled: session.asking == 0, name: "Have \(commander.name) forget every talent") { Task { await session.forgetTalents(commander: commander.id) } }
@@ -186,7 +186,7 @@ struct LiveTalentControls: View {
                 .menuStyle(.button)
                 .buttonStyle(.borderless)
                 .fixedSize()
-                .font(.nm(10))
+                .font(.nm(LiveType.small))
             }
             if world.keeper == commander.id {
                 LiveSmall(words: "Keeps the city", dim: false)
@@ -211,16 +211,16 @@ struct LiveAllianceDepth: View {
         if let alliance = world.myMembership?.alliance {
             let spire = world.mySpire
             let stage = spire?.stage ?? 0
-            Caps("The Moonspire", size: 10)
-                .foregroundStyle(Palette.text(0.7))
+            Caps("The Moonspire", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
             if let season = world.season {
                 let won = season.victor == 0 ? "" : " Won by \(season.victorName)."
                 LiveSmall(words: "Season \(season.number): \(LiveWords.spoken(season.left(at: seconds))) left.\(won)", dim: true)
             }
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(verbatim: "Stage \(stage) of \(LiveSpire.stages)")
-                    .font(.nm(12, weight: .medium))
-                    .foregroundStyle(Palette.ink)
+                    .font(.nm(LiveType.body, weight: .medium))
+                    .foregroundStyle(LiveEmphasis.primary)
                 Spacer(minLength: 0)
                 if stage < LiveSpire.stages, (spire?.risesAt ?? 0) == 0 {
                     QuietButton(title: "Give", enabled: session.asking == 0, name: "Give to the Moonspire", why: nil) { Task { await session.giveToSpire(LiveAllianceDepth.gift) } }
@@ -234,15 +234,15 @@ struct LiveAllianceDepth: View {
 
             let learning = world.learningLines()
             if !learning.isEmpty {
-                Caps("Learning together", size: 10)
-                    .foregroundStyle(Palette.text(0.7))
+                Caps("Learning together", size: LiveType.small)
+                    .foregroundStyle(LiveEmphasis.secondary)
             }
             ForEach(learning) { line in
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(verbatim: "\(line.name), level \(line.level) of \(LiveLearning.topLevel)")
-                            .font(.nm(12))
-                            .foregroundStyle(Palette.ink)
+                            .font(.nm(LiveType.body))
+                            .foregroundStyle(LiveEmphasis.primary)
                         Spacer(minLength: 0)
                         if line.cost != nil, line.risesAt == 0 {
                             QuietButton(title: "Give", enabled: session.asking == 0, name: "Give toward \(line.name)") { Task { await session.giveToLearning(topic: line.id, LiveAllianceDepth.gift) } }
@@ -256,8 +256,8 @@ struct LiveAllianceDepth: View {
                 }
             }
 
-            Caps("Rallies", size: 10)
-                .foregroundStyle(Palette.text(0.7))
+            Caps("Rallies", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
             if world.rallies.isEmpty {
                 LiveSmall(words: "None called. A rally is called from a barrow, a city or a gate on the map.", dim: true)
             }
@@ -275,8 +275,8 @@ struct LiveAllianceDepth: View {
             }
 
             let pleas = world.pleasToHelp
-            Caps("Help", size: 10)
-                .foregroundStyle(Palette.text(0.7))
+            Caps("Help", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
             ForEach(pleas) { plea in
                 LiveSmall(words: world.pleaWords(plea))
             }
@@ -296,8 +296,8 @@ struct LiveAllianceDepth: View {
 
             let wards = world.wardstones(of: alliance)
             let gates = world.gatesHeld(by: alliance)
-            Caps("Land", size: 10)
-                .foregroundStyle(Palette.text(0.7))
+            Caps("Land", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
             let raised = wards.count == 1 ? "1 wardstone raised." : "\(wards.count) wardstones raised."
             let held = gates.count == 1 ? "1 gate of the ridge held" : "\(gates.count) gates of the ridge held"
             LiveSmall(words: gates.isEmpty ? "\(raised) No gate of the ridge held." : "\(raised) \(held): the lake country is open to you.")
@@ -306,8 +306,8 @@ struct LiveAllianceDepth: View {
         }
         let captives = world.captives
         if !captives.isEmpty {
-            Caps("Your prisoners", size: 10)
-                .foregroundStyle(Palette.text(0.7))
+            Caps("Your prisoners", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
         }
         ForEach(captives) { prisoner in
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -333,8 +333,8 @@ struct LiveDiplomacy: View {
     var body: some View {
         let world = session.world
         let officer = world.isOfficer
-        Caps("Pacts", size: 10)
-            .foregroundStyle(Palette.text(0.7))
+        Caps("Pacts", size: LiveType.small)
+            .foregroundStyle(LiveEmphasis.secondary)
         let pacts = world.pacts(of: alliance, at: seconds)
         if pacts.isEmpty {
             LiveSmall(words: "No pact holds with any alliance.", dim: true)
@@ -388,8 +388,8 @@ struct LivePetitions: View {
         let world = session.world
         let standing = world.petitionsStanding(at: seconds)
         let mine = standing.first { $0.asker == world.me?.id }
-        Caps("Petitions", size: 10)
-            .foregroundStyle(Palette.text(0.7))
+        Caps("Petitions", size: LiveType.small)
+            .foregroundStyle(LiveEmphasis.secondary)
         ForEach(standing.filter { $0.asker != world.me?.id }) { petition in
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 LiveSmall(words: "\(petition.name) asks for \(petition.still.words).")
@@ -418,8 +418,8 @@ struct LiveMere: View {
 
     var body: some View {
         let world = session.world
-        Caps("The Mere", size: 10)
-            .foregroundStyle(Palette.text(0.7))
+        Caps("The Mere", size: LiveType.small)
+            .foregroundStyle(LiveEmphasis.secondary)
         let lord = world.lord.flatMap { world.shownName(of: $0) }
         LiveSmall(words: lord.map { "The Lord of the Mere is \($0), whose alliance won the last season won." } ?? "No season has been won: the Mere has no Lord.", dim: lord == nil)
         let players = world.players.values.sorted { $0.id < $1.id }
@@ -429,8 +429,8 @@ struct LiveMere: View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(verbatim: named?.name ?? "A title")
-                        .font(.nm(12))
-                        .foregroundStyle(Palette.ink)
+                        .font(.nm(LiveType.body))
+                        .foregroundStyle(LiveEmphasis.primary)
                     LiveSmall(words: held.map { "Held by \(world.shownName(of: $0.holder) ?? $0.name)." } ?? (named?.lends ?? ""), dim: held == nil)
                 }
                 Spacer(minLength: 0)
@@ -443,7 +443,7 @@ struct LiveMere: View {
                     .menuStyle(.button)
                     .buttonStyle(.borderless)
                     .fixedSize()
-                    .font(.nm(10))
+                    .font(.nm(LiveType.small))
                     if held != nil {
                         QuietButton(title: "Take back", enabled: session.asking == 0, name: "Take back \(named?.name ?? "the title")") { Task { await session.takeTitle(title) } }
                     }
@@ -464,8 +464,8 @@ struct LiveLetters: View {
 
     var body: some View {
         let world = session.world
-        Caps("Letters", size: 10)
-            .foregroundStyle(Palette.text(0.7))
+        Caps("Letters", size: LiveType.small)
+            .foregroundStyle(LiveEmphasis.secondary)
         let received = world.lettersReceived
         if received.isEmpty {
             LiveSmall(words: "No letters yet.", dim: true)
@@ -474,8 +474,8 @@ struct LiveLetters: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(verbatim: letter.name)
-                        .font(.nm(12, weight: letter.read ? .regular : .medium))
-                        .foregroundStyle(Palette.ink)
+                        .font(.nm(LiveType.body, weight: letter.read ? .regular : .medium))
+                        .foregroundStyle(LiveEmphasis.primary)
                     LiveSmall(words: "\(LiveWords.spoken(max(Int(seconds) - letter.at, 0))) ago", dim: true)
                     Spacer(minLength: 0)
                     if !letter.read {
@@ -497,7 +497,7 @@ struct LiveLetters: View {
             .menuStyle(.button)
             .buttonStyle(.borderless)
             .fixedSize()
-            .font(.nm(10))
+            .font(.nm(LiveType.small))
             LiveField(prompt: "A letter", text: $words, width: nil, submit: send)
         }
         HStack(spacing: 8) {

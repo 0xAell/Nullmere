@@ -179,11 +179,11 @@ struct LiveNotice: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Caps(title, size: 12, weight: .medium, centred: true)
-                .foregroundStyle(Palette.ink)
+            Caps(title, size: LiveType.body, weight: .medium, centred: true)
+                .foregroundStyle(LiveEmphasis.primary)
             Text(verbatim: words)
-                .font(.nm(13))
-                .foregroundStyle(Palette.text(0.75))
+                .font(.nm(LiveType.body))
+                .foregroundStyle(LiveEmphasis.secondary)
             if let button {
                 QuietButton(title: button, prominent: true, action: action)
             }
@@ -208,13 +208,13 @@ struct LiveNameCard: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Caps("Your name in the realm", size: 12, weight: .medium, centred: true)
-                .foregroundStyle(Palette.ink)
+            Caps("Your name in the realm", size: LiveType.body, weight: .medium, centred: true)
+                .foregroundStyle(LiveEmphasis.primary)
             TextField("Three to sixteen letters", text: $name)
                 .textFieldStyle(.plain)
-                .font(.nm(16))
+                .font(.nm(LiveType.title))
                 .multilineTextAlignment(.center)
-                .foregroundStyle(Palette.ink)
+                .foregroundStyle(LiveEmphasis.primary)
                 .focused($focused)
                 .frame(width: 260)
                 .padding(.vertical, 6)
@@ -225,7 +225,7 @@ struct LiveNameCard: View {
                 .accessibilityLabel("Your name in the realm")
             if let said = session.said {
                 Text(verbatim: said)
-                    .font(.nm(12))
+                    .font(.nm(LiveType.body))
                     .foregroundStyle(Palette.bad)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -331,16 +331,16 @@ struct LivePaletteView: View {
         VStack(alignment: .leading, spacing: 6) {
             TextField("What would you do?", text: $search)
                 .textFieldStyle(.plain)
-                .font(.nm(15))
-                .foregroundStyle(Palette.ink)
+                .font(.nm(LiveType.title))
+                .foregroundStyle(LiveEmphasis.primary)
                 .focused($focused)
                 .onSubmit { if let first = found.first { choose(first) } }
                 .accessibilityLabel("Search for something to do")
             ForEach(found) { command in
                 Button { choose(command) } label: {
                     Text(verbatim: command.title)
-                        .font(.nm(12))
-                        .foregroundStyle(Palette.ink)
+                        .font(.nm(LiveType.body))
+                        .foregroundStyle(LiveEmphasis.primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
                 }
@@ -382,11 +382,11 @@ struct LiveTopBar: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(verbatim: city.name)
-                            .font(.nm(13, weight: .medium))
-                            .foregroundStyle(Palette.ink)
+                            .font(.nm(LiveType.body, weight: .medium))
+                            .foregroundStyle(LiveEmphasis.primary)
                         Text(verbatim: "Keep \(city.keep) · Power \(LiveWords.grouped(city.power))")
-                            .font(.nm(11))
-                            .foregroundStyle(Palette.text(0.7))
+                            .font(.nm(LiveType.small))
+                            .foregroundStyle(LiveEmphasis.secondary)
                     }
                     .contentShape(Rectangle())
                 }
@@ -399,9 +399,9 @@ struct LiveTopBar: View {
                     HStack(spacing: 5) {
                         ResourceGlyph(resource: store, size: 11)
                         Text(verbatim: LiveWords.grouped(goods[index]))
-                            .font(.nm(12, weight: .medium))
+                            .font(.nm(LiveType.body, weight: .medium))
                             .monospacedDigit()
-                            .foregroundStyle(goods[index] >= stock.holds ? Palette.bad : Palette.ink)
+                            .foregroundStyle(goods[index] >= stock.holds ? Palette.bad : LiveEmphasis.primary)
                     }
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("\(LiveWords.grouped(goods[index])) \(LiveWords.goods[index])")
@@ -409,9 +409,9 @@ struct LiveTopBar: View {
             }
             if let hunt = session.world.hunt {
                 Text(verbatim: "Energy \(LiveWords.grouped(UInt64(hunt.energy(at: seconds))))")
-                    .font(.nm(12))
+                    .font(.nm(LiveType.body))
                     .monospacedDigit()
-                    .foregroundStyle(Palette.text(0.8))
+                    .foregroundStyle(LiveEmphasis.secondary)
             }
         }
         .padding(.horizontal, 12)
@@ -431,11 +431,11 @@ struct LiveTaskChip: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: task.words)
-                        .font(.nm(12, weight: .medium))
-                        .foregroundStyle(Palette.ink)
+                        .font(.nm(LiveType.body, weight: .medium))
+                        .foregroundStyle(LiveEmphasis.primary)
                     Text(verbatim: "Gives \(task.gives.words).")
-                        .font(.nm(11))
-                        .foregroundStyle(Palette.text(0.7))
+                        .font(.nm(LiveType.small))
+                        .foregroundStyle(LiveEmphasis.secondary)
                 }
                 QuietButton(title: "Claim", prominent: done, enabled: done && session.asking == 0, name: "Claim what the task gives",
                             why: "Not done yet: \(task.words)") {
@@ -491,7 +491,7 @@ struct LiveSaid: View {
     var body: some View {
         HStack(spacing: 10) {
             Text(verbatim: words)
-                .font(.nm(12))
+                .font(.nm(LiveType.body))
                 .foregroundStyle(Palette.bad)
                 .fixedSize(horizontal: false, vertical: true)
             QuietButton(title: "Close", action: dismiss)
@@ -521,10 +521,10 @@ struct LiveArmies: View {
                     } label: {
                         HStack(spacing: 8) {
                             Text(verbatim: line.doing)
-                                .font(.nm(12))
-                                .foregroundStyle(Palette.ink)
+                                .font(.nm(LiveType.body))
+                                .foregroundStyle(LiveEmphasis.primary)
                             Text(verbatim: LiveWords.clock(line.march.arrives - Int(seconds)))
-                                .font(.nm(12, weight: .medium))
+                                .font(.nm(LiveType.body, weight: .medium))
                                 .monospacedDigit()
                                 .foregroundStyle(Palette.glowWords)
                         }
@@ -551,19 +551,19 @@ struct LiveCardView: View {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: card.title)
-                    .font(.nm(14, weight: .medium))
-                    .foregroundStyle(Palette.ink)
+                    .font(.nm(LiveType.title, weight: .medium))
+                    .foregroundStyle(LiveEmphasis.primary)
                 ForEach(card.lines, id: \.self) { line in
                     Text(verbatim: line)
-                        .font(.nm(12))
-                        .foregroundStyle(Palette.text(0.78))
+                        .font(.nm(LiveType.body))
+                        .foregroundStyle(LiveEmphasis.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 // Why the first thing that can't be done can't be.
                 if let why = card.buttons.compactMap(\.why).first {
                     Text(verbatim: why)
-                        .font(.nm(11))
-                        .foregroundStyle(Palette.text(0.6))
+                        .font(.nm(LiveType.small))
+                        .foregroundStyle(LiveEmphasis.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
