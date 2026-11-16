@@ -1,5 +1,5 @@
 import AVFoundation
-@testable import NullmereCore
+import NullmereLand
 import XCTest
 @testable import NullmereKit
 @testable import NullmereSound

@@ -74,3 +74,30 @@ extension TestWorld {
         return bytes
     }
 }
+
+extension TestWorld {
+    /// A way round the lake through still water, as lights on it are
+    /// carried: from the first still water `out` hexes from `heart`, a hex
+    /// at a time, keeping as near `out` from the heart as the water lets
+    /// it, never back over itself; at most `count` hexes.
+    public func roundTheLake(from heart: Hex, out: Int = 6, count: Int) -> [Hex] {
+        func still(_ hex: Hex) -> Bool { map[hex]?.terrain == .still }
+        // Nearer `out` from the heart first; of two as near, the lesser hex.
+        func sooner(_ a: Hex, _ b: Hex) -> Bool {
+            let offA: Int = abs(a.distance(to: heart) - out)
+            let offB: Int = abs(b.distance(to: heart) - out)
+            return offA != offB ? offA < offB : a < b
+        }
+        let ring: [Hex] = map.hexes.filter { hex in hex.distance(to: heart) == out && still(hex) }
+        guard var at = ring.min() else { return [] }
+        var way: [Hex] = [at]
+        while way.count < count {
+            let passed = Set(way)
+            let open: [Hex] = at.neighbors.filter { hex in still(hex) && !passed.contains(hex) }
+            guard let next = open.min(by: sooner) else { break }
+            way.append(next)
+            at = next
+        }
+        return way
+    }
+}

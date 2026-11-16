@@ -197,6 +197,12 @@ hold walled in stone). Two ways off the old rules:
    owner's colour, the vigils carried round the lake on a ring six out
    from its heart (the old current was the rules'), and the tiles known
    about the seat, five out as a keeper first knew them, then the whole.
+   The Mac's tests too (FrameHarness, WorldMetalView, WorldPerformance,
+   WorldRender and the houses' colours): their worlds are test worlds,
+   the vigils' way round the lake TestWorld.roundTheLake, and the
+   Moonford's render, which turned the old game's tide to open the ford
+   (the rebuilt realm has no ford), went; NullmereKitTests import the
+   land alone, and the Mac's copy of the old tile texture went with it.
    TileTextureTests are: a tile's owner is written by the world's own
    `TileTexture.name` (the rebuilt realm's window writes its alliances'
    land with it), and the tests hold the texture's layout and its

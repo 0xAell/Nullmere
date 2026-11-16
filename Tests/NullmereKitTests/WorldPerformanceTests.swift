@@ -1,7 +1,8 @@
 import Metal
-@testable import NullmereCore
 @testable import NullmereKit
+import NullmereLand
 import NullmereModels
+import NullmereTestSupport
 import NullmereWorld
 import XCTest
 
@@ -16,16 +17,11 @@ final class WorldPerformanceTests: XCTestCase {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
-        var state = GameState(settings: GameSettings(seedText: "measured water", keepers: 1))
-        for _ in 0..<60 {
-            _ = state.stewardTurn(for: state.player)
-            _ = state.endWatch()
-        }
+        // A world well known about the keeper's seat, as some watches in.
+        let state = TestWorld(seedText: "measured water")
+        let seat = state.holds[0].position
         try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
-        try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
-        // The keeper's seat, or, should their House have fallen in sixty
-        // watches of stewards, the first seat still standing.
-        let seat = try XCTUnwrap(state.seat(of: state.player) ?? state.livingHouses.lazy.compactMap { state.seat(of: $0.id) }.first).position
+        try renderer.updateTiles(state.tiles { $0.distance(to: seat) <= 10 }, side: TileTexture.side(for: state.map))
         let terrain = try XCTUnwrap(renderer.land).terrain
 
         var results: [String] = []
@@ -97,20 +93,19 @@ final class WorldPerformanceTests: XCTestCase {
         let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
         renderer.meshSource = { Library.model($0).mesh }
-        var state = GameState(settings: GameSettings(seedText: "moonlit and measured", keepers: 1))
-        state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
+        let state = TestWorld(seedText: "moonlit and measured")
         try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
-        try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
+        try renderer.updateTiles(state.tiles(), side: TileTexture.side(for: state.map))
         let terrain = try XCTUnwrap(renderer.land).terrain
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         var scene = SceneFrame()
-        let sights = state.holds.map { HoldSight(hold: $0, colour: WorldStage.colour(WorldRenderer.houseColours, sigil: state.houses[$0.owner].sigil)) }
+        let sights = state.holds.map { HoldSight(hold: $0, colour: WorldStage.colour(WorldRenderer.houseColours, sigil: $0.owner)) }
         let holds = stage.holds(sights, time: 20, into: &scene)
         scene.batches = holds.batches
         scene.fixed = stage.furnish(occupied: [], holds: Set(state.holds.map(\.position)))
         scene.fixedVersion = stage.furnitureVersion
         scene.fixedRegions = stage.furnitureRegions
-        let seat = try XCTUnwrap(state.seat(of: state.player)).position
+        let seat = state.holds[0].position
         let scale = 60.0
         let fraction = WorldMetalView.renderScale(forCameraScale: scale)
         let target = try renderer.makeTarget(width: Int((Double(Self.width) * fraction).rounded()),
@@ -143,10 +138,11 @@ final class WorldPerformanceTests: XCTestCase {
     /// known, drawing only the regions in view; and, `wholeToo`, drawing
     /// the whole land, as was done before.
     private func measureNear(seats: Int, seed: String, wholeToo: Bool, renderer: WorldRenderer) throws -> (culled: Double, whole: Double?) {
-        var state = GameState(settings: GameSettings(seedText: seed, houseCount: seats, radius: RealmState.radius(forSeats: seats), keepers: 1))
-        state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
+        // As wide as the old realm made a lake for so many seats.
+        let radius: Int = seats > 12 ? Int((36.0 * (Double(seats) / 12.0).squareRoot()).rounded()) : 36
+        let state = TestWorld(seedText: seed, houses: seats, radius: radius)
         try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
-        try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
+        try renderer.updateTiles(state.tiles(), side: TileTexture.side(for: state.map))
         let terrain = try XCTUnwrap(renderer.land).terrain
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         var culled = SceneFrame()
@@ -156,7 +152,7 @@ final class WorldPerformanceTests: XCTestCase {
         XCTAssertNotNil(culled.fixedRegions)
         var whole = culled
         whole.fixedRegions = nil
-        let seat = try XCTUnwrap(state.seat(of: state.player)).position
+        let seat = state.holds[0].position
         let scale = 28.0
         let fraction = WorldMetalView.renderScale(forCameraScale: scale)
         let target = try renderer.makeTarget(width: Int((Double(Self.width) * fraction).rounded()),

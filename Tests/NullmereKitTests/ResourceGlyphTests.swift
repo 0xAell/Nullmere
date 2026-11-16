@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 import XCTest
-@testable import NullmereCore
+import NullmereLand
 @testable import NullmereKit
 
 /// Each store's mark is drawn: a sheaf of grain, a fir for timber, a

@@ -4,7 +4,7 @@ import LauncherKit
 import NullmereRealm
 import SwiftUI
 import XCTest
-@testable import NullmereCore
+import NullmereLand
 @testable import NullmereKit
 import NullmereTestSupport
 

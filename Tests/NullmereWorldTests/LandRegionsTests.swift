@@ -101,7 +101,7 @@ final class LandRegionsTests: XCTestCase {
     func testAWideRealmsFrameDrawsNearAsMuchLandAsANarrowOnes() throws {
         func drawnNear(seats: Int) throws -> (drawn: Int, whole: Int) {
             // As wide as the old realm made a lake for so many seats.
-            let radius = seats > 12 ? Int((36 * (Double(seats) / 12).squareRoot()).rounded()) : 36
+            let radius: Int = seats > 12 ? Int((36.0 * (Double(seats) / 12.0).squareRoot()).rounded()) : 36
             let state = TestWorld(seedText: "a wide land", houses: seats, radius: radius)
             let land = LandRegions(TerrainMesh.shared(for: state.map))
             var camera = Camera(scale: 28)

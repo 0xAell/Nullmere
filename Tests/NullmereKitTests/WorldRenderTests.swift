@@ -1,10 +1,11 @@
 import AppKit
 import ImageIO
 import Metal
-@testable import NullmereCore
 @testable import NullmereKit
+import NullmereLand
 import NullmereModels
 import NullmereRealm
+import NullmereTestSupport
 import NullmereWorld
 import SwiftUI
 import XCTest
@@ -31,20 +32,21 @@ final class WorldRenderTests: XCTestCase {
 
     /// A realm's world, as its keeper first sees it, and whole.
     struct World {
-        let state: GameState
+        let state: TestWorld
         let opening: [UInt8]
-        /// What the keeper knows as the age opens, by map index.
-        let openingKnown: Explored
+        /// What the keeper knows as the age opens, by map index: the
+        /// country five out about their seat.
+        let openingKnown: [Bool]
         let whole: [UInt8]
         let terrain: TerrainMesh
         let relief: Relief
 
         init() {
-            var state = GameState(settings: GameSettings(seedText: "drawn in the round", houseCount: 12, radius: 24, keepers: 1))
-            opening = TileTexture.bytes(for: state, viewer: state.player)
-            openingKnown = state.houses[state.player].explored
-            state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
-            whole = TileTexture.bytes(for: state, viewer: state.player)
+            let state = TestWorld(seedText: "drawn in the round", houses: 12, radius: 24)
+            let seat = state.holds[0].position
+            opening = state.tiles { $0.distance(to: seat) <= 5 }
+            openingKnown = state.map.hexes.map { $0.distance(to: seat) <= 5 }
+            whole = state.tiles()
             self.state = state
             terrain = TerrainMesh.shared(for: state.map)
             relief = Relief(map: state.map)
@@ -102,7 +104,7 @@ final class WorldRenderTests: XCTestCase {
         let world = WorldRenderTests.world
         // Looking down on the deepest water from where it holds the moon:
         // the eye set opposite the moon, as high as the moon is.
-        let lake = try XCTUnwrap(world.state.moonWater).hex
+        let lake = try XCTUnwrap(world.state.map.deepestWater()).hex
         var camera = Camera(scale: 16, tilt: acos(Double(Sky.moon.y)), heading: atan2(-Double(Sky.moon.x), -Double(Sky.moon.z)))
         camera.focus(on: lake)
         let drawn = try draw(renderer, "lake", camera: camera, tiles: world.whole)
@@ -162,7 +164,7 @@ final class WorldRenderTests: XCTestCase {
         try bare.setLand(world.terrain, for: world.state.map)
         let map = world.state.map
         let isLand = { (hex: Hex) -> Bool in !(map[hex]?.terrain.isWater ?? true) }
-        let seat = try XCTUnwrap(world.state.seat(of: world.state.player)).position
+        let seat = world.state.holds[0].position
         // The lake's own water, the still and the shallows that rim it, where
         // it meets the land.
         let lakeWater: Set<Terrain> = [.still, .shallows]
@@ -208,7 +210,7 @@ final class WorldRenderTests: XCTestCase {
     func testALanternLiesOnTheWater() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world
-        let lake = try XCTUnwrap(world.state.moonWater).hex
+        let lake = try XCTUnwrap(world.state.map.deepestWater()).hex
         var camera = Camera(scale: 60)
         camera.focus(on: lake)
         // As high over the water as a fisher's at a boat's bow, and as bright.
@@ -249,14 +251,11 @@ final class WorldRenderTests: XCTestCase {
     func testVigilsBurnOnTheWater() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world
-        let heart = try XCTUnwrap(world.state.moonWater).hex
-        var at = try XCTUnwrap(world.state.map.hexes.filter { $0.distance(to: heart) == 6 && world.state.map[$0]?.terrain == .still }.min())
-        var sights: [VigilSight] = []
-        for index in 0..<6 {
-            let next = world.state.downstream(of: at)
-            sights.append(VigilSight(at: at, next: next, id: 40 + index, burned: 0))
-            guard let next else { break }
-            at = next
+        let heart = try XCTUnwrap(world.state.map.deepestWater()).hex
+        // Round the lake, a hex at a time.
+        let way = world.state.roundTheLake(from: heart, count: 7)
+        let sights = (0..<min(6, max(way.count - 1, 0))).map { index in
+            VigilSight(at: way[index], next: way[index + 1], id: 40 + index, burned: 0)
         }
         XCTAssertEqual(sights.count, 6)
         var camera = Camera(scale: 130, tilt: 1.2, heading: 0.4)
@@ -326,7 +325,7 @@ final class WorldRenderTests: XCTestCase {
     func testTheUnknownLiesUnderMistAndTheKnownIsLit() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world
-        let seat = try XCTUnwrap(world.state.seat(of: world.state.player)).position
+        let seat = world.state.holds[0].position
         var camera = Camera(scale: 30)
         camera.focus(on: seat)
         let opening = try draw(renderer, "opening", camera: camera, tiles: world.opening, selected: seat)
@@ -381,7 +380,7 @@ final class WorldRenderTests: XCTestCase {
         let world = WorldRenderTests.world
         let far = try draw(renderer, "whole", camera: Camera(scale: 9, tilt: 0.6), tiles: world.whole)
         var turned = Camera(scale: 24, heading: 0.9)
-        turned.focus(on: try XCTUnwrap(world.state.seat(of: world.state.player)).position)
+        turned.focus(on: world.state.holds[0].position)
         let side = try draw(renderer, "turned", camera: turned, tiles: world.whole)
         try keep([far, side], as: "world-afar")
         for drawn in [far, side] {
@@ -406,7 +405,7 @@ final class WorldRenderTests: XCTestCase {
         let renderer = try renderer()
         let world = WorldRenderTests.world
         var camera = Camera(scale: 34)
-        camera.focus(on: try XCTUnwrap(world.state.seat(of: world.state.player)).position)
+        camera.focus(on: world.state.holds[0].position)
         func mean(_ drawn: Drawn) -> Double {
             var total = 0.0, count = 0.0
             for y in stride(from: 0, to: WorldRenderTests.height, by: 4) {
@@ -438,49 +437,6 @@ final class WorldRenderTests: XCTestCase {
             }
         }
         XCTAssertLessThan(Double(burnt) / Double(sampled), 0.05, "The day's whites are rolled off, not burnt out")
-    }
-
-    /// The Moonford at the full: the lake's bed laid bare along the moon's
-    /// road, shingle under a skin of water from shore to shore, pale across
-    /// the black of the still water about it.
-    func testTheMoonfordLiesPaleAcrossTheBlackWater() throws {
-        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
-        var state = WorldRenderTests.world.state
-        state.watch = Sundering.first
-        _ = state.turnTide()
-        let course = try XCTUnwrap(state.ford, "The ford lies open")
-        let terrain = TerrainMesh.shared(for: state.map)
-        let relief = Relief(map: state.map)
-        let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
-        let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
-        try renderer.setLand(terrain, for: state.map)
-        try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
-        var camera = Camera(scale: 14, tilt: 0.75)
-        camera.focus(on: course[course.count / 2])
-        let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
-        let frame = FrameUniforms.make(camera: camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: 20, motion: 1,
-                                       radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil)
-        let drawn = Drawn(name: "moonford", pixels: try XCTUnwrap(renderer.pixels(frame, scene: SceneFrame(), into: target)), camera: camera)
-        try keep([drawn], as: "world-moonford")
-
-        var ford: [Double] = [], still: [Double] = []
-        for y in stride(from: 0, to: WorldRenderTests.height, by: 3) {
-            for x in stride(from: 0, to: WorldRenderTests.width, by: 3) {
-                let (origin, direction) = camera.ray(through: CGPoint(x: x, y: y), in: WorldRenderTests.size)
-                guard let hit = relief.intersect(origin: origin, direction: direction) else { continue }
-                let hex = HexLayout(size: 1).hex(atX: Double(hit.x), y: Double(hit.z))
-                switch state.map[hex]?.terrain {
-                case .ford?: ford.append(drawn.luminance(x, y))
-                case .still? where hex.neighbors.allSatisfy({ state.map[$0]?.terrain == .still }): still.append(drawn.luminance(x, y))
-                default: break
-                }
-            }
-        }
-        XCTAssertGreaterThan(ford.count, 200, "The view holds the ford")
-        XCTAssertGreaterThan(still.count, 200, "and the still water beside it")
-        guard !ford.isEmpty, !still.isEmpty else { return }
-        let median = { (values: [Double]) -> Double in values.sorted()[values.count / 2] }
-        XCTAssertGreaterThan(median(ford), median(still) + 10, "Pale shingle across the black water: \(median(ford)) against \(median(still))")
     }
 
     /// A frame as an image, its pixels as the renderer gives them.

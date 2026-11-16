@@ -60,8 +60,9 @@ final class TileTextureTests: XCTestCase {
         let offset = ground.offsets[index]
         let terrain = try XCTUnwrap(world.map[seat]).terrain.code
         var bytes = ground.bytes
-        for (sigil, named) in [(1_000, 1_001), (255, 256), (1_023, 1_024), (TileTexture.mostOwner - 1, TileTexture.mostOwner),
-                               (5_000, TileTexture.mostOwner), (0, 1)] {
+        let most: Int = TileTexture.mostOwner
+        let sigils: [(sigil: Int, named: Int)] = [(1_000, 1_001), (255, 256), (1_023, 1_024), (most - 1, most), (5_000, most), (0, 1)]
+        for (sigil, named) in sigils {
             TileTexture.name(sigil + 1, in: &bytes, at: offset)
             XCTAssertEqual(TileTexture.owner(bytes, at: offset), named, "Sigil \(sigil)")
             XCTAssertEqual(TileTexture.terrain(bytes[offset]), terrain, "The terrain as it was, under sigil \(sigil)")

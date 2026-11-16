@@ -115,19 +115,10 @@ final class WorldPreviewTests: XCTestCase {
     /// on from the last, keeping as near six from the heart as the water
     /// lets them.
     static func procession(in world: TestWorld, from heart: Hex) -> [VigilSight] {
-        let still = { (hex: Hex) in world.map[hex]?.terrain == .still }
-        guard var at = world.map.hexes.filter({ $0.distance(to: heart) == 6 && still($0) }).min() else { return [] }
-        var passed: Set<Hex> = [at]
-        var sights: [VigilSight] = []
-        for index in 0..<8 {
-            let next = at.neighbors.filter { still($0) && !passed.contains($0) }
-                .min { (abs($0.distance(to: heart) - 6), $0) < (abs($1.distance(to: heart) - 6), $1) }
-            sights.append(VigilSight(at: at, next: next, id: 40 + index, burned: Float(index) / 8))
-            guard let next else { break }
-            passed.insert(next)
-            at = next
+        let way = world.roundTheLake(from: heart, count: 8)
+        return way.enumerated().map { index, at in
+            VigilSight(at: at, next: index + 1 < way.count ? way[index + 1] : nil, id: 40 + index, burned: Float(index) / 8)
         }
-        return sights
     }
 
     /// A frame's models as the preview reads them: each kind's instances,

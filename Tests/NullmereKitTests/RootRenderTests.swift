@@ -5,7 +5,7 @@ import NullmereRealm
 import NullmereWorld
 import SwiftUI
 import XCTest
-@testable import NullmereCore
+import NullmereLand
 @testable import NullmereKit
 import NullmereTestSupport
 
