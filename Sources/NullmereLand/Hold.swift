@@ -132,47 +132,9 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
     }
 
     public var maximumWard: Int { Hold.maximumWard(wallLevel: level(.walls), isSeat: isSeat) }
-    /// The companies its Infirmary can keep.
-    public var beds: Int { Hold.beds(infirmaryLevel: level(.infirmary)) }
-    /// Its beds no company lies in.
-    public var freeBeds: Int { max(0, beds - (wounded?.count ?? 0)) }
-
-    /// The companies an Infirmary of a level can keep: two at the first,
-    /// one more at each level after.
-    public static func beds(infirmaryLevel level: Int) -> Int {
-        level > 0 ? level + 1 : 0
-    }
-    public var sight: Int { Hold.sight(beaconLevel: level(.beacon)) }
-    public var territoryRadius: Int { Hold.territoryRadius(isSeat: isSeat, beaconLevel: level(.beacon)) }
-
-    /// How much stronger a garrison stands within its own hold's walls, in
-    /// percent of its defence.
-    public static func garrisonBonus(wallLevel: Int) -> Int {
-        15 + 10 * wallLevel
-    }
 
     public static func maximumWard(wallLevel: Int, isSeat: Bool = false) -> Int {
         30 + 30 * wallLevel + (isSeat ? 20 : 0)
-    }
-
-    /// From this Muster Hall level, every company that takes more than a
-    /// watch to train takes one fewer.
-    public static let fasterTrainingAt = 3
-
-    public static func sight(beaconLevel: Int) -> Int {
-        2 + beaconLevel
-    }
-
-    public static func territoryRadius(isSeat: Bool, beaconLevel: Int) -> Int {
-        (isSeat ? 2 : 1) + (beaconLevel >= 2 ? 1 : 0)
-    }
-
-    /// Ward regained each watch the hold isn't struck.
-    public static let wardRecovery = 10
-
-    /// What a blow takes from a ward, before chance.
-    public static func strikeDamage(attack: Int, health: Int) -> Int {
-        12 + attack * 4 * health / 100
     }
 }
 

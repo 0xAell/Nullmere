@@ -44,18 +44,6 @@ public enum Heritage: String, CaseIterable, Codable, Sendable, PlainCases {
         }
     }
 
-    /// Its two strengths, in words.
-    public var strengths: [String] {
-        switch self {
-        case .saltborn: return ["half again the moonsalt from its holds", "its wards mend half again as fast"]
-        case .fenfolk: return ["its Bows strike a tenth harder", "its companies see a tile further"]
-        case .blackwood: return ["a quarter more timber from its holds", "its Riders strike a tenth harder"]
-        case .spinewardens: return ["a quarter more stone from its holds", "its Spears stand a tenth firmer"]
-        case .moundClans: return ["its commanders learn a quarter faster", "its studies are done a tenth sooner"]
-        case .strandfolk: return ["a quarter more grain from its holds", "a fifth more gathered at the land's sites"]
-        }
-    }
-
     /// The kind of its own company, at the fifth tier.
     public var signature: UnitKind {
         switch self {
@@ -64,23 +52,4 @@ public enum Heritage: String, CaseIterable, Codable, Sendable, PlainCases {
         case .blackwood, .moundClans: return .rider
         }
     }
-
-    /// Its own company's name.
-    public var signatureTitle: String {
-        switch self {
-        case .saltborn: return "Salt Wardens"
-        case .fenfolk: return "Reed Bows"
-        case .blackwood: return "Wood Riders"
-        case .spinewardens: return "Spine Guard"
-        case .moundClans: return "Barrow Riders"
-        case .strandfolk: return "Strand Bows"
-        }
-    }
-
-    /// What its own company strikes and stands beyond others of its kind
-    /// and tier, in percent.
-    public static let signatureEdge = 5
-    /// What taking up another heritage costs, once one has been taken up.
-    public static let changeCost = Stock(moonsalt: 30)
-
 }

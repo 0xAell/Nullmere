@@ -56,74 +56,9 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable, PlainCases {
         }
     }
 
-    /// Only a House's seat can raise the Moonspire.
-    public var requiresSeat: Bool { self == .moonspire }
-
-    /// The resource whose yield this building raises, if any.
-    public var boostedResource: Resource? {
-        switch self {
-        case .granary: return .grain
-        case .sawpit: return .timber
-        case .quarry: return .stone
-        case .saltworks: return .moonsalt
-        default: return nil
-        }
-    }
-
-    /// Percent added to the boosted resource's yield per level.
-    public static let yieldBoostPerLevel = 25
-
-    private var baseCost: Stock {
-        switch self {
-        case .granary: return Stock(grain: 10, timber: 25, stone: 10)
-        case .sawpit: return Stock(grain: 20, timber: 10, stone: 15)
-        case .quarry: return Stock(grain: 20, timber: 20, stone: 5)
-        case .saltworks: return Stock(grain: 25, timber: 25, stone: 25)
-        case .musterHall: return Stock(grain: 30, timber: 40, stone: 30)
-        case .walls: return Stock(grain: 10, timber: 15, stone: 45)
-        case .beacon: return Stock(grain: 10, timber: 30, stone: 20, moonsalt: 5)
-        case .infirmary: return Stock(grain: 30, timber: 30, stone: 20)
-        case .archive: return Stock(grain: 20, timber: 40, stone: 30, moonsalt: 3)
-        case .moonspire: return Stock(grain: 60, timber: 60, stone: 80, moonsalt: 24)
-        case .forge: return Stock(grain: 20, timber: 35, stone: 35, moonsalt: 2)
-        case .wayhouse: return Stock(grain: 35, timber: 40, stone: 25, moonsalt: 3)
-        case .lodge: return Stock(grain: 25, timber: 30, stone: 45, moonsalt: 3)
-        }
-    }
-
-    /// Cost multipliers for levels one to five.
-    private static let costMultipliers = [1, 2, 4, 7, 12]
-
-    /// The cost of raising this building to `level`.
-    public func cost(toLevel level: Int) -> Stock {
-        precondition((1...maxLevel).contains(level), "level out of range")
-        return baseCost * BuildingKind.costMultipliers[level - 1]
-    }
-
     /// Watches it takes to raise this building to `level`.
     public func buildWatches(toLevel level: Int) -> Int {
         precondition((1...maxLevel).contains(level), "level out of range")
         return self == .moonspire ? 3 + level * 3 : 1 + level
-    }
-
-    /// The Wayhouse whose level sends a kind of company a step further
-    /// every watch: Lanterns first, then Founders, Spears, Bows and
-    /// Mangonels, and last the Riders.
-    public static func roadLevel(for kind: UnitKind) -> Int {
-        switch kind {
-        case .lantern: return 1
-        case .founder: return 2
-        case .spear: return 3
-        case .bow, .mangonel: return 4
-        case .rider: return 5
-        }
-    }
-
-    /// The deepest circle of studies.
-    public static let deepestCircle = 4
-
-    /// A level as the game writes it: I, II, III, up to X.
-    public static func numeral(_ level: Int) -> String {
-        ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][min(max(level, 0), 10)]
     }
 }
