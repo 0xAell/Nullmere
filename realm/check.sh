@@ -241,6 +241,12 @@ check("the realm's fame is for all to read, and no one has any before a city is 
 check("no alliance's gift waits on one in none", rows(bryn, "SELECT * FROM my_boons"), [])
 check("so none is claimed", call(bryn, "claim_boons"), "No gift is waiting on you.")
 check("and no one reads the gifts' table itself", isinstance(rows(bryn, "SELECT * FROM boon"), str), True)
+cairns = sorted(rows(nobody, "SELECT * FROM cairn"), key=lambda cairn: distance(unpacked(cairn["hex"]), home))
+check("cairns stand on the land, for all to read, of levels one to five", len(cairns) > 0 and all(1 <= cairn["level"] <= 5 for cairn in cairns), True)
+check("no scouts go where no cairn stands", call(bryn, "send", home[0], home[1], 7, [{"kind": 1, "tier": 1, "count": 1}], 0), "No cairn stands there.")
+check("nor to a cairn from a city without a Scout Camp", call(bryn, "send", *unpacked(cairns[0]["hex"]), 7, [{"kind": 1, "tier": 1, "count": 1}], 0), "Raise your Scout Camp to level 1 first.")
+check("no cairn's hoard is found yet", rows(bryn, "SELECT * FROM my_finds"), [])
+check("and no one reads the finds' table itself", isinstance(rows(bryn, "SELECT * FROM find"), str), True)
 
 # A player's first tasks: the first is to raise the Keep, which Ada has done.
 tasks = rows(nobody, "SELECT * FROM task")

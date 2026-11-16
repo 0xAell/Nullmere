@@ -146,6 +146,7 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
         March::HUNT => may_hunt(db, player, to)?.id,
         March::ATTACK => may_attack(db, player, to)?.id,
         March::SCOUT => may_scout(db, player, to, city.id)?.id,
+        March::EXPLORE => super::may_explore(db, player, to, city.id)?.id,
         March::REINFORCE => may_reinforce(db, player, to)?.id,
         March::RALLY => match super::rally::may_go(db, player, to)? {
             super::rally::Aim::Barrow(barrow) => {
@@ -326,6 +327,12 @@ pub fn arrive(db: &mut impl Db, march: u64) {
         March::GOING if march.kind == March::SCOUT => {
             // Scouts see what they came for, and come home unhurt.
             siege::scouted(db, &march);
+            let way = way_back(&march);
+            turn_home(db, march, way);
+        }
+        March::GOING if march.kind == March::EXPLORE => {
+            // Scouts find what a cairn holds, and come home unhurt.
+            super::explored(db, &march);
             let way = way_back(&march);
             turn_home(db, march, way);
         }

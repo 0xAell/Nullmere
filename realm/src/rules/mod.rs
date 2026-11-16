@@ -7,6 +7,7 @@
 
 mod alliance;
 mod boons;
+mod cairns;
 mod army;
 mod battle;
 mod city;
@@ -36,6 +37,7 @@ mod ward;
 
 pub use alliance::*;
 pub use boons::*;
+pub use cairns::*;
 pub use army::*;
 pub use battle::*;
 pub use city::*;
@@ -121,6 +123,10 @@ pub enum Refusal {
     OnlyHigher,
     NothingAsked,
     NoBoons,
+    NoCairnThere,
+    /// The player's scouts found what that cairn held already.
+    FoundAlready,
+    ScoutsOnTheWay,
     /// The most that may be asked for at once.
     TooMany(u64),
     AlreadyTraining(Building),
@@ -367,6 +373,9 @@ impl fmt::Display for Refusal {
             Refusal::OnlyHigher => "Troops are raised only to a higher tier.",
             Refusal::NothingAsked => "Ask for at least one.",
             Refusal::NoBoons => "No gift is waiting on you.",
+            Refusal::NoCairnThere => "No cairn stands there.",
+            Refusal::FoundAlready => "Your scouts have found what that cairn held already.",
+            Refusal::ScoutsOnTheWay => "Your scouts are on their way to that cairn already.",
             Refusal::NoSuchOrder => "The realm knows no such order.",
             Refusal::NothingThere => "There is nothing to gather there.",
             Refusal::SiteTaken => "Another army is gathering there.",

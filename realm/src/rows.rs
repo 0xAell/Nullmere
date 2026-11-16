@@ -58,6 +58,7 @@ impl Place {
     pub const BARROW: u8 = 3;
     pub const WARD: u8 = 4;
     pub const GATE: u8 = 5;
+    pub const CAIRN: u8 = 6;
 }
 
 /// Somewhere on the land where goods lie to be gathered, until they run
@@ -135,6 +136,8 @@ impl March {
     pub const REINFORCE: u8 = 5;
     /// To go against a barrow with allies' armies, as one (see `Rally`).
     pub const RALLY: u8 = 6;
+    /// Scouts to find what a cairn holds, and come home.
+    pub const EXPLORE: u8 = 7;
 
     pub const GOING: u8 = 1;
     pub const WORKING: u8 = 2;
@@ -533,6 +536,8 @@ impl Report {
     pub const PETITION: u8 = 13;
     /// A title bestowed on the player, or taken back: `foe` is the title.
     pub const TITLE: u8 = 14;
+    /// What the player's scouts found in a cairn: `foe` is its level.
+    pub const CAIRN: u8 = 15;
 }
 
 /// An alliance of players. Everyone may read it.
@@ -1314,6 +1319,40 @@ pub struct Boon {
 }
 row!(Boon in boon, auto, by id, player);
 
+/// A cairn the old folk left on the land, for scouts to find what was
+/// laid in it. Everyone sees it; each player finds each once.
+#[spacetimedb::table(accessor = cairn, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Cairn {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    pub hex: u64,
+    /// One to five (`rules::hoard_of`).
+    pub level: u32,
+}
+row!(Cairn in cairn, auto, by id);
+
+/// A cairn whose hoard a player's scouts have found: theirs alone to
+/// read. Keyed by player and cairn.
+#[spacetimedb::table(accessor = find)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Find {
+    #[primary_key]
+    pub id: u64,
+    #[index(btree)]
+    pub player: u64,
+    pub cairn: u64,
+    pub at: i64,
+}
+row!(Find in find, by id, player);
+
+impl Find {
+    pub fn key(player: u64, cairn: u64) -> u64 {
+        (player << 32) | cairn
+    }
+}
+
 /// What a city has learnt of a topic: its owner's alone to read. Keyed
 /// by city and topic.
 #[spacetimedb::table(accessor = lore)]
@@ -1424,6 +1463,8 @@ pub trait Db:
     + Table<Favour>
     + Table<Fame>
     + Table<Boon>
+    + Table<Cairn>
+    + Table<Find>
     + Table<Ware>
     + Table<Satchel>
     + Table<Trial>
@@ -1491,6 +1532,8 @@ impl<
             + Table<Favour>
             + Table<Fame>
             + Table<Boon>
+            + Table<Cairn>
+            + Table<Find>
             + Table<Ware>
             + Table<Satchel>
             + Table<Trial>

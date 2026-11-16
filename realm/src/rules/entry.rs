@@ -39,6 +39,7 @@ pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
     write_gates(db, radius);
     scatter_sites(db);
     scatter_barrows(db);
+    super::scatter_cairns(db);
 }
 
 /// Sets the realm's pace: how many times faster than written everything
