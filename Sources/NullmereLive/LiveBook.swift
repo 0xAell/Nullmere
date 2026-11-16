@@ -21,6 +21,13 @@ public enum LiveWords {
         return out
     }
 
+    /// A place in a ranking as a player reads it: "1st", "12th", "23rd".
+    public static func ordinal(_ number: Int) -> String {
+        let teen = (11...13).contains(number % 100)
+        let suffix = teen ? "th" : (number % 10 == 1 ? "st" : number % 10 == 2 ? "nd" : number % 10 == 3 ? "rd" : "th")
+        return "\(number)\(suffix)"
+    }
+
     /// A length of time as a player reads it: "45 seconds", "3 hours 20 minutes".
     public static func spoken(_ seconds: Int) -> String {
         let seconds = max(seconds, 0)

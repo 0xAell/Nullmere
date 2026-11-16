@@ -47,6 +47,8 @@ public struct LiveWorld: Equatable, Sendable {
     /// held, by the title.
     public var pacts: [UInt64: LivePact] = [:]
     public var titles: [Int: LiveTitle] = [:]
+    /// What each player has struck down in battles between cities, by player.
+    public var fame: [UInt64: LiveFame] = [:]
 
     public var me: LivePlayer?
     public var city: LiveCity?
@@ -161,6 +163,7 @@ public struct LiveWorld: Equatable, Sendable {
         gates = Dictionary(rows("gate", LiveGate.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         pacts = Dictionary(rows("pact", LivePact.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         titles = Dictionary(rows("title", LiveTitle.init).map { ($0.title, $0) }, uniquingKeysWith: { _, new in new })
+        fame = Dictionary(rows("fame", LiveFame.init).map { ($0.player, $0) }, uniquingKeysWith: { _, new in new })
         daily = rows("my_daily", LiveDaily.init).first
         favour = rows("my_favour", LiveFavour.init).first
         for row in snapshot["my_satchel"] ?? [] {

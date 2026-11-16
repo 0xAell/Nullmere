@@ -582,3 +582,49 @@ struct LiveForgePanel: View {
         }
     }
 }
+
+/// The realm's rankings: its most powerful players, the players with the
+/// most kill points from battles between cities, and its most powerful
+/// alliances; and where the player stands.
+struct LiveRankingsPanel: View {
+    let session: LiveSession
+
+    var body: some View {
+        let world = session.world
+        if let place = world.powerPlace {
+            LiveSmall(words: "You stand \(LiveWords.ordinal(place)) in power in the realm.")
+        }
+        board("Power", world.powerRanking(), mine: world.me?.id, none: "No one holds a city yet.")
+        board("Kill points", world.killRanking(), mine: world.me?.id, none: "No city has been fought for yet.")
+        board("Alliances", world.allianceRanking(), mine: world.myMembership?.alliance, none: "No alliance has been founded yet.")
+    }
+
+    private func board(_ title: String, _ ranks: [LiveRank], mine: UInt64?, none: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Caps(title, size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
+            if ranks.isEmpty {
+                LiveSmall(words: none, dim: true)
+            }
+            ForEach(Array(ranks.enumerated()), id: \.element.id) { index, rank in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: "\(index + 1)")
+                        .font(.nm(LiveType.small))
+                        .foregroundStyle(LiveEmphasis.tertiary)
+                        .frame(width: 18, alignment: .trailing)
+                    Text(verbatim: rank.name)
+                        .font(.nm(LiveType.small, weight: rank.id == mine ? .medium : .regular))
+                        .foregroundStyle(rank.id == mine ? LiveEmphasis.primary : LiveEmphasis.secondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Text(verbatim: LiveWords.grouped(rank.amount))
+                        .font(.nm(LiveType.small))
+                        .foregroundStyle(LiveEmphasis.secondary)
+                        .monospacedDigit()
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+}
+

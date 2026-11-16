@@ -31,7 +31,7 @@ extension LiveSession {
     /// by and the words it shows, in the order the destinations hold them.
     public static let parts: [(name: String, title: String)] = [
         ("city", "Buildings"), ("troops", "Troops"), ("studies", "Studies"), ("forge", "Forge"), ("day", "Today"), ("alliance", "Alliance"),
-        ("realm", "The Mere"), ("chat", "Chat"), ("reports", "Reports and letters"),
+        ("realm", "The Mere"), ("rankings", "Rankings"), ("chat", "Chat"), ("reports", "Reports and letters"),
     ]
 
     /// Every command there is at a moment: the player's city and each army

@@ -65,6 +65,8 @@ final class LiveBookTests: XCTestCase {
                        ["0 seconds", "1 second", "45 seconds", "1 minute", "1 minute 1 second", "1 hour", "3 hours 20 minutes", "1 day",
                         "1 day 1 hour", "2 days 7 hours", "0 seconds"])
         XCTAssertEqual([0, 5, 65, 3_605, 12_005, 90_000, -1].map { LiveWords.clock($0) }, ["0:00", "0:05", "1:05", "1:00:05", "3:20:05", "1d 1h", "0:00"])
+        XCTAssertEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101, 111].map { LiveWords.ordinal($0) },
+                       ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd", "101st", "111th"])
         XCTAssertEqual(LiveGoods().words, "nothing")
         XCTAssertEqual(LiveGoods(timber: 620).words, "620 timber")
         XCTAssertEqual([LiveGoods().sentence, LiveGoods(timber: 620).sentence], ["Nothing", "620 timber"])
@@ -213,6 +215,29 @@ final class LiveBookTests: XCTestCase {
         busy["my_jobs"] = [[n(5), n(7), n(2), n(24), n(1), n(30), n(2_000), n(2_240), n(10)]]
         let training = LiveWorld(snapshot: busy)
         XCTAssertNil(training.promotion(try XCTUnwrap(training.trainLines(at: 2_000).first), at: 2_000))
+    }
+
+    func testTheRealmsRankingsAreReadFromCitiesFameAndAlliances() throws {
+        // Three players: Ada and Bryn of one alliance, Cole of none; Bryn has fought a city.
+        let player: (Int, String) -> [JSONValue] = { [self] id, name in [n(id), n(9), .string(name), n(1_000), .bool(true), n(1_000)] }
+        let city: (Int, Int, String, Int) -> [JSONValue] = { [self] id, owner, name, power in
+            [n(id), n(owner), n(Double(LiveHex(q: id, r: 0).packed)), .string(name), n(3), n(power), n(1_000), n(1)]
+        }
+        var snapshot: [String: [[JSONValue]]] = [:]
+        snapshot["player"] = [player(1, "Ada"), player(2, "Bryn"), player(3, "Cole")]
+        snapshot["me"] = [player(1, "Ada")]
+        snapshot["city"] = [city(7, 1, "Ada", 900), city(8, 2, "Bryn", 1_500), city(9, 3, "Cole", 1_200)]
+        snapshot["alliance"] = [[n(5), n(77), n(78), .string("Keepers"), .string("MERE"), n(1), n(1_500), n(2), .bool(true), .string("")]]
+        snapshot["member"] = [[n(1), n(5), n(5), n(1_500)], [n(2), n(5), n(1), n(1_500)]]
+        snapshot["fame"] = [[n(2), n(340), n(200), n(12)], [n(3), n(0), n(0), n(40)]]
+        let world = LiveWorld(snapshot: snapshot)
+        XCTAssertEqual(world.powerRanking().map(\.name), ["Bryn", "Cole", "Ada"])
+        XCTAssertEqual(world.powerRanking(top: 1).map(\.amount), [1_500])
+        XCTAssertEqual(world.powerPlace, 3, "Ada stands third")
+        XCTAssertEqual(world.killRanking().map { [$0.name, String($0.amount)] }, [["Bryn", "340"]], "none for those who struck nothing down")
+        XCTAssertEqual(world.fame[3]?.dead, 40)
+        XCTAssertEqual(world.allianceRanking().map { [$0.name, String($0.amount)] }, [["[MERE] Keepers", "2400"]])
+        XCTAssertNil(LiveWorld(snapshot: [:]).powerPlace)
     }
 
     func testTheAcademysTopicsAreListedWithWhatEachAsks() throws {

@@ -88,6 +88,7 @@ final class LiveGameTests: XCTestCase {
                             n(0), n(1)]]
         rows["my_gear"] = [[n(1), n(1), n(1), n(11)], [n(2), n(1), n(10), n(0)]]
         rows["my_favour"] = [[n(1), n(140), n(1)]]
+        rows["fame"] = [[n(1), n(120), n(80), n(30)], [n(2), n(340), n(200), n(12)]]
         rows["trial"] = [[n(1), .string("The Long Hunt"), .string("Points for every barrow cleared."), n(7), n(3)]]
         rows["prize"] = [[n(257), n(1), n(1), n(100), n(9_000), n(0), n(0), n(0), n(1), n(0), n(0)], [n(258), n(1), n(2), n(400), n(0), n(0), n(0), n(100), n(0), n(2), n(0)]]
         rows["my_tallies"] = [[n(5), n(1), n(1), n(0), n(120), n(0)]]
@@ -216,7 +217,7 @@ final class LiveGameTests: XCTestCase {
         // Four destinations: the House of four parts, the alliance, the realm of two, the mail.
         XCTAssertEqual(LiveDock.destinations.map(\.title), ["House", "Alliance", "Realm", "Mail"])
         XCTAssertEqual(LiveGameView.Destination.house.panels, [.city, .troops, .studies, .forge, .day])
-        XCTAssertEqual(LiveGameView.Destination.realm.panels, [.realm, .chat])
+        XCTAssertEqual(LiveGameView.Destination.realm.panels, [.realm, .rankings, .chat])
         XCTAssertEqual([LiveGameView.Panel.day, LiveGameView.Panel.chat, LiveGameView.Panel.reports].map(\.destination), [.house, .realm, .mail])
         // Pressed, a destination opens at its first part, and closes again from any of its parts.
         XCTAssertEqual(LiveDock.pressed(.house, while: nil), .city)
@@ -228,13 +229,13 @@ final class LiveGameTests: XCTestCase {
                        LiveGameView.Destination.allCases.flatMap(\.panels), "the palette's parts are the destinations', in order")
         XCTAssertNil(LiveGameView.Panel(part: "nowhere"))
         // Each side panel, with something of everything in it.
-        for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .realm, .chat, .reports] {
+        for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
             let lit = try drawn(LiveSidePanel(session: session, seconds: 2_015, panel: side) {}, width: 340, height: 700, as: "live-\(side).png")
             XCTAssertGreaterThan(lit, 800, "\(side)")
         }
         // And with nothing in them: no soldiers yet, no reports yet.
         let (empty, _) = await playing(LiveSample.rows())
-        for side in [LiveGameView.Panel.troops, .studies, .forge, .alliance, .day, .realm, .chat, .reports] {
+        for side in [LiveGameView.Panel.troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
             XCTAssertGreaterThan(try drawn(LiveSidePanel(session: empty, seconds: 2_015, panel: side) {}, width: 340, height: 700), 150, "\(side)")
         }
         XCTAssertEqual(try drawn(LiveTaskChip(session: empty), width: 420, height: 70), 0, "No task set, nothing shown")

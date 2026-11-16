@@ -146,7 +146,7 @@ final class NullmereUITests: XCTestCase {
 
         // Each destination from the dock, and each of its parts, then closed again.
         for (place, parts) in [("House", ["Buildings", "Troops", "Studies", "Forge", "Today"]), ("Alliance", ["Alliance"]),
-                               ("Realm", ["The Mere", "Chat"]), ("Mail", ["Reports and letters"])] {
+                               ("Realm", ["The Mere", "Rankings", "Chat"]), ("Mail", ["Reports"])] {
             let door = window.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", place)).firstMatch
             guard door.waitForExistence(timeout: 10) else {
                 found("UIWALK the dock has no \(place)")

@@ -591,3 +591,60 @@ public struct LiveGear: Equatable, Sendable, Identifiable {
         (self.id, self.piece, self.commander) = (id, piece, commander)
     }
 }
+
+/// What a player has struck down of other players' soldiers in battles
+/// between cities, and lost of their own: the realm's kill points.
+public struct LiveFame: Equatable, Sendable {
+    public let player: UInt64
+    public let kills: UInt64
+    public let felled: UInt64
+    public let dead: UInt64
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let player = cells.unsigned(0), let kills = cells.unsigned(1) else { return nil }
+        (self.player, self.kills, self.felled, self.dead) = (player, kills, cells.unsigned(2) ?? 0, cells.unsigned(3) ?? 0)
+    }
+}
+
+/// A place in one of the realm's rankings: whose, under what name, and
+/// how much.
+public struct LiveRank: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let name: String
+    public let amount: UInt64
+}
+
+extension LiveWorld {
+    /// The realm's most powerful players, the strongest first: each city's
+    /// power, under its owner's name.
+    public func powerRanking(top: Int = 10) -> [LiveRank] {
+        let ranks = cities.values.map { LiveRank(id: $0.owner, name: players[$0.owner]?.name ?? $0.name, amount: $0.power) }
+        return Array(ranks.sorted { ($0.amount, $1.id) > ($1.amount, $0.id) }.prefix(top))
+    }
+
+    /// The players with the most kill points, the most first.
+    public func killRanking(top: Int = 10) -> [LiveRank] {
+        let ranks = fame.values.filter { $0.kills > 0 }.map { LiveRank(id: $0.player, name: players[$0.player]?.name ?? "Someone", amount: $0.kills) }
+        return Array(ranks.sorted { ($0.amount, $1.id) > ($1.amount, $0.id) }.prefix(top))
+    }
+
+    /// The realm's most powerful alliances: each the power of its members'
+    /// cities together, under its tag and name.
+    public func allianceRanking(top: Int = 10) -> [LiveRank] {
+        var power: [UInt64: UInt64] = [:]
+        for city in cities.values {
+            guard let member = members[city.owner] else { continue }
+            power[member.alliance, default: 0] += city.power
+        }
+        let ranks = alliances.values.map { LiveRank(id: $0.id, name: "[\($0.tag)] \($0.name)", amount: power[$0.id] ?? 0) }
+        return Array(ranks.sorted { ($0.amount, $1.id) > ($1.amount, $0.id) }.prefix(top))
+    }
+
+    /// Where the player stands among the realm's players by power, from 1.
+    public var powerPlace: Int? {
+        guard let me = me?.id, let mine = cities.values.first(where: { $0.owner == me }) else { return nil }
+        return 1 + cities.values.filter { ($0.power, me) > (mine.power, $0.owner) }.count
+    }
+}
+
