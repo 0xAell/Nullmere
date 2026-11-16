@@ -27,10 +27,8 @@ final class TitleTests: XCTestCase {
     }
 
     func testEveryScreenOnTheLakeSetsTheTitleOneWay() throws {
-        for name in ["LauncherRootView.swift", "FrontDoor.swift", "ModelGate.swift"] {
-            let file = try XCTUnwrap(try swiftFiles().first { $0.lastPathComponent == name }, name)
-            XCTAssertTrue(try String(contentsOf: file, encoding: .utf8).contains("LakeTitle(size:"), "\(name) sets the title by LakeTitle")
-        }
+        let file = try XCTUnwrap(try swiftFiles().first { $0.lastPathComponent == "LauncherRootView.swift" })
+        XCTAssertTrue(try String(contentsOf: file, encoding: .utf8).contains("LakeTitle(size:"), "The launcher sets the title by LakeTitle")
     }
 
     @MainActor

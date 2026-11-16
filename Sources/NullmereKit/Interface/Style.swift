@@ -157,15 +157,6 @@ enum Palette {
             RGB(red + (other.red - red) * amount, green + (other.green - green) * amount, blue + (other.blue - blue) * amount)
         }
     }
-
-    /// The panels' own dark, and the pale type's ink, as parts.
-    static let panelRGB = RGB(0.02, 0.025, 0.035)
-    static let inkRGB = RGB(0.894, 0.918, 0.949)
-
-    /// How plainly a House's colour reads when it colours words: ten to one
-    /// on a panel's dark, so its smallest strokes read too.
-    static let houseWordsContrast = 10.0
-
     /// The pale type, by the launcher's one rule: as faint as the design
     /// asks, but never too faint to read, and plainer with Increase Contrast.
     static func text(_ opacity: Double) -> Color {
@@ -175,33 +166,6 @@ enum Palette {
     /// A line, a track or a mark that isn't type, by the launcher's rule.
     static func line(_ opacity: Double) -> Color {
         LauncherKit.Palette.line(opacity)
-    }
-
-    static func house(_ house: House) -> Color {
-        houses[house.sigil % houses.count]
-    }
-
-    /// A House's colour for its words (a name, the land it holds): its own
-    /// hue, lifted toward the ink until it reads as plainly as the rest of
-    /// the type, never left to read as a mark does.
-    static func houseWords(_ house: House) -> Color {
-        houseWordsRGB(house.sigil % houseRGB.count).colour
-    }
-
-    static func houseWordsRGB(_ index: Int) -> RGB {
-        let own = houseRGB[index]
-        let wanted = houseWordsContrast + (Contrast.shared.isIncreased ? 3 : 0)
-        var amount = 0.0
-        while own.toward(inkRGB, by: amount).contrast(with: panelRGB) < wanted, amount < 1 { amount += 0.05 }
-        return own.toward(inkRGB, by: min(amount, 1))
-    }
-
-    static func tone(_ tone: GameSession.Notice.Tone) -> Color {
-        switch tone {
-        case .neutral: return text(0.8)
-        case .good: return good
-        case .bad: return bad
-        }
     }
 }
 
@@ -256,18 +220,6 @@ extension Font {
 
     static func readable(_ weight: Font.Weight, at size: CGFloat) -> Font.Weight {
         TextSize.readable(weight, at: size)
-    }
-}
-
-/// A thin rule that fades at both ends.
-struct Rule: View {
-    var opacity: Double = 0.3
-
-    @Environment(\.displayScale) private var displayScale
-
-    var body: some View {
-        LinearGradient(colors: [.clear, Palette.line(opacity), .clear], startPoint: .leading, endPoint: .trailing)
-            .frame(height: 1 / displayScale)
     }
 }
 
@@ -348,45 +300,11 @@ extension View {
     }
 }
 
-extension View {
-    /// A panel's scrolling body held to the height the play view gives
-    /// panels, so the world keeps the screen: a share of it, for a record
-    /// that stands beside the map and the rail.
-    func panelHeight(_ share: CGFloat = 1) -> some View {
-        modifier(PanelHeight(share: share))
-    }
-}
-
-/// The height the play view gives a panel's scrolling body.
-private struct PanelHeight: ViewModifier {
-    let share: CGFloat
-    @Environment(\.panelMaxHeight) private var maxHeight
-
-    func body(content: Content) -> some View {
-        content.frame(maxHeight: max(maxHeight * share, ChromeBudget.leastHeight))
-    }
-}
-
-extension EnvironmentValues {
-    /// How tall a panel's scrolling body may stand: set by the play view
-    /// from its window, 620 points where none is set.
-    @Entry var panelMaxHeight: CGFloat = 620
-}
-
 /// How much of the window's height a card or panel may take: the world is
 /// the screen, the interface a little of its edges.
 enum ChromeBudget {
-    /// The share of the window's height a panel's body may stand to.
-    static let cardShare: CGFloat = 0.46
     /// But never less than this, so a small window's panels still serve.
     static let leastHeight: CGFloat = 360
-    /// A hold's record, beside the map and the rail, stands a little lower.
-    static let recordShare: CGFloat = 0.85
-
-    /// The height a panel's body may stand to in a window this tall.
-    static func panelHeight(in window: CGFloat) -> CGFloat {
-        max(window * cardShare, leastHeight)
-    }
     /// The share of the window the world keeps, on every screen.
     static let worldShare: Double = 0.85
 }
@@ -395,16 +313,6 @@ extension View {
     func panelBackground() -> some View {
         modifier(PanelBackground())
     }
-}
-
-/// How wide the interface's pieces lie over the map: narrow, so the world
-/// keeps the screen. A panel on the rail; one read at length, the
-/// Chronicle and the Guide, a little wider; and the column at the foot of
-/// the map that holds what is chosen, the charge and counsel.
-enum PanelWidth {
-    static let rail: CGFloat = 328
-    static let reading: CGFloat = 344
-    static let record: CGFloat = 312
 }
 
 /// A quiet text button: spaced capitals that brighten on hover.
@@ -477,77 +385,6 @@ struct FocusRing: View {
     }
 }
 
-/// A resource amount, with what is missing shown in the warning colour,
-/// and, with "Differentiate without colour" on, marked "short"; said in
-/// words, with what is short.
-struct CostLine: View {
-    let cost: Stock
-    let available: Stock
-
-    /// What the stores lack to pay it: "short of 20 timber", or nil; in
-    /// the words of the realm's own refusal (`Stock.listedSaid`).
-    static func shortfall(of cost: Stock, from available: Stock) -> String? {
-        let short = available.shortfall(for: cost)
-        return short == Stock() ? nil : "short of " + short.listedSaid
-    }
-
-    var body: some View {
-        // On as many lines as the width it is given needs: a long cost in a
-        // narrow record, or in larger type, goes on beneath, not cut short.
-        FlowLayout(spacing: 10, lineSpacing: 3) {
-            ForEach(Resource.allCases, id: \.self) { resource in
-                if cost[resource] > 0 {
-                    let short = available[resource] < cost[resource]
-                    HStack(spacing: 3) {
-                        ResourceGlyph(resource: resource)
-                        Text(verbatim: "\(cost[resource])")
-                            .font(.nm(11, weight: .regular).monospacedDigit())
-                        if short, Contrast.shared.differentiates {
-                            Text(verbatim: "short").font(.nm(9, weight: .medium))
-                        }
-                    }
-                    .foregroundStyle(short ? Palette.bad : Palette.text(0.75))
-                }
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Costs \(cost.description)" + (Self.shortfall(of: cost, from: available).map { "; \($0)" } ?? ""))
-        .accessibilityAddTraits(.isStaticText)
-    }
-}
-
-/// An amount, typed or stepped: a field for the number with the stepper's
-/// arrows beside it, never under one nor over `most`; to VoiceOver, its
-/// name and its value.
-struct AmountField: View {
-    let name: String
-    @Binding var amount: Int
-    let most: Int
-    var step = 1
-
-    /// What a typed or stepped amount comes to: within one and `most`.
-    static func kept(_ amount: Int, most: Int) -> Int {
-        min(max(amount, 1), max(1, most))
-    }
-
-    var body: some View {
-        let kept = Binding(get: { amount }, set: { amount = Self.kept($0, most: most) })
-        HStack(spacing: 4) {
-            TextField(name, value: kept, format: .number.grouping(.never))
-                .textFieldStyle(.plain)
-                .font(.nm(11).monospacedDigit())
-                .foregroundStyle(Palette.ink)
-                .multilineTextAlignment(.trailing)
-                .frame(width: 52)
-                .accessibilityLabel(name)
-            Stepper(name, value: kept, in: 1...max(1, most), step: step)
-                .labelsHidden()
-                .accessibilityLabel(name)
-                .accessibilityValue("\(amount)")
-        }
-    }
-}
-
 /// A small drawn mark for each resource, in the colour the realm gives it:
 /// a sheaf of grain, a fir of the blackwood for timber, a dressed block of
 /// stone and a crystal of moonsalt, each lit from above and the left, so
@@ -574,74 +411,6 @@ struct ResourceGlyph: View {
     }
 }
 
-/// A small drawn mark for each thing a satchel may hold: a salt hourglass
-/// in its frame, a ward stone cut with its rune, a mending draught in its
-/// flask, and a cache by the mark of the store it holds.
-struct ItemGlyph: View {
-    let kind: ItemKind
-    var size: CGFloat = 14
-
-    var body: some View {
-        DrawnMark(parts: ItemGlyph.drawing(of: kind), size: size)
-    }
-
-    /// An item's mark as filled outlines in a unit square, y down, each
-    /// drawn over those before it.
-    static func drawing(of kind: ItemKind) -> [(outline: [CGPoint], colour: ResourceGlyph.Shade)] {
-        func p(_ x: Double, _ y: Double) -> CGPoint { CGPoint(x: x, y: y) }
-        let wood: ResourceGlyph.Shade = (0.55, 0.42, 0.28), glass: ResourceGlyph.Shade = (0.70, 0.75, 0.80)
-        switch kind {
-        case .grainCache: return ResourceGlyph.drawing(of: .grain)
-        case .timberCache: return ResourceGlyph.drawing(of: .timber)
-        case .stoneCache: return ResourceGlyph.drawing(of: .stone)
-        case .moonsaltCache: return ResourceGlyph.drawing(of: .moonsalt)
-        case .hourglass:
-            // Two bulbs of glass in a wooden frame, the salt running down.
-            let sand: ResourceGlyph.Shade = (0.86, 0.80, 0.62)
-            return [([p(0.22, 0.04), p(0.78, 0.04), p(0.78, 0.13), p(0.22, 0.13)], wood),
-                    ([p(0.22, 0.87), p(0.78, 0.87), p(0.78, 0.96), p(0.22, 0.96)], wood),
-                    ([p(0.28, 0.13), p(0.72, 0.13), p(0.53, 0.5), p(0.47, 0.5)], glass),
-                    ([p(0.47, 0.5), p(0.53, 0.5), p(0.72, 0.87), p(0.28, 0.87)], glass),
-                    ([p(0.36, 0.26), p(0.64, 0.26), p(0.52, 0.48), p(0.48, 0.48)], sand),
-                    ([p(0.4, 0.87), p(0.5, 0.66), p(0.6, 0.87)], sand),
-                    ([p(0.25, 0.13), p(0.3, 0.13), p(0.3, 0.87), p(0.25, 0.87)], wood),
-                    ([p(0.7, 0.13), p(0.75, 0.13), p(0.75, 0.87), p(0.7, 0.87)], wood)]
-        case .wardStone:
-            // A standing stone, its far side in shadow, cut with a pale rune.
-            let stone: ResourceGlyph.Shade = (0.61, 0.61, 0.63), rune: ResourceGlyph.Shade = (0.70, 0.85, 1.0)
-            return [([p(0.3, 0.98), p(0.24, 0.3), p(0.38, 0.06), p(0.62, 0.06), p(0.76, 0.3), p(0.7, 0.98)], stone),
-                    ([p(0.5, 0.06), p(0.62, 0.06), p(0.76, 0.3), p(0.7, 0.98), p(0.5, 0.98)], (0.48, 0.48, 0.49)),
-                    ([p(0.47, 0.24), p(0.53, 0.24), p(0.53, 0.8), p(0.47, 0.8)], rune),
-                    ([p(0.5, 0.36), p(0.66, 0.5), p(0.62, 0.55), p(0.5, 0.45)], rune),
-                    ([p(0.5, 0.52), p(0.34, 0.66), p(0.38, 0.71), p(0.5, 0.61)], rune)]
-        case .tome:
-            // A closed book bound in leather, its spine darker, its pages'
-            // edge pale beneath and a gilt plate on its board.
-            let leather: ResourceGlyph.Shade = (0.46, 0.29, 0.19), gilt: ResourceGlyph.Shade = (0.86, 0.72, 0.38)
-            return [([p(0.2, 0.08), p(0.82, 0.08), p(0.82, 0.84), p(0.2, 0.84)], leather),
-                    ([p(0.2, 0.08), p(0.31, 0.08), p(0.31, 0.84), p(0.2, 0.84)], (0.33, 0.2, 0.13)),
-                    ([p(0.24, 0.84), p(0.82, 0.84), p(0.78, 0.94), p(0.2, 0.94)], (0.9, 0.86, 0.74)),
-                    ([p(0.45, 0.32), p(0.69, 0.32), p(0.69, 0.52), p(0.45, 0.52)], gilt)]
-        case .mendingDraught:
-            // A round flask stoppered, half full of a red draught, a gleam on it.
-            return [([p(0.41, 0.14), p(0.59, 0.14), p(0.59, 0.4), p(0.41, 0.4)], glass),
-                    (arc(about: p(0.5, 0.64), radius: 0.32, from: 0, to: 2 * .pi), glass),
-                    (arc(about: p(0.5, 0.64), radius: 0.29, from: 0, to: .pi), (0.75, 0.25, 0.30)),
-                    ([p(0.38, 0.03), p(0.62, 0.03), p(0.6, 0.16), p(0.4, 0.16)], (0.48, 0.36, 0.24)),
-                    (arc(about: p(0.38, 0.5), radius: 0.06, from: 0, to: 2 * .pi), (0.92, 0.94, 0.96))]
-        }
-    }
-
-    /// The points along a circle's arc about `centre`, from one angle to
-    /// another, y down.
-    private static func arc(about centre: CGPoint, radius: Double, from start: Double, to end: Double) -> [CGPoint] {
-        (0...24).map { index in
-            let angle = start + (end - start) * Double(index) / 24
-            return CGPoint(x: Double(centre.x) + radius * cos(angle), y: Double(centre.y) + radius * sin(angle))
-        }
-    }
-}
-
 /// Filled outlines in a unit square drawn at `size` points, each in its
 /// shade: the store and item marks.
 private struct DrawnMark: View {
@@ -659,203 +428,6 @@ private struct DrawnMark: View {
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
-    }
-}
-
-/// Which button, across the realm's panels, has been pressed once and waits
-/// for its second, for what can't be taken back, such as war. There is no
-/// clock to beat, however long reading or scanning to it takes; arming
-/// another, or the button leaving the view, lets it go, so no forgotten
-/// one waits armed.
-@MainActor
-@Observable
-final class ArmedPress {
-    static let shared = ArmedPress()
-    private(set) var armed: UUID?
-
-    /// A press of the button `id`: whether it acts, as its second press.
-    func press(_ id: UUID) -> Bool {
-        if armed == id {
-            armed = nil
-            return true
-        }
-        armed = id
-        return false
-    }
-
-    func isArmed(_ id: UUID) -> Bool { armed == id }
-
-    func letGo(_ id: UUID) {
-        if armed == id { armed = nil }
-    }
-}
-
-/// The arrows moving the lit choice along a row of choices, by the
-/// launcher's rule: left and up step back, right and down on. For the
-/// realm's gate and door, where SwiftUI hears the keys.
-struct ChoiceArrows: ViewModifier {
-    @Binding var lit: Int
-    let count: Int
-
-    func body(content: Content) -> some View {
-        content.onKeyPress(keys: [.leftArrow, .upArrow, .rightArrow, .downArrow]) { press in
-            lit = ChoiceRow.step(lit, by: Self.command(for: press.key), among: count)
-            return .handled
-        }
-    }
-
-    /// The launcher's word for an arrow.
-    static func command(for key: KeyEquivalent) -> KeyCommand {
-        switch key {
-        case .leftArrow: return .left
-        case .upArrow: return .up
-        case .downArrow: return .down
-        default: return .right
-        }
-    }
-}
-
-/// A quiet button that asks again before doing what can't be undone. Its
-/// name stays what it does, for VoiceOver and Voice Control alike; the
-/// question it asks, armed, is said and shown, and is its value.
-struct ConfirmButton: View {
-    let title: String
-    /// What it says once armed, such as "War on House Venn?".
-    let confirm: String
-    var size: CGFloat = 8.5
-    /// What VoiceOver calls it, where its title alone says too little.
-    var name: String? = nil
-    let action: () -> Void
-
-    @State private var id = UUID()
-
-    var body: some View {
-        let armed = ArmedPress.shared.isArmed(id)
-        let _ = PressableButtons.note(title, enabled: true, action)
-        QuietButton(title: armed ? confirm : title, size: size, tint: armed ? Palette.bad : nil, pressable: false, name: name ?? title) {
-            if ArmedPress.shared.press(id) {
-                action()
-            } else {
-                // Armed: said, for those who can't see the words change.
-                AccessibilityNotification.Announcement("\(confirm) Press again to confirm.").post()
-            }
-        }
-        .help(armed ? "Press again to confirm." : "Asks again before acting.")
-        .accessibilityValue(armed ? confirm : "")
-        .accessibilityHint("Press twice to confirm.")
-        .onDisappear { ArmedPress.shared.letGo(id) }
-    }
-}
-
-/// Lays its views in rows, left to right, starting a row afresh when the
-/// next would overflow: a House's actions wrap rather than run off.
-struct FlowLayout: Layout {
-    var spacing: CGFloat = 4
-    var lineSpacing: CGFloat = 2
-
-    struct Row: Equatable {
-        var indices: [Int] = []
-        var width: CGFloat = 0
-        var height: CGFloat = 0
-    }
-
-    /// Views of these sizes, in rows no wider than `width`; a view wider
-    /// than that has a row to itself.
-    static func rows(of sizes: [CGSize], width: CGFloat, spacing: CGFloat) -> [Row] {
-        var rows: [Row] = []
-        var row = Row()
-        for (index, size) in sizes.enumerated() {
-            let needed = row.indices.isEmpty ? size.width : row.width + spacing + size.width
-            if needed > width, !row.indices.isEmpty {
-                rows.append(row)
-                row = Row(indices: [index], width: size.width, height: size.height)
-            } else {
-                row.indices.append(index)
-                row.width = needed
-                row.height = max(row.height, size.height)
-            }
-        }
-        if !row.indices.isEmpty { rows.append(row) }
-        return rows
-    }
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
-        let rows = FlowLayout.rows(of: sizes, width: proposal.width ?? .infinity, spacing: spacing)
-        let height = rows.reduce(0) { $0 + $1.height } + lineSpacing * CGFloat(max(rows.count - 1, 0))
-        return CGSize(width: rows.map(\.width).max() ?? 0, height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
-        var y = bounds.minY
-        for row in FlowLayout.rows(of: sizes, width: bounds.width, spacing: spacing) {
-            var x = bounds.minX
-            for index in row.indices {
-                subviews[index].place(at: CGPoint(x: x, y: y + (row.height - sizes[index].height) / 2), proposal: ProposedViewSize(sizes[index]))
-                x += sizes[index].width + spacing
-            }
-            y += row.height + lineSpacing
-        }
-    }
-}
-
-/// A panel's scrolling, paged by the keyboard: Page Up and Page Down, as
-/// the session hears them, move it most of its height, when the page is
-/// meant for it.
-struct PagedByKeys: ViewModifier {
-    let request: GameSession.PageRequest
-    let target: GameSession.PageTarget
-
-    @State private var position = ScrollPosition(edge: .top)
-    @State private var geometry = Extent()
-
-    struct Extent: Equatable {
-        var offset: CGFloat = 0
-        var visible: CGFloat = 0
-        var content: CGFloat = 0
-    }
-
-    /// Where a page in `direction` lands: most of a height on, never past
-    /// either end.
-    static func landing(after extent: Extent, direction: Int) -> CGFloat {
-        let step = extent.visible * 0.85 * CGFloat(direction)
-        return min(max(extent.offset + step, 0), max(extent.content - extent.visible, 0))
-    }
-
-    func body(content: Content) -> some View {
-        content
-            .scrollPosition($position)
-            .onScrollGeometryChange(for: Extent.self) { scroll in
-                Extent(offset: scroll.contentOffset.y, visible: scroll.containerSize.height, content: scroll.contentSize.height)
-            } action: { _, extent in
-                geometry = extent
-            }
-            .onChange(of: request) { _, request in
-                guard request.target == target else { return }
-                position.scrollTo(y: Self.landing(after: geometry, direction: request.direction))
-            }
-    }
-}
-
-extension View {
-    /// Pages this scrolling panel by Page Up and Page Down.
-    func pagedByKeys(_ session: GameSession, as target: GameSession.PageTarget) -> some View {
-        modifier(PagedByKeys(request: session.pageRequest, target: target))
-    }
-
-    /// Fades the last few points of a scrolling panel, so a row cut by its
-    /// edge reads as more below rather than as clipped, and leaves as much
-    /// room after the last row, so it clears the fade when scrolled to.
-    func scrollEdgeFade(_ length: CGFloat = 18) -> some View {
-        contentMargins(.bottom, length, for: .scrollContent)
-            .mask {
-                VStack(spacing: 0) {
-                    Rectangle()
-                    LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
-                        .frame(height: length)
-                }
-            }
     }
 }
 

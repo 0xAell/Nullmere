@@ -104,7 +104,7 @@ final class WorldPerformanceTests: XCTestCase {
         let terrain = try XCTUnwrap(renderer.land).terrain
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         var scene = SceneFrame()
-        let sights = state.holds.map { HoldSight(hold: $0, colour: WorldStage.colour(WorldView.houseColours, sigil: state.houses[$0.owner].sigil)) }
+        let sights = state.holds.map { HoldSight(hold: $0, colour: WorldStage.colour(WorldRenderer.houseColours, sigil: state.houses[$0.owner].sigil)) }
         let holds = stage.holds(sights, time: 20, into: &scene)
         scene.batches = holds.batches
         scene.fixed = stage.furnish(occupied: [], holds: Set(state.holds.map(\.position)))

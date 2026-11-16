@@ -75,9 +75,9 @@ targets += [
     // through the Foundation Models framework: the Mac's and the companion's.
     .target(name: "NullmereCounsel", dependencies: ["NullmereCore"]),
     .testTarget(name: "NullmereCounselTests", dependencies: ["NullmereCounsel", "NullmereCore"]),
-    // The world's interface: the front door, the Metal world, the panels.
+    // The window's realm: its screens, the Metal world, its sound.
     .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel",
-                                                "NullmereCompanionCore", "NullmereLive", "NullmereLiveStage", "LauncherCore", "LauncherKit"]),
+                                                "NullmereLive", "NullmereLiveStage", "LauncherCore", "LauncherKit"]),
     // The "Nullmere Online" app: the launcher, and through Play, the realm.
     .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherCore", "LauncherKit", "NullmereKit", "NullmereCounsel"]),
     // Nullmere Companion, the keeper's iPhone app: its SwiftUI screens over
@@ -85,7 +85,7 @@ targets += [
     // which bundles it; on the Mac it builds too, to be checked as the rest is.
     .executableTarget(name: "NullmereCompanion", dependencies: ["NullmereCompanionCore", "NullmereCounsel", "NullmereCore", "NullmereRealm"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
-    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereLive", "NullmereLiveStage", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel", "NullmereCompanionCore", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
+    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereLive", "NullmereLiveStage", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
 // The trailer drawn by the game's own renderers and written to a film,
 // built only when scripts/render-trailer.sh asks for it: then the trailer's

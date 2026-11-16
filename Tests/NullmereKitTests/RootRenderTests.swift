@@ -9,10 +9,8 @@ import XCTest
 @testable import NullmereKit
 import NullmereTestSupport
 
-/// The whole window, as each phase shows it: the model gate for every way
-/// the model can be missing, the front door, and a game at its start and
-/// well under way, with its cards and panels open; and every line the
-/// lake's news can be told in.
+/// The whole window: the launcher, and through Play, the realm; and the
+/// hour the realm's world is drawn at.
 @MainActor
 final class RootRenderTests: XCTestCase {
     private var dir: URL!
@@ -34,191 +32,6 @@ final class RootRenderTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
         return image
     }
-
-    private func app(_ readiness: @escaping () -> ModelReadiness, seed: String) -> GameApp {
-        UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: .hosted(seed: seed)))
-        return GameApp(store: LocalStore(directory: dir), readiness: readiness, sound: false, address: .hosted(seed: seed),
-                       identity: FileIdentityStore(url: dir.appendingPathComponent("identity")))
-    }
-
-    func testEveryPhaseOfTheWindowDraws() throws {
-        var readiness = ModelReadiness.modelNotReady
-        let app = app({ readiness }, seed: "every phase")
-        for missing in [ModelReadiness.modelNotReady, .appleIntelligenceNotEnabled, .deviceNotEligible, .unavailable, .checking] {
-            readiness = missing
-            app.checkModel()
-            try draw(GameRootView(app: app))
-            try draw(ModelGate(app: app))
-        }
-        readiness = .ready
-        app.checkModel()
-        guard case .frontDoor = app.phase else { return XCTFail("A ready model opens the front door") }
-        try draw(GameRootView(app: app))
-        app.enterWorld(name: "Ama")
-        let session = try XCTUnwrap(app.session)
-        // The first moments: the seat's briefing, then the first steps.
-        try draw(GameRootView(app: app))
-        session.dismissSeatBriefing()
-        try draw(PlayView(app: app, session: session))
-        // Each panel open over the map.
-        for panel in [GameSession.Panel.houses, .chronicle, .guide] {
-            session.panel = panel
-            try draw(PlayView(app: app, session: session))
-        }
-        session.panel = nil
-        app.showsSettings = true
-        try draw(GameRootView(app: app))
-        app.showsSettings = false
-
-        // Well under way: counsel, a watch's card, a company chosen.
-        session.dismissFirstSteps()
-        session.autoplay(watches: 30)
-        session.selectNextReadyUnit()
-        try draw(PlayView(app: app, session: session), width: 1512, height: 982)
-        session.endWatch()
-        XCTAssertNotNil(session.watchCard, "The watch's card shows")
-        try draw(PlayView(app: app, session: session))
-        if let card = session.watchCard {
-            try draw(WatchCard(summary: card.summary), width: 700, height: 300)
-        }
-        // The map's vignette only darkens: over white, in a window of a
-        // laptop's size, its corners darker than its middle, which it leaves
-        // as it was.
-        let renderer = ImageRenderer(content: MapVignette().frame(width: 1600, height: 1000).background(Color.white))
-        renderer.scale = 1
-        let vignette = try XCTUnwrap(renderer.cgImage)
-        XCTAssertGreaterThan(brightness(vignette, x: 800, y: 500), 740, "Its middle untouched")
-        XCTAssertLessThan(brightness(vignette, x: 2, y: 2), brightness(vignette, x: 800, y: 500) - 60, "Its corners darkened")
-    }
-
-    /// Hide the Interface leaves the world alone: no bar, card, panel or
-    /// name drawn over it, and VoiceOver told how to bring it back. Escape
-    /// brings it back, and so does a panel asked for.
-    func testTheWorldAloneHidesTheInterfaceAndEscapeBringsItBack() throws {
-        let app = app({ .ready }, seed: "the world alone")
-        app.checkModel()
-        app.enterWorld(name: "Ama")
-        let session = try XCTUnwrap(app.session)
-        session.dismissSeatBriefing()
-        session.dismissFirstSteps()
-        defer { PressableButtons.isListening = false }
-        PressableButtons.isListening = true
-        try draw(PlayView(app: app, session: session))
-        XCTAssertNotNil(PressableButtons.actions["Ready"], "The bar's Ready among \(PressableButtons.actions.keys.sorted())")
-
-        session.toggleInterface()
-        XCTAssertTrue(session.interfaceHidden)
-        XCTAssertEqual(session.lastSaid, GameSession.interfaceHiddenSaid)
-        PressableButtons.isListening = true
-        try draw(PlayView(app: app, session: session))
-        XCTAssertTrue(PressableButtons.actions.isEmpty, "Nothing to press but the world: \(PressableButtons.actions.keys.sorted())")
-        try draw(WorldAloneHint(), width: 900, height: 200)
-
-        // Escape brings it back, before it puts anything else away.
-        session.panel = nil
-        XCTAssertTrue(session.handle(.escape))
-        XCTAssertFalse(session.interfaceHidden)
-        XCTAssertEqual(session.lastSaid, "The interface is back.")
-        // So does a panel asked for, or the orders card.
-        session.toggleInterface()
-        session.panel = .houses
-        XCTAssertFalse(session.interfaceHidden)
-        session.panel = nil
-        session.toggleInterface()
-        session.toggleOrders()
-        XCTAssertFalse(session.interfaceHidden)
-        XCTAssertNotNil(session.ordersInWords)
-    }
-
-    /// The red, green and blue of a pixel, summed.
-    private func brightness(_ image: CGImage, x: Int, y: Int) -> Int {
-        var pixel = [UInt8](repeating: 0, count: 4)
-        guard let context = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
-                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else { return 0 }
-        context.draw(image, in: CGRect(x: -x, y: y - image.height + 1, width: image.width, height: image.height))
-        return Int(pixel[0]) + Int(pixel[1]) + Int(pixel[2])
-    }
-
-    /// The world under an omen, the steward's counsel at the map's foot,
-    /// and an age ended: each laid over the map as the window shows it.
-    func testOmensCounselAndAnEndingDrawOverTheWorld() throws {
-        let app = app({ .ready }, seed: "omens and endings")
-        UserDefaults.standard.set(false, forKey: "counsel.hidden")
-        var state = GameState(settings: GameSettings(seedText: "an omen", houseCount: 4, radius: 18, keepers: 1))
-        state.omen = Omen(kind: .moonsaltBloom, began: 1, ends: 4)
-        let omened = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("omen")))
-        omened.dismissSeatBriefing()
-        XCTAssertNotNil(omened.state.currentOmen)
-        XCTAssertNotNil(Counsel.advice(for: omened.state, player: omened.player), "Counsel at the opening")
-        try draw(PlayView(app: app, session: omened))
-        // The first steps put away: the House's charges take their place,
-        // and with the charges put away too, the steward's counsel; the
-        // map shown above the rail.
-        omened.dismissFirstSteps()
-        try draw(PlayView(app: app, session: omened))
-        UserDefaults.standard.set(true, forKey: "charges.hidden")
-        UserDefaults.standard.set(true, forKey: MiniMap.shownKey)
-        defer {
-            UserDefaults.standard.removeObject(forKey: "charges.hidden")
-            UserDefaults.standard.removeObject(forKey: MiniMap.shownKey)
-        }
-        XCTAssertNotNil(omened.counsel, "Counsel to give")
-        try draw(PlayView(app: app, session: omened))
-
-        // The Moonford open across the lake: its band under the bar.
-        var full = GameState(settings: GameSettings(seedText: "a full moon", houseCount: 4, radius: 18, keepers: 1))
-        full.watch = Sundering.first
-        _ = full.turnTide()
-        XCTAssertNotNil(full.ford)
-        let moonlit = GameSession(state: full, store: LocalStore(directory: dir.appendingPathComponent("full")))
-        moonlit.dismissSeatBriefing()
-        XCTAssertNotNil(MoonBand.line(watch: moonlit.state.watch, open: moonlit.state.ford != nil))
-        try draw(PlayView(app: app, session: moonlit))
-        // The Drowned Crown on the ford: its band under the moon's.
-        _ = full.contestCrown()
-        let crowned = GameSession(state: full, store: LocalStore(directory: dir.appendingPathComponent("crowned")))
-        crowned.dismissSeatBriefing()
-        XCTAssertNotNil(MoonBand.crownLine(in: crowned.state, for: crowned.player))
-        try draw(PlayView(app: app, session: crowned))
-        // The standing cards give way to anything chosen, the seat too.
-        crowned.dismissFirstSteps()
-        crowned.focusOnSeat()
-        XCTAssertFalse(PlayView.standingCardsShown(crowned))
-        if let company = crowned.state.units(of: crowned.player).first {
-            crowned.selection = .unit(company.id)
-            XCTAssertFalse(PlayView.standingCardsShown(crowned))
-        }
-        crowned.selection = .none
-        XCTAssertTrue(PlayView.standingCardsShown(crowned))
-        // The notices too give way to anything chosen.
-        XCTAssertTrue(PlayView.noticesShown(crowned))
-        crowned.focusOnSeat()
-        XCTAssertFalse(PlayView.noticesShown(crowned))
-        crowned.selection = .none
-
-        state.omen = nil
-        state.outcome = Outcome(winner: (state.player + 1) % state.houses.count, kind: .ascendancy, watch: state.watch)
-        let ended = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("ended")))
-        XCTAssertNotNil(ended.state.outcome)
-        try draw(PlayView(app: app, session: ended))
-
-        // A keeper back after watches away: the report of what passed, put
-        // away by Escape.
-        let awayStore = LocalStore(directory: dir.appendingPathComponent("away"))
-        var world = GameState(settings: GameSettings(seedText: "away a while", houseCount: 4, radius: 16, keepers: 1))
-        _ = GameSession(state: world, store: awayStore)
-        for _ in 0..<6 {
-            _ = world.stewardTurn(for: world.player)
-            _ = world.endWatch()
-        }
-        let back = GameSession(state: world, store: awayStore)
-        XCTAssertNotNil(back.awayReport)
-        try draw(PlayView(app: app, session: back))
-        XCTAssertTrue(back.handle(.escape))
-        XCTAssertNil(back.awayReport, "Escape puts the report away")
-    }
-
     func testTheOneWindowShowsTheLauncherThenTheRealm() throws {
         let suite = "root-render-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -237,7 +50,7 @@ final class RootRenderTests: XCTestCase {
         launcher.completeIntro()
         try draw(NullmereOnlineView(shell: shell))
         shell.playTitle()
-        XCTAssertEqual(shell.sound.ambience.titleLake, GameApp.lastLake, "Over the launcher, the last lake's title theme")
+        XCTAssertEqual(shell.sound.ambience.titleLake, RealmSound.lastLake, "Over the launcher, the last lake's title theme")
         shell.showSettings()
         // Play opens the realm at its address, in place of the launcher.
         var asked: [String] = []
@@ -257,7 +70,7 @@ final class RootRenderTests: XCTestCase {
         XCTAssertEqual(shell.launcher.screen, .title, "Back at the launcher's menu")
         XCTAssertFalse(shell.inRealm)
         XCTAssertNil(shell.rebuilt, "Left, the realm is no longer watched")
-        XCTAssertEqual(shell.sound.ambience.titleLake, GameApp.lastLake, "The title theme again")
+        XCTAssertEqual(shell.sound.ambience.titleLake, RealmSound.lastLake, "The title theme again")
         // A debug run may name another realm; nothing that is no address.
         XCTAssertEqual(OnlineShell.realmAddress(info: nil, environment: ["NULLMERE_REALM": "http://127.0.0.1:3000/nullmere-ui"]), "http://127.0.0.1:3000/nullmere-ui")
         XCTAssertEqual(OnlineShell.realmAddress(info: nil, environment: ["NULLMERE_REALM": "local"]), OnlineShell.maincloudURL.absoluteString)
@@ -278,90 +91,15 @@ final class RootRenderTests: XCTestCase {
         XCTAssertTrue(launcher.displaySettings.music, "Turned on in the realm, on in the launcher")
     }
 
-    /// The realm's Settings stand as tall as the window leaves room for,
-    /// the rest scrolling, so Done is in reach on the smallest screen.
-    func testTheSettingsFitTheWindow() {
-        XCTAssertEqual(GameRootView.settingsHeight(in: 674), 564, "A small screen's window: the settings scroll")
-        XCTAssertEqual(GameRootView.settingsHeight(in: 1400), 800, "No taller than they are")
-        XCTAssertEqual(GameRootView.settingsHeight(in: 300), 280, "Never squeezed to nothing")
-    }
-
     /// The hour of the world's day the map is drawn at: the world's own day
-    /// by the clock where the app keeps it, midnight where nothing does, and
-    /// for the smoke test the hour NULLMERE_HOUR names.
-    func testTheWorldKeepsItsDayWhereTheAppDoes() {
-        XCTAssertNil(PlayView.hour(keepsDay: true, environment: [:]), "By the clock, the same for every keeper")
-        XCTAssertEqual(PlayView.hour(keepsDay: false, environment: [:]), 0, "Midnight, the same every time")
-        XCTAssertEqual(PlayView.hour(keepsDay: true, environment: ["NULLMERE_HOUR": "12"]), 12)
-        XCTAssertEqual(PlayView.hour(keepsDay: false, environment: ["NULLMERE_HOUR": "18.3"]), 18.3)
-        XCTAssertNil(PlayView.hour(keepsDay: true, environment: ["NULLMERE_HOUR": "noon"]), "Only an hour it names")
-        XCTAssertNil(PlayView.hour(keepsDay: true, environment: ["NULLMERE_HOUR": "31"]))
-        XCTAssertFalse(app({ .ready }, seed: "keeps no day").keepsDay, "A client made on its own keeps no day")
+    /// by the clock, the same for every player, but for the pictures the
+    /// hour NULLMERE_HOUR names; and midnight where nothing is said.
+    func testTheWorldKeepsItsDay() {
         XCTAssertEqual(WorldMetalView().hour, 0)
-        // The rebuilt realm's map keeps the world's day always, but for the pictures.
         XCTAssertNil(LiveMapView.hour(environment: [:]))
         XCTAssertEqual(LiveMapView.hour(environment: ["NULLMERE_HOUR": "12"]), 12)
+        XCTAssertEqual(LiveMapView.hour(environment: ["NULLMERE_HOUR": "18.3"]), 18.3)
+        XCTAssertNil(LiveMapView.hour(environment: ["NULLMERE_HOUR": "noon"]), "Only an hour it names")
         XCTAssertNil(LiveMapView.hour(environment: ["NULLMERE_HOUR": "31"]))
-    }
-
-    /// The night the world is drawn with: as the realm's Settings keep it,
-    /// dark as made where nothing is kept; for the smoke test, as
-    /// NULLMERE_NIGHT names it, without keeping it.
-    func testTheNightIsDrawnAsTheSettingsKeepIt() {
-        XCTAssertEqual(PlayView.night(stored: Night.dark.rawValue, environment: [:]), .dark)
-        XCTAssertEqual(PlayView.night(stored: Night.bright.rawValue, environment: [:]), .bright)
-        XCTAssertEqual(PlayView.night(stored: 42, environment: [:]), .dark)
-        XCTAssertEqual(PlayView.night(stored: Night.dark.rawValue, environment: ["NULLMERE_NIGHT": "Bright"]), .bright)
-        XCTAssertEqual(PlayView.night(stored: Night.bright.rawValue, environment: ["NULLMERE_NIGHT": "moonlit"]), .moonlit)
-        XCTAssertEqual(PlayView.night(stored: Night.moonlit.rawValue, environment: ["NULLMERE_NIGHT": "noon"]), .moonlit, "Only a night it names")
-    }
-
-    /// How much of the land's growth is drawn: the Detail chosen, Auto read
-    /// for the Mac's graphics memory; for the smoke test, as NULLMERE_DETAIL
-    /// names it, without keeping it.
-    func testTheDetailIsDrawnAsChosenOrAsTheSmokeTestNamesIt() {
-        XCTAssertEqual(PlayView.detail(chosen: .auto, gpuMemoryGB: 4, environment: [:]), .low)
-        XCTAssertEqual(PlayView.detail(chosen: .auto, gpuMemoryGB: 12, environment: [:]), .high)
-        XCTAssertEqual(PlayView.detail(chosen: .medium, gpuMemoryGB: 12, environment: [:]), .medium)
-        XCTAssertEqual(PlayView.detail(chosen: .auto, gpuMemoryGB: 4, environment: ["NULLMERE_DETAIL": "High"]), .high)
-        XCTAssertEqual(PlayView.detail(chosen: .high, gpuMemoryGB: 4, environment: ["NULLMERE_DETAIL": "auto"]), .low, "Auto as this Mac reads")
-        XCTAssertEqual(PlayView.detail(chosen: .medium, gpuMemoryGB: 4, environment: ["NULLMERE_DETAIL": "ultra"]), .medium, "Only a detail it names")
-    }
-
-    func testEveryKindOfNewsCanBeTold() {
-        // A long age among stewards brings every kind of event the rules
-        // make; each is told from every House's side, or kept from it.
-        var state = GameState(settings: GameSettings(seedText: "all the news", houseCount: 6, radius: 22, keepers: 0))
-        var events: [GameEvent] = []
-        for _ in 0..<120 where state.outcome == nil {
-            for house in state.livingHouses { events += state.stewardTurn(for: house.id) }
-            events += state.endWatch()
-        }
-        // And what a keeper alone gives rise to.
-        let envoy = Envoy(id: 1, from: 1, to: 0, proposal: .trade, arrived: state.watch, trade: Trade(give: .grain, 5, for: .stone, 5))
-        events += [.envoyArrived(envoy), .envoyArrived(Envoy(id: 2, from: 1, to: 0, proposal: .tribute, arrived: state.watch)),
-                   .tradeAnswered(trade: Trade(give: .grain, 5, for: .stone, 5), from: 0, to: 1, accepted: false),
-                   .tradeAnswered(trade: Trade(give: .grain, 5, for: .stone, 5), from: 1, to: 0, accepted: true),
-                   .gifted(from: 0, to: 1, gift: Stock(grain: 5)), .gifted(from: 1, to: 0, gift: Stock(grain: 5))]
-        var told = 0, kinds = Set<String>(), toldKinds = Set<String>()
-        for event in events {
-            // A House taken in is told by its joining, not its answer.
-            if case .allianceAnswered(_, _, true) = event { continue }
-            let kind = String(describing: event).prefix { $0 != "(" }.description
-            kinds.insert(kind)
-            for viewer in state.houses.indices {
-                if let line = Narration.line(for: event, in: state, viewer: viewer) {
-                    XCTAssertFalse(line.text.isEmpty)
-                    XCTAssertFalse(line.text.contains("Optional"), line.text)
-                    told += 1
-                    toldKinds.insert(kind)
-                }
-            }
-        }
-        print("NEWS \(events.count) events of \(kinds.count) kinds, \(told) lines told")
-        XCTAssertGreaterThan(kinds.count, 12, "\(kinds.sorted())")
-        // Marches, training begun and a ward struck are shown, not told.
-        let shown: Set<String> = ["moved", "trainingStarted", "holdStruck"]
-        XCTAssertEqual(kinds.subtracting(shown).subtracting(toldKinds), [], "Every other kind of news is told to someone")
     }
 }

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import LauncherCore
 import LauncherKit
@@ -179,6 +180,36 @@ public struct RealmCommands: Commands {
             Toggle("Music", isOn: Binding(get: { shell.sound.isMusicOn }, set: { shell.sound.isMusicOn = $0 }))
                 .keyboardShortcut("u", modifiers: [.command, .shift])
                 .disabled(!shell.inRealm || !shell.sound.isSoundOn)
+        }
+    }
+}
+
+/// Fits the window inside its screen when it first appears, so a display
+/// smaller than the default size never hides the edges of the interface,
+/// and names its content for VoiceOver as the window is named.
+struct WindowFitter: NSViewRepresentable {
+    func makeNSView(context: Context) -> WindowFitterView { WindowFitterView() }
+    func updateNSView(_ view: WindowFitterView, context: Context) {}
+}
+
+final class WindowFitterView: NSView {
+    private var fitted = false
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard !fitted, let window else { return }
+        fitted = true
+        window.contentView?.setAccessibilityLabel(window.title)
+        DispatchQueue.main.async {
+            guard let screen = window.screen ?? NSScreen.main else { return }
+            let visible = screen.visibleFrame
+            var frame = window.frame
+            guard frame.width > visible.width || frame.height > visible.height else { return }
+            frame.size.width = min(frame.width, visible.width)
+            frame.size.height = min(frame.height, visible.height)
+            frame.origin.x = visible.midX - frame.width / 2
+            frame.origin.y = visible.midY - frame.height / 2
+            window.setFrame(frame, display: true)
         }
     }
 }

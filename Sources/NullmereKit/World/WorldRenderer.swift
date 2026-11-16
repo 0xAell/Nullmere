@@ -185,7 +185,7 @@ final class WorldRenderer {
         self.device = device
         self.pixelFormat = pixelFormat
         // The game's own colours, until told others.
-        setHouses(WorldView.houseColours)
+        setHouses(WorldRenderer.houseColours)
     }
 
     /// Each House's colour by its sigil, linear, for the land's wash of
@@ -460,5 +460,13 @@ final class WorldRenderer {
             target.resolved.getBytes(base, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
         }
         return bytes
+    }
+}
+
+extension WorldRenderer {
+    /// Each House's colour by its sigil, as the world's shaders take it:
+    /// the interface's own colours, made linear.
+    static let houseColours: [Vec4] = Palette.houseRGB.map {
+        Vec4(Float(pow($0.red, 2.2)), Float(pow($0.green, 2.2)), Float(pow($0.blue, 2.2)), 1)
     }
 }

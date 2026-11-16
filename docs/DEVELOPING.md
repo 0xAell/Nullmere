@@ -17,9 +17,12 @@ The [README](../README.md#build-and-run) has the quick start. In more detail:
 
 - **From Xcode:** open the package with `open Package.swift`, choose the
   **NullmereLauncher** scheme and **My Mac**, then press ⌘R.
-- **A realm hosted on your own Mac**, for development:
-  `NULLMERE_REALM=local swift run NullmereLauncher`. A debug build takes
-  the other variables under [Debug builds](#debug-builds) too.
+- **A realm served on your own Mac**, for development:
+  `scripts/serve-realm.sh nullmere` starts SpacetimeDB and publishes
+  `realm/` to it, then `make play` (or
+  `NULLMERE_REALM=http://127.0.0.1:3000/nullmere swift run NullmereLauncher`)
+  opens the app and its Play enters it. A debug build takes the other
+  variables under [Debug builds](#debug-builds) too.
 - **As a double-clickable app:**
 
   ```sh
@@ -121,7 +124,7 @@ swift test                 # unit tests; on a Mac with Metal, the shader is also
 make check-shader          # compile the lake's and the map's shaders with the offline Metal compiler
 make smoke                 # build the app, open the launcher, check it starts and renders with Metal, take a screenshot
 make smoke-menu            # open a debug build of the launcher with the model ready, Apple Intelligence off and the model downloading; type into it, photograph every screen
-make smoke-game            # open a debug build, press Play, enter a realm hosted on the Mac as a keeper, take screenshots
+make smoke-realm           # publish realm/ to the SpacetimeDB server on this Mac, play a dozen players in, press Play, take pictures
 scripts/ui-test.sh         # through Xcode's UI testing: every screen put to its accessibility audit, the map walked as VoiceOver walks it
 scripts/check-voices.sh    # the turn-based game's voices, spoken by this Mac's on-device model through the debug app (CI no longer runs it)
 ```
@@ -173,17 +176,12 @@ builds also take:
 | `NULLMERE_MODEL_STATE` | `ready`, `notEligible`, `notEnabled`, `downloading` or `unavailable` instead of asking the framework (`NULLMERE_SKIP_MODEL_CHECK=1` means `ready`) |
 | `NULLMERE_LAUNCHER_KEYS` | Keys the launcher receives once its opening is over, such as `right,return` |
 | `NULLMERE_NEWS_URL` | Another `https` news feed, such as a branch's copy |
-| `NULLMERE_REALM` | `local`: host a realm on this Mac (kept in Application Support); or the `http(s)://server/database` address of another realm, such as `http://127.0.0.1:3000/nullmere` |
-| `NULLMERE_REALM_SEED` | The words a newly hosted realm's world grows from |
-| `NULLMERE_IDENTITY_FILE` | Keep the keeper's identity in this file instead of the keychain |
-| `NULLMERE_STORE` | Keep what the app keeps (a hosted realm, the voices' words) in this folder instead of Application Support |
-| `NULLMERE_KEEPER` | Enter the world at once under this name |
+| `NULLMERE_REALM` | The `http(s)://server/database` address of the realm Play enters, such as `http://127.0.0.1:3000/nullmere`, in place of the one the app was built to go to |
+| `NULLMERE_REBUILT_REALM` | Such an address, entered at once without the launcher |
+| `NULLMERE_REBUILT_NAME` | The name a player new to the realm takes, given at once |
+| `NULLMERE_REBUILT_SHOW` | Once in: `city` or `troops` (the city chosen, its buildings or troops open), `reports`, `rankings`, or `barrow` or `site` (the nearest chosen) |
+| `NULLMERE_IDENTITY_FILE` | Keep the player's identity in this file instead of the keychain |
 | `NULLMERE_TEXT` | `larger`: show the larger type without remembering it |
-| `NULLMERE_SHOW` | With `NULLMERE_KEEPER`: `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `briefing`: keep the card a keeper first meets; `watch`: be ready after `NULLMERE_WATCH_AFTER` seconds (12.5) |
-| `NULLMERE_AUTOPLAY` | With `NULLMERE_KEEPER`, in a hosted realm: let a steward play the keeper's House this many watches first |
-| `NULLMERE_VOICEOVER` | `1`: the map offers its orders to the accessibility tree as when VoiceOver runs, for the UI tests |
-| `NULLMERE_OFFER_LINK` | With `NULLMERE_KEEPER`: offer a phone a link as the keeper comes in, and write the link its QR code carries to this file |
-| `NULLMERE_LINK_REPORT` | With `NULLMERE_KEEPER`: write the companies of the keeper's House dug in, as this Mac sees them, to this file every second |
 | `NULLMERE_COUNSEL_REPORT` | Take counsel of a commander through this Mac's own model, held to counsel's rules, write the report to this file and quit (scripts/check-counsel.sh) |
 
 The companion's debug builds take `NULLMERE_COMPANION_LINK` (a link as the
@@ -448,13 +446,13 @@ about where the player looks, says what lies at a chosen hex
 who they are between runs. All of it is tested on Linux over a stand-in
 line (`Tests/NullmereTestSupport/LiveSample.swift`).
 
-The Mac's screens over it are in `Sources/NullmereKit/Live`. Until the
-app switches to the rebuilt realm, a debug build opens on it where the
-environment names one:
+The Mac's screens over it are in `Sources/NullmereKit/Live`, and the
+launcher's Play enters it. A debug build may enter a realm served on the
+Mac, with a neighbourhood played into it first:
 
 ```sh
 realm/people.py http://127.0.0.1:3000 nullmere-rebuilt 12 -- spacetime call --server local nullmere-rebuilt set_pace
-NULLMERE_REBUILT_REALM=http://127.0.0.1:3000/nullmere-rebuilt swift run NullmereLauncher
+NULLMERE_REALM=http://127.0.0.1:3000/nullmere-rebuilt swift run NullmereLauncher
 ```
 
 `realm/people.py` plays a number of players into a realm, each under an
@@ -481,7 +479,7 @@ Sources/
   NullmereLiveStage/  The rebuilt realm as the screens and the renderer take it: the session, its cards, palette, lists, map window and counsel. Pure Swift
   NullmereSound/      The game's sound apart from the Mac's audio engine: the synthesiser, its instruments and their recorded notes (Recorded/, made by Art/sound/make.py), its hall and the score. Pure Swift
   NullmereTrailer/    The trailer apart from the GPU: its world, its shots and what moves in them, and its score. Pure Swift
-  NullmereKit/        The world's interface: front door, Metal world, panels, the audio engine
+  NullmereKit/        The window's realm: its screens over the rebuilt realm (Live/), the Metal world, the audio engine
   NullmereCounsel/    Counsel of a House's commanders through Apple's on-device model (Foundation Models), and its check on a real Mac
   NullmereCompanionCore/ The keeper's phone apart from its screens: the link, the session, what it lists of a House. Foundation only
   NullmereCompanion/  Nullmere Companion, the keeper's iPhone app (SwiftUI); built for iOS by scripts/build-companion.sh

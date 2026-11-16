@@ -21,7 +21,7 @@ echo "== Measuring on $chip, $model, $memory, $system"
 # stand side by side on equal terms.
 swift build --build-tests --enable-code-coverage >/dev/null
 set +e
-swift test --skip-build --enable-code-coverage --filter 'WorldPerformanceTests|FrameHarnessTests|OverlayPerformanceTests|ClientPaceTests|LakePerformanceTests|CalibrationTests|RealmTests/testTheRealmProperSeatsTwelveFairly' \
+swift test --skip-build --enable-code-coverage --filter 'WorldPerformanceTests|FrameHarnessTests|LakePerformanceTests|CalibrationTests|RealmTests/testTheRealmProperSeatsTwelveFairly' \
     2>&1 | tee build/mac-perf.log | grep -E "^PERF |error:"
 status=${PIPESTATUS[0]}
 set -e

@@ -48,24 +48,8 @@ final class SoundTests: XCTestCase {
         XCTAssertEqual(left[0], 7, "Nothing written to one ear alone")
     }
 
-    /// The session tells the sound when the moon is eaten and the drowned
-    /// age walks, as soon as it is listened for, and when it is given back.
-    @MainActor
-    func testTheSessionTellsWhenTheMoonIsEaten() throws {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: dir) }
-        var state = GameState(settings: GameSettings(seedText: "the moon eaten", keepers: 1))
-        state.eclipse = state.watch
-        let session = GameSession(state: state, store: LocalStore(directory: dir))
-        var told: [Bool] = []
-        session.onEclipseChanged = { told.append($0) }
-        XCTAssertEqual(told, [true], "Told as it is listened for")
-        XCTAssertTrue(session.isEclipse)
-    }
-
     /// The ambience plays the title theme while a lake is named for it, war
-    /// or not, and the realm's own score once none is; the lake a realm
-    /// tells of is kept as the one it last lay on.
+    /// or not, and the realm's own score once none is.
     @MainActor
     func testTheLauncherPlaysTheLastLakesTheme() {
         let ambience = Ambience(enabled: false)
@@ -83,17 +67,22 @@ final class SoundTests: XCTestCase {
         ambience.titleLake = nil
         ambience.isEclipse = false
         XCTAssertEqual(ambience.mood, .war)
+    }
 
-        let kept = UserDefaults.standard.object(forKey: GameApp.lakeKey)
-        defer { kept == nil ? UserDefaults.standard.removeObject(forKey: GameApp.lakeKey) : UserDefaults.standard.set(kept, forKey: GameApp.lakeKey) }
-        UserDefaults.standard.removeObject(forKey: GameApp.lakeKey)
-        XCTAssertEqual(GameApp.lastLake, .round, "The Nullmere before any")
-        let status = RealmStatus(name: "R", age: 4, watch: 1, seats: 4, freeSeats: 4, keepers: 0, online: 0, ready: 0, secondsLeft: 60,
-                                 isEnding: false, lake: Lake.isles.title)
-        GameApp.remember(lakeOf: status)
-        XCTAssertEqual(GameApp.lastLake, .isles)
-        GameApp.remember(lakeOf: RealmStatus(name: "R", age: 1, watch: 1, seats: 4, freeSeats: 4, keepers: 0, online: 0, ready: 0,
-                                             secondsLeft: 60, isEnding: false))
-        XCTAssertEqual(GameApp.lastLake, .isles, "A realm that tells of no lake leaves it be")
+    /// Quitting fades the sound fast and says how long to wait for it: a
+    /// hard stop clicks. Nothing to wait for while silent, or already fading.
+    @MainActor
+    func testQuittingFadesTheSoundFastAndSaysHowLongToWait() async throws {
+        let ambience = Ambience(enabled: true)
+        XCTAssertEqual(ambience.fadeForQuitting(), 0, "Silent: nothing to wait for")
+        ambience.start()
+        // Whether this Mac has an output to play on: CI's may not.
+        let hasOutput = ambience.isPlaying
+        XCTAssertEqual(ambience.fadeForQuitting(), hasOutput ? Ambience.quitFadeSeconds : 0)
+        ambience.isEnabled = false
+        XCTAssertEqual(ambience.fadeForQuitting(), 0, "Already fading out: nothing more to wait for")
+        ambience.stop()
+        try await Task.sleep(for: .seconds(Ambience.fadeOutSeconds + 0.6))
+        XCTAssertFalse(ambience.isRunning, "Faded out, stopped")
     }
 }

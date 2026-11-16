@@ -231,8 +231,8 @@ public enum VoiceCheck {
     }
 
     /// How long a character's words take to come back once stopped
-    /// `after` seconds into their asking, as the Mac stops them when the
-    /// envoy or the plea they speak for has gone (`GameSession`).
+    /// `after` seconds into their asking, as the Mac stops them when what
+    /// they speak for has gone.
     static func stopped(_ voice: any Voice, speaking moment: VoiceMoment, after: Double) async -> Double {
         let speaking = Task { await voice.speaking(moment) }
         try? await Task.sleep(for: .seconds(after))

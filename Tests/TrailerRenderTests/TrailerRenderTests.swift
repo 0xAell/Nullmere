@@ -26,7 +26,7 @@ final class TrailerRenderTests: XCTestCase {
         let directory = URL(fileURLWithPath: out, isDirectory: true)
         try FileManager.default.createDirectory(at: directory.appendingPathComponent("stills"), withIntermediateDirectories: true)
         let began = Date()
-        let projector = try Projector(device: device, trailer: Trailer(houses: WorldView.houseColours))
+        let projector = try Projector(device: device, trailer: Trailer(houses: WorldRenderer.houseColours))
         let trailer = projector.trailer
         print("TRAILER world ready in \(Int(Date().timeIntervalSince(began))) s: \(trailer.shots.count) shots, \(trailer.frameCount) frames, "
               + "\(trailer.world.state.holds.count) holds, on \(device.name)")

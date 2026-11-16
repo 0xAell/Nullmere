@@ -1,4 +1,4 @@
-.PHONY: build run play test check-shader app smoke smoke-game smoke-menu clean
+.PHONY: build run play test check-shader app smoke smoke-realm smoke-menu clean
 
 build:
 	swift build
@@ -6,9 +6,9 @@ build:
 run:
 	swift run NullmereLauncher
 
-# Plays in a realm hosted on this Mac.
+# Plays in the realm served on this Mac by scripts/serve-realm.sh nullmere.
 play:
-	NULLMERE_REALM=local swift run NullmereLauncher
+	NULLMERE_REALM=http://127.0.0.1:3000/nullmere swift run NullmereLauncher
 
 test:
 	swift test
@@ -22,8 +22,9 @@ app:
 smoke: app
 	scripts/smoke-test-app.sh
 
-smoke-game: build
-	scripts/smoke-test-game.sh
+# Needs a SpacetimeDB server running on this Mac (docs/DEVELOPING.md).
+smoke-realm: build
+	scripts/smoke-test-rebuilt.sh
 
 smoke-menu: build
 	scripts/smoke-test-launcher-menu.sh
