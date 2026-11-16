@@ -206,7 +206,9 @@ final class LiveGameTests: XCTestCase {
         let map = try XCTUnwrap(find(WorldMetalView.self, in: host), "The Metal view is in the window")
         XCTAssertEqual(map.radius, LiveSession.reach)
         XCTAssertNotNil(map.relief)
-        XCTAssertEqual(map.houseColours.count, LiveSession.colours.count)
+        // The whole palette, every player's sigil and every alliance's, its colours round again.
+        XCTAssertEqual(map.houseColours.count, LiveSession.palette.count)
+        XCTAssertEqual(map.houseColours.prefix(LiveSession.colours.count).map { $0 }, LiveSession.colours)
         XCTAssertEqual(map.camera, session.camera)
         map.draw(map.bounds)
 
