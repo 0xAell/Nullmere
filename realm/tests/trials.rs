@@ -72,11 +72,16 @@ fn the_contests_and_their_prizes_are_written_out_for_clients() {
     let trials = Table::<Trial>::all(&db);
     assert_eq!(
         trials.iter().map(|trial| (trial.id, trial.name.as_str(), trial.every, trial.lasts, trial.opens)).collect::<Vec<_>>(),
-        vec![(1, "The Long Hunt", 7, 3, 0), (2, "The Harvest Moon", 7, 3, 2), (3, "The Call to Arms", 7, 3, 4)]
+        vec![(1, "The Long Hunt", 7, 3, 0), (2, "The Harvest Moon", 7, 3, 2), (3, "The Call to Arms", 7, 3, 4), (4, "The Raising", 7, 3, 1), (5, "The Red Field", 7, 2, 5)]
     );
     assert!(trials.iter().all(|trial| trial.words.ends_with('.')));
     let all = Table::<Prize>::all(&db);
-    assert_eq!(all.len(), 9, "three prizes a contest");
+    assert_eq!(all.len(), 15, "three prizes a contest");
+    for contest in Contest::ALL {
+        let prizes = contest.prizes();
+        assert!(prizes.windows(2).all(|pair| pair[0].0 < pair[1].0 && pair[0].1.parts().iter().sum::<u64>() < pair[1].1.parts().iter().sum::<u64>()), "{}: more for more", contest.name());
+        assert!(prizes[2].2.contains(&(Item::Peace8, 1)), "{}: a peace in the greatest", contest.name());
+    }
     let prizes: Vec<Prize> = all.into_iter().filter(|prize| prize.trial == 1).collect();
     assert_eq!(prizes.iter().map(|prize| (prize.trial, prize.place, prize.points)).collect::<Vec<_>>(), vec![(1, 1, 100), (1, 2, 400), (1, 3, 1_000)]);
     assert!(prizes.windows(2).all(|pair| pair[0].grain < pair[1].grain), "a prize that asks more gives more");
@@ -117,7 +122,7 @@ fn a_prize_is_claimed_once_a_round_for_the_points_it_asks() {
     let (mut db, player, city) = armed();
     assert_eq!(db.call(|db| rules::claim_prize(db, player, 1, 1)), Err(Refusal::PrizeNotEarned(100)));
     assert_eq!(Refusal::PrizeNotEarned(1_000).to_string(), "That prize is for 1,000 points.");
-    for (contest, place) in [(1, 0), (1, 4), (4, 1), (0, 1), (1, 200)] {
+    for (contest, place) in [(1, 0), (1, 4), (6, 1), (0, 1), (1, 200)] {
         assert_eq!(db.call(|db| rules::claim_prize(db, player, contest, place)), Err(Refusal::NoSuchPrize), "{contest}/{place}");
     }
 
@@ -225,7 +230,7 @@ fn the_first_three_of_a_round_claim_laurels_once_it_is_over() {
     // greatest prize's goods three times, twice and once over, and
     // eight hours' hastes.
     let laurels = Table::<Laurel>::all(&db);
-    assert_eq!(laurels.len(), 9, "three places a contest");
+    assert_eq!(laurels.len(), 15, "three places a contest");
     let arms: Vec<&Laurel> = laurels.iter().filter(|laurel| laurel.trial == Contest::Arms as u8).collect();
     let greatest = Contest::Arms.prizes()[2].1;
     for (index, laurel) in arms.iter().enumerate() {
@@ -293,4 +298,55 @@ fn the_first_three_of_a_round_claim_laurels_once_it_is_over() {
     train(&mut db, dara, 10);
     assert!(Table::<Standing>::get(&db, Standing::key(dara, Contest::Arms as u8, 0)).is_none(), "two rounds back");
     assert!(Table::<Standing>::get(&db, Standing::key(dara, Contest::Arms as u8, 1)).is_some());
+}
+
+#[test]
+fn the_raising_scores_the_power_a_building_gains_and_runs_over_the_hunt_and_the_harvest() {
+    let (mut db, player, city) = armed();
+    let mut days = Vec::new();
+    for _ in 0..7 {
+        days.push([Contest::Works, Contest::Valour].map(|contest| rules::round_of(&db, contest).1));
+        wait(&mut db, catalog::DAY);
+    }
+    assert_eq!(days.iter().map(|on| on[0]).collect::<Vec<_>>(), [false, true, true, true, false, false, false], "the Raising");
+    assert_eq!(days.iter().map(|on| on[1]).collect::<Vec<_>>(), [false, false, false, false, false, true, true], "the Red Field");
+
+    // On the next week's second day, a Farm raised from its first level to
+    // its second scores the power it gains.
+    wait(&mut db, catalog::DAY);
+    assert!(rules::round_of(&db, Contest::Works).1);
+    let farm = rules::building_of(&db, city.id, Kind::Farm).expect("a city begins with a Farm");
+    assert_eq!(farm.level, 1);
+    let mut row = rules::grown(&Table::<Stock>::get(&db, city.id).unwrap(), db.clock);
+    (row.grain, row.timber, row.stone) = (500_000, 500_000, 500_000);
+    db.update(row);
+    let job = db.call(|db| rules::upgrade(db, player, farm.id)).unwrap();
+    assert_eq!(rules::tally_of(&db, player, Contest::Works).points, 0, "nothing until it is raised");
+    db.advance(job.ends, |db, timer| rules::fire(db, timer));
+    let gained = catalog::power(Kind::Farm, 2) - catalog::power(Kind::Farm, 1);
+    assert_eq!(rules::tally_of(&db, player, Contest::Works).points, gained);
+    assert_eq!(rules::standings(&db, Contest::Works, 1).iter().map(|standing| (standing.player, standing.points)).collect::<Vec<_>>(), [(player, gained)]);
+}
+
+#[test]
+fn the_red_field_scores_the_kill_points_of_a_battle_between_cities() {
+    let (mut db, ada, _) = armed();
+    let bryn = db.call(|db| rules::join(db, "Bryn")).unwrap().id;
+    let his = rules::city_of(&db, bryn).unwrap();
+    rules::keep_troop(&mut db, Troop { id: Troop::key(his.id, Troops::Spearmen as u8, 1), city: his.id, kind: Troops::Spearmen as u8, tier: 1, ready: 100, wounded: 0 });
+    // The Red Field opens on the week's sixth day; Bryn's city's peace is over by then.
+    wait(&mut db, 5 * catalog::DAY);
+    assert!(rules::round_of(&db, Contest::Valour).1);
+    let mut row = Table::<City>::get(&db, his.id).unwrap();
+    row.shield = db.clock;
+    db.update(row);
+    let asked = vec![Asked { kind: Troops::Spearmen as u8, tier: 1, count: 300 }];
+    let march = db.call(|db| rules::send(db, ada, Hex::unpacked(his.hex), March::ATTACK, &asked)).unwrap();
+    db.advance(march.arrives + catalog::ASSAULT_SECONDS, |db, timer| rules::fire(db, timer));
+    let (hers, theirs) = (rules::fame_of(&db, ada), rules::fame_of(&db, bryn));
+    assert_eq!(hers.kills, 100, "a hundred first-tier defenders struck down");
+    assert!(theirs.kills > 0);
+    assert_eq!(rules::tally_of(&db, ada, Contest::Valour).points, hers.kills);
+    assert_eq!(rules::tally_of(&db, bryn, Contest::Valour).points, theirs.kills, "the defender's kill points too");
+    assert_eq!(rules::standings(&db, Contest::Valour, 0).first().map(|standing| standing.player), Some(ada));
 }

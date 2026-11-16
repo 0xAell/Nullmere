@@ -1149,10 +1149,14 @@ pub enum Contest {
     Harvest = 2,
     /// Soldiers trained: a point for each, times their tier.
     Arms = 3,
+    /// Buildings raised: a point for each power they gain.
+    Works = 4,
+    /// Soldiers struck down in battles between cities: a point for each kill point.
+    Valour = 5,
 }
 
 impl Contest {
-    pub const ALL: [Contest; 3] = [Contest::Hunt, Contest::Harvest, Contest::Arms];
+    pub const ALL: [Contest; 5] = [Contest::Hunt, Contest::Harvest, Contest::Arms, Contest::Works, Contest::Valour];
 
     pub fn of(code: u8) -> Option<Contest> {
         Contest::ALL.into_iter().find(|contest| *contest as u8 == code)
@@ -1163,6 +1167,8 @@ impl Contest {
             Contest::Hunt => "The Long Hunt",
             Contest::Harvest => "The Harvest Moon",
             Contest::Arms => "The Call to Arms",
+            Contest::Works => "The Raising",
+            Contest::Valour => "The Red Field",
         }
     }
 
@@ -1172,17 +1178,23 @@ impl Contest {
             Contest::Hunt => "Clear barrows of the Unquiet: ten points for each level of each one you clear.",
             Contest::Harvest => "Bring goods home from the land: a point for every hundred your armies carry back.",
             Contest::Arms => "Train soldiers: a point for each one you set to training, times their tier.",
+            Contest::Works => "Raise your buildings: a point for each power a building gains as it is raised a level.",
+            Contest::Valour => "Strike down soldiers in battles between cities: a point for each kill point.",
         }
     }
 
     /// Every how many days of the realm it comes round, for how many of
     /// them it runs, and on which day of its round it opens: the week's
-    /// contests overlap, each opening on the last day of the one before.
+    /// contests overlap, each opening on the last day of the one before,
+    /// and the Raising and the Red Field run over them, from the second
+    /// day to the fourth and on the last two.
     pub fn round(self) -> (u64, u64, u64) {
         match self {
             Contest::Hunt => (7, 3, 0),
             Contest::Harvest => (7, 3, 2),
             Contest::Arms => (7, 3, 4),
+            Contest::Works => (7, 3, 1),
+            Contest::Valour => (7, 2, 5),
         }
     }
 
@@ -1204,6 +1216,16 @@ impl Contest {
                 (300, Goods::of(5_000, 2_000, 0, 0), vec![(Item::Haste5, 2)]),
                 (1_500, Goods::of(12_000, 6_000, 0, 0), vec![(Item::Haste60, 1)]),
                 (6_000, Goods::of(30_000, 15_000, 5_000, 300), vec![(Item::Haste480, 1), (Item::Peace8, 1)]),
+            ],
+            Contest::Works => vec![
+                (300, Goods::of(4_000, 4_000, 2_000, 0), vec![(Item::Haste5, 3)]),
+                (1_500, Goods::of(10_000, 10_000, 6_000, 0), vec![(Item::Haste60, 2)]),
+                (6_000, Goods::of(25_000, 25_000, 15_000, 300), vec![(Item::Haste480, 1), (Item::Peace8, 1)]),
+            ],
+            Contest::Valour => vec![
+                (500, Goods::of(5_000, 5_000, 0, 0), vec![(Item::Haste5, 2)]),
+                (3_000, Goods::of(12_000, 12_000, 4_000, 0), vec![(Item::Haste60, 1)]),
+                (15_000, Goods::of(30_000, 30_000, 10_000, 400), vec![(Item::Haste480, 1), (Item::Peace8, 1)]),
             ],
         }
     }

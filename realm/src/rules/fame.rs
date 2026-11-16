@@ -22,6 +22,8 @@ pub(super) fn add_fame(db: &mut impl Db, player: u64, kills: u64, felled: u64, d
     if kills + felled + dead == 0 {
         return;
     }
+    // Kill points score in the Red Field while it runs.
+    super::scored(db, player, catalog::Contest::Valour, kills);
     let kept = Table::<Fame>::get(db, player);
     let mut fame = kept.clone().unwrap_or(Fame { player, kills: 0, felled: 0, dead: 0 });
     fame.kills += kills;

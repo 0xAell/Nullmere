@@ -281,8 +281,14 @@ pub fn finish(db: &mut impl Db, job: u64) {
     super::forget_plea(db, job.id);
     if job.kind == Job::RAISE {
         if let Some(mut building) = Table::<Building>::get(db, job.subject) {
+            let (kind, was) = (Kind::of(building.kind), building.level);
             building.level = job.level;
             db.update(building);
+            // The power it gains scores in the Raising while it runs.
+            if let (Some(kind), Some(city)) = (kind, Table::<City>::get(db, job.city)) {
+                let gained = catalog::power(kind, job.level).saturating_sub(catalog::power(kind, was));
+                super::scored(db, city.owner, catalog::Contest::Works, gained);
+            }
         }
     } else if job.kind == Job::TRAIN {
         trained(db, &job);
