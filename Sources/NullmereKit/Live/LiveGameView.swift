@@ -326,6 +326,15 @@ struct LiveHUD: View {
                             .chrome("live-task")
                         Spacer(minLength: 0)
                     }
+                    // What stands idle that could be at work: each opens the part that answers it.
+                    let idle = session.world.idle(at: seconds)
+                    if !idle.isEmpty {
+                        HStack(alignment: .top, spacing: 12) {
+                            LiveIdleChips(idle: idle) { part in panel = LiveGameView.Panel(part: part) }
+                                .chrome("live-idle")
+                            Spacer(minLength: 0)
+                        }
+                    }
                     if !session.world.threats(at: seconds).isEmpty {
                         HStack(alignment: .top, spacing: 12) {
                             LiveThreats(session: session, seconds: seconds)
@@ -531,6 +540,46 @@ struct LiveTopBar: View {
 
 /// The task the player is on: what it asks, what it gives, and a way to
 /// claim it once it is done.
+/// What stands idle that could be at work, as small reminders under the
+/// task: a builder free, the Academy idle, a training ground training no
+/// one, a chest waiting. Each opens the part that answers it.
+struct LiveIdleChips: View {
+    let idle: [LiveIdle]
+    let open: (String) -> Void
+
+    static func symbol(of kind: LiveIdle.Kind) -> String {
+        switch kind {
+        case .builders: return "hammer"
+        case .academy: return "book.closed"
+        case .training: return "shield.lefthalf.filled"
+        case .chest: return "shippingbox"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(idle) { item in
+                Button { open(item.part) } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: LiveIdleChips.symbol(of: item.kind))
+                            .font(.nm(LiveType.small))
+                            .foregroundStyle(LiveEmphasis.secondary)
+                        Text(verbatim: item.words)
+                            .font(.nm(LiveType.small, weight: .medium))
+                            .foregroundStyle(LiveEmphasis.primary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .panelBackground()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.words)
+                .accessibilityHint("Opens what answers it.")
+            }
+        }
+    }
+}
+
 struct LiveTaskChip: View {
     let session: LiveSession
 

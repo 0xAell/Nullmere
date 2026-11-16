@@ -228,6 +228,9 @@ final class LiveGameTests: XCTestCase {
         XCTAssertEqual(toldOf.news.last?.words, "A report: Your army cleared a level 2 barrow.")
         XCTAssertGreaterThan(try drawn(LiveToasts(session: toldOf, seconds: 2_015), width: 600, height: 120, as: "live-toasts.png"), 100)
         XCTAssertEqual(try drawn(LiveToasts(session: toldOf, seconds: 2_015 + LiveToasts.shown), width: 600, height: 120), 0, "and then gone")
+        // What stands idle is reminded of, each kind by a symbol of its own.
+        let kinds: [LiveIdle.Kind] = [.builders, .academy, .training, .chest]
+        XCTAssertEqual(Set(kinds.map(LiveIdleChips.symbol)).count, kinds.count)
         // An army marching on her city: told in red, with a way to look at it.
         var threatened = LiveSample.rows()
         threatened["march"]?.append([n(21), n(2), n(8), n(LiveMarch.attack), n(LiveMarch.going), n(Int(LiveHex(q: 14, r: -4).packed)),

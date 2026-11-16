@@ -193,6 +193,19 @@ final class LiveBookTests: XCTestCase {
         XCTAssertEqual(rising.trainLines(at: 2_000).first?.tiers[0].block, .rising("Barracks"))
     }
 
+    /// What stands idle that could be at work is told as a reminder, with
+    /// the part that answers it.
+    func testWhatStandsIdleIsToldAsAReminder() throws {
+        let busy = LiveWorld(snapshot: rows())
+        XCTAssertEqual(busy.idle(at: 2_010), [], "her one builder raising the Sawmill, her Barracks training")
+        let idle = LiveWorld(snapshot: rows(jobs: []))
+        XCTAssertEqual(idle.idle(at: 2_010).map(\.words), ["A builder is free", "The Barracks trains no one"])
+        XCTAssertEqual(idle.idle(at: 2_010).map(\.part), ["city", "troops"])
+        XCTAssertEqual(idle.idle(at: 2_010).map(\.kind), [.builders, .training])
+        // Nothing she can afford: no builder or Barracks is told idle for it.
+        XCTAssertEqual(LiveWorld(snapshot: rows(timber: 0, stone: 0, jobs: [])).idle(at: 2_010), [])
+    }
+
     func testSoldiersReadyAreOfferedARaiseToTheHighestTierTrained() throws {
         var snapshot = rows(jobs: [])
         // The Barracks at the fifth level; in typed steps, as a Mac's compiler types them in time.
