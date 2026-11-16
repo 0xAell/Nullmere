@@ -239,10 +239,17 @@ final class LiveBookTests: XCTestCase {
         XCTAssertTrue(rules.contains("\"You have learnt all there is of {}.\""))
 
         // Storage opens once Tillage is learnt to its second level, as the realm writes it.
-        snapshot["study"] = (1...10).flatMap { level in
-            [study(1, level, "Tillage", "Your Farm brings in 5% more grain.", each: 5, grain: 500 * level, needs: 2 * level - 1) + [n(0), n(0)],
-             study(6, level, "Storage", "Your city holds 10% more of each good.", each: 10, grain: 50 * level, needs: 2 * level - 1) + [n(1), n(2)]]
+        // Written step by step: as one expression the Mac's compiler can't type it in time.
+        var opened: [[JSONValue]] = []
+        for level in 1...10 {
+            var tillage: [JSONValue] = study(1, level, "Tillage", "Your Farm brings in 5% more grain.", each: 5, grain: 500 * level, needs: 2 * level - 1)
+            tillage.append(contentsOf: [n(0), n(0)])
+            var storage: [JSONValue] = study(6, level, "Storage", "Your city holds 10% more of each good.", each: 10, grain: 50 * level, needs: 2 * level - 1)
+            storage.append(contentsOf: [n(1), n(2)])
+            opened.append(tillage)
+            opened.append(storage)
         }
+        snapshot["study"] = opened
         snapshot["my_lore"] = [[n(7 << 8 | 1), n(7), n(1), n(1)]]
         lines = LiveWorld(snapshot: snapshot).studyLines(at: 2_000)
         XCTAssertEqual(lines[1].next.map { [$0.afterTopic, $0.afterLevel] }, [1, 2])
