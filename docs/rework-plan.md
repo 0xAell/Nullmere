@@ -412,6 +412,8 @@ realm's screens. Both are answered in `e5c2519` and `13e3276`,
 (`ci-shots/1018`, the `live-*` and `rebuilt-*` images) are still to be
 looked at.
 
+**The Macs' run of 16 November, afternoon.** CI run 1059 (`e6293d0`), the first Mac run after the old game's rules were deleted, passed every test (663, one skipped: the one needing a server), with coverage, frame times, the shaders compiled offline, the app bundled, a signed release rehearsed, the app launched and Play pressed into the realm on the runner, and the accessibility audit of every screen. So wherever a row below says "unverified until the Macs' run" of work in `e6293d0` or before, that work's Mac tests passed there, and its pictures are `ci-shots/1059`. The land the world is drawn on was found there to stand at 68.67% covered, the rules' tests having been what ran it; what of it nothing read went and it has tests of its own (`8277f5b`, all 25 passing on Linux in the Realm rules workflow's run 104), its floor to be set from the next Mac run's figure.
+
 | Slice | State | Commit | Evidence |
 |---|---|---|---|
 | Audit and plan | Done | `14a20ba` | This document |
