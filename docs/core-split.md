@@ -96,7 +96,15 @@ hold walled in stone). Two ways off the old rules:
   has no heritages yet) and the sites' and lairs' places itself, and
   `state` goes; holy sites have no rows in the rebuilt realm, so the shot
   that shows them shows the Moonspire's seat instead. The Trailer workflow
-  renders stills to compare.
+  renders stills to compare. Begun on the branch `trailer-world` (not
+  pushed to main): the world read from the rows, the actors and frames
+  moved off `world.state`. What it still needs: the trailer's shots stand
+  about the lake at the map's middle (`Relief.centre(of: Hex(0, 0))`), so
+  the rows must set the twelve cities about the lake country's shore
+  (City and Place rows put down by the test, not where joining founds
+  them) and the window be centred on the lake, as the old world was; and
+  the trailer's tests and TrailerRenderTests moved off `world.state`
+  (`world.map`, `world.holds`, `world.tiles`).
 - A snapshot of the world the old game made, written once by a Mac test
   and kept as a file: no Swift runs here to write it, so it would need a
   CI step to bring the file back, and it keeps the old game's look.
