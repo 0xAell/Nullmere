@@ -109,7 +109,13 @@ struct LiveBuildings: View {
     let seconds: Double
 
     var body: some View {
-        ForEach(session.world.buildingLines(at: seconds)) { line in
+        let lines = session.world.buildingLines(at: seconds)
+        // The builders at work hold back every other building alike: said
+        // once over them all, not under each.
+        if lines.contains(where: { $0.block == .buildersBusy }) {
+            LiveSmall(words: LiveBlock.buildersBusy.words, dim: true)
+        }
+        ForEach(lines) { line in
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: LiveIcons.building(line.kind))
@@ -142,7 +148,7 @@ struct LiveBuildings: View {
                     LiveProgress(part: job.progress(at: seconds), left: Int(job.left(at: seconds).rounded(.up)))
                 } else if let next = line.next {
                     LiveSmall(words: "\(next.cost.sentence), \(LiveWords.spoken(next.seconds))")
-                    if let block = line.block {
+                    if let block = line.block, block != .buildersBusy {
                         LiveSmall(words: block.words, dim: true)
                     }
                 } else if let block = line.block {
