@@ -162,3 +162,19 @@ extension Weather {
         }
     }
 }
+
+extension Petition.Plea {
+    /// Which of the townsfolk brings a plea of this kind (`Folk`'s
+    /// variants): a porter for the masons, a timber carter for the
+    /// woodwards, an elder for the healers, a farmhand for the reeve's
+    /// folk, a water-carrier for the brewers.
+    var folk: Int {
+        switch self {
+        case .mend: return Folk.porter
+        case .douse: return Folk.timberCarter
+        case .tend: return Folk.elder
+        case .hands: return Folk.farmhand
+        case .feast: return Folk.waterCarrier
+        }
+    }
+}
