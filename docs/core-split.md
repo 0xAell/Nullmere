@@ -76,7 +76,10 @@ hold walled in stone). Two ways off the old rules:
   joins a dozen players beside each other, plays their cities up for a
   while at the realm's pace, and writes the rows a client would read
   (land chunks, cities, buildings, sites, barrows) to a JSON file kept
-  with the trailer. TrailerWorld reads it through `LiveWorld` and
+  with the trailer (`realm/tests/trailer_rows.rs` does so: twelve players
+  joined together, their Keeps from 25 down to 3, the land within 26
+  hexes of the one in their midst; `NULLMERE_TRAILER_ROWS=<file> cargo test
+  --test trailer_rows` writes them, about 12 KB). TrailerWorld reads it through `LiveWorld` and
   `LiveWindow`, which already turn those rows into the renderer's map and
   holds, and dresses its three holds as now. The trailer then shows the
   game as it is, not the one deleted.
