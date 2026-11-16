@@ -308,6 +308,10 @@ check("one in no alliance sees no petitions, and no one reads the table itself",
 # The titles of the Mere: for all to read; none held, and none bestowed with no season yet won.
 check("the titles are for all to read, and none is held", rows(nobody, "SELECT * FROM title"), [])
 check("no one bestows a title before a season is won", call(ada, "bestow_title", 1, 2), "Only the Lord of the Mere bestows its titles: the leader of the alliance that won the last season won.")
+# Letters: a player's own to read; one written, and read by the one it is to.
+check("a letter goes to another player", call(ada, "send_letter", 2, "Well met, neighbour."), None)
+check("who reads it in their letters, and no one reads the table itself", ([(l["sender"], l["words"], l["read"]) for l in rows(bryn, "SELECT * FROM my_letters")], isinstance(rows(bryn, "SELECT * FROM letter"), str)), ([(1, "Well met, neighbour.", False)], True))
+check("an officer's letter to the alliance needs an alliance", call(ada, "send_alliance_letter", "To all."), "You are in no alliance.")
 # The gates of the ridge: six, for all to read, held by the Unquiet as the realm opens; stormed only by an alliance's rally.
 gates = sorted(rows(nobody, "SELECT * FROM gate"), key=lambda gate: gate["id"])
 check("six gates stand in the ridge's passes, held by the Unquiet", [(gate["id"], gate["holder"], gate["fighter"]) for gate in gates], [(n, 0, 0) for n in range(1, 7)])

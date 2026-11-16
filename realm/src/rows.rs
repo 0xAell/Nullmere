@@ -252,8 +252,10 @@ pub struct Pace {
     /// The start of the ten seconds being counted, and the count.
     pub window: Seconds,
     pub asked: u32,
-    /// When they last said something for others to read.
+    /// When they last said something for others to read, and when they
+    /// last wrote a letter.
     pub said: Seconds,
+    pub wrote: Seconds,
 }
 row!(Pace in pace, by player);
 
@@ -804,6 +806,26 @@ pub struct Gate {
 }
 row!(Gate in gate, by id);
 
+/// A letter from one player to another: who wrote it and their name as
+/// it was then, its words, when, and whether it has been read. The two
+/// players' alone: each reads it through `my_letters`.
+#[spacetimedb::table(accessor = letter)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Letter {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub sender: u64,
+    #[index(btree)]
+    pub receiver: u64,
+    pub name: String,
+    pub words: String,
+    pub at: Seconds,
+    pub read: bool,
+}
+row!(Letter in letter, auto, by id, sender, receiver);
+
 /// A title of the Mere and who holds it, bestowed by the Lord of the Mere,
 /// the leader of the alliance that last won a season. For everyone to
 /// read. Keyed by the title (`catalog::Title`).
@@ -1325,6 +1347,7 @@ pub trait Db:
     + Table<Prisoner>
     + Table<Petition>
     + Table<Title>
+    + Table<Letter>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1387,6 +1410,7 @@ impl<
             + Table<Prisoner>
             + Table<Petition>
             + Table<Title>
+            + Table<Letter>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

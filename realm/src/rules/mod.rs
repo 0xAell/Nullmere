@@ -16,6 +16,7 @@ mod entry;
 mod favour;
 mod help;
 mod items;
+mod letters;
 mod learning;
 mod march;
 mod pacts;
@@ -41,6 +42,7 @@ pub use entry::*;
 pub use favour::*;
 pub use help::*;
 pub use items::*;
+pub use letters::*;
 pub use learning::*;
 pub use march::*;
 pub use pacts::*;
@@ -230,6 +232,10 @@ pub enum Refusal {
     NoSuchTitle,
     TitleHeld,
     NoSuchPlayer,
+    /// A letter holds so many characters at most.
+    LetterTooLong(usize),
+    OwnLetter,
+    NoSuchLetter,
     NoSuchTopic,
     AlreadyStudying,
     /// The Academy can't be raised while it studies.
@@ -296,6 +302,7 @@ impl fmt::Display for Refusal {
             Refusal::AlreadyPaired(name) => return write!(f, "{name} already goes out with another commander."),
             Refusal::WardsAll(most) => return write!(f, "Your alliance has all the wardstones it may: {most}. It may raise one more for every five members, twenty at most."),
             Refusal::OthersLand(theirs) => return write!(f, "That land is {theirs}'s."),
+            Refusal::LetterTooLong(most) => return write!(f, "A letter holds {} characters at most, and nothing unprintable.", crate::catalog::grouped(*most as u64)),
             Refusal::PetitionTooLarge(most) => return write!(f, "A petition asks {} of each good at most.", crate::catalog::grouped(*most)),
             Refusal::NoSuchTerms(most) => return write!(f, "A pact is a truce or passage, for a day to {most} days."),
             Refusal::GatesShut(left) => return write!(f, "The gates of the ridge may be stormed in {}.", crate::catalog::spoken(*left)),
@@ -406,6 +413,8 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchTitle => "There is no such title held.",
             Refusal::TitleHeld => "They hold that title already.",
             Refusal::NoSuchPlayer => "There is no such player.",
+            Refusal::OwnLetter => "A letter goes to another player.",
+            Refusal::NoSuchLetter => "There is no such letter of yours.",
             Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",

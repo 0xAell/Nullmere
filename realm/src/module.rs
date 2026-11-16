@@ -10,12 +10,12 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 use crate::hex::Hex;
 use crate::rows::{
     alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
-    chest as _, daily as _, daily__view as _, duty as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _, prisoner as _, prisoner__view as _, petition as _, petition__view as _, title as _,
+    chest as _, daily as _, daily__view as _, duty as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _, prisoner as _, prisoner__view as _, petition as _, petition__view as _, title as _, letter as _, letter__view as _,
     building__view as _, city as _, city__view as _, commander as _, commander__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
     march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
     realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
     troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Bond, Building, Chest, City, Commander, Daily, Duty, Favour, Gift, Grace, Haul, Helper, Hunt, Job, Keeper, Land, Lore, March, Member, Muster, Rally,
-    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware, Ward, Learning, Gate, Envoy, Pact, Prisoner, Petition, Title,
+    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware, Ward, Learning, Gate, Envoy, Pact, Prisoner, Petition, Title, Letter,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
@@ -177,6 +177,7 @@ stored!(Pact in pact by id, first, second);
 stored!(Prisoner in prisoner by commander, owner, captor);
 stored!(Petition in petition by asker, alliance);
 stored!(Title in title by title);
+stored!(Letter in letter by id, sender, receiver);
 stored!(Lore in lore by id, city);
 stored!(Study in study by id);
 stored!(Commander in commander by id, owner);
@@ -413,6 +414,30 @@ pub fn bestow_title(ctx: &ReducerContext, title: u8, player: u64) -> Result<(), 
 #[reducer]
 pub fn take_title(ctx: &ReducerContext, title: u8) -> Result<(), String> {
     said(caller(ctx).and_then(|lord| rules::take_title(&mut Stdb(ctx), lord, title)))
+}
+
+/// Write a letter to another player.
+#[reducer]
+pub fn send_letter(ctx: &ReducerContext, player: u64, words: String) -> Result<(), String> {
+    said(caller(ctx).and_then(|writer| rules::send_letter(&mut Stdb(ctx), writer, player, &words)))
+}
+
+/// Write one letter to every other member of the caller's alliance, as an officer.
+#[reducer]
+pub fn send_alliance_letter(ctx: &ReducerContext, words: String) -> Result<(), String> {
+    said(caller(ctx).and_then(|writer| rules::send_alliance_letter(&mut Stdb(ctx), writer, &words)))
+}
+
+/// Mark a letter to the caller read.
+#[reducer]
+pub fn read_letter(ctx: &ReducerContext, letter: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::read_letter(&mut Stdb(ctx), player, letter)))
+}
+
+/// Forget a letter to the caller.
+#[reducer]
+pub fn forget_letter(ctx: &ReducerContext, letter: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::forget_letter(&mut Stdb(ctx), player, letter)))
 }
 
 /// Give goods from the caller's city toward their alliance's Moonspire.
@@ -691,6 +716,13 @@ fn my_bonds(ctx: &ViewContext) -> Vec<Bond> {
 #[view(accessor = my_keeper, public)]
 fn my_keeper(ctx: &ViewContext) -> Option<Keeper> {
     ctx.db.keeper().player().find(viewer(ctx)?)
+}
+
+/// The letters the caller has written and been written.
+#[view(accessor = my_letters, public)]
+fn my_letters(ctx: &ViewContext) -> Vec<Letter> {
+    let Some(player) = viewer(ctx) else { return Vec::new() };
+    ctx.db.letter().receiver().filter(player).chain(ctx.db.letter().sender().filter(player)).collect()
 }
 
 /// The petitions of the caller's alliance.

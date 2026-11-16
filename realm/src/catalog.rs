@@ -674,6 +674,11 @@ pub fn gate_garrison() -> Vec<Unit> {
     barrow(TOP_BARROW).into_iter().map(|unit| Unit { count: unit.count * 2, ..unit }).collect()
 }
 
+/// The most characters a letter holds, and how many letters a player
+/// keeps: the oldest go as new ones come.
+pub const LETTER_LONGEST: usize = 1_000;
+pub const LETTERS_KEPT: usize = 100;
+
 /// A title the Lord of the Mere bestows: each held by one player at a
 /// time, lending them what so many levels of a study would.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

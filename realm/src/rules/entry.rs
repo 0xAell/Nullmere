@@ -229,7 +229,7 @@ pub fn asking(db: &mut impl Db, player: u64) -> Result<Player, Refusal> {
             db.update(pace);
         }
         None => {
-            db.insert(Pace { player, window: now, asked: 1, said: 0 });
+            db.insert(Pace { player, window: now, asked: 1, said: 0, wrote: 0 });
         }
     }
     Ok(row)
