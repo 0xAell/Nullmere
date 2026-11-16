@@ -186,4 +186,89 @@ public final class LiveClient: @unchecked Sendable {
 
     /// Calls one of the player's armies home.
     public func recall(march: UInt64) async throws { try await ask("recall", [.integer(march)]) }
+
+    // MARK: Scouts, allies' cities and rallies
+
+    private func records(_ soldiers: [(kind: Int, tier: Int, count: UInt64)]) -> ReducerArgument {
+        .records(soldiers.map { ["kind": UInt64($0.kind), "tier": UInt64($0.tier), "count": $0.count] })
+    }
+
+    /// Sends scouts from the player's city to see another player's city.
+    public func scout(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws {
+        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(4), records(soldiers), .integer(0)])
+    }
+
+    /// Sends soldiers from the player's city to stay in an ally's.
+    public func reinforce(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
+        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(5), records(soldiers), .integer(leader)])
+    }
+
+    /// Calls a rally of the player's alliance against the barrow or the
+    /// city at a hex, with an army of the player's own.
+    public func callRally(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
+        try await ask("call_rally", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), records(soldiers), .integer(leader)])
+    }
+
+    /// Joins a rally of the player's alliance that is still mustering.
+    public func joinRally(_ rally: UInt64, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
+        try await ask("join_rally", [.integer(rally), records(soldiers), .integer(leader)])
+    }
+
+    // MARK: An alliance's help, land, learning and Moonspire
+
+    /// Asks the player's alliance's help with a work under way in their city.
+    public func askHelp(job: UInt64) async throws { try await ask("ask_help", [.integer(job)]) }
+
+    /// Helps an ally with a work they asked help with; with 0, every one.
+    public func help(job: UInt64) async throws { try await ask("help", [.integer(job)]) }
+
+    /// Raises a wardstone of the player's alliance at a hex, as an officer.
+    public func raiseWard(at hex: LiveHex) async throws { try await ask("raise_ward", [.signed(Int64(hex.q)), .signed(Int64(hex.r))]) }
+
+    /// Takes down one of the player's alliance's wardstones, as an officer.
+    public func razeWard(_ ward: UInt64) async throws { try await ask("raze_ward", [.integer(ward)]) }
+
+    /// Gives grain, timber and stone toward the next level of a topic the
+    /// player's alliance learns.
+    public func giveToLearning(topic: Int, _ goods: LiveGoods) async throws {
+        try await ask("give_to_learning", [.integer(UInt64(topic)), .integer(goods.grain), .integer(goods.timber), .integer(goods.stone)])
+    }
+
+    /// Gives goods toward the player's alliance's Moonspire.
+    public func giveToSpire(_ goods: LiveGoods) async throws {
+        try await ask("give_to_spire", [.integer(goods.grain), .integer(goods.timber), .integer(goods.stone), .integer(goods.moonsalt)])
+    }
+
+    // MARK: Commanders' talents, pairs and the city's keeper
+
+    /// Puts one of a commander's points into a talent.
+    public func learnTalent(commander: UInt64, talent: Int) async throws {
+        try await ask("learn_talent", [.integer(commander), .integer(UInt64(talent))])
+    }
+
+    /// Has a commander forget every talent, for goods.
+    public func forgetTalents(commander: UInt64) async throws { try await ask("forget_talents", [.integer(commander)]) }
+
+    /// Has a commander go out beside another whenever that one leads; with
+    /// 0, no one.
+    public func pair(commander: UInt64, with partner: UInt64) async throws { try await ask("pair", [.integer(commander), .integer(partner)]) }
+
+    /// Has a commander keep the player's city; with 0, none.
+    public func keepCity(commander: UInt64) async throws { try await ask("keep_city", [.integer(commander)]) }
+
+    // MARK: The day's work, items and contests
+
+    /// Hastens a work under way in the player's city, for goods.
+    public func speedUp(job: UInt64) async throws { try await ask("speed_up", [.integer(job)]) }
+
+    /// Uses one of the player's items on a work under way.
+    public func useItem(_ item: Int, on job: UInt64) async throws { try await ask("use_item", [.integer(UInt64(item)), .integer(job)]) }
+
+    /// Opens a chest of the day's work, by its number.
+    public func openChest(_ chest: Int) async throws { try await ask("open_chest", [.integer(UInt64(chest))]) }
+
+    /// Claims a prize of one of the realm's contests, by its place.
+    public func claimPrize(contest: Int, place: Int) async throws {
+        try await ask("claim_prize", [.integer(UInt64(contest)), .integer(UInt64(place))])
+    }
 }

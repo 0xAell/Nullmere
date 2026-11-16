@@ -283,6 +283,112 @@ final class LiveWorldTests: XCTestCase {
     /// What a call carries goes in its body as the module reads it: a
     /// hex's place may be below zero, and a march's soldiers are records
     /// by name.
+    func testTheRealmsDepthIsReadIntoAWorld() throws {
+        let ward = LiveHex(q: 5, r: -2), far = LiveHex(q: 20, r: 0)
+        var snapshot: [String: [[JSONValue]]] = [
+            "me": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)]],
+            "member": [[n(1), n(4), n(5), n(1_000)], [n(2), n(4), n(1), n(1_000)]],
+            "alliance": [[n(4), n(1), n(2), .string("Keepers of the Mere"), .string("MERE"), n(1), n(1_000), n(2), .bool(true), .string("")]],
+            "my_commanders": [[n(11), n(1), .string("Corwen"), n(1), n(6), n(0), n(0)], [n(12), n(1), .string("Halen"), n(5), n(1), n(0), n(0)]],
+            "duty": [[n(2), n(5_000), n(20), .string("Gather 5,000 goods.")], [n(1), n(50), n(20), .string("Train 50 soldiers.")]],
+            "chest": [[n(1), n(20), n(5_000), n(5_000), n(0), n(0), n(2), n(0), n(0)], [n(2), n(60), n(0), n(0), n(10_000), n(50), n(0), n(1), n(0)]],
+            "grace": [[n(1), n(100), n(2)], [n(0), n(0), n(0)]],
+        ]
+        let seasons: [String: [[JSONValue]]] = [
+            "ware": [[n(1), .string("Five minutes' haste"), .string("Five minutes sooner."), n(300)]],
+            "trial": [[n(1), .string("The Long Hunt"), .string("Clear barrows."), n(7), n(3)]],
+            "prize": [[n(258), n(1), n(2), n(400), n(0), n(0), n(0), n(100), n(0), n(2), n(0)], [n(257), n(1), n(1), n(100), n(9_000), n(0), n(0), n(0), n(1), n(0), n(0)]],
+            "spire": [[n(4), .string("Keepers of the Mere"), n(1), n(2), n(0), n(0), n(10_000), n(20_000), n(0), n(0)]],
+            "season": [[n(1), n(0), n(2_419_200), n(0), .string(""), n(0)], [n(2), n(2_419_200), n(4_838_400), n(0), .string(""), n(0)]],
+            "ward": [[n(3), n(4), n(Double(ward.packed)), n(1), n(1_500)], [n(8), n(6), n(Double(LiveHex(q: 7, r: -2).packed)), n(2), n(1_000)],
+                     [n(9), n(4), n(Double(far.packed)), n(1), n(9_000)]],
+            "learning": [[n(Double(4 << 8 | 7)), n(4), n(7), n(2), n(0), n(0), n(100_000), n(50_000), n(0)]],
+        ]
+        let own: [String: [[JSONValue]]] = [
+            "my_daily": [[n(1), n(12), n(60), n(1_200), n(0), n(1), n(0), n(1)]],
+            "my_favour": [[n(1), n(140), n(1)]],
+            "my_satchel": [[n(Double(1 << 8 | 1)), n(1), n(1), n(3)], [n(Double(1 << 8 | 2)), n(1), n(2), n(0)]],
+            "my_tallies": [[n(5), n(1), n(1), n(0), n(420), n(1)]],
+            "my_skills": [[n(Double(11 << 8 | 1)), n(11), n(1), n(1), n(3)], [n(Double(11 << 8 | 6)), n(11), n(1), n(6), n(1)]],
+            "my_bonds": [[n(11), n(1), n(12)]],
+            "my_keeper": [[n(1), n(12)]],
+            "my_rallies": [[n(6), n(4), n(2), .string("[MERE] Bryn"), n(0), n(70), n(Double(far.packed)), n(9), n(2_000), n(1), n(2), n(3_000)]],
+            "my_musters": [[n(40), n(6), n(2), .bool(false)], [n(41), n(6), n(1), n(0)]],
+            "my_pleas": [[n(77), n(4), n(2), .string("[MERE] Bryn"), n(1), n(3), n(5)]],
+            "my_helps": [[n(901), n(77), n(1)]],
+            "my_gift": [[n(1), n(1), n(30_000)]],
+        ]
+        snapshot.merge(seasons) { $1 }
+        snapshot.merge(own) { $1 }
+        let world = LiveWorld(snapshot: snapshot)
+
+        // The day's work, favour, items and contests.
+        XCTAssertEqual(world.duties.map(\.deed), [LiveDuty.train, LiveDuty.gather])
+        XCTAssertEqual(world.duties[1].words, "Gather 5,000 goods.")
+        XCTAssertEqual(world.chests.map(\.marks), [20, 60])
+        XCTAssertEqual(world.chests[1].goods, LiveGoods(stone: 10_000, moonsalt: 50))
+        XCTAssertEqual(world.chests[0].hastes, [2, 0, 0])
+        XCTAssertEqual(world.graces.map(\.points), [0, 100])
+        XCTAssertEqual(world.daily?.did(LiveDuty.gather), 1_200)
+        XCTAssertEqual(world.daily?.did(LiveDuty.begin), 1)
+        XCTAssertEqual([world.daily?.hasOpened(1), world.daily?.hasOpened(2)], [true, false])
+        XCTAssertEqual(world.favour?.level, 1)
+        XCTAssertEqual(world.heldItems.map { $0.ware.name }, ["Five minutes' haste"], "an item none are left of is not held")
+        XCTAssertEqual(world.heldItems.first?.count, 3)
+        XCTAssertEqual(world.trials[1]?.name, "The Long Hunt")
+        XCTAssertEqual(world.prizes.map(\.place), [1, 2])
+        XCTAssertEqual(world.prizes[1].hastes, [0, 2, 0])
+        XCTAssertEqual(world.tallies.first?.points, 420)
+        XCTAssertEqual([world.tallies.first?.hasClaimed(1), world.tallies.first?.hasClaimed(2)], [true, false])
+
+        // Commanders' talents, pairs and the keeper.
+        XCTAssertEqual(world.skills[11], [1: 3, 6: 1])
+        XCTAssertEqual(world.talentPointsLeft(of: world.commanders[0]), 1, "five points at the sixth level, four spent")
+        XCTAssertEqual(world.talentPointsLeft(of: world.commanders[1]), 0)
+        XCTAssertEqual(world.bonds[11], 12)
+        XCTAssertEqual(world.keeperCommander?.name, "Halen")
+        XCTAssertEqual(LiveTalent.names.count, 9)
+        XCTAssertEqual([LiveTalent.points(level: 1), LiveTalent.points(level: 30), LiveTalent.points(level: 40)], [0, 29, 29])
+
+        // The alliance's rally, help, Moonspire, land and learning.
+        XCTAssertEqual(world.rallies.first?.isAgainstCity, true)
+        XCTAssertEqual(world.rallies.first?.hex, far)
+        XCTAssertEqual(world.myRally?.id, 6, "the player has an army in it")
+        XCTAssertEqual(world.musters[40]?.arrived, false)
+        XCTAssertEqual(world.pleas.first?.most, 5)
+        XCTAssertEqual(world.helped, [77])
+        XCTAssertEqual(world.mySpire?.stage, 2)
+        XCTAssertEqual(world.mySpire?.given, LiveGoods(grain: 10_000, timber: 20_000))
+        XCTAssertEqual(world.gift?.given, 30_000)
+        XCTAssertEqual(world.season?.number, 2, "the season under way is the latest")
+        XCTAssertEqual(world.season?.left(at: 4_000_000), 838_400)
+        XCTAssertEqual(LiveSpire.cost(stage: 1), LiveGoods(grain: 100_000, timber: 100_000, stone: 100_000))
+        XCTAssertEqual(LiveSpire.cost(stage: 3).moonsalt, 90_000)
+        XCTAssertEqual(world.wardstones(of: 4).map(\.id), [3, 9])
+        // Land: nothing before a wardstone stands; where two claims meet, the older keeps the ground.
+        XCTAssertNil(world.landOf(ward, at: 900))
+        XCTAssertEqual(world.landOf(LiveHex(q: 6, r: -2), at: 1_200), 6, "the other alliance's stood first")
+        XCTAssertEqual(world.landOf(LiveHex(q: 6, r: -2), at: 2_000), 4, "the older wardstone keeps the ground")
+        XCTAssertEqual(world.landOf(LiveHex(q: 9, r: -2), at: 2_000), 6)
+        XCTAssertNil(world.landOf(LiveHex(q: 11, r: -2), at: 2_000))
+        XCTAssertEqual(world.learnt(7, by: 4), 2)
+        XCTAssertEqual(world.learnt(8, by: 4), 0)
+        XCTAssertEqual(LiveLearning.cost(level: 2), LiveGoods(grain: 400_000, timber: 400_000, stone: 400_000))
+
+        // The module's catalogue says the same.
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        if let catalog = try? String(contentsOf: root.appendingPathComponent("realm/src/catalog.rs"), encoding: .utf8) {
+            for (code, name) in LiveTalent.names {
+                XCTAssertTrue(catalog.contains("    \(name) = \(code),"), "\(name) is talent \(code)")
+            }
+            XCTAssertTrue(catalog.contains("pub const TALENT_MOST: u32 = \(LiveTalent.most);"))
+            XCTAssertTrue(catalog.contains("pub const WARD_REACH: u32 = \(LiveWard.reach);"))
+            XCTAssertTrue(catalog.contains("pub const SPIRE_STAGES: u32 = \(LiveSpire.stages);"))
+            XCTAssertTrue(catalog.contains("pub const TOP_ALLIANCE_STUDY: u32 = \(LiveLearning.topLevel);"))
+            XCTAssertTrue(catalog.contains("let each = 100_000 * level.max(1) as u64 * level.max(1) as u64;"))
+        }
+    }
+
     func testACallsArgumentsGoAsTheModuleReadsThem() throws {
         let arguments: [ReducerArgument] = [.signed(-3), .signed(5), .integer(2), .records([["kind": 1, "tier": 2, "count": 20]])]
         XCTAssertEqual(arguments[0].json as? Int64, -3)

@@ -49,6 +49,30 @@ public enum LiveSchema {
         "my_progress": .init(columns: ["player", "step"], key: "player"),
         "my_lore": .init(columns: ["id", "city", "topic", "level"], key: "id"),
         "my_commanders": .init(columns: ["id", "owner", "name", "way", "level", "seen", "march"], key: "id"),
+        "duty": .init(columns: ["deed", "asks", "marks", "words"], key: "deed"),
+        "chest": .init(columns: ["id", "marks", "grain", "timber", "stone", "moonsalt", "brief_hastes", "hour_hastes", "long_hastes"], key: "id"),
+        "grace": .init(columns: ["level", "points", "sooner"], key: "level"),
+        "ware": .init(columns: ["item", "name", "words", "seconds"], key: "item"),
+        "trial": .init(columns: ["id", "name", "words", "every", "lasts"], key: "id"),
+        "prize": .init(columns: ["id", "trial", "place", "points", "grain", "timber", "stone", "moonsalt", "brief_hastes", "hour_hastes",
+                                 "long_hastes"], key: "id"),
+        "spire": .init(columns: ["alliance", "name", "season", "stage", "rises_at", "timer", "grain", "timber", "stone", "moonsalt"], key: "alliance"),
+        "season": .init(columns: ["number", "began", "ends", "victor", "victor_name", "won_at"], key: "number"),
+        "ward": .init(columns: ["id", "alliance", "hex", "raised_by", "stands_at"], key: "id"),
+        "learning": .init(columns: ["id", "alliance", "topic", "level", "rises_at", "timer", "grain", "timber", "stone"], key: "id"),
+        "my_daily": .init(columns: ["player", "day", "trained", "gathered", "cleared", "begun", "hastened", "opened"], key: "player"),
+        "my_favour": .init(columns: ["player", "points", "level"], key: "player"),
+        "my_satchel": .init(columns: ["id", "player", "item", "count"], key: "id"),
+        "my_tallies": .init(columns: ["id", "player", "trial", "round", "points", "claimed"], key: "id"),
+        "my_rallies": .init(columns: ["id", "alliance", "caller", "name", "barrow", "city", "hex", "level", "sets_out", "state", "armies",
+                                      "soldiers"], key: "id"),
+        "my_musters": .init(columns: ["march", "rally", "player", "arrived"], key: "march"),
+        "my_pleas": .init(columns: ["job", "alliance", "asker", "name", "work", "helped", "most"], key: "job"),
+        "my_helps": .init(columns: ["id", "job", "player"], key: "id"),
+        "my_gift": .init(columns: ["player", "season", "given"], key: "player"),
+        "my_skills": .init(columns: ["id", "commander", "owner", "talent", "points"], key: "id"),
+        "my_bonds": .init(columns: ["commander", "owner", "partner"], key: "commander"),
+        "my_keeper": .init(columns: ["player", "commander"], key: "player"),
     ]
 
     /// The view each of the caller's own tables is read through.
@@ -56,6 +80,9 @@ public enum LiveSchema {
         "me": "player", "my_city": "city", "my_buildings": "building", "my_jobs": "job", "my_stock": "stock", "my_troops": "troop",
         "my_squads": "squad", "my_hauls": "haul", "my_hunt": "hunt", "my_reports": "report", "my_alliance_chat": "alliance_chat",
         "my_applicants": "applicant", "my_progress": "progress", "my_lore": "lore", "my_commanders": "commander",
+        "my_daily": "daily", "my_favour": "favour", "my_satchel": "satchel",
+        "my_tallies": "tally", "my_rallies": "rally", "my_musters": "muster", "my_pleas": "plea", "my_helps": "helper", "my_gift": "gift",
+        "my_skills": "skill", "my_bonds": "bond", "my_keeper": "keeper",
     ]
 
     /// The queries that watch all of them.

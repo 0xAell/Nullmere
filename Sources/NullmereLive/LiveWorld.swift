@@ -26,6 +26,21 @@ public struct LiveWorld: Equatable, Sendable {
     var studies: [UInt64: LiveStudy] = [:]
     var blueprints: [UInt64: LiveBlueprint] = [:]
     var soldiers: [UInt64: LiveSoldier] = [:]
+    /// The day's deeds and its chests, the levels of favour, the items
+    /// there are, and the realm's contests and their prizes.
+    public var duties: [LiveDuty] = []
+    public var chests: [LiveChest] = []
+    public var graces: [LiveGrace] = []
+    public var wares: [Int: LiveWare] = [:]
+    public var trials: [Int: LiveTrial] = [:]
+    public var prizes: [LivePrize] = []
+    /// Every alliance's Moonspire this season, by the alliance; the
+    /// realm's seasons, by their number.
+    public var spires: [UInt64: LiveSpire] = [:]
+    public var seasons: [UInt64: LiveSeason] = [:]
+    /// Every alliance's wardstones, and what every alliance has learnt.
+    public var wards: [UInt64: LiveWard] = [:]
+    public var learnings: [UInt64: LiveLearning] = [:]
 
     public var me: LivePlayer?
     public var city: LiveCity?
@@ -50,6 +65,27 @@ public struct LiveWorld: Equatable, Sendable {
     /// Who has asked to join the player's alliance, for its officers; or
     /// the player's own asking, while they are in none.
     public var applicants: [LiveApplicant] = []
+    /// What the player has done of the day's work, their favour, the
+    /// items they hold (count by item), and what they have scored in the
+    /// realm's contests.
+    public var daily: LiveDaily?
+    public var favour: LiveFavour?
+    public var satchel: [Int: UInt64] = [:]
+    public var tallies: [LiveTally] = []
+    /// The talents of the player's commanders (points by talent, by
+    /// commander), who goes out beside whom (partner by leader), and the
+    /// commander keeping their city.
+    public var skills: [UInt64: [Int: Int]] = [:]
+    public var bonds: [UInt64: UInt64] = [:]
+    public var keeper: UInt64?
+    /// The rallies of the player's alliance and the armies in them (by
+    /// march), its members' askings for help, the works the player has
+    /// helped with, and what the player has given toward its Moonspire.
+    public var rallies: [LiveRally] = []
+    public var musters: [UInt64: LiveMuster] = [:]
+    public var pleas: [LivePlea] = []
+    public var helped: Set<UInt64> = []
+    public var gift: LiveGift?
 
     public init() {}
 
@@ -94,6 +130,38 @@ public struct LiveWorld: Equatable, Sendable {
             let cells = Cells(row: row)
             if let topic = cells.whole(2), let level = cells.whole(3) { lore[topic] = level }
         }
+
+        duties = rows("duty", LiveDuty.init).sorted { $0.deed < $1.deed }
+        chests = rows("chest", LiveChest.init).sorted { $0.id < $1.id }
+        graces = rows("grace", LiveGrace.init).sorted { $0.level < $1.level }
+        wares = Dictionary(rows("ware", LiveWare.init).map { ($0.item, $0) }, uniquingKeysWith: { _, new in new })
+        trials = Dictionary(rows("trial", LiveTrial.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        prizes = rows("prize", LivePrize.init).sorted { ($0.trial, $0.place) < ($1.trial, $1.place) }
+        spires = Dictionary(rows("spire", LiveSpire.init).map { ($0.alliance, $0) }, uniquingKeysWith: { _, new in new })
+        seasons = Dictionary(rows("season", LiveSeason.init).map { ($0.number, $0) }, uniquingKeysWith: { _, new in new })
+        wards = Dictionary(rows("ward", LiveWard.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        learnings = Dictionary(rows("learning", LiveLearning.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        daily = rows("my_daily", LiveDaily.init).first
+        favour = rows("my_favour", LiveFavour.init).first
+        for row in snapshot["my_satchel"] ?? [] {
+            let cells = Cells(row: row)
+            if let item = cells.whole(2), let count = cells.unsigned(3) { satchel[item] = count }
+        }
+        tallies = rows("my_tallies", LiveTally.init).sorted { $0.id < $1.id }
+        for row in snapshot["my_skills"] ?? [] {
+            let cells = Cells(row: row)
+            if let commander = cells.unsigned(1), let talent = cells.whole(3), let points = cells.whole(4) { skills[commander, default: [:]][talent] = points }
+        }
+        for row in snapshot["my_bonds"] ?? [] {
+            let cells = Cells(row: row)
+            if let commander = cells.unsigned(0), let partner = cells.unsigned(2) { bonds[commander] = partner }
+        }
+        keeper = (snapshot["my_keeper"] ?? []).compactMap { Cells(row: $0).unsigned(1) }.first
+        rallies = rows("my_rallies", LiveRally.init).sorted { $0.id < $1.id }
+        musters = Dictionary(rows("my_musters", LiveMuster.init).map { ($0.march, $0) }, uniquingKeysWith: { _, new in new })
+        pleas = rows("my_pleas", LivePlea.init).sorted { $0.job < $1.job }
+        helped = Set((snapshot["my_helps"] ?? []).compactMap { Cells(row: $0).unsigned(1) })
+        gift = rows("my_gift", LiveGift.init).first
     }
 
     private static func key(_ kind: Int, _ level: Int) -> UInt64 { UInt64(kind) << 32 | UInt64(level) }
@@ -187,6 +255,50 @@ public struct LiveWorld: Equatable, Sendable {
         let have = stock?.goods(at: seconds) ?? LiveGoods()
         let cost = LiveWorld.hireCost(have: commanders.count)
         return have.covers(cost) ? nil : .short(have.short(of: cost))
+    }
+
+    /// The season under way: the latest the realm has begun.
+    public var season: LiveSeason? { seasons.values.max { $0.number < $1.number } }
+
+    /// The player's alliance's Moonspire this season, if they are in one.
+    public var mySpire: LiveSpire? { myMembership.flatMap { spires[$0.alliance] } }
+
+    /// The alliance whose land a hex is at a moment, if any's: the one
+    /// whose standing wardstone within reach of it was raised first.
+    public func landOf(_ hex: LiveHex, at seconds: Double) -> UInt64? {
+        wards.values.filter { $0.stands(at: seconds) && $0.hex.distance(to: hex) <= LiveWard.reach }.min { $0.id < $1.id }?.alliance
+    }
+
+    /// An alliance's wardstones, the oldest first.
+    public func wardstones(of alliance: UInt64) -> [LiveWard] {
+        wards.values.filter { $0.alliance == alliance }.sorted { $0.id < $1.id }
+    }
+
+    /// The levels of a topic an alliance has learnt.
+    public func learnt(_ topic: Int, by alliance: UInt64) -> Int { learnings[LiveLearning.key(alliance, topic)]?.level ?? 0 }
+
+    /// The points a commander has left to spend on talents.
+    public func talentPointsLeft(of commander: LiveCommander) -> Int {
+        LiveTalent.points(level: commander.level) - (skills[commander.id] ?? [:]).values.reduce(0, +)
+    }
+
+    /// The commander keeping the player's city, if one is.
+    public var keeperCommander: LiveCommander? { keeper.flatMap { id in commanders.first { $0.id == id } } }
+
+    /// The rally the player has an army in, if they have.
+    public var myRally: LiveRally? {
+        guard let me else { return nil }
+        let mine = Set(musters.values.filter { $0.player == me.id }.map(\.rally))
+        return rallies.first { mine.contains($0.id) }
+    }
+
+    /// The items the player holds, each with what it is.
+    public var heldItems: [(ware: LiveWare, count: UInt64)] {
+        var held: [(ware: LiveWare, count: UInt64)] = []
+        for item in satchel.keys.sorted() {
+            if let ware = wares[item], let count = satchel[item], count > 0 { held.append((ware: ware, count: count)) }
+        }
+        return held
     }
 
     /// How many of the player's reports are unread.
