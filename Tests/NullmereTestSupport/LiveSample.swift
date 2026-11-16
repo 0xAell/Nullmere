@@ -150,6 +150,30 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func setRank(of player: UInt64, to rank: Int) async throws { try take("rank \(player) \(rank)") }
     public func setAlliance(open: Bool, words: String) async throws { try take("alliance \(open ? "open" : "closed"): \(words)") }
     public func say(_ words: String, withinAlliance: Bool) async throws { try take("say \(withinAlliance ? "within" : "to all"): \(words)") }
+    public func scout(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws { try take("scout \(hex.q),\(hex.r) with \(listed(soldiers))") }
+    public func reinforce(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {
+        try take("reinforce \(hex.q),\(hex.r) with \(listed(soldiers)) led by \(leader)")
+    }
+    public func callRally(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {
+        try take("rally at \(hex.q),\(hex.r) with \(listed(soldiers)) led by \(leader)")
+    }
+    public func joinRally(_ rally: UInt64, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {
+        try take("join rally \(rally) with \(listed(soldiers)) led by \(leader)")
+    }
+    public func askHelp(job: UInt64) async throws { try take("ask help \(job)") }
+    public func help(job: UInt64) async throws { try take("help \(job)") }
+    public func raiseWard(at hex: LiveHex) async throws { try take("raise ward \(hex.q),\(hex.r)") }
+    public func razeWard(_ ward: UInt64) async throws { try take("raze ward \(ward)") }
+    public func giveToLearning(topic: Int, _ goods: LiveGoods) async throws { try take("give \(goods.parts) to learning \(topic)") }
+    public func giveToSpire(_ goods: LiveGoods) async throws { try take("give \(goods.parts) to the Moonspire") }
+    public func learnTalent(commander: UInt64, talent: Int) async throws { try take("talent \(talent) for \(commander)") }
+    public func forgetTalents(commander: UInt64) async throws { try take("forget talents of \(commander)") }
+    public func pair(commander: UInt64, with partner: UInt64) async throws { try take("pair \(commander) with \(partner)") }
+    public func keepCity(commander: UInt64) async throws { try take("keep city \(commander)") }
+    public func speedUp(job: UInt64) async throws { try take("speed up \(job)") }
+    public func useItem(_ item: Int, on job: UInt64) async throws { try take("use \(item) on \(job)") }
+    public func openChest(_ chest: Int) async throws { try take("open chest \(chest)") }
+    public func claimPrize(contest: Int, place: Int) async throws { try take("claim prize \(place) of \(contest)") }
 }
 
 /// How many times something has been tried.

@@ -34,6 +34,24 @@ public protocol LiveLine: AnyObject, Sendable {
     func setRank(of player: UInt64, to rank: Int) async throws
     func setAlliance(open: Bool, words: String) async throws
     func say(_ words: String, withinAlliance: Bool) async throws
+    func scout(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
+    func reinforce(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
+    func callRally(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
+    func joinRally(_ rally: UInt64, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
+    func askHelp(job: UInt64) async throws
+    func help(job: UInt64) async throws
+    func raiseWard(at hex: LiveHex) async throws
+    func razeWard(_ ward: UInt64) async throws
+    func giveToLearning(topic: Int, _ goods: LiveGoods) async throws
+    func giveToSpire(_ goods: LiveGoods) async throws
+    func learnTalent(commander: UInt64, talent: Int) async throws
+    func forgetTalents(commander: UInt64) async throws
+    func pair(commander: UInt64, with partner: UInt64) async throws
+    func keepCity(commander: UInt64) async throws
+    func speedUp(job: UInt64) async throws
+    func useItem(_ item: Int, on job: UInt64) async throws
+    func openChest(_ chest: Int) async throws
+    func claimPrize(contest: Int, place: Int) async throws
 }
 
 extension LiveClient: LiveLine {}
@@ -373,6 +391,42 @@ public final class LiveSession {
     public func setRank(of player: UInt64, to rank: Int) async { await ask { try await $0.setRank(of: player, to: rank) } }
     public func setAlliance(open: Bool, words: String) async { await ask { try await $0.setAlliance(open: open, words: words) } }
     public func say(_ words: String, withinAlliance: Bool) async { await ask { try await $0.say(words, withinAlliance: withinAlliance) } }
+
+    // The alliance's help, land, learning and Moonspire; commanders'
+    // talents, pairs and the city's keeper; the day's work, items and
+    // contests.
+    public func askHelp(job: UInt64) async { await ask { try await $0.askHelp(job: job) } }
+    /// Helps with every work allies have asked help with.
+    public func helpAll() async { await ask { try await $0.help(job: 0) } }
+    public func raiseWard(at hex: LiveHex) async { await ask { try await $0.raiseWard(at: hex) } }
+    public func razeWard(_ ward: UInt64) async { await ask { try await $0.razeWard(ward) } }
+    public func giveToLearning(topic: Int, _ goods: LiveGoods) async { await ask { try await $0.giveToLearning(topic: topic, goods) } }
+    public func giveToSpire(_ goods: LiveGoods) async { await ask { try await $0.giveToSpire(goods) } }
+    public func learnTalent(commander: UInt64, talent: Int) async { await ask { try await $0.learnTalent(commander: commander, talent: talent) } }
+    public func forgetTalents(commander: UInt64) async { await ask { try await $0.forgetTalents(commander: commander) } }
+    public func pair(commander: UInt64, with partner: UInt64) async { await ask { try await $0.pair(commander: commander, with: partner) } }
+    public func keepCity(commander: UInt64) async { await ask { try await $0.keepCity(commander: commander) } }
+    public func speedUp(job: UInt64) async { await ask { try await $0.speedUp(job: job) } }
+    public func useItem(_ item: Int, on job: UInt64) async { await ask { try await $0.useItem(item, on: job) } }
+    public func openChest(_ chest: Int) async { await ask { try await $0.openChest(chest) } }
+    public func claimPrize(contest: Int, place: Int) async { await ask { try await $0.claimPrize(contest: contest, place: place) } }
+
+    /// Joins a rally of the player's alliance with everyone ready, led by
+    /// the highest commander in the city.
+    public func joinRally(_ rally: UInt64) async {
+        let asked = everyoneReady
+        let leader = world.freeLeader?.id ?? 0
+        await ask { try await $0.joinRally(rally, soldiers: asked, leader: leader) }
+    }
+
+    /// Calls a rally of the player's alliance against what stands at a hex
+    /// (a barrow, another's city, or a gate of the ridge) with everyone
+    /// ready, led by the highest commander in the city.
+    public func callRally(at hex: LiveHex) async {
+        let asked = everyoneReady
+        let leader = world.freeLeader?.id ?? 0
+        await ask { try await $0.callRally(at: hex, soldiers: asked, leader: leader) }
+    }
 
     /// Sends soldiers to what the player has chosen: to gather at a site,
     /// to clear a barrow, or against another player's city. Elsewhere

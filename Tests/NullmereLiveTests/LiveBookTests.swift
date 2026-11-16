@@ -306,6 +306,82 @@ final class LiveBookTests: XCTestCase {
         XCTAssertTrue(alliance.contains("pub const ALLIANCE_NAME_SHORTEST: usize = 3;") && alliance.contains("pub const ALLIANCE_NAME_LONGEST: usize = 20;"))
     }
 
+    func testTheDaysWorkTalentsLearningAndRalliesAreListed() throws {
+        // A realm opened at 1,000 at its first pace: the day it is at 90,000 is day 1.
+        var snapshot: [String: [[JSONValue]]] = [
+            "realm": [[n(0), n(42), n(1_000), n(1), n(1_000), n(0), n(48)]],
+            "me": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)]],
+            "player": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(3), n(8), .string("Cole"), n(1_000), .bool(true), n(1_000)]],
+            "member": [[n(1), n(4), n(5), n(1_000)]],
+            "alliance": [[n(4), n(1), n(2), .string("Keepers of the Mere"), .string("MERE"), n(1), n(1_000), n(1), .bool(true), .string("")]],
+            "city": [[n(70), n(3), n(Double(LiveHex(q: 20, r: 0).packed)), .string("Cole"), n(9), n(0), n(1_000), n(1)]],
+            "duty": [[n(1), n(50), n(20), .string("Train 50 soldiers.")], [n(2), n(5_000), n(20), .string("Gather 5,000 goods.")],
+                     [n(3), n(2), n(30), .string("Clear 2 barrows.")]],
+            "chest": [[n(1), n(20), n(5_000), n(5_000), n(0), n(0), n(2), n(0), n(0)], [n(2), n(40), n(0), n(0), n(10_000), n(0), n(0), n(1), n(0)],
+                      [n(3), n(70), n(0), n(0), n(0), n(0), n(0), n(0), n(0)]],
+            "ware": [[n(1), .string("Five minutes' haste"), .string(""), n(300)], [n(2), .string("An hour's haste"), .string(""), n(3_600)]],
+            "my_daily": [[n(1), n(1), n(60), n(1_200), n(2), n(0), n(0), n(1)]],
+            "my_commanders": [[n(11), n(1), .string("Corwen"), n(1), n(3), n(0), n(0)]],
+            "my_skills": [[n(11 << 8 | 1), n(11), n(1), n(1), n(2)]],
+            "study": [[n(1 << 32 | 1), n(1), n(1), .string("Tillage"), .string(""), n(5), n(0), n(0), n(0), n(0), n(60), n(1)],
+                      [n(8 << 32 | 1), n(8), n(1), .string("Spearcraft"), .string(""), n(3), n(0), n(0), n(0), n(0), n(60), n(1)]],
+            "learning": [[n(4 << 8 | 1), n(4), n(1), n(5), n(0), n(0), n(0), n(0), n(0)], [n(4 << 8 | 8), n(4), n(8), n(1), n(0), n(0), n(40_000), n(0), n(0)]],
+            "my_rallies": [[n(6), n(4), n(1), .string("[MERE] Ada"), n(0), n(70), n(Double(LiveHex(q: 20, r: 0).packed)), n(9), n(90_300), n(1), n(1), n(3_000)],
+                           [n(7), n(4), n(1), .string("[MERE] Ada"), n(0), n(0), n(Double(LiveHex(q: 27, r: 0).packed)), n(0), n(0), n(2), n(3), n(9_000)],
+                           [n(8), n(4), n(1), .string("[MERE] Ada"), n(9), n(0), n(Double(LiveHex(q: 5, r: 5).packed)), n(4), n(0), n(3), n(2), n(800)]],
+            "my_pleas": [[n(77), n(4), n(2), .string("[MERE] Bryn"), n(1), n(3), n(5)], [n(78), n(4), n(1), .string("[MERE] Ada"), n(2), n(0), n(5)],
+                         [n(79), n(4), n(2), .string("[MERE] Bryn"), n(4), n(5), n(5)], [n(80), n(4), n(2), .string("[MERE] Bryn"), n(3), n(1), n(5)]],
+            "my_helps": [[n(901), n(80), n(1)]],
+            "gate": [[n(1), n(Double(LiveHex(q: 27, r: 0).packed)), n(4), .string("[MERE] Keepers of the Mere"), n(5_000), n(0)],
+                     [n(2), n(Double(LiveHex(q: 0, r: 27).packed)), n(0), .string(""), n(0), n(0)]],
+        ]
+        let world = LiveWorld(snapshot: snapshot)
+
+        // The day's work: what is done of each deed, the marks, and the chests.
+        XCTAssertEqual([world.today(at: 1_000), world.today(at: 87_399), world.today(at: 87_400), world.today(at: 90_000)], [0, 0, 1, 1])
+        let deeds = world.deedLines(at: 90_000)
+        XCTAssertEqual(deeds.map(\.done), [60, 1_200, 2])
+        XCTAssertEqual(deeds.map(\.isDone), [true, false, true])
+        XCTAssertEqual(deeds[1].progress, 0.24, accuracy: 1e-9)
+        XCTAssertEqual(world.marksToday(at: 90_000), 50)
+        let chests = world.chestLines(at: 90_000)
+        XCTAssertEqual(chests.map(\.opened), [true, false, false])
+        XCTAssertEqual(chests.map(\.ready), [false, true, false], "the first opened, the second's marks reached, not the third's")
+        XCTAssertEqual(chests[0].holds, "5,000 grain and 5,000 timber, Five minutes' haste ×2")
+        XCTAssertEqual(chests[1].holds, "10,000 stone, An hour's haste")
+        XCTAssertEqual(chests[2].holds, "nothing")
+        // What was done on an earlier day counts for nothing today.
+        XCTAssertEqual(world.deedLines(at: 200_000).map(\.done), [0, 0, 0])
+        XCTAssertEqual(world.chestLines(at: 200_000).map(\.ready), [false, false, false])
+
+        // A commander's talents: two points at the third level, both in Spearmen.
+        let talents = world.talentLines(of: world.commanders[0])
+        XCTAssertEqual(talents.count, 9)
+        XCTAssertEqual(talents[0].name, "Spearmen")
+        XCTAssertEqual(talents.map(\.points).reduce(0, +), 2)
+        XCTAssertTrue(talents.allSatisfy { !$0.canLearn }, "no points left")
+        snapshot["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(1), n(9), n(0), n(0)]]
+        XCTAssertTrue(LiveWorld(snapshot: snapshot).talentLines(of: LiveWorld(snapshot: snapshot).commanders[0]).allSatisfy(\.canLearn))
+
+        // The alliance's learning: Tillage at the top, Spearcraft a level in with grain given toward the next.
+        let learning = world.learningLines()
+        XCTAssertEqual(learning.map(\.name), ["Tillage", "Spearcraft"])
+        XCTAssertEqual(learning.map(\.level), [5, 1])
+        XCTAssertNil(learning[0].cost, "nothing more to learn")
+        XCTAssertEqual(learning[1].cost, LiveLearning.cost(level: 2))
+        XCTAssertEqual(learning[1].given, LiveGoods(grain: 40_000))
+
+        // Rallies and askings for help in words.
+        XCTAssertEqual(world.rallyWords(world.rallies[0], at: 90_000), "[MERE] Ada's rally against Cole's city: 1 army, 3,000 soldiers; sets out in 5 minutes.")
+        XCTAssertEqual(world.rallyWords(world.rallies[1], at: 90_000), "[MERE] Ada's rally against a gate of the ridge: 3 armies, 9,000 soldiers; on its way.")
+        XCTAssertEqual(world.rallyWords(world.rallies[2], at: 90_000), "[MERE] Ada's rally against a level 4 barrow: 2 armies, 800 soldiers; fighting.")
+        XCTAssertEqual(world.pleaWords(world.pleas[0]), "[MERE] Bryn asks help with a building: 3 of 5 have helped.")
+        XCTAssertEqual(world.pleasToHelp.map(\.job), [77], "not the player's own, not one full, not one already helped")
+        XCTAssertEqual(world.gatesHeld(by: 4).map(\.id), [1])
+        XCTAssertEqual(world.gates[2]?.holder, 0)
+        XCTAssertTrue(world.gatesHeld(by: 0).isEmpty, "the Unquiet are no alliance")
+    }
+
     func testEachArmyOutIsToldInPlainWords() throws {
         func route(_ hexes: [LiveHex]) -> JSONValue {
             .string(hexes.flatMap { hex -> [UInt8] in

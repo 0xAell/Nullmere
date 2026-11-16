@@ -333,6 +333,24 @@ public struct LiveWard: Equatable, Sendable, Identifiable {
     public func stands(at seconds: Double) -> Bool { Double(standsAt) <= seconds }
 }
 
+/// A gate in one of the ridge's passes: who holds it (0 for the Unquiet),
+/// since when, and whether a rally is at it.
+public struct LiveGate: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let hex: LiveHex
+    public let holder: UInt64
+    public let holderName: String
+    public let takenAt: Int
+    public let fighter: UInt64
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let hex = cells.unsigned(1), let holder = cells.unsigned(2), let holderName = cells.text(3),
+              let takenAt = cells.whole(4), let fighter = cells.unsigned(5) else { return nil }
+        (self.id, self.hex, self.holder, self.holderName, self.takenAt, self.fighter) = (id, LiveHex(packed: hex), holder, holderName, takenAt, fighter)
+    }
+}
+
 /// What an alliance has learnt of a topic, and what is given toward its
 /// next level, or till when it is studied.
 public struct LiveLearning: Equatable, Sendable, Identifiable {

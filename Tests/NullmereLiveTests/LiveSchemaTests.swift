@@ -77,7 +77,7 @@ final class LiveSchemaTests: XCTestCase {
             XCTAssertEqual(listed.key, declared.key, "\(name)'s key")
             checked += 1
         }
-        XCTAssertEqual(checked, 52)
+        XCTAssertEqual(checked, 53)
         XCTAssertNotNil(byType["Player"])
 
         // What is a player's alone stays closed: read only through a view.
@@ -86,7 +86,7 @@ final class LiveSchemaTests: XCTestCase {
             XCTAssertNil(LiveSchema.tables[table], "\(table) is not a client's to read")
             XCTAssertTrue(try source("rows.rs").contains("table(accessor = \(table))"), "\(table) is private in the module")
         }
-        XCTAssertEqual(LiveSchema.queries.count, 52)
+        XCTAssertEqual(LiveSchema.queries.count, 53)
         XCTAssertTrue(LiveSchema.queries.contains("SELECT * FROM my_stock"))
     }
 

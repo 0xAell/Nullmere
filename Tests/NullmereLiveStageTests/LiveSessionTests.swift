@@ -478,6 +478,35 @@ final class LiveSessionTests: XCTestCase {
                                                        "say within: East shore is quiet", "leave alliance"])
         XCTAssertNil(session.said)
 
+        // The realm's depth goes the same way: help, land, learning, the
+        // Moonspire, talents, pairs, the keeper, hastes, items, chests and
+        // prizes; and rallies, with everyone ready.
+        line.clear()
+        await session.askHelp(job: 4)
+        await session.helpAll()
+        await session.raiseWard(at: LiveHex(q: 3, r: -1))
+        await session.razeWard(7)
+        await session.giveToLearning(topic: 1, LiveGoods(grain: 10, timber: 20, stone: 30))
+        await session.giveToSpire(LiveGoods(grain: 1, timber: 2, stone: 3, moonsalt: 4))
+        await session.learnTalent(commander: 11, talent: 6)
+        await session.forgetTalents(commander: 11)
+        await session.pair(commander: 11, with: 12)
+        await session.keepCity(commander: 12)
+        await session.speedUp(job: 4)
+        await session.useItem(2, on: 4)
+        await session.openChest(1)
+        await session.claimPrize(contest: 1, place: 2)
+        XCTAssertEqual(line.asked, ["ask help 4", "help 0", "raise ward 3,-1", "raze ward 7", "give [10, 20, 30, 0] to learning 1",
+                                    "give [1, 2, 3, 4] to the Moonspire", "talent 6 for 11", "forget talents of 11", "pair 11 with 12", "keep city 12",
+                                    "speed up 4", "use 2 on 4", "open chest 1", "claim prize 2 of 1"])
+        line.clear()
+        await session.callRally(at: LiveHex(q: 8, r: -2))
+        await session.joinRally(6)
+        XCTAssertEqual(line.asked.count, 2)
+        XCTAssertTrue(line.asked[0].hasPrefix("rally at 8,-2 with 40 of 1.1, 12 of 3.2 led by "), line.asked[0])
+        XCTAssertTrue(line.asked[1].hasPrefix("join rally 6 with 40 of 1.1, 12 of 3.2 led by "), line.asked[1])
+        XCTAssertNil(session.said)
+
         // The realm's refusal is kept in its own words until put away.
         session.said = nil
         line.refuse("Your builders are busy. Wait for them to finish.")

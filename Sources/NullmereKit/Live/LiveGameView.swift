@@ -19,6 +19,7 @@ public struct LiveGameView: View {
         case alliance
         case chat
         case reports
+        case day
     }
 
     private let session: LiveSession
@@ -318,7 +319,8 @@ struct LiveDock: View {
     }
 
     static let doors = [Door(title: "Buildings", panel: .city), Door(title: "Troops", panel: .troops), Door(title: "Studies", panel: .studies),
-                        Door(title: "Alliance", panel: .alliance), Door(title: "Chat", panel: .chat), Door(title: "Reports", panel: .reports)]
+                        Door(title: "Alliance", panel: .alliance), Door(title: "Today", panel: .day), Door(title: "Chat", panel: .chat),
+                        Door(title: "Reports", panel: .reports)]
 
     let session: LiveSession
     @Binding var panel: LiveGameView.Panel?

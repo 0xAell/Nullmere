@@ -60,6 +60,7 @@ public enum LiveSchema {
         "season": .init(columns: ["number", "began", "ends", "victor", "victor_name", "won_at"], key: "number"),
         "ward": .init(columns: ["id", "alliance", "hex", "raised_by", "stands_at"], key: "id"),
         "learning": .init(columns: ["id", "alliance", "topic", "level", "rises_at", "timer", "grain", "timber", "stone"], key: "id"),
+        "gate": .init(columns: ["id", "hex", "holder", "holder_name", "taken_at", "fighter"], key: "id"),
         "my_daily": .init(columns: ["player", "day", "trained", "gathered", "cleared", "begun", "hastened", "opened"], key: "player"),
         "my_favour": .init(columns: ["player", "points", "level"], key: "player"),
         "my_satchel": .init(columns: ["id", "player", "item", "count"], key: "id"),

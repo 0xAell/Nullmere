@@ -173,6 +173,8 @@ public struct LivePlace: Equatable, Sendable {
     public static let city = 1
     public static let site = 2
     public static let barrow = 3
+    public static let ward = 4
+    public static let gate = 5
 
     public let hex: LiveHex
     public let kind: Int

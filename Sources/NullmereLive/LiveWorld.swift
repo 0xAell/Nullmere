@@ -41,6 +41,8 @@ public struct LiveWorld: Equatable, Sendable {
     /// Every alliance's wardstones, and what every alliance has learnt.
     public var wards: [UInt64: LiveWard] = [:]
     public var learnings: [UInt64: LiveLearning] = [:]
+    /// The gates of the ridge, by their number.
+    public var gates: [UInt64: LiveGate] = [:]
 
     public var me: LivePlayer?
     public var city: LiveCity?
@@ -141,6 +143,7 @@ public struct LiveWorld: Equatable, Sendable {
         seasons = Dictionary(rows("season", LiveSeason.init).map { ($0.number, $0) }, uniquingKeysWith: { _, new in new })
         wards = Dictionary(rows("ward", LiveWard.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         learnings = Dictionary(rows("learning", LiveLearning.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        gates = Dictionary(rows("gate", LiveGate.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         daily = rows("my_daily", LiveDaily.init).first
         favour = rows("my_favour", LiveFavour.init).first
         for row in snapshot["my_satchel"] ?? [] {
@@ -267,6 +270,11 @@ public struct LiveWorld: Equatable, Sendable {
     /// whose standing wardstone within reach of it was raised first.
     public func landOf(_ hex: LiveHex, at seconds: Double) -> UInt64? {
         wards.values.filter { $0.stands(at: seconds) && $0.hex.distance(to: hex) <= LiveWard.reach }.min { $0.id < $1.id }?.alliance
+    }
+
+    /// The gates an alliance holds, by their number.
+    public func gatesHeld(by alliance: UInt64) -> [LiveGate] {
+        gates.values.filter { $0.holder == alliance && alliance != 0 }.sorted { $0.id < $1.id }
     }
 
     /// An alliance's wardstones, the oldest first.

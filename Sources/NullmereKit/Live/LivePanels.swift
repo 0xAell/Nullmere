@@ -19,6 +19,7 @@ struct LiveSidePanel: View {
         case .alliance: return "Alliance"
         case .chat: return "Chat"
         case .reports: return "Reports"
+        case .day: return "Today"
         }
     }
 
@@ -38,9 +39,12 @@ struct LiveSidePanel: View {
                         LiveCommanders(session: session, seconds: seconds)
                         LiveTroops(session: session, seconds: seconds)
                     case .studies: LiveStudies(session: session, seconds: seconds)
-                    case .alliance: LiveAlliancePanel(session: session)
+                    case .alliance:
+                        LiveAlliancePanel(session: session)
+                        LiveAllianceDepth(session: session, seconds: seconds)
                     case .chat: LiveChatPanel(session: session)
                     case .reports: LiveReports(session: session, seconds: seconds)
+                    case .day: LiveDayPanel(session: session, seconds: seconds)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -54,7 +58,7 @@ struct LiveSidePanel: View {
 }
 
 /// Small words under a line: what it costs, or why not.
-private struct LiveSmall: View {
+struct LiveSmall: View {
     let words: String
     var dim = false
 
@@ -67,7 +71,7 @@ private struct LiveSmall: View {
 }
 
 /// How far along something is, and how long it has to go.
-private struct LiveProgress: View {
+struct LiveProgress: View {
     let part: Double
     let left: Int
 
@@ -154,8 +158,9 @@ struct LiveCommanders: View {
                     LiveSmall(words: commander.isFree ? "In the city" : "Out with an army", dim: true)
                 }
                 LiveSmall(words: commander.wayWords)
+                LiveTalents(session: session, commander: commander)
             }
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .contain)
         }
         let block = world.hireBlock(at: seconds)
         HStack(alignment: .firstTextBaseline, spacing: 8) {

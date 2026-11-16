@@ -71,6 +71,28 @@ final class LiveGameTests: XCTestCase {
             [n(32), n(1), n(1_950), n(1), n(Int(LiveHex(q: 8, r: -2).packed)), .bool(false), n(2), n(5), n(40), n(30), n(10), n(60), n(31), n(0), n(0), n(0), n(0),
              .string("Your army was beaten at a level 2 barrow of the Unquiet. 29 of the Unquiet still stood. Of your 40 soldiers, 30 were wounded and 10 died."), .bool(false)],
         ]
+        // The realm's depth: the day's work and chests, items, favour and
+        // the contest; talents, a pair and a keeper; the alliance's
+        // Moonspire, learning, a rally, help, a wardstone and a gate.
+        rows["duty"] = [[n(1), n(50), n(20), .string("Train 50 soldiers.")], [n(2), n(5_000), n(20), .string("Gather 5,000 goods.")]]
+        rows["chest"] = [[n(1), n(20), n(5_000), n(5_000), n(0), n(0), n(2), n(0), n(0)], [n(2), n(60), n(0), n(0), n(10_000), n(50), n(0), n(1), n(0)]]
+        rows["ware"] = [[n(1), .string("Five minutes' haste"), .string("Five minutes sooner."), n(300)], [n(2), .string("An hour's haste"), .string("An hour sooner."), n(3_600)]]
+        rows["my_daily"] = [[n(1), n(0), n(60), n(1_200), n(0), n(1), n(0), n(0)]]
+        rows["my_satchel"] = [[n(1 << 8 | 1), n(1), n(1), n(3)]]
+        rows["my_favour"] = [[n(1), n(140), n(1)]]
+        rows["trial"] = [[n(1), .string("The Long Hunt"), .string("Points for every barrow cleared."), n(7), n(3)]]
+        rows["prize"] = [[n(257), n(1), n(1), n(100), n(9_000), n(0), n(0), n(0), n(1), n(0), n(0)], [n(258), n(1), n(2), n(400), n(0), n(0), n(0), n(100), n(0), n(2), n(0)]]
+        rows["my_tallies"] = [[n(5), n(1), n(1), n(0), n(120), n(0)]]
+        rows["my_skills"] = [[n(12 << 8 | 6), n(12), n(1), n(6), n(2)]]
+        rows["my_bonds"] = [[n(12), n(1), n(11)]]
+        rows["my_keeper"] = [[n(1), n(11)]]
+        rows["spire"] = [[n(5), .string("Keepers of the Mere"), n(1), n(1), n(0), n(0), n(40_000), n(30_000), n(20_000), n(0)]]
+        rows["season"] = [[n(1), n(1_000), n(2_420_200), n(0), .string(""), n(0)]]
+        rows["learning"] = [[n(5 << 8 | 1), n(5), n(1), n(1), n(0), n(0), n(60_000), n(0), n(0)]]
+        rows["my_rallies"] = [[n(6), n(5), n(2), .string("[MERE] Bryn"), n(9), n(0), n(Int(LiveHex(q: 8, r: -2).packed)), n(2), n(2_300), n(1), n(1), n(500)]]
+        rows["my_pleas"] = [[n(77), n(5), n(2), .string("[MERE] Bryn"), n(1), n(1), n(5)]]
+        rows["ward"] = [[n(3), n(5), n(Int(LiveHex(q: 12, r: -6).packed)), n(1), n(1_500)]]
+        rows["gate"] = [[n(1), n(Int(LiveHex(q: 22, r: 0).packed)), n(5), .string("[MERE] Keepers of the Mere"), n(1_900), n(0)]]
         return rows
     }
 
@@ -116,15 +138,15 @@ final class LiveGameTests: XCTestCase {
 
         XCTAssertGreaterThan(try drawn(LiveTaskChip(session: session), width: 420, height: 70), 60)
         XCTAssertGreaterThan(try drawn(LiveDock(session: session, panel: binding), width: 640, height: 50), 100)
-        XCTAssertEqual(LiveDock.doors.map(\.panel), [.city, .troops, .studies, .alliance, .chat, .reports])
+        XCTAssertEqual(LiveDock.doors.map(\.panel), [.city, .troops, .studies, .alliance, .day, .chat, .reports])
         // Each side panel, with something of everything in it.
-        for side in [LiveGameView.Panel.city, .troops, .studies, .alliance, .chat, .reports] {
+        for side in [LiveGameView.Panel.city, .troops, .studies, .alliance, .day, .chat, .reports] {
             let lit = try drawn(LiveSidePanel(session: session, seconds: 2_015, panel: side) {}, width: 340, height: 700, as: "live-\(side).png")
             XCTAssertGreaterThan(lit, 800, "\(side)")
         }
         // And with nothing in them: no soldiers yet, no reports yet.
         let (empty, _) = await playing(LiveSample.rows())
-        for side in [LiveGameView.Panel.troops, .studies, .alliance, .chat, .reports] {
+        for side in [LiveGameView.Panel.troops, .studies, .alliance, .day, .chat, .reports] {
             XCTAssertGreaterThan(try drawn(LiveSidePanel(session: empty, seconds: 2_015, panel: side) {}, width: 340, height: 700), 150, "\(side)")
         }
         XCTAssertEqual(try drawn(LiveTaskChip(session: empty), width: 420, height: 70), 0, "No task set, nothing shown")
