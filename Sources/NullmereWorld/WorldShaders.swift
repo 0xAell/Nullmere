@@ -237,6 +237,11 @@ public enum WorldShaders {
         // set deeper, the darker the more, so a meadow is a deep green and
         // snow and salt stay bright.
         shown = pow(max(shown, float3(0.0)), float3(1.45));
+        // Deepening raises the colours' strength with their depth: the
+        // plains stood a hard lime under the sun (run 991's pictures: grass
+        // at 95, 166, 29). A quarter of the way back toward its own grey,
+        // as bright as before, a meadow reads as grass.
+        shown = mix(float3(dot(shown, float3(0.2126, 0.7152, 0.0722))), shown, 0.75);
         // Stone's beds across a slope, broken where the rock is sound.
         float steep = clamp((1.0 - n.y) * 3.0, 0.0, 1.0);
         float beds = 0.5 + 0.5 * sin(world.y * 15.0 + nm_fbm2(p * 2.3 + float2(2.0, 31.0)) * 9.0);
