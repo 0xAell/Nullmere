@@ -237,6 +237,20 @@ final class LiveBookTests: XCTestCase {
         let rules = try source("rules/mod.rs"), catalog = try source("catalog.rs")
         XCTAssertTrue(rules.contains("\"Your Academy is already at its studies. Wait for them to finish.\""))
         XCTAssertTrue(rules.contains("\"You have learnt all there is of {}.\""))
+
+        // Storage opens once Tillage is learnt to its second level, as the realm writes it.
+        snapshot["study"] = (1...10).flatMap { level in
+            [study(1, level, "Tillage", "Your Farm brings in 5% more grain.", each: 5, grain: 500 * level, needs: 2 * level - 1) + [n(0), n(0)],
+             study(6, level, "Storage", "Your city holds 10% more of each good.", each: 10, grain: 50 * level, needs: 2 * level - 1) + [n(1), n(2)]]
+        }
+        snapshot["my_lore"] = [[n(7 << 8 | 1), n(7), n(1), n(1)]]
+        lines = LiveWorld(snapshot: snapshot).studyLines(at: 2_000)
+        XCTAssertEqual(lines[1].next.map { [$0.afterTopic, $0.afterLevel] }, [1, 2])
+        XCTAssertEqual(lines[1].block, .studyFirst("Tillage", 2))
+        XCTAssertEqual(LiveBlock.studyFirst("Tillage", 2).words, "Learn Tillage to level 2 first.")
+        XCTAssertTrue(rules.contains("\"Learn {} to level {level} first.\""))
+        snapshot["my_lore"] = [[n(7 << 8 | 1), n(7), n(1), n(2)]]
+        XCTAssertNil(LiveWorld(snapshot: snapshot).studyLines(at: 2_000)[1].block, "open, and within the city's means")
         XCTAssertTrue(catalog.contains("pub const TOP_STUDY: u32 = \(LiveWorld.topStudy);"))
         XCTAssertTrue(catalog.contains("Academy = 14,"))
         XCTAssertEqual(LiveJob.study, 4)

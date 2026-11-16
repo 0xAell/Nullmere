@@ -1,6 +1,9 @@
 //! What a city has learnt: its Academy studies one topic at a time, a
 //! level at a time, and each level adds to what the city's works bring
 //! in, how fast it builds, trains and marches, or how its soldiers fight.
+//! The topics stand in two trees, the city's works from Tillage and its
+//! arms from Drill: each other topic opens once the one before it is
+//! learnt to a level.
 
 use super::{asking, building_of, city_of, did, favoured, goods, realm, set_goods, settle, Refusal, TIMER_JOB};
 use crate::catalog::{self, Building as Kind, Deed, Topic, Troops, TOP_STUDY};
@@ -63,6 +66,8 @@ pub fn write_studies(db: &mut impl Db, pace: u32) {
                 moonsalt: cost.moonsalt,
                 seconds: catalog::paced(catalog::study_seconds(level), pace),
                 needs_level: catalog::study_needs(level),
+                after_topic: topic.opened_by().map(|(first, _)| first as u8).unwrap_or(0),
+                after_level: topic.opened_by().map(|(_, at)| at).unwrap_or(0),
             });
         }
     }
@@ -88,6 +93,11 @@ pub fn study(db: &mut impl Db, player: u64, topic: u8) -> Result<Job, Refusal> {
     }
     if academy.level < catalog::study_needs(level) {
         return Err(Refusal::NeedsOther(Kind::Academy, catalog::study_needs(level)));
+    }
+    if let Some((first, at)) = topic.opened_by() {
+        if learnt(db, city.id, first) < at {
+            return Err(Refusal::StudyFirst(first, at));
+        }
     }
     let mut stock = settle(db, city.id)?;
     let cost = catalog::study_cost(topic, level);

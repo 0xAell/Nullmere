@@ -139,6 +139,43 @@ fn an_academy_studies_one_topic_at_a_time_on_a_timer() {
 }
 
 #[test]
+fn the_studies_stand_in_two_trees_each_opening_the_next() {
+    // Two trees: the city's works from Tillage, its arms from Drill; every
+    // other topic is opened by one of its own tree, and each way back
+    // reaches the root.
+    for topic in Topic::ALL {
+        let mut at = topic;
+        for _ in 0..Topic::ALL.len() {
+            let Some((first, level)) = at.opened_by() else { break };
+            assert_eq!(first.is_of_war(), topic.is_of_war(), "{} is opened within its own tree", topic.name());
+            assert!((1..=3).contains(&level));
+            at = first;
+        }
+        assert_eq!(at, if topic.is_of_war() { Topic::Drill } else { Topic::Tillage }, "{} goes back to its root", topic.name());
+    }
+    let (mut db, player, city) = joined();
+    // Written out for clients: what opens each.
+    let forestry = Table::<Study>::get(&db, Study::key(Topic::Forestry as u8, 3)).unwrap();
+    assert_eq!((forestry.after_topic, forestry.after_level), (Topic::Tillage as u8, 1));
+    let drill = Table::<Study>::get(&db, Study::key(Topic::Drill as u8, 1)).unwrap();
+    assert_eq!((drill.after_topic, drill.after_level), (0, 0));
+
+    // Refused until what opens it is learnt far enough.
+    academy(&mut db, city.id, 25);
+    assert_eq!(db.call(|db| rules::study(db, player, Topic::Forestry as u8)), Err(Refusal::StudyFirst(Topic::Tillage, 1)));
+    assert_eq!(Refusal::StudyFirst(Topic::Tillage, 1).to_string(), "Learn Tillage to level 1 first.");
+    assert_eq!(db.call(|db| rules::study(db, player, Topic::Horsemanship as u8)), Err(Refusal::StudyFirst(Topic::Spearcraft, 2)));
+    learn(&mut db, city.id, Topic::Spearcraft, 1);
+    assert_eq!(db.call(|db| rules::study(db, player, Topic::Horsemanship as u8)), Err(Refusal::StudyFirst(Topic::Spearcraft, 2)));
+    learn(&mut db, city.id, Topic::Spearcraft, 2);
+    let job = db.call(|db| rules::study(db, player, Topic::Horsemanship as u8)).unwrap();
+    assert_eq!((job.subject, job.level), (Topic::Horsemanship as u64, 1));
+    // The first of each tree is open from the start.
+    wait(&mut db, job.ends - job.started);
+    assert!(db.call(|db| rules::study(db, player, Topic::Drill as u8)).is_ok());
+}
+
+#[test]
 fn what_is_learnt_adds_to_the_citys_works_and_its_pace() {
     let (mut db, player, city) = joined();
     let mut keep = rules::building_of(&db, city.id, Kind::Keep).unwrap();

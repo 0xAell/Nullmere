@@ -339,6 +339,7 @@ check("and stood down from it, and no one reads the table itself", (call(bryn, "
 # What an Academy studies.
 studies = rows(nobody, "SELECT * FROM study")
 check("the studies are written out for all to read", (len(studies), sorted(s["name"] for s in studies if s["level"] == 1)[:3]), (150, ["Archery", "Building", "Drill"]))
+check("each says what opens it: Tillage begins the works, Drill the arms", sorted((s["name"], s["after_topic"], s["after_level"]) for s in studies if s["level"] == 1 and s["name"] in ("Tillage", "Drill", "Forestry", "Horsemanship")), [("Drill", 0, 0), ("Forestry", 1, 1), ("Horsemanship", 8, 2), ("Tillage", 0, 0)])
 check("nothing is studied without an Academy", call(ada, "learn", 1), "Raise your Academy to level 1 first.")
 check("what a city has learnt is its owner's alone", (rows(ada, "SELECT * FROM my_lore"), isinstance(rows(ada, "SELECT * FROM lore"), str)), ([], True))
 

@@ -1261,6 +1261,10 @@ pub struct Study {
     pub seconds: Seconds,
     /// The level the Academy must have reached.
     pub needs_level: u32,
+    /// The topic that opens this one, and the level it must be learnt to;
+    /// 0 for the first of each tree.
+    pub after_topic: u8,
+    pub after_level: u32,
 }
 row!(Study in study, by id);
 

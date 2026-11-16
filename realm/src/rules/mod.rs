@@ -241,6 +241,8 @@ pub enum Refusal {
     /// The Academy can't be raised while it studies.
     BusyStudying,
     NothingMoreToLearn(Topic),
+    /// A study opens once another is learnt to a level.
+    StudyFirst(Topic, u32),
     /// The task the player is on is not done: what it asks.
     TaskNotDone(String),
     NoTasksLeft,
@@ -307,6 +309,7 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchTerms(most) => return write!(f, "A pact is a truce or passage, for a day to {most} days."),
             Refusal::GatesShut(left) => return write!(f, "The gates of the ridge may be stormed in {}.", crate::catalog::spoken(*left)),
             Refusal::NothingMoreToLearn(topic) => return write!(f, "You have learnt all there is of {}.", topic.name()),
+            Refusal::StudyFirst(topic, level) => return write!(f, "Learn {} to level {level} first.", topic.name()),
             Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
             Refusal::ChestNotEarned(marks) => return write!(f, "That chest opens at {marks} marks of the day's work."),
             Refusal::PrizeNotEarned(points) => return write!(f, "That prize is for {} points.", crate::catalog::grouped(*points)),

@@ -83,6 +83,8 @@ public enum LiveBlock: Equatable, Sendable {
     case studying
     case learntAll(String)
     case commandersFull
+    /// A study opens once another is learnt to a level.
+    case studyFirst(String, Int)
 
     /// As the realm says it.
     public var words: String {
@@ -98,6 +100,7 @@ public enum LiveBlock: Equatable, Sendable {
         case .studying: return "Your Academy is already at its studies. Wait for them to finish."
         case .learntAll(let name): return "You have learnt all there is of \(name)."
         case .commandersFull: return "Your city keeps as many commanders as it can."
+        case .studyFirst(let name, let level): return "Learn \(name) to level \(level) first."
         }
     }
 }
@@ -367,6 +370,8 @@ extension LiveWorld {
                 block = .learntAll(first.name)
             } else if let next, (academy?.level ?? 0) < next.needsLevel {
                 block = .needsOther("Academy", next.needsLevel)
+            } else if let next, next.afterTopic > 0, (lore[next.afterTopic] ?? 0) < next.afterLevel {
+                block = .studyFirst(study(next.afterTopic, level: 1)?.name ?? "another study", next.afterLevel)
             } else if let next, !have.covers(next.cost) {
                 block = .short(have.short(of: next.cost))
             }

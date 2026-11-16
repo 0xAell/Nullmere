@@ -1232,6 +1232,26 @@ impl Topic {
         }
     }
 
+    /// The study that opens this one, and the level it must be learnt to:
+    /// none for the first of each tree, Tillage for the city's works and
+    /// Drill for its arms.
+    pub fn opened_by(self) -> Option<(Topic, u32)> {
+        match self {
+            Topic::Tillage | Topic::Drill => None,
+            Topic::Forestry | Topic::Building => Some((Topic::Tillage, 1)),
+            Topic::Masonry => Some((Topic::Forestry, 1)),
+            Topic::Saltcraft => Some((Topic::Masonry, 2)),
+            Topic::Storage => Some((Topic::Tillage, 2)),
+            Topic::Gathering => Some((Topic::Storage, 2)),
+            Topic::Spearcraft | Topic::Archery => Some((Topic::Drill, 1)),
+            Topic::Horsemanship => Some((Topic::Spearcraft, 2)),
+            Topic::Siegecraft => Some((Topic::Archery, 2)),
+            Topic::Shields => Some((Topic::Spearcraft, 3)),
+            Topic::Medicine => Some((Topic::Drill, 2)),
+            Topic::Marching => Some((Topic::Horsemanship, 1)),
+        }
+    }
+
     /// The topic that makes a kind of soldier strike harder.
     pub fn sharpens(kind: Troops) -> Topic {
         match kind {

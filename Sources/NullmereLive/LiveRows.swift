@@ -700,6 +700,10 @@ public struct LiveStudy: Equatable, Sendable {
     public let seconds: Int
     /// The level the Academy must have reached.
     public let needsLevel: Int
+    /// The topic that opens this one, and the level it must be learnt to;
+    /// 0 for the first of each tree.
+    public let afterTopic: Int
+    public let afterLevel: Int
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
@@ -707,6 +711,7 @@ public struct LiveStudy: Equatable, Sendable {
               let each = cells.whole(5), let seconds = cells.whole(10), let needsLevel = cells.whole(11) else { return nil }
         (self.topic, self.level, self.name, self.words, self.each, self.seconds, self.needsLevel) = (topic, level, name, words, each, seconds, needsLevel)
         cost = LiveGoods(grain: cells.unsigned(6) ?? 0, timber: cells.unsigned(7) ?? 0, stone: cells.unsigned(8) ?? 0, moonsalt: cells.unsigned(9) ?? 0)
+        (afterTopic, afterLevel) = (cells.whole(12) ?? 0, cells.whole(13) ?? 0)
     }
 }
 
