@@ -138,6 +138,8 @@ impl March {
     pub const RALLY: u8 = 6;
     /// Scouts to find what a cairn holds, and come home.
     pub const EXPLORE: u8 = 7;
+    /// Against another player's army gathering at a site (`target` the site).
+    pub const RAID: u8 = 8;
 
     pub const GOING: u8 = 1;
     pub const WORKING: u8 = 2;
@@ -538,6 +540,11 @@ impl Report {
     pub const TITLE: u8 = 14;
     /// What the player's scouts found in a cairn: `foe` is its level.
     pub const CAIRN: u8 = 15;
+    /// The player's army fell on another's gathering at a site, and
+    /// another's army fell on the player's: `foe` is the other player's
+    /// number, and the goods what was carried off.
+    pub const FIELD: u8 = 16;
+    pub const FIELD_DEFENCE: u8 = 17;
 }
 
 /// An alliance of players. Everyone may read it.

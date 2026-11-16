@@ -212,6 +212,12 @@ public final class LiveClient: @unchecked Sendable {
         try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(7), records(soldiers), .integer(0)])
     }
 
+    /// Sends soldiers from the player's city against another player's army
+    /// gathering at the site at a hex.
+    public func raid(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
+        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(8), records(soldiers), .integer(leader)])
+    }
+
     /// Sends soldiers from the player's city to stay in an ally's.
     public func reinforce(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
         try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(5), records(soldiers), .integer(leader)])

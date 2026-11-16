@@ -26,6 +26,7 @@ mod learning;
 mod march;
 mod pacts;
 mod peace;
+mod raid;
 mod petitions;
 mod prisoners;
 mod rally;
@@ -58,6 +59,7 @@ pub use learning::*;
 pub use march::*;
 pub use pacts::*;
 pub use peace::*;
+use raid::*;
 pub use petitions::*;
 pub use prisoners::*;
 pub use rally::*;
@@ -329,6 +331,10 @@ pub enum Refusal {
     /// The longest bar, in hours.
     BarTooLong(u64),
     ForgottenAlready,
+    /// No army gathers at the site named.
+    NoOneGathering,
+    OwnArmy,
+    AllysArmy,
 }
 
 impl fmt::Display for Refusal {
@@ -512,6 +518,9 @@ impl fmt::Display for Refusal {
             Refusal::ReportedAlready => "You have reported that line already.",
             Refusal::NoSuchComplaint => "No such report is waiting.",
             Refusal::ForgottenAlready => "That player is forgotten already.",
+            Refusal::NoOneGathering => "No army is gathering there.",
+            Refusal::OwnArmy => "That is your own army.",
+            Refusal::AllysArmy => "That army is your ally's.",
             _ => "",
         })
     }

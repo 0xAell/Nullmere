@@ -27,6 +27,8 @@ public struct LiveCard: Equatable, Sendable {
         case reinforce
         /// Send a scout to find what the cairn chosen holds.
         case explore
+        /// Send everyone ready against the army gathering at the site chosen.
+        case raid
         /// Hasten a work under way in the city by a quarter, for goods.
         case hasten(UInt64)
         /// Move the player's city to the ground chosen.
@@ -53,6 +55,7 @@ public struct LiveCard: Equatable, Sendable {
             case .scout: return "eye"
             case .reinforce: return "shield"
             case .explore: return "binoculars"
+            case .raid: return "flame"
             case .hasten: return "forward.fill"
             case .moveCity: return "arrow.up.and.down.and.arrow.left.and.right"
             }
@@ -163,16 +166,26 @@ extension LiveSession {
             let good = LiveSession.goods.indices.contains(site.kind - 1) ? LiveSession.goods[site.kind - 1] : "Goods"
             var lines = ["\(LiveWords.grouped(site.left)) left to gather."]
             var why = cannotSend
-            // Who gathers here, said once: the player's own army as a line,
-            // and as why no other may; another's as the why alone.
+            // Whose army gathers here, said once: as a line, and in the same
+            // words as why no other may gather (the callout tells a why that
+            // is one of its lines once). Another player's army, not an
+            // ally's, may be fallen on.
+            var raid: [LiveCard.Button] = []
             if site.gatherer != 0 {
                 let mine = world.myMarches.contains { $0.id == site.gatherer }
-                if mine { lines.append("Your army is gathering here.") }
-                why = mine ? "Your army is gathering here." : "Another army is gathering there."
+                let owner = mine ? nil : world.marches[site.gatherer]?.owner
+                let whose = mine ? "Your army is gathering here."
+                    : owner.flatMap { world.shownName(of: $0) }.map { "\($0)'s army is gathering here." } ?? "Another army is gathering here."
+                lines.append(whose)
+                why = whose
+                if let owner {
+                    raid = [.init(title: ready > 0 ? "Attack it with \(soldiers(ready))" : "Attack it", act: .raid,
+                                  why: world.isAlly(owner) ? "That army is your ally's." : cannotSend)]
+                }
             }
             if why == nil, let leaderLine { lines.append(leaderLine) }
             return LiveCard(title: "\(good), level \(site.level)", lines: lines,
-                            buttons: [.init(title: ready > 0 ? "Gather with \(soldiers(ready))" : "Gather", act: .send, why: why)])
+                            buttons: [.init(title: ready > 0 ? "Gather with \(soldiers(ready))" : "Gather", act: .send, why: why)] + raid)
 
         case .barrow(let barrow):
             var lines = ["The Unquiet hold it. An attack takes \(LiveWorld.energyAnAttack) energy."]
@@ -298,6 +311,8 @@ extension LiveSession {
             if let selected { await reinforce(at: selected) }
         case .explore:
             if let selected { await explore(at: selected) }
+        case .raid:
+            if let selected { await raid(at: selected) }
         case .hasten(let job): await speedUp(job: job)
         case .moveCity:
             if let selected { await moveCity(to: selected) }

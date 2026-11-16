@@ -38,6 +38,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func reportLine(_ line: UInt64, withinAlliance: Bool) async throws
     func scout(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
     func explore(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
+    func raid(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
     func reinforce(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
     func callRally(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
     func joinRally(_ rally: UInt64, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
@@ -546,6 +547,14 @@ public final class LiveSession {
     public func explore(at hex: LiveHex) async {
         let party = scoutParty
         await ask { try await $0.explore(at: hex, soldiers: party) }
+    }
+
+    /// Sends everyone ready against another player's army gathering at the
+    /// site at a hex, led by the highest commander in the city.
+    public func raid(at hex: LiveHex) async {
+        let asked = everyoneReady
+        let leader = world.freeLeader?.id ?? 0
+        await ask { try await $0.raid(at: hex, soldiers: asked, leader: leader) }
     }
 
     /// Sends everyone ready to stay in an ally's city at a hex, led by the

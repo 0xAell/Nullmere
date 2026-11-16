@@ -312,8 +312,12 @@ final class LiveSessionTests: XCTestCase {
         // The grove Bryn's army works; the barrow his other army fights at.
         let grove = card(12, -2)
         XCTAssertEqual(grove.title, "Timber, level 4")
-        XCTAssertEqual(grove.lines, ["80,000 left to gather."], "another army there is said once, as why")
-        XCTAssertEqual(grove.buttons.first?.why, "Another army is gathering there.")
+        // Whose army gathers there, said once (its line and Gather's why
+        // the same words); and that it may be fallen on.
+        XCTAssertEqual(grove.lines, ["80,000 left to gather.", "Bryn's army is gathering here."])
+        XCTAssertEqual(grove.buttons, [.init(title: "Gather with 40 soldiers", act: .send, why: "Bryn's army is gathering here."),
+                                       .init(title: "Attack it with 40 soldiers", act: .raid, why: oneOut)])
+        XCTAssertEqual(grove.buttons.last?.icon, "flame")
         let fought = card(8, -2)
         XCTAssertEqual(fought.title, "Barrow, level 2")
         XCTAssertEqual(fought.lines, ["The Unquiet hold it. An attack takes 50 energy."])
@@ -330,6 +334,12 @@ final class LiveSessionTests: XCTestCase {
         session.selected = LiveHex(q: 6, r: 0)
         await session.press(card(6, 0).buttons[0])
         XCTAssertEqual(line.asked, ["hunt at 6, 0 with 40 of 1.1"])
+        // And the army gathering at the grove may be fallen on.
+        XCTAssertNil(card(12, -2).buttons.last?.why)
+        session.selected = LiveHex(q: 12, r: -2)
+        await session.press(card(12, -2).buttons[1])
+        XCTAssertEqual(line.asked.last, "raid 12,-2 with 40 of 1.1 led by 0")
+        session.selected = LiveHex(q: 6, r: 0)
         // With commanders, the highest of those in the city leads, and the
         // card says who; one named leads instead.
         line.change { $0["my_commanders"] = [[self.n(11), self.n(1), .string("Corwen"), self.n(1), self.n(2), self.n(100), self.n(0)],

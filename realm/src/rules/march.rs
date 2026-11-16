@@ -145,6 +145,10 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
         }
         March::HUNT => may_hunt(db, player, to)?.id,
         March::ATTACK => may_attack(db, player, to)?.id,
+        March::RAID => {
+            breaks_peace = true;
+            super::may_raid(db, player, to)?.id
+        }
         March::SCOUT => may_scout(db, player, to, city.id)?.id,
         March::EXPLORE => super::may_explore(db, player, to, city.id)?.id,
         March::REINFORCE => may_reinforce(db, player, to)?.id,
@@ -265,11 +269,10 @@ pub(super) fn load(db: &impl Db, march: &March) -> u64 {
     borne * (100 + leading_of(db, march).carries) / 100
 }
 
-/// A march takes what it has gathered from its site: the amount comes off
-/// the site, which is gone when nothing is left (and another is set
-/// somewhere), and goes into the march's haul.
-fn take(db: &mut impl Db, march: &March, amount: u64) {
-    let Some(mut site) = Table::<Site>::get(db, march.target) else { return };
+/// What a march has gathered comes off its site, which is free again,
+/// and gone when nothing is left (another is set somewhere): the goods.
+pub(super) fn off_site(db: &mut impl Db, march: &March, amount: u64) -> Goods {
+    let Some(mut site) = Table::<Site>::get(db, march.target) else { return Goods::NONE };
     let amount = amount.min(site.left);
     site.left -= amount;
     site.gatherer = 0;
@@ -281,6 +284,21 @@ fn take(db: &mut impl Db, march: &March, amount: u64) {
     } else {
         db.update(site);
     }
+    gathered
+}
+
+/// How much a march at work has gathered so far: its load by the share of
+/// its work's time gone.
+pub(super) fn gathered_so_far(db: &impl Db, march: &March) -> u64 {
+    let (gone, whole) = ((db.now() - march.departed).max(0) as u64, (march.arrives - march.departed).max(1) as u64);
+    load(db, march) * gone.min(whole) / whole
+}
+
+/// A march takes what it has gathered from its site: the amount comes off
+/// the site and goes into the march's haul.
+fn take(db: &mut impl Db, march: &March, amount: u64) {
+    let gathered = off_site(db, march, amount);
+    let amount: u64 = gathered.parts().iter().sum();
     if amount > 0 {
         db.insert(Haul { march: march.id, owner: march.owner, grain: gathered.grain, timber: gathered.timber, stone: gathered.stone, moonsalt: gathered.moonsalt });
         // Work is something seen, too: a little for every load.
@@ -329,6 +347,19 @@ pub fn arrive(db: &mut impl Db, march: u64) {
             siege::scouted(db, &march);
             let way = way_back(&march);
             turn_home(db, march, way);
+        }
+        March::GOING if march.kind == March::RAID => {
+            // It falls on whoever gathers there, if anyone still does, and
+            // comes home with what it carries off.
+            super::raided(db, &mut march);
+            if squads(db, march.id).is_empty() {
+                release(db, &march);
+                Table::<Haul>::delete(db, march.id);
+                Table::<March>::delete(db, march.id);
+            } else {
+                let way = way_back(&march);
+                turn_home(db, march, way);
+            }
         }
         March::GOING if march.kind == March::EXPLORE => {
             // Scouts find what a cairn holds, and come home unhurt.

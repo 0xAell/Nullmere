@@ -222,6 +222,8 @@ public struct LiveMarch: Equatable, Sendable, Identifiable {
     public static let rally = 6
     /// Scouts to find what a cairn of the old folk holds.
     public static let explore = 7
+    /// Against another player's army gathering at a site.
+    public static let raid = 8
 
     public static let going = 1
     public static let working = 2

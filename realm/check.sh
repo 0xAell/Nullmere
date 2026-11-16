@@ -221,6 +221,10 @@ check("its soldiers are out of the city", rows(bryn, "SELECT * FROM my_troops"),
 check("one army at a time at Keep 2", call(bryn, "send", *unpacked(sites[1]["hex"]), 1, [{"kind": 1, "tier": 1, "count": 1}], 0) in ("You have only 0 tier 1 Spearmen ready.", "Your one army is out. Raise your Keep to send more."), True)
 until("it reaches the site and works it", lambda: [m["state"] for m in rows(nobody, "SELECT * FROM march")] == [2], 60)
 check("the site is its while it works", [s["gatherer"] for s in rows(nobody, "SELECT * FROM site") if s["id"] == site["id"]], [marches[0]["id"]])
+# An army may fall on another's gathering there, but not on its own, nor where no one gathers.
+check("no army falls on its own", call(bryn, "send", *unpacked(site["hex"]), 8, [{"kind": 1, "tier": 1, "count": 1}], 0), "That is your own army.")
+check("nor where no one gathers", call(bryn, "send", *unpacked(sites[1]["hex"]), 8, [{"kind": 1, "tier": 1, "count": 1}], 0), "No army is gathering there.")
+check("another's army may be fallen on, by soldiers there are", (call(ada, "send", *unpacked(site["hex"]), 8, [{"kind": 1, "tier": 1, "count": 100000}], 0) or "").startswith("You have only "), True)
 until("then turns for home with its load", lambda: [m["state"] for m in rows(nobody, "SELECT * FROM march")] == [3], 60)
 good = {1: "grain", 2: "timber", 3: "stone", 4: "moonsalt"}[site["kind"]]
 check("carrying what twenty spearmen carry", [h[good] for h in rows(bryn, "SELECT * FROM my_hauls")], [240])
