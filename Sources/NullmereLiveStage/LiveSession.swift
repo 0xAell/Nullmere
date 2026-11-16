@@ -458,7 +458,7 @@ public final class LiveSession {
 
     /// One soldier of the first kind and tier standing ready: a scout.
     public var scoutParty: [(kind: Int, tier: Int, count: UInt64)] {
-        everyoneReady.first.map { [(kind: $0.kind, tier: $0.tier, count: 1)] } ?? []
+        everyoneReady.first.map { [(kind: $0.kind, tier: $0.tier, count: UInt64(1))] } ?? []
     }
 
     /// Sends a scout to see the city at a hex.

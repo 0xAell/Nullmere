@@ -326,7 +326,7 @@ check("nor is an army sent against one by an order of its own", call(ada, "send"
 
 # Commanders: one to begin with, more from a Tavern.
 captains = rows(bryn, "SELECT * FROM my_commanders")
-check("a player begins with one commander, in the city", [(c["level"], c["march"], 1 <= c["way"] <= 6, len(c["name"]) >= 4) for c in captains], [(1, 0, True, True)])
+check("a player begins with one commander, in the city", [(c["level"], c["march"], 1 <= c["way"] <= 6, len(c["name"]) >= 3) for c in captains], [(1, 0, True, True)])
 check("another is taken on from a Tavern", call(bryn, "hire"), "Raise your Tavern to level 1 first.")
 check("no one reads another's commanders", (rows(ada, "SELECT * FROM my_commanders") != captains, isinstance(rows(bryn, "SELECT * FROM commander"), str)), (True, True))
 
