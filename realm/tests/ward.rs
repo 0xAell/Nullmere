@@ -6,7 +6,7 @@
 use realm::catalog::{self, Building as Kind, Troops, WARD_REACH};
 use realm::hex::Hex;
 use realm::land;
-use realm::rows::{Building, City, March, Member, Place, Site, Stock, Troop, Ward};
+use realm::rows::{Building, City, March, Member, Place, Report, Site, Stock, Troop, Ward};
 use realm::rules::{self, Asked, Refusal};
 use realm::store::{Mem, Seconds, Table};
 
@@ -197,4 +197,51 @@ fn a_wardstone_razed_or_its_alliance_ended_falls_with_its_land() {
     assert!(Table::<Ward>::all(&db).is_empty());
     assert!(Table::<Place>::get(&db, spot.packed()).is_none());
     assert_eq!(rules::land_of(&db, spot), None);
+}
+
+#[test]
+fn another_alliances_rally_takes_a_wardstone_down_and_its_land_with_it() {
+    let (mut db, players, cities, mere) = allies(&["Ada", "Bryn", "Cole", "Dara"], &["Cole", "Dara"]);
+    let (ada, bryn, cole, dara) = (players[0], players[1], players[2], players[3]);
+    let wardens = db.call(|db| rules::found_alliance(db, cole, "Wardens of the Shore", "WRD")).unwrap();
+    db.call(|db| rules::join_alliance(db, dara, wardens.id)).unwrap();
+    let spot = clear_at(&db, Hex::unpacked(cities[0].hex), 5);
+    let ward = db.call(|db| rules::raise_ward(db, ada, spot)).unwrap();
+    wait(&mut db, catalog::WARD_SECONDS);
+    assert_eq!(rules::land_of(&db, spot), Some(mere));
+
+    // Not by its own alliance.
+    let spears = |count: u64| vec![Asked { kind: Troops::Spearmen as u8, tier: 1, count }];
+    assert_eq!(db.call(|db| rules::call_rally(db, bryn, spot, &spears(100), 0)), Err(Refusal::OwnWard));
+    assert_eq!(Refusal::OwnWard.to_string(), "That wardstone is your alliance's.");
+
+    // Another's: enough to beat its keepers behind their stones when chance gives neither side anything, and as much again.
+    let keepers = catalog::ward_garrison();
+    let enough = (1..100)
+        .map(|hundreds| hundreds * 100)
+        .find(|count| rules::fight_sheltered(&[realm::catalog::Unit { kind: Troops::Spearmen, tier: 1, count: *count }], &keepers, catalog::ward_shelter(), || 10).won)
+        .expect("some number is enough");
+    let rally = db.call(|db| rules::call_rally(db, cole, spot, &spears(enough), 0)).unwrap();
+    assert_eq!((rally.barrow, rally.city, rally.hex), (0, 0, spot.packed()));
+    db.call(|db| rules::join_rally(db, dara, rally.id, &spears(enough), 0)).unwrap();
+    let to = rally.sets_out;
+    db.advance(to, rules::fire);
+    let last = [cole, dara].iter().filter_map(|player| Table::<March>::by(&db, 0, *player).into_iter().find(|march| march.kind == March::RALLY)).map(|march| march.arrives).max().unwrap();
+    db.advance(last + catalog::ASSAULT_SECONDS, rules::fire);
+
+    // Down: the wardstone, its place and its land gone; each side told.
+    assert!(Table::<Ward>::get(&db, ward.id).is_none());
+    assert!(Table::<Place>::get(&db, spot.packed()).is_none());
+    assert_eq!(rules::land_of(&db, spot), None);
+    for player in [cole, dara] {
+        let told: Vec<Report> = Table::<Report>::by(&db, 0, player).into_iter().filter(|report| report.kind == Report::WARD).collect();
+        assert_eq!(told.len(), 1);
+        assert!(told[0].won);
+        assert!(told[0].words.starts_with("Your alliance's rally took down a wardstone: 2 armies, "), "{}", told[0].words);
+    }
+    for player in [ada, bryn] {
+        let told: Vec<Report> = Table::<Report>::by(&db, 0, player).into_iter().filter(|report| report.kind == Report::WARD).collect();
+        assert_eq!(told.len(), 1);
+        assert_eq!(told[0].words, "[WRD] Wardens of the Shore's rally took down one of your alliance's wardstones, and the land it claimed is no longer yours for it.");
+    }
 }

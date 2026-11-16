@@ -518,6 +518,8 @@ impl Report {
     pub const LEARNING: u8 = 8;
     /// A rally at a gate of the ridge, or a gate lost: `foe` is the gate.
     pub const GATE: u8 = 9;
+    /// A rally at a wardstone, or a wardstone lost: `foe` is the wardstone.
+    pub const WARD: u8 = 10;
 }
 
 /// An alliance of players. Everyone may read it.

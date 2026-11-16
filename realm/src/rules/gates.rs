@@ -11,11 +11,11 @@
 //! back to the Unquiet but those the season's victor holds: what it won,
 //! it keeps.
 
-use super::{fight_as_one, member_of, realm, release, report, season_now, squads, turn_home, way_back, Refusal};
+use super::{fight_as_one, member_of, realm, report, season_now, Refusal};
 use crate::catalog;
 use crate::hex::Hex;
 use crate::land;
-use crate::rows::{Alliance, Db, Gate, Haul, Member, Muster, Place, Rally, Report};
+use crate::rows::{Alliance, Db, Gate, Member, Place, Rally, Report};
 use crate::store::{Seconds, Table};
 
 /// Raises the six gates as the realm opens, held by the Unquiet.
@@ -151,29 +151,6 @@ fn told(player: u64, at: Seconds, gate: &Gate, won: bool, fight: Fight, words: S
         words,
         read: false,
     }
-}
-
-/// A rally that found its gate gone to its own alliance, or another rally
-/// at it, when its last army came up: every army turns for home.
-pub(super) fn turned_back(db: &mut impl Db, marches: Vec<crate::rows::March>, rally: &Rally) {
-    let now = db.now();
-    let words = "Your alliance's rally found its gate held by your own alliance, or stormed by another, when its last army came up. Your army is turning for home.";
-    let gate = gate_at(db, Hex::unpacked(rally.hex));
-    for army in marches {
-        Table::<Muster>::delete(db, army.id);
-        if let Some(gate) = &gate {
-            report(db, told(army.owner, now, gate, false, Fight::default(), words.to_string()));
-        }
-        if squads(db, army.id).is_empty() {
-            release(db, &army);
-            Table::<Haul>::delete(db, army.id);
-            Table::<crate::rows::March>::delete(db, army.id);
-        } else {
-            let way = way_back(&army);
-            turn_home(db, army, way);
-        }
-    }
-    Table::<Rally>::delete(db, rally.id);
 }
 
 /// The season has turned: every gate goes back to the Unquiet but those

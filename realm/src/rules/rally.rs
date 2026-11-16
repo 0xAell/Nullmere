@@ -14,21 +14,23 @@
 //! is called and again as it sets out.
 
 use super::{
-    allied, asking, barrow_at, city_at, dispatch, fought_together, gate_at, home, hunt_of, may_attack, may_storm, member_of, realm, release, report, shown_name,
-    spend_energy, squads, stormed_gate, stormed_together, travel, turn_home, turned_back, warn, way_back, Asked, Refusal, TIMER_MARCH,
+    allied, asking, barrow_at, city_at, dispatch, fought_together, gate_at, home, hunt_of, may_attack, may_raze, may_storm, member_of, realm, release, report,
+    shown_name, spend_energy, squads, stormed_gate, stormed_together, stormed_ward, travel, turn_home, ward_at, warn, way_back, Asked, Refusal, TIMER_MARCH,
 };
 use crate::catalog;
 use crate::hex::{self, Hex};
-use crate::rows::{Barrow, City, Db, Gate, Haul, March, Muster, Player, Rally, Report};
+use crate::rows::{Barrow, City, Db, Gate, Haul, March, Muster, Player, Rally, Report, Ward};
 use crate::store::Table;
 
-/// What a rally goes against: a barrow, another player's city, or a gate
-/// of the ridge (a rally's row names the barrow or the city, and neither
-/// for a gate, which stands at its hex).
+/// What a rally goes against: a barrow, another player's city, a gate of
+/// the ridge, or another alliance's wardstone (a rally's row names the
+/// barrow or the city, and neither for a gate or a wardstone, which stands
+/// at its hex).
 pub(super) enum Aim {
     Barrow(Barrow),
     City(City),
     Gate(Gate),
+    Ward(Ward),
 }
 
 /// The rally a player has an army in, if they have.
@@ -56,6 +58,10 @@ pub(super) fn may_go(db: &impl Db, player: u64, to: Hex) -> Result<Aim, Refusal>
     if let Some(gate) = gate_at(db, to) {
         may_storm(db, player, &gate)?;
         return Ok(Aim::Gate(gate));
+    }
+    if let Some(ward) = ward_at(db, to) {
+        may_raze(db, player, &ward)?;
+        return Ok(Aim::Ward(ward));
     }
     let barrow = barrow_at(db, to).ok_or(Refusal::NothingToFight)?;
     if barrow.fighter != 0 {
@@ -126,6 +132,11 @@ pub fn call_rally(db: &mut impl Db, player: u64, to: Hex, asked: &[Asked], leade
         }
         (None, Some(gate)) => {
             may_storm(db, player, &gate)?;
+            (0, 0, 0)
+        }
+        (None, None) if ward_at(db, to).is_some() => {
+            let ward = ward_at(db, to).ok_or(Refusal::NothingToFight)?;
+            may_raze(db, player, &ward)?;
             (0, 0, 0)
         }
         (None, None) => {
@@ -260,9 +271,13 @@ pub(super) fn set_out(db: &mut impl Db, march: &March) {
                 let words = format!("No one joined your rally against {}'s city. Your army has stood down.", named(db, city.owner));
                 told(db, rally.caller, Report::ATTACK, &rally, city.owner, words);
             }
-            None if rally.barrow == 0 => {
+            None if rally.barrow == 0 && gate_at(db, Hex::unpacked(rally.hex)).is_some() => {
                 let words = "No one joined your rally against a gate of the ridge. Your army has stood down.".to_string();
                 told(db, rally.caller, Report::GATE, &rally, 0, words);
+            }
+            None if rally.barrow == 0 => {
+                let words = "No one joined your rally against a wardstone. Your army has stood down.".to_string();
+                told(db, rally.caller, Report::WARD, &rally, 0, words);
             }
             None => {
                 let words = format!("No one joined your rally against the level {} barrow. Your army has stood down.", rally.level);
@@ -335,12 +350,19 @@ pub(super) fn reached(db: &mut impl Db, mut march: March) {
             return;
         }
         catalog::ASSAULT_SECONDS
-    } else if rally.barrow == 0 {
+    } else if rally.barrow == 0 && gate_at(db, Hex::unpacked(rally.hex)).is_some() {
         let Some(mut gate) = gate_at(db, Hex::unpacked(rally.hex)).filter(|gate| gate.fighter == 0 && gate.holder != rally.alliance) else {
-            return turned_back(db, marches, &rally);
+            let words = "Your alliance's rally found its gate held by your own alliance, or stormed by another, when its last army came up. Your army is turning for home.";
+            return turn_back(db, marches, &rally, Report::GATE, words);
         };
         gate.fighter = first.id;
         db.update(gate);
+        catalog::ASSAULT_SECONDS
+    } else if rally.barrow == 0 {
+        if ward_at(db, Hex::unpacked(rally.hex)).is_none_or(|ward| ward.alliance == rally.alliance) {
+            let words = "Your alliance's rally found its wardstone gone, or your own alliance's, when its last army came up. Your army is turning for home.";
+            return turn_back(db, marches, &rally, Report::WARD, words);
+        }
         catalog::ASSAULT_SECONDS
     } else {
         let Some(mut barrow) = Table::<Barrow>::get(db, rally.barrow).filter(|barrow| barrow.fighter == 0) else {
@@ -379,8 +401,10 @@ pub(super) fn ended(db: &mut impl Db, march: &March) {
     let mut marches = armies(db, &rally);
     if rally.city != 0 {
         stormed_together(db, &mut marches);
-    } else if rally.barrow == 0 {
+    } else if rally.barrow == 0 && gate_at(db, Hex::unpacked(rally.hex)).is_some() {
         stormed_gate(db, &mut marches, &rally);
+    } else if rally.barrow == 0 {
+        stormed_ward(db, &mut marches, &rally);
     } else {
         fought_together(db, &mut marches);
     }
@@ -388,6 +412,24 @@ pub(super) fn ended(db: &mut impl Db, march: &March) {
         Table::<Muster>::delete(db, army.id);
         if squads(db, army.id).is_empty() {
             // No one is left to come home, but the one who led them.
+            release(db, &army);
+            Table::<Haul>::delete(db, army.id);
+            Table::<March>::delete(db, army.id);
+        } else {
+            let way = way_back(&army);
+            turn_home(db, army, way);
+        }
+    }
+    Table::<Rally>::delete(db, rally.id);
+}
+
+/// A rally that found nothing to fight when its last army came up: every
+/// army turns for home, each owner told why.
+fn turn_back(db: &mut impl Db, marches: Vec<March>, rally: &Rally, kind: u8, words: &str) {
+    for army in marches {
+        Table::<Muster>::delete(db, army.id);
+        told(db, army.owner, kind, rally, 0, words.to_string());
+        if squads(db, army.id).is_empty() {
             release(db, &army);
             Table::<Haul>::delete(db, army.id);
             Table::<March>::delete(db, army.id);

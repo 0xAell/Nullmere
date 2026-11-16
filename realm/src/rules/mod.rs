@@ -203,6 +203,7 @@ pub enum Refusal {
     OwnGate,
     GateFought,
     LakelandShut,
+    OwnWard,
     NoSuchTopic,
     AlreadyStudying,
     /// The Academy can't be raised while it studies.
@@ -363,6 +364,7 @@ impl fmt::Display for Refusal {
             Refusal::OwnGate => "Your alliance holds that gate.",
             Refusal::GateFought => "Another rally is at that gate.",
             Refusal::LakelandShut => "Only an alliance that holds a gate of the ridge may move into the lake country.",
+            Refusal::OwnWard => "That wardstone is your alliance's.",
             Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",

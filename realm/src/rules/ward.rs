@@ -9,11 +9,11 @@
 //! five members, to twenty. Its members gather faster on its land. When
 //! the alliance ends its wardstones fall.
 
-use super::{asking, goods, member_of, officer, realm, set_goods, settle, Refusal};
+use super::{asking, fallen, fight_as_one, goods, member_of, officer, realm, report, set_goods, settle, Refusal};
 use crate::catalog::{self, WARD_REACH};
 use crate::hex::Hex;
 use crate::land;
-use crate::rows::{Alliance, Db, Place, Ward};
+use crate::rows::{Alliance, Db, March, Member, Place, Rally, Report, Ward};
 use crate::store::Table;
 
 /// The alliance whose land a hex is, if any's: the one whose standing
@@ -85,6 +85,108 @@ fn fell(db: &mut impl Db, ward: &Ward) {
         Table::<Place>::delete(db, ward.hex);
     }
     Table::<Ward>::delete(db, ward.id);
+}
+
+/// The wardstone at a hex, if one stands there.
+pub fn ward_at(db: &impl Db, hex: Hex) -> Option<Ward> {
+    match Table::<Place>::get(db, hex.packed()) {
+        Some(place) if place.kind == Place::WARD => Table::<Ward>::get(db, place.id),
+        _ => None,
+    }
+}
+
+/// Whether a player's alliance may send a rally to take a wardstone down:
+/// it is another alliance's.
+pub(super) fn may_raze(db: &impl Db, player: u64, ward: &Ward) -> Result<(), Refusal> {
+    let member = member_of(db, player).ok_or(Refusal::NotAllied)?;
+    if ward.alliance == member.alliance {
+        return Err(Refusal::OwnWard);
+    }
+    Ok(())
+}
+
+/// A rally's fight at a wardstone is over. Its armies fought as one
+/// against its keepers behind its ring of stones, each losing what fell of
+/// its own and carrying home as wounded what its own city has room for.
+/// If they won, the wardstone falls, and the land it claimed with it.
+/// Every army's owner is told, and the members of the alliance whose
+/// wardstone it was.
+pub(super) fn stormed_ward(db: &mut impl Db, marches: &mut [March], rally: &Rally) {
+    let Some(ward) = ward_at(db, Hex::unpacked(rally.hex)) else { return };
+    let keepers = catalog::ward_garrison();
+    let together = fight_as_one(db, marches, &keepers, catalog::ward_shelter());
+    let stood: u64 = keepers.iter().map(|unit| unit.count).sum();
+    let fell_there: u64 = together.outcome.defenders_lost.iter().sum();
+    let won = together.outcome.won;
+    if won {
+        fell(db, &ward);
+    }
+    let name = Table::<Alliance>::get(db, rally.alliance).map(|alliance| format!("[{}] {}", alliance.tag, alliance.name)).unwrap_or_default();
+    let all: u64 = together.fought.iter().sum();
+    let armies = marches.len();
+    let now = db.now();
+    for (index, march) in marches.iter().enumerate() {
+        let mut words = if won {
+            format!("Your alliance's rally took down a wardstone: {armies} armies, {} soldiers in all. The land it claimed is no one's for it now.", catalog::grouped(all))
+        } else {
+            format!(
+                "Your alliance's rally was beaten at a wardstone: {armies} armies, {} soldiers in all. {} of its keepers still stood.",
+                catalog::grouped(all),
+                catalog::grouped(stood - fell_there)
+            )
+        };
+        words += " ";
+        words += &fallen(together.fought[index], together.wounded[index], together.dead[index], "soldier", "soldiers");
+        let told = Report {
+            id: 0,
+            player: march.owner,
+            at: now,
+            kind: Report::WARD,
+            hex: ward.hex,
+            won,
+            foe: ward.id,
+            rounds: together.outcome.rounds,
+            fought: together.fought[index],
+            wounded: together.wounded[index],
+            dead: together.dead[index],
+            stood,
+            fell: fell_there,
+            grain: 0,
+            timber: 0,
+            stone: 0,
+            moonsalt: 0,
+            words,
+            read: false,
+        };
+        report(db, told);
+    }
+    if won {
+        let words = format!("{name}'s rally took down one of your alliance's wardstones, and the land it claimed is no longer yours for it.");
+        for member in Table::<Member>::by(db, 0, ward.alliance) {
+            let told = Report {
+                id: 0,
+                player: member.player,
+                at: now,
+                kind: Report::WARD,
+                hex: ward.hex,
+                won: false,
+                foe: ward.id,
+                rounds: 0,
+                fought: 0,
+                wounded: 0,
+                dead: 0,
+                stood: all,
+                fell: 0,
+                grain: 0,
+                timber: 0,
+                stone: 0,
+                moonsalt: 0,
+                words: words.clone(),
+                read: false,
+            };
+            report(db, told);
+        }
+    }
 }
 
 /// An alliance has ended: its wardstones fall with it.

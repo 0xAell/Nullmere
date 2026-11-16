@@ -674,6 +674,18 @@ pub fn gate_garrison() -> Vec<Unit> {
     barrow(TOP_BARROW).into_iter().map(|unit| Unit { count: unit.count * 2, ..unit }).collect()
 }
 
+/// Who keeps a wardstone against a rally sent to take it down: as many as
+/// keep a barrow of the twelfth level.
+pub fn ward_garrison() -> Vec<Unit> {
+    barrow(12)
+}
+
+/// How much a wardstone's ring of stones shelters its keepers: as a Wall
+/// of the fifth level does a city's.
+pub fn ward_shelter() -> u64 {
+    shelter(5)
+}
+
 /// How much a gate's walls shelter its garrison: as a Wall of the tenth
 /// level does a city's.
 pub fn gate_shelter() -> u64 {
