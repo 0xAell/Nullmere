@@ -402,6 +402,7 @@ check("only the owner bars a player", call(bryn, "bar_player", ada_id, 1), "Only
 check("the owner bars one for an hour", as_owner("call", "bar_player", ada_id, 1).returncode, 0)
 check("who may not speak", (call(ada, "say", False, "Hello again") or "").startswith("You may not speak for another "), True)
 check("until the bar is lifted", as_owner("call", "bar_player", ada_id, 0).returncode, 0)
+time.sleep(2)  # a moment after her last words, as anyone waits between sayings
 check("and they speak again", call(ada, "say", False, "Hello again"), None)
 check("an alliance is founded from an Embassy", call(bryn, "found_alliance", "Keepers of the Mere", "MERE"), "Raise your Embassy to level 1 first.")
 check("there is none to join yet", call(bryn, "join_alliance", 1), "There is no such alliance.")
