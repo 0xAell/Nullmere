@@ -147,6 +147,9 @@ public final class LiveSession {
     /// The window of the world being drawn, and a number that moves each
     /// time another is taken: the land to be drawn has changed.
     public private(set) var window: LiveWindow?
+    /// The whole realm small, for the map in the corner: made afresh as
+    /// more of the land is told.
+    public private(set) var minimap: LiveMinimap?
     /// What just happened, the newest last, each with when it was told: the
     /// toasts the play view shows a while. The last `newsKept` are kept.
     public private(set) var news: [LiveNews] = []
@@ -303,6 +306,7 @@ public final class LiveSession {
         guard world.realm != nil else { return }
         let strayed = window.map { $0.centre.distance(to: look) > LiveSession.stray } ?? true
         if strayed || world.land.count != landCount {
+            if world.land.count != landCount { minimap = LiveMinimap(world: world) }
             landCount = world.land.count
             let next = LiveWindow(world: world, centre: strayed ? look : (window?.centre ?? look), radius: LiveSession.reach)
             if next.map != window?.map || next.centre != window?.centre {

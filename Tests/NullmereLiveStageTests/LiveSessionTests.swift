@@ -408,6 +408,29 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(card(500, 0).title, "Unknown land")
     }
 
+    /// The whole realm small, for the map in the corner: its grounds a
+    /// pixel to a hex across, and where any hex falls on it.
+    func testTheWholeRealmIsSmallInTheCorner() async throws {
+        let session = session(StandInLine(rows: LiveWindowTests.rows()))
+        XCTAssertNil(session.minimap, "none before the land is told")
+        await session.open()
+        let map = try XCTUnwrap(session.minimap)
+        XCTAssertEqual([map.width, map.height, map.radius], [81, 70, 40], "the realm forty hexes from heart to rim")
+        XCTAssertEqual(map.grounds.count, 81 * 70)
+        func ground(_ at: (u: Double, v: Double)) -> UInt8 { map.grounds[Int(at.v * Double(map.height)) * map.width + Int(at.u * Double(map.width))] }
+        let heart = map.place(of: LiveHex(q: 0, r: 0))
+        XCTAssertEqual(heart.u, 0.5, accuracy: 0.001)
+        XCTAssertEqual(heart.v, 0.5, accuracy: 0.001)
+        XCTAssertEqual(ground(heart), 4, "plain at the heart")
+        XCTAssertEqual(ground(map.place(of: LiveHex(q: -30, r: 0))), 0, "deep water to the west")
+        XCTAssertEqual(ground(map.place(of: LiveHex(q: 30, r: 0))), 5, "wood to the east")
+        XCTAssertEqual(map.grounds[map.width - 1], LiveMinimap.unknown, "beyond the land told, at the top right corner")
+        // A place on it is the hex there, and back again.
+        XCTAssertEqual(map.hex(atU: heart.u, v: heart.v), LiveHex(q: 0, r: 0))
+        let home = map.place(of: LiveHex(q: 10, r: -4))
+        XCTAssertEqual(map.hex(atU: home.u, v: home.v), LiveHex(q: 10, r: -4))
+    }
+
     /// Over each city in view, whose it is and its Keep's level.
     func testEachCityInViewIsNamedOverIt() async throws {
         let session = session(StandInLine(rows: LiveWindowTests.rows()))

@@ -214,6 +214,11 @@ final class LiveGameTests: XCTestCase {
         XCTAssertGreaterThan(try drawn(LiveArmies(session: session, seconds: 2_015), width: 400, height: 80), 60)
 
         XCTAssertGreaterThan(try drawn(LiveTaskChip(session: session), width: 420, height: 70), 60)
+        // The whole realm small: its grounds a pixel to a hex, the cities on it, where the view looks.
+        let small = try XCTUnwrap(session.minimap)
+        let image = try XCTUnwrap(LiveMiniMap.image(of: small))
+        XCTAssertEqual([image.width, image.height], [small.width, small.height])
+        XCTAssertGreaterThan(try drawn(LiveMiniMap(session: session), width: 190, height: 170, as: "live-minimap.png"), 5_000)
         // What just happened, told a few seconds at the top: a report come.
         let (toldOf, toldLine) = await playing()
         let report: [JSONValue] = [n(999), n(1), n(2_014), n(LiveReport.hunt), n(Int(LiveHex(q: 8, r: -2).packed)), .bool(true), n(0), n(3),

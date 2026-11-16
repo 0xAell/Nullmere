@@ -314,6 +314,9 @@ struct LiveHUD: View {
                         LiveTopBar(session: session, seconds: seconds)
                             .chrome("live-bar")
                         Spacer(minLength: 0)
+                        // The whole realm small, at the top right (an open destination stands over it).
+                        LiveMiniMap(session: session)
+                            .chrome("live-minimap")
                     }
                     HStack(alignment: .top, spacing: 12) {
                         LiveTaskChip(session: session)
