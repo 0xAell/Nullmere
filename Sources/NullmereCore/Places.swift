@@ -1,15 +1,4 @@
 import NullmereLand
-extension Hold {
-    /// How many places a hold's works may be set in round its keep: twelve
-    /// about it, and six further out.
-    public static let placeCount = 18
-
-    /// Where a work stands if its keeper has set it.
-    public func place(of kind: BuildingKind) -> Int? {
-        places?[kind]
-    }
-}
-
 extension GameState {
     /// Why a work of a hold can't be set in a place now, if it can't: the
     /// hold must be the House's, the work raised or rising in it, and the

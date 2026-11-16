@@ -179,7 +179,12 @@ hold walled in stone). Two ways off the old rules:
    land's generator (WorldGenerator, and the seeded randomness and noise
    it draws on, Random.swift) moved to NullmereLand, the rules taking it
    from there, so a test can make a world's map, its seats and streams
-   without GameState and set its holds out on them.
+   without GameState and set its holds out on them. NullmereTestSupport's
+   TestWorld does so: the map, seats and streams the game made from the
+   same seed text, and a seat raised on each with the ids the game gave
+   them. The models' tests build their worlds from it (FoundationTests,
+   PlacementTests) and import the land alone; a hold's places (how many,
+   and where a work is set) are the land's Hold's.
 4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
    Done on 16 November: the old game's voices (Voices.swift,
    VoiceCheck.swift and their three test files), its counsel

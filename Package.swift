@@ -41,7 +41,7 @@ var targets: [Target] = [
     // it, built from solids in code, with the rigs that move them. Pure
     // Swift, so every shape is built and tested on Linux too.
     .target(name: "NullmereModels", dependencies: ["NullmereLand"]),
-    .testTarget(name: "NullmereModelsTests", dependencies: ["NullmereModels", "NullmereCore"]),
+    .testTarget(name: "NullmereModelsTests", dependencies: ["NullmereModels", "NullmereLand", "NullmereTestSupport"]),
     // The world as the GPU draws it, apart from the GPU: the camera, the
     // shaders' source, the data they read and how a frame's models are
     // gathered. Pure Swift, so tested on Linux too.
@@ -60,7 +60,7 @@ var targets: [Target] = [
     .testTarget(name: "NullmereTrailerTests", dependencies: ["NullmereTrailer", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound"]),
     // SpacetimeDB in memory, and credentials kept in memory, for tests of
     // the realm across the network: the realm's and the app's.
-    .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereLive", "NullmereLiveStage"], path: "Tests/NullmereTestSupport"),
+    .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereLive", "NullmereLiveStage", "NullmereLand"], path: "Tests/NullmereTestSupport"),
     .testTarget(name: "NullmereRealmTests", dependencies: ["NullmereRealm", "NullmereTestSupport"]),
     // Platform-independent launcher logic: settings, navigation, scene
     // constants, the news feed and the moon's veil. Pure Swift, so it is

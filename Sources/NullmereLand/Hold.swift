@@ -175,3 +175,14 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
         12 + attack * 4 * health / 100
     }
 }
+
+extension Hold {
+    /// How many places a hold's works may be set in round its keep: twelve
+    /// about it, and six further out.
+    public static let placeCount = 18
+
+    /// Where a work stands if its keeper has set it.
+    public func place(of kind: BuildingKind) -> Int? {
+        places?[kind]
+    }
+}

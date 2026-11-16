@@ -1,6 +1,7 @@
 import Foundation
-@testable import NullmereCore
+import NullmereLand
 @testable import NullmereModels
+import NullmereTestSupport
 import XCTest
 
 extension SIMD2 where Scalar == Float {
@@ -10,8 +11,8 @@ extension SIMD2 where Scalar == Float {
 /// Where the models stand: companies in their hexes, holds on their land,
 /// the land's furniture over the map.
 final class PlacementTests: XCTestCase {
-    static let worlds: [GameState] = ["placement", "second shore", "the third lake"].map {
-        GameState(settings: GameSettings(seedText: $0, houseCount: 6, radius: 14))
+    static let worlds: [TestWorld] = ["placement", "second shore", "the third lake"].map {
+        TestWorld(seedText: $0, houses: 6, radius: 14)
     }
 
     /// How far a model reaches across the ground from its foot.
@@ -495,7 +496,7 @@ final class PlacementTests: XCTestCase {
         XCTAssertGreaterThan(first.count, state.map.count, "the land is furnished")
         XCTAssertEqual(Scatter.pieces(in: Hex(40, 0), map: state.map, relief: relief), [], "nothing beyond the map")
         // And a world of the realm's, whose streams' shoals have their stones.
-        let streams = GameState(settings: GameSettings(seedText: "placement", houseCount: 6, radius: 14, rivers: true))
+        let streams = TestWorld(seedText: "placement", houses: 6, radius: 14, rivers: true)
         let kinds = Set((PlacementTests.worlds + [streams]).flatMap { Scatter.pieces(map: $0.map, relief: Relief(map: $0.map)) }.map(\.key))
         for furnishing in Furnishing.allCases {
             XCTAssertTrue(kinds.contains(.furnishing(furnishing)), "\(furnishing) is found somewhere")
@@ -514,7 +515,7 @@ final class PlacementTests: XCTestCase {
     func testTheLandsFurnitureStandsOnTheLandAndLeavesHeartsClear() {
         for state in PlacementTests.worlds {
             let relief = Relief(map: state.map)
-            let occupied = Set(state.units.map(\.position) + state.map.hexes.enumerated().filter { $0.offset % 5 == 0 }.map(\.element))
+            let occupied = Set(state.holds.flatMap { Array($0.position.neighbors.prefix(2)) } + state.map.hexes.enumerated().filter { $0.offset % 5 == 0 }.map(\.element))
             let holds = Set(state.holds.map(\.position))
             let pieces = Scatter.pieces(map: state.map, relief: relief, occupied: occupied, holds: holds)
             let layout = HexLayout(size: 1)

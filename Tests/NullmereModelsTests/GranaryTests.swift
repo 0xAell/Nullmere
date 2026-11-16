@@ -1,4 +1,4 @@
-import NullmereCore
+import NullmereLand
 @testable import NullmereModels
 import XCTest
 

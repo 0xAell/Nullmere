@@ -1,5 +1,6 @@
-import NullmereCore
+import NullmereLand
 @testable import NullmereModels
+import NullmereTestSupport
 import XCTest
 
 final class MathTests: XCTestCase {
@@ -276,7 +277,7 @@ final class RigTests: XCTestCase {
 }
 
 final class ReliefTests: XCTestCase {
-    static let state = GameState(settings: GameSettings(seedText: "relief", houseCount: 6, radius: 14))
+    static let state = TestWorld(seedText: "relief", houses: 6, radius: 14)
     static let relief = Relief(map: state.map)
 
     func testEachHexStandsAtItsTerrainsHeight() {
@@ -298,10 +299,10 @@ final class ReliefTests: XCTestCase {
     /// lies just under, the shingle showing, its stones across it at every
     /// Detail.
     func testAStreamRunsUnderTheWaterBetweenItsBanks() throws {
-        let state = GameState(settings: GameSettings(seedText: "relief", houseCount: 6, radius: 14, rivers: true))
+        let state = TestWorld(seedText: "relief", houses: 6, radius: 14, rivers: true)
         let relief = Relief(map: state.map)
-        let river = try XCTUnwrap(state.atlas?.rivers.first)
-        for hex in river.course {
+        let course = try XCTUnwrap(state.streams.first)
+        for hex in course {
             let height = relief.height(of: hex)
             XCTAssertLessThan(height, 0, "\(hex) under the water")
             let banks = state.map.neighbors(of: hex).filter { state.map[$0]?.terrain.isSettleable == true }
@@ -309,7 +310,7 @@ final class ReliefTests: XCTestCase {
         }
         XCTAssertGreaterThan(Relief.baseHeight(.shoal), Relief.baseHeight(.stream), "The shoal shallower")
         XCTAssertNotEqual(TerrainMesh.colour(.shoal), TerrainMesh.colour(.stream))
-        let shoal = try XCTUnwrap(river.course.first { state.map[$0]?.terrain == .shoal })
+        let shoal = try XCTUnwrap(course.first { state.map[$0]?.terrain == .shoal })
         let pieces = Scatter.pieces(in: shoal, map: state.map, relief: relief)
         XCTAssertTrue(pieces.contains { $0.key == .furnishing(.steppingStones) }, "Stones across it")
         XCTAssertTrue(Furnishing.steppingStones.isLandmark)
