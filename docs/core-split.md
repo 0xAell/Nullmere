@@ -241,3 +241,11 @@ hold walled in stone). Two ways off the old rules:
    members given package access for them, a map as a House knew it, the
    generator's seats for Houses and its Frontier's gates, the units'
    tiers and costs.
+   Trimmed on 16 November: the map keeps only what is drawn (`23d445d`),
+   and the kinds and holds their dead members (`93d9178`); NullmereLand is
+   some 2,200 lines. The Mac's first run on the deletion (CI run 1056)
+   failed on the still water and the panning frame's worst frames, the
+   test worlds having marked all they knew as watched; known as a keeper
+   knows them (`0cb7e93`), every test passed on the Mac in CI run 1059,
+   with its coverage, frame times and the shaders compiled offline, and
+   its accessibility audit. The split is done.
