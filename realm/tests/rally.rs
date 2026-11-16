@@ -264,6 +264,10 @@ fn the_armies_set_out_together_wait_for_the_last_and_clear_as_one_what_neither_c
     let gifts = Table::<realm::rows::Boon>::by(&db, 0, bryn);
     assert_eq!(gifts.iter().map(|boon| (boon.giver, boon.level)).collect::<Vec<_>>(), vec![(ada, level)]);
     assert!(Table::<realm::rows::Boon>::by(&db, 0, ada).is_empty());
+    // Each army's owner is honoured for it, ten a level of the barrow.
+    for player in [ada, bryn] {
+        assert_eq!(rules::honour_of(&db, player).honour, rules::HONOUR_A_RALLY_LEVEL * level as u64);
+    }
     // The spoils shared are no more than the barrow held.
     let shared: u64 = Table::<Haul>::all(&db).iter().map(|haul| haul.grain + haul.timber + haul.stone + haul.moonsalt).sum();
     assert!(shared <= catalog::spoils(level).parts().iter().sum::<u64>());
@@ -294,6 +298,7 @@ fn a_rally_beaten_leaves_the_barrow_standing_and_each_army_its_own_losses() {
         assert_eq!(report.wounded + report.dead, brought, "everyone they brought fell");
         assert_eq!(rules::daily_of(&db, player).cleared, 0);
         assert!(rally_march(&db, player).is_none());
+        assert_eq!(rules::honour_of(&db, player).honour, 0, "no honour for a rally beaten");
     }
 }
 

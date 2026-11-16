@@ -431,6 +431,7 @@ pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
         for march in marches.iter() {
             did(db, march.owner, Deed::Clear, 1);
             scored(db, march.owner, Contest::Hunt, 10 * barrow.level as u64);
+            super::honoured_for_rally(db, march.owner, barrow.level);
         }
         found = super::yielded(db, marches[0].owner, barrow.level, barrow.id);
         super::give_boons(db, marches[0].owner, barrow.level);

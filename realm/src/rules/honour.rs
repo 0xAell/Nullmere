@@ -1,9 +1,10 @@
 //! Honour within an alliance, and the alliance's stores.
 //!
 //! A member earns honour by helping allies with their works, twenty a
-//! help, up to a thousand of it from helping in a day of the realm; and
-//! by giving goods toward what the alliance learns, one for every
-//! thousand taken. Honour is the member's own and stays with them through
+//! help, up to a thousand of it from helping in a day of the realm; by
+//! giving goods toward what the alliance learns, one for every thousand
+//! taken; and by fighting in a rally that clears a barrow, ten for each
+//! level of it. Honour is the member's own and stays with them through
 //! any alliance they are in. It buys hastes, peace and tomes from the stores
 //! of whatever alliance they are in now, at prices the realm writes out
 //! for clients to show.
@@ -21,6 +22,8 @@ pub const HONOUR_FROM_HELP_A_DAY: u64 = 1_000;
 pub const GOODS_AN_HONOUR: u64 = 1_000;
 /// The most of one thing bought at once.
 pub const MOST_BOUGHT: u64 = 100;
+/// Honour for each level of a barrow a rally clears, to each army's owner.
+pub const HONOUR_A_RALLY_LEVEL: u64 = 10;
 
 /// What the stores sell, and for how much honour each.
 pub const PRICES: [(Item, u64); 6] =
@@ -75,6 +78,14 @@ pub(super) fn honoured_for_giving(db: &mut impl Db, player: u64, taken: u64) {
     }
     let mut row = honour_of(db, player);
     row.honour += earned;
+    keep(db, row);
+}
+
+/// A player's army fought in a rally that cleared a barrow of a level:
+/// honour for it.
+pub(super) fn honoured_for_rally(db: &mut impl Db, player: u64, level: u32) {
+    let mut row = honour_of(db, player);
+    row.honour += HONOUR_A_RALLY_LEVEL * level as u64;
     keep(db, row);
 }
 
