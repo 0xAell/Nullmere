@@ -6,8 +6,9 @@
 # and its world must be rendering with Metal. Saves three pictures, each
 # at noon of the world's day: the player's first sight of their city and
 # their neighbours (rebuilt-world.png), the city's buildings open
-# (rebuilt-city.png), and the nearest barrow of the Unquiet chosen
-# (rebuilt-barrow.png).
+# (rebuilt-city.png), the nearest barrow of the Unquiet chosen
+# (rebuilt-barrow.png), and the realm's rankings open
+# (rebuilt-rankings.png).
 #
 #   swift build && scripts/smoke-test-rebuilt.sh
 #
@@ -75,6 +76,7 @@ $(grep -hE "renders with Metal|did not compile|could not be built|could not be m
 run build/rebuilt-world.png ""
 run build/rebuilt-city.png city
 run build/rebuilt-barrow.png barrow
+run build/rebuilt-rankings.png rankings
 
 # The player the app joined as is in the realm, with a city of their own.
 PLAYERS="$(python3 realm/people.py "$SERVER" "$DATABASE" --names || true)"

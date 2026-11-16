@@ -373,10 +373,10 @@ final class LiveGameTests: XCTestCase {
         let (session, played) = await playing()
         await LiveGameView.rehearse(session, [:]) { shown.append($0) }
         XCTAssertNil(session.selected)
-        for what in ["city", "troops", "reports", "nothing at all"] {
+        for what in ["city", "troops", "reports", "rankings", "nothing at all"] {
             await LiveGameView.rehearse(session, ["NULLMERE_REBUILT_NAME": "Ilsen", "NULLMERE_REBUILT_SHOW": what]) { shown.append($0) }
         }
-        XCTAssertEqual(shown, [.city, .troops, .reports])
+        XCTAssertEqual(shown, [.city, .troops, .reports, .rankings])
         XCTAssertEqual(session.selected, LiveHex(q: 10, r: -4))
         await LiveGameView.rehearse(session, ["NULLMERE_REBUILT_SHOW": "barrow"]) { shown.append($0) }
         XCTAssertEqual(session.selected, LiveHex(q: 8, r: -2), "The nearest barrow, chosen")

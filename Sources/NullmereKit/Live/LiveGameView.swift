@@ -158,7 +158,7 @@ public struct LiveGameView: View {
     /// For the smoke test, which can press nothing: joins under the name
     /// NULLMERE_REBUILT_NAME gives where a name is wanted, then shows what
     /// NULLMERE_REBUILT_SHOW names: the city's buildings, its troops, the
-    /// reports, or the nearest barrow or site chosen. It waits on the
+    /// reports, the rankings, or the nearest barrow or site chosen. It waits on the
     /// realm for as many tenths of a second as it has patience.
     static func rehearse(_ session: LiveSession, _ environment: [String: String], patience: Int = 150, show: (Panel) -> Void) async {
         func wait(until done: () -> Bool) async {
@@ -183,6 +183,8 @@ public struct LiveGameView: View {
             show(.troops)
         case "reports":
             show(.reports)
+        case "rankings":
+            show(.rankings)
         case "barrow":
             if let hex = nearest(session.world.barrows.values.map(\.hex)) {
                 session.go(to: hex)
