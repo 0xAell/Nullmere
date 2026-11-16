@@ -29,6 +29,21 @@ extension LiveWorld {
         for letter in after.lettersReceived where !letters.contains(letter.id) {
             told.append("A letter from \(after.shownName(of: letter.sender) ?? letter.name).")
         }
+        // Allies' help with the player's own works, as it comes.
+        let mine = after.me?.id
+        for plea in after.pleas where plea.asker == mine {
+            let had = before.pleas.first { $0.job == plea.job }?.helped ?? 0
+            let more = plea.helped - had
+            guard more > 0 else { continue }
+            let work: String
+            switch plea.work {
+            case LiveJob.raise: work = "your building"
+            case LiveJob.train: work = "your training"
+            case LiveJob.heal: work = "your healing"
+            default: work = "your studies"
+            }
+            told.append(more == 1 ? "An ally helped with \(work)." : "\(more) allies helped with \(work).")
+        }
         let gifts = Set(before.boons.map(\.id))
         for boon in after.boons where !gifts.contains(boon.id) {
             told.append("A gift from \(after.shownName(of: boon.giver) ?? "an ally")'s barrow: \(boon.goods.words).")
