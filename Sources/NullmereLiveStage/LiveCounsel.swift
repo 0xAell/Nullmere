@@ -163,6 +163,49 @@ public struct LiveCounsel: Sendable {
         return lines.isEmpty ? "Little is known of the realm beyond the city." : lines.joined(separator: " ")
     }
 
+    // MARK: What the commander may say
+
+    /// Every number written in figures in some words, as it would be
+    /// counted: "1,600" and "1600" alike are "1600".
+    static func numbers(in text: String) -> [String] {
+        let characters = Array(text)
+        var found: [String] = []
+        var index = 0
+        while index < characters.count {
+            guard characters[index].isASCII, characters[index].isNumber else {
+                index += 1
+                continue
+            }
+            var number = ""
+            while index < characters.count {
+                let character = characters[index]
+                if character.isASCII, character.isNumber {
+                    number.append(character)
+                } else if character == ",", index + 1 < characters.count, characters[index + 1].isASCII, characters[index + 1].isNumber {
+                    // A thousands mark between figures.
+                } else {
+                    break
+                }
+                index += 1
+            }
+            found.append(number)
+        }
+        return found
+    }
+
+    /// The numbers in an answer that nothing the commander was told holds:
+    /// neither their instructions and briefing nor the looks they took. A
+    /// commander invents no number; one that does is caught here, every
+    /// answer, before the player reads it as true.
+    public func strayNumbers(in answer: String, looks: [String] = []) -> [String] {
+        let told = Set(LiveCounsel.numbers(in: ([instructions, briefing] + looks).joined(separator: "\n")))
+        var stray: [String] = []
+        for number in LiveCounsel.numbers(in: answer) where !told.contains(number) && !stray.contains(number) {
+            stray.append(number)
+        }
+        return stray
+    }
+
     // MARK: What the commander may put forward
 
     /// A deed put forward in words: the one deed that can be done now

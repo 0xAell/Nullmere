@@ -849,6 +849,12 @@ final class LiveSessionTests: XCTestCase {
         let either = counsel.propose("a")
         XCTAssertNil(either.command)
         XCTAssertTrue(either.answer.hasPrefix("Say which: "), either.answer)
+
+        // Every number an answer gives must be one the commander was told.
+        XCTAssertEqual(LiveCounsel.numbers(in: "1,600 seen, 40 soldiers; 3, 4 and 2,000,000."), ["1600", "40", "3", "4", "2000000"])
+        XCTAssertEqual(counsel.strayNumbers(in: "Your Keep stands at level 3, my lord, with 40 soldiers ready."), [], "all told in the briefing or the look")
+        XCTAssertEqual(counsel.strayNumbers(in: "Raise the Farm to level 3; it wants 300 timber."), ["300"], "the Farm's cost was never told")
+        XCTAssertEqual(counsel.strayNumbers(in: "It wants 300 timber.", looks: ["The Farm to level 3 costs 300 timber."]), [], "unless a look told it")
     }
 
     /// Works under way are named, and hastened from the palette: by a
