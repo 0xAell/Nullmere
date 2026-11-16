@@ -1,38 +1,34 @@
 import Foundation
 import XCTest
-@testable import NullmereCore
 
 /// How fast this machine runs today: a fixed piece of plain work, none of
 /// it the game's, timed by this thread's CPU. scripts/perf-check.py scales
 /// the CPU figures' allowances by it, so a slower shared runner doesn't
 /// fail the build; and since none of the game's code is in it, the game's
-/// code growing slower can't raise its own allowance and pass.
+/// code growing slower can't raise its own allowance and pass. (The
+/// staging of the rebuilt realm's frame is timed beside it, in
+/// LiveStagingTimeTests.)
 final class CalibrationTests: XCTestCase {
+    /// The CPU time this thread has had, in seconds.
+    static func threadCPUSeconds() -> Double {
+        var time = timespec()
+        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &time)
+        return Double(time.tv_sec) + Double(time.tv_nsec) / 1e9
+    }
+
     func testTheMachinesPace() {
         var best = Double.infinity
         // The best of three: the machine at its steadiest.
         for _ in 0..<3 {
-            let started = RealmTests.threadCPUSeconds()
+            let started = Self.threadCPUSeconds()
             var folded = 0
             for round in 0..<6 {
                 folded ^= Self.plainWork(seed: UInt64(round))
             }
             XCTAssertNotEqual(folded, 0)
-            best = min(best, (RealmTests.threadCPUSeconds() - started) * 1000)
+            best = min(best, (Self.threadCPUSeconds() - started) * 1000)
         }
         print("PERFMETRIC calibration.cpu \(String(format: "%.3f", best))")
-
-        // The game's own work beside it, told and never held: how the two
-        // compare on this machine, for whoever sets the baselines.
-        let started = RealmTests.threadCPUSeconds()
-        var state = GameState(settings: GameSettings(seedText: "calibration", houseCount: 6, radius: 22, keepers: 0))
-        for _ in 0..<8 {
-            for house in state.livingHouses { _ = state.stewardTurn(for: house.id) }
-            _ = state.endWatch()
-        }
-        XCTAssertEqual(state.watch, 9)
-        print("PERF calibration beside the game's own work: plain \(String(format: "%.1f", best)) ms, "
-              + "eight watches of six stewards \(String(format: "%.1f", (RealmTests.threadCPUSeconds() - started) * 1000)) ms")
     }
 
     /// Numbers drawn, sorted, counted into a dictionary and folded together:

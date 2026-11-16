@@ -426,7 +426,6 @@ Sources/
   LauncherKit/        SwiftUI interface, Metal backdrop, services (on-device model, news)
   NullmereLauncher/   The Nullmere Online app's entry point
   NullmereLand/       The land the world is drawn on, apart from the rules: hexes and their layout, the map and its terrain, cities, their works and stores, the kinds of company. Pure Swift
-  NullmereCore/       The rules and the realm's authority: world generation, economy, war, diplomacy, stewards, keepers, watches, ages. Pure, deterministic Swift
   NullmereModels/     The world's shapes: the land's relief and mesh, the models made in Blender read from their glTF files, and every other model built from solids in code, with the rigs that move them. Pure Swift
   NullmereWorld/      The world as the GPU draws it, apart from the GPU: the camera, the shaders' source, the frame's data. Pure Swift
   NullmereRealm/      The line to a realm on a SpacetimeDB server: its HTTP API, subscriptions pushed over a WebSocket, the player's identity, trouble in plain words. Foundation only
@@ -435,7 +434,7 @@ Sources/
   NullmereSound/      The game's sound apart from the Mac's audio engine: the synthesiser, its instruments and their recorded notes (Recorded/, made by Art/sound/make.py), its hall and the score. Pure Swift
   NullmereTrailer/    The trailer apart from the GPU: its world, its shots and what moves in them, and its score. Pure Swift
   NullmereKit/        The window's realm: its screens over the rebuilt realm (Live/), the Metal world, the audio engine
-Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereLiveTests, NullmereLiveStageTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a stand-in line and sample realm, a stub HTTP server and WebSocket server)
+Tests/                LauncherCoreTests, LauncherKitTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereLiveTests, NullmereLiveStageTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a stand-in line and sample realm, a test world made by the land's generator, a stub HTTP server and WebSocket server)
 realm/                The rebuilt realm: its rules (Rust) inside one SpacetimeDB module, tested by realm/check.sh
 news/                 news.json, the launcher's news feed
 perf/                 CI's performance baseline; scripts/measure-mac.sh adds figures from real Macs in perf/mac/

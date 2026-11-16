@@ -1,24 +1,19 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
-// The rules, the realm's client and the launcher's own logic build anywhere
-// Swift does, Linux included. The app needs the Mac.
+// The land, the realm's client, the world as the renderer takes it and the
+// launcher's own logic build anywhere Swift does, Linux included. The app
+// needs the Mac.
 var products: [Product] = [
-    .library(name: "NullmereCore", targets: ["NullmereCore"]),
+    .library(name: "NullmereLand", targets: ["NullmereLand"]),
 ]
 var targets: [Target] = [
-    // The game's rules and the realm's authority: world, economy, war,
-    // diplomacy, keepers, watches and ages. Pure Swift, deterministic, and
-    // the same on every machine.
-    // The land the world is drawn on, apart from the rules: hexes and their
-    // layout, and the plain kinds and small numbers it is written in.
+    // The land the world is drawn on: hexes and their layout, the map, its
+    // terrain and its maker, cities and their works and stores, and the
+    // kinds of what stands on it. Pure Swift, deterministic, and the same
+    // on every machine.
     .target(
         name: "NullmereLand",
-        linkerSettings: [.linkedLibrary("m", .when(platforms: [.linux]))]
-    ),
-    .target(
-        name: "NullmereCore",
-        dependencies: ["NullmereLand"],
         linkerSettings: [.linkedLibrary("m", .when(platforms: [.linux]))]
     ),
     // The line to a realm on a SpacetimeDB server: its HTTP API, its
@@ -36,7 +31,6 @@ var targets: [Target] = [
     .target(name: "NullmereLiveStage", dependencies: ["NullmereLive", "NullmereRealm", "NullmereWorld", "NullmereModels", "NullmereLand"]),
     .testTarget(name: "NullmereLiveStageTests", dependencies: ["NullmereLiveStage", "NullmereLive", "NullmereWorld", "NullmereModels", "NullmereLand", "NullmereRealm",
                                                            "NullmereTestSupport"]),
-    .testTarget(name: "NullmereCoreTests", dependencies: ["NullmereCore"]),
     // The world's shapes: the land's relief and mesh, and every model in
     // it, built from solids in code, with the rigs that move them. Pure
     // Swift, so every shape is built and tested on Linux too.
@@ -55,9 +49,9 @@ var targets: [Target] = [
     // The trailer, apart from the GPU: its world, its shots and what moves
     // in them, and its score. Pure Swift, so every shot is staged and the
     // score rendered on Linux too; the Mac draws and encodes it.
-    .target(name: "NullmereTrailer", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound", "NullmereLive", "NullmereLiveStage", "NullmereRealm"],
+    .target(name: "NullmereTrailer", dependencies: ["NullmereLand", "NullmereModels", "NullmereWorld", "NullmereSound", "NullmereLive", "NullmereLiveStage", "NullmereRealm"],
             resources: [.copy("TrailerRows.json")]),
-    .testTarget(name: "NullmereTrailerTests", dependencies: ["NullmereTrailer", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound"]),
+    .testTarget(name: "NullmereTrailerTests", dependencies: ["NullmereTrailer", "NullmereLand", "NullmereModels", "NullmereWorld", "NullmereSound"]),
     // SpacetimeDB in memory, and credentials kept in memory, for tests of
     // the realm across the network: the realm's and the app's.
     .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereLive", "NullmereLiveStage", "NullmereLand", "NullmereWorld"], path: "Tests/NullmereTestSupport"),
@@ -89,7 +83,7 @@ targets += [
 if Context.environment["NULLMERE_TRAILER"] != nil {
     targets.removeAll { $0.type == .test && $0.name != "NullmereTrailerTests" }
     targets.append(.testTarget(name: "TrailerRenderTests",
-                               dependencies: ["NullmereTrailer", "NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound",
+                               dependencies: ["NullmereTrailer", "NullmereKit", "NullmereLand", "NullmereModels", "NullmereWorld", "NullmereSound",
                                               "LauncherCore", "LauncherKit"],
                                swiftSettings: [.unsafeFlags(["-Onone"])]))
 }

@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereSound
 
 /// The trailer's sound: the game's own night over the water and its own

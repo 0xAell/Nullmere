@@ -231,3 +231,13 @@ hold walled in stone). Two ways off the old rules:
 5. NullmereCore and NullmereCoreTests deleted; coverage floors and
    perf/baseline.json (realm.watch.*, calibration's home) follow:
    `CalibrationTests` lives in NullmereCoreTests and must move first.
+   Done on 16 November: the machine's pace (CalibrationTests) moved to
+   the rebuilt realm's stage's tests, without the old game's watches it
+   was told beside; the old realm's watch figures left the perf baseline;
+   the trailer and its tests import the land; and the rules (Sources/
+   NullmereCore, the 144 files left of them) and their 163 test files
+   went, with their coverage floor. What of the land only the rules used
+   is to be trimmed next:
+   members given package access for them, a map as a House knew it, the
+   generator's seats for Houses and its Frontier's gates, the units'
+   tiers and costs.

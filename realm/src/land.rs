@@ -13,7 +13,7 @@
 use crate::hex::Hex;
 
 /// What ground a hex is. The numbers are the ones the clients' renderer
-/// already knows these grounds by (`Terrain` in Sources/NullmereCore, in
+/// already knows these grounds by (`Terrain` in Sources/NullmereLand, in
 /// the order of its cases), so the land's bytes draw as they are.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]

@@ -92,21 +92,6 @@
       "limit": 16.7,
       "note": "the worst frames: half again the baseline, and never over a 60 Hz frame"
     },
-    "realm.watch.twelve-a": {
-      "baseline": 121,
-      "note": "thread CPU time per watch",
-      "cpu": true
-    },
-    "realm.watch.twelve-b": {
-      "baseline": 121,
-      "note": "thread CPU time per watch",
-      "cpu": true
-    },
-    "realm.watch.twelve-c": {
-      "baseline": 126,
-      "note": "thread CPU time per watch",
-      "cpu": true
-    },
     "calibration.cpu": {
       "baseline": 353,
       "calibration": true,

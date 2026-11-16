@@ -101,12 +101,11 @@ it is, a realm of your own (above) is the way in. Going live takes steps
 that need the maintainer's own accounts, each a checklist in
 [GO-LIVE.md](docs/GO-LIVE.md).
 
-The turn-based game the app used to open has been deleted from the app, its
-phone companion and its realm with it; its rules still sit in the package
-(`Sources/NullmereCore`) beside the land the world is drawn on, and are to
-go once the land stands apart ([core-split.md](docs/core-split.md)). The
-trailer was drawn from that game's world. The phone is to be rebuilt on the
-rebuilt realm.
+The turn-based game the app used to open has been deleted, its rules, its
+phone companion and its realm with it; the land the world is drawn on
+stands apart from it (`Sources/NullmereLand`, [core-split.md](docs/core-split.md)),
+and the trailer is drawn from the rebuilt realm's world. The phone is to be
+rebuilt on the rebuilt realm.
 
 ## Also in this repository
 

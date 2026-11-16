@@ -18,7 +18,6 @@ on:
       - Sources/NullmereRealm/**
       - Tests/NullmereRealmTests/**
       - Sources/NullmereLand/**
-      - Sources/NullmereCore/**
       - Sources/NullmereWorld/**
       - Sources/NullmereModels/**
       - Sources/NullmereSound/**
@@ -39,7 +38,6 @@ on:
       - Sources/NullmereRealm/**
       - Tests/NullmereRealmTests/**
       - Sources/NullmereLand/**
-      - Sources/NullmereCore/**
       - Sources/NullmereWorld/**
       - Sources/NullmereModels/**
       - Sources/NullmereSound/**
