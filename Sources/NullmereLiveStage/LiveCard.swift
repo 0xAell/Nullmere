@@ -27,6 +27,8 @@ public struct LiveCard: Equatable, Sendable {
         case reinforce
         /// Send a scout to find what the cairn chosen holds.
         case explore
+        /// Hasten a work under way in the city by a quarter, for goods.
+        case hasten(UInt64)
         /// Move the player's city to the ground chosen.
         case moveCity
     }
@@ -51,6 +53,7 @@ public struct LiveCard: Equatable, Sendable {
             case .scout: return "eye"
             case .reinforce: return "shield"
             case .explore: return "binoculars"
+            case .hasten: return "forward.fill"
             case .moveCity: return "arrow.up.and.down.and.arrow.left.and.right"
             }
         }
@@ -122,7 +125,14 @@ extension LiveSession {
                let name = world.buildings.first(where: { $0.id == job.subject }).flatMap({ world.blueprint($0.kind, level: 1)?.name }) {
                 lines.append("\(name) to level \(job.level): \(LiveWords.clock(Int(job.left(at: seconds).rounded(.up))))")
             }
-            return LiveCard(title: city.name, lines: lines, buttons: [.init(title: "Buildings", act: .city, why: nil), .init(title: "Troops", act: .troops, why: nil)])
+            var buttons: [LiveCard.Button] = [.init(title: "Buildings", act: .city, why: nil), .init(title: "Troops", act: .troops, why: nil)]
+            // The soonest work under way, hastened by a quarter for goods.
+            if let work = world.works(at: seconds).first {
+                let goods = world.stock?.goods(at: seconds) ?? LiveGoods()
+                let why = goods.covers(LiveWorld.hastening) ? nil : "Hastening takes \(LiveWorld.hastening.words)."
+                buttons.append(.init(title: "Hasten \(work.words)", act: .hasten(work.job.id), why: why))
+            }
+            return LiveCard(title: city.name, lines: lines, buttons: buttons)
 
         case .city(let city, let owner):
             let here = world.players[city.owner]?.online == true ? " They are here now." : ""
@@ -286,6 +296,7 @@ extension LiveSession {
             if let selected { await reinforce(at: selected) }
         case .explore:
             if let selected { await explore(at: selected) }
+        case .hasten(let job): await speedUp(job: job)
         case .moveCity:
             if let selected { await moveCity(to: selected) }
         case .city, .troops: break

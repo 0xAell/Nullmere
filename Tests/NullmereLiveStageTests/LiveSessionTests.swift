@@ -293,10 +293,11 @@ final class LiveSessionTests: XCTestCase {
         let home = card(10, -4)
         XCTAssertEqual(home.title, "Ada")
         XCTAssertEqual(home.lines, ["Your city. Keep level 3, power 1,000.", "Farm to level 3: 1:25"])
-        XCTAssertEqual(home.buttons.map(\.title), ["Buildings", "Troops"])
-        XCTAssertEqual(home.buttons.map(\.act), [.city, .troops])
-        XCTAssertEqual(home.buttons.map(\.icon), ["building.2", "person.3"], "each drawn as a symbol in the ring about it")
-        let acts: [LiveCard.Act] = [.city, .troops, .send, .recall(1), .rally, .raiseWard, .razeWard(1), .scout, .reinforce, .explore, .moveCity]
+        XCTAssertEqual(home.buttons.map(\.title), ["Buildings", "Troops", "Hasten the Farm to level 3"])
+        XCTAssertEqual(home.buttons.map(\.act), [.city, .troops, .hasten(4)])
+        XCTAssertEqual(home.buttons.map(\.icon), ["building.2", "person.3", "forward.fill"], "each drawn as a symbol in the ring about it")
+        XCTAssertEqual(home.buttons[2].why, "Hastening takes 300 grain, 300 timber and 300 stone.", "no goods in her city to hasten with")
+        let acts: [LiveCard.Act] = [.city, .troops, .send, .recall(1), .rally, .raiseWard, .razeWard(1), .scout, .reinforce, .explore, .hasten(1), .moveCity]
         XCTAssertEqual(Set(acts.map { LiveCard.Button(title: "", act: $0, why: nil).icon }).count, acts.count, "no two acts drawn alike")
         XCTAssertEqual(LiveCard.Button(title: "Gather with 40 soldiers", act: .send, why: nil).icon, "shippingbox")
         // Ada has one army out and a Keep of the third level: no second
