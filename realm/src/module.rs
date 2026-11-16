@@ -309,7 +309,7 @@ pub fn send(ctx: &ReducerContext, q: i32, r: i32, order: u8, soldiers: Vec<Soldi
     said(caller(ctx).and_then(|player| rules::send_led(&mut Stdb(ctx), player, Hex::new(q, r), order, &asked, leader)))
 }
 
-/// Call a rally of the caller's alliance against the barrow at a hex,
+/// Call a rally of the caller's alliance against the barrow or the city at a hex,
 /// with an army of the caller's own, under one of their commanders or
 /// under none with 0. It musters, and sets out when the muster ends.
 #[reducer]

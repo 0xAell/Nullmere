@@ -130,6 +130,7 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
     asking(db, player)?;
     let city = city_of(db, player)?;
     let realm = realm(db)?;
+    let mut against_city = false;
     let target = match kind {
         March::GATHER => {
             let site = match Table::<Place>::get(db, to.packed()) {
@@ -145,7 +146,13 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
         March::ATTACK => may_attack(db, player, to)?.id,
         March::SCOUT => may_scout(db, player, to, city.id)?.id,
         March::REINFORCE => may_reinforce(db, player, to)?.id,
-        March::RALLY => super::rally::may_go(db, player, to)?.id,
+        March::RALLY => match super::rally::may_go(db, player, to)? {
+            super::rally::Aim::Barrow(barrow) => barrow.id,
+            super::rally::Aim::City(city) => {
+                against_city = true;
+                city.id
+            }
+        },
         _ => return Err(Refusal::NoSuchOrder),
     };
     // What was asked, each kind and tier once.
@@ -178,10 +185,10 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
     let from = Hex::unpacked(city.hex);
     let way = land::way(realm.seed, realm.radius, from, to).ok_or(Refusal::NoWay)?;
 
-    if kind == March::HUNT || kind == March::RALLY {
+    if kind == March::HUNT || (kind == March::RALLY && !against_city) {
         spend_energy(db, player, false);
     }
-    if kind == March::ATTACK {
+    if kind == March::ATTACK || against_city {
         break_peace(db, city.clone());
     }
     for ask in &wanted {

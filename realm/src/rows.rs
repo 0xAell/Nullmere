@@ -826,7 +826,10 @@ pub struct Rally {
     /// Who called it, and their name as it was then.
     pub caller: u64,
     pub name: String,
+    /// What it goes against: a barrow, or another player's city (the
+    /// other 0), where it stands, and its level (the city's Keep's).
     pub barrow: u64,
+    pub city: u64,
     pub hex: u64,
     pub level: u32,
     /// When the muster ends and the armies set out.

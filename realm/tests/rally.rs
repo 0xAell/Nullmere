@@ -5,7 +5,7 @@
 use realm::catalog::{self, Building as Kind, Contest, Troops, Unit};
 use realm::hex::Hex;
 use realm::land;
-use realm::rows::{Barrow, Building, City, Haul, Hunt, March, Muster, Place, Rally, Report, Squad, Troop};
+use realm::rows::{Barrow, Building, City, Haul, Hunt, March, Muster, Place, Rally, Report, Squad, Stock, Troop};
 use realm::rules::{self, Asked, Refusal};
 use realm::store::{Mem, Seconds, Table};
 
@@ -98,7 +98,9 @@ fn a_member_calls_a_rally_against_a_barrow_beyond_their_own_reach() {
     // Only a member of an alliance calls a rally, and an army goes to one no other way.
     assert_eq!(db.call(|db| rules::call_rally(db, cole, to, &spears(100), 0)), Err(Refusal::NotAllied));
     assert_eq!(db.call(|db| rules::send(db, ada, to, March::RALLY, &spears(100))), Err(Refusal::NoSuchOrder));
-    assert_eq!(db.call(|db| rules::call_rally(db, ada, Hex::unpacked(cities[0].hex), &spears(100), 0)), Err(Refusal::NothingToFight));
+    assert_eq!(db.call(|db| rules::call_rally(db, ada, Hex::unpacked(cities[0].hex), &spears(100), 0)), Err(Refusal::OwnCity));
+    let empty = Hex::unpacked(cities[0].hex).within(3).into_iter().find(|hex| Table::<Place>::get(&db, hex.packed()).is_none()).unwrap();
+    assert_eq!(db.call(|db| rules::call_rally(db, ada, empty, &spears(100), 0)), Err(Refusal::NothingToFight));
 
     let rally = db.call(|db| rules::call_rally(db, ada, to, &spears(1_000), 0)).unwrap();
     assert_eq!((rally.caller, rally.barrow, rally.level, rally.state, rally.armies, rally.soldiers), (ada, barrow.id, 4, Rally::MUSTERING, 1, 1_000));
@@ -345,4 +347,169 @@ fn an_army_stands_down_from_the_muster_and_the_callers_standing_down_ends_the_ra
     wait(&mut db, catalog::RALLY_MUSTER);
     assert!(Table::<March>::all(&db).is_empty());
     assert_eq!(Table::<Barrow>::get(&db, barrow.id).unwrap().fighter, 0);
+}
+
+/// Ends a city's peace, and leaves so many spearmen ready in it and so
+/// much of each good in its store.
+fn open_to_attack(db: &mut Mem, city: &City, spearmen: u64, each: u64) {
+    let mut row = Table::<City>::get(db, city.id).unwrap();
+    row.shield = 0;
+    db.update(row);
+    rules::keep_troop(db, Troop { id: Troop::key(city.id, Troops::Spearmen as u8, 1), city: city.id, kind: Troops::Spearmen as u8, tier: 1, ready: spearmen, wounded: 0 });
+    let mut stock = rules::grown(&Table::<Stock>::get(db, city.id).unwrap(), db.clock);
+    (stock.grain, stock.timber, stock.stone, stock.moonsalt) = (each, each, each, 0);
+    db.update(stock);
+}
+
+fn reports(db: &Mem, player: u64, kind: u8) -> Vec<Report> {
+    let mut all: Vec<Report> = Table::<Report>::by(db, 0, player).into_iter().filter(|report| report.kind == kind).collect();
+    all.sort_by_key(|report| report.id);
+    all
+}
+
+fn haul(db: &Mem, march: u64) -> u64 {
+    Table::<Haul>::get(db, march).map(|haul| haul.grain + haul.timber + haul.stone + haul.moonsalt).unwrap_or(0)
+}
+
+fn stored(db: &Mem, city: &City) -> u64 {
+    let stock = rules::grown(&Table::<Stock>::get(db, city.id).unwrap(), db.clock);
+    stock.grain + stock.timber + stock.stone + stock.moonsalt
+}
+
+#[test]
+fn a_rally_against_a_city_musters_marches_and_storms_it_together() {
+    let (mut db, players, cities) = allies(&["Ada", "Bryn", "Cole"], &["Cole"]);
+    let (ada, bryn, cole) = (players[0], players[1], players[2]);
+    let walls = Hex::unpacked(cities[2].hex);
+
+    // Not against one's own city, nor an ally's, nor one at peace.
+    assert_eq!(db.call(|db| rules::call_rally(db, ada, Hex::unpacked(cities[1].hex), &spears(100), 0)), Err(Refusal::AllysCity));
+    assert!(matches!(db.call(|db| rules::call_rally(db, ada, walls, &spears(100), 0)), Err(Refusal::AtPeace(_))));
+    open_to_attack(&mut db, &cities[2], 500, 300_000);
+    wait(&mut db, 10);
+
+    let before = (energy(&db, ada), energy(&db, bryn));
+    let rally = db.call(|db| rules::call_rally(db, ada, walls, &spears(3_000), 0)).unwrap();
+    assert_eq!((rally.barrow, rally.city, rally.hex, rally.level, rally.state), (0, cities[2].id, cities[2].hex, cities[2].keep, Rally::MUSTERING));
+    // A second rally against the same city is refused; joining it is how.
+    assert_eq!(db.call(|db| rules::call_rally(db, bryn, walls, &spears(100), 0)), Err(Refusal::RallyCalled));
+    db.call(|db| rules::join_rally(db, bryn, rally.id, &spears(2_000), 0)).unwrap();
+    // No energy taken from either, as a hunt would; but each has given up their own city's peace.
+    assert_eq!((energy(&db, ada), energy(&db, bryn)), before);
+    for city in &cities[..2] {
+        assert!(Table::<City>::get(&db, city.id).unwrap().shield <= db.clock, "a city in the rally is no longer at peace");
+    }
+    // The city's owner is warned as the rally is called.
+    let warnings = reports(&db, cole, Report::WARNING);
+    assert_eq!(warnings.len(), 1);
+    assert!(warnings[0].words.starts_with("[MERE] Ada has called a rally against your city. Its armies set out in 5 minutes"), "{}", warnings[0].words);
+
+    // The muster ends: both set out, and the owner is warned again, of when the last is at the walls.
+    until(&mut db, rally.sets_out);
+    let marches: Vec<March> = [ada, bryn].iter().map(|player| rally_march(&db, *player).unwrap()).collect();
+    assert!(marches.iter().all(|march| march.state == March::GOING && march.target == cities[2].id));
+    let last = marches.iter().map(|march| march.arrives).max().unwrap();
+    let warnings = reports(&db, cole, Report::WARNING);
+    assert_eq!(warnings.len(), 2);
+    assert!(warnings[1].words.starts_with("[MERE] Ada's rally is marching on your city: 2 armies, 5,000 soldiers in all. The last of them is at your walls in "), "{}", warnings[1].words);
+
+    // The last up, the assault begins, and lasts as long as one army's would.
+    until(&mut db, last);
+    let fighting: Vec<March> = [ada, bryn].iter().map(|player| rally_march(&db, *player).unwrap()).collect();
+    assert!(fighting.iter().all(|march| march.state == March::FIGHTING && march.arrives == last + catalog::ASSAULT_SECONDS));
+    assert_eq!(Table::<Rally>::get(&db, rally.id).unwrap().state, Rally::FIGHTING);
+    let had = stored(&db, &cities[2]);
+    until(&mut db, last + catalog::ASSAULT_SECONDS);
+
+    // Taken by storm: the city at peace, the rally done, each army home-bound with its share.
+    assert!(Table::<Rally>::get(&db, rally.id).is_none());
+    assert_eq!(Table::<City>::get(&db, cities[2].id).unwrap().shield, db.clock + catalog::BEATEN_PEACE);
+    let home: Vec<March> = [ada, bryn].iter().map(|player| rally_march(&db, *player).unwrap()).collect();
+    assert!(home.iter().all(|march| march.state == March::RETURNING));
+    assert!(Table::<Muster>::all(&db).is_empty());
+    let (ada_took, bryn_took) = (haul(&db, home[0].id), haul(&db, home[1].id));
+    assert!(ada_took > bryn_took && bryn_took > 0, "shared by what each can bear: {ada_took} and {bryn_took}");
+    assert_eq!(had - stored(&db, &cities[2]), ada_took + bryn_took, "what left the city is what they carry");
+
+    for (player, march) in [ada, bryn].iter().zip(&home) {
+        let told = reports(&db, *player, Report::ATTACK);
+        assert_eq!(told.len(), 1);
+        assert!(told[0].won);
+        assert!(told[0].words.starts_with("Your alliance's rally took Cole's city by storm: 2 armies, 5,000 soldiers in all. "), "{}", told[0].words);
+        assert!(told[0].words.contains("Your army is bringing home"), "{}", told[0].words);
+        assert_eq!(told[0].grain + told[0].timber + told[0].stone + told[0].moonsalt, haul(&db, march.id));
+    }
+    let defence = reports(&db, cole, Report::DEFENCE);
+    assert_eq!(defence.len(), 1);
+    assert!(!defence[0].won);
+    assert_eq!((defence[0].foe, defence[0].stood), (ada, 5_000));
+    assert!(defence[0].words.starts_with("Ada's rally of 2 armies took your city by storm and carried off "), "{}", defence[0].words);
+    assert!(defence[0].words.ends_with(" Your city is at peace for 4 hours."), "{}", defence[0].words);
+}
+
+#[test]
+fn a_rally_beaten_at_the_walls_leaves_each_army_its_own_losses() {
+    let (mut db, players, cities) = allies(&["Ada", "Bryn", "Cole"], &["Cole"]);
+    let (ada, bryn, cole) = (players[0], players[1], players[2]);
+    open_to_attack(&mut db, &cities[2], 50_000, 300_000);
+    wait(&mut db, 10);
+    let rally = db.call(|db| rules::call_rally(db, ada, Hex::unpacked(cities[2].hex), &spears(1_000), 0)).unwrap();
+    db.call(|db| rules::join_rally(db, bryn, rally.id, &spears(500), 0)).unwrap();
+    until(&mut db, rally.sets_out);
+    let last = [ada, bryn].iter().map(|player| rally_march(&db, *player).unwrap().arrives).max().unwrap();
+    let had = stored(&db, &cities[2]);
+    until(&mut db, last + catalog::ASSAULT_SECONDS);
+
+    assert_eq!(stored(&db, &cities[2]), had, "nothing carried off");
+    assert_eq!(Table::<City>::get(&db, cities[2].id).unwrap().shield, 0, "no peace for a city that held");
+    let mut lost = 0;
+    for (player, sent) in [(ada, 1_000), (bryn, 500)] {
+        let told = reports(&db, player, Report::ATTACK);
+        assert_eq!(told.len(), 1);
+        assert!(!told[0].won);
+        assert_eq!(told[0].fought, sent, "each is told of their own army");
+        assert!(told[0].words.starts_with("Your alliance's rally was beaten at Cole's city: 2 armies, 1,500 soldiers in all. "), "{}", told[0].words);
+        lost += told[0].wounded + told[0].dead;
+    }
+    let defence = reports(&db, cole, Report::DEFENCE);
+    assert!(defence[0].won);
+    assert!(defence[0].words.starts_with("Ada's rally of 2 armies attacked your city and was beaten. "), "{}", defence[0].words);
+    assert_eq!(defence[0].fell, lost, "what the city's owner is told fell is what the armies lost");
+}
+
+#[test]
+fn a_city_at_peace_when_the_last_army_comes_up_sends_the_rally_home_and_one_no_one_joins_stands_down() {
+    let (mut db, players, cities) = allies(&["Ada", "Bryn", "Cole"], &["Cole"]);
+    let (ada, bryn, cole) = (players[0], players[1], players[2]);
+    open_to_attack(&mut db, &cities[2], 500, 300_000);
+    wait(&mut db, 10);
+    let rally = db.call(|db| rules::call_rally(db, ada, Hex::unpacked(cities[2].hex), &spears(1_000), 0)).unwrap();
+    db.call(|db| rules::join_rally(db, bryn, rally.id, &spears(500), 0)).unwrap();
+    until(&mut db, rally.sets_out);
+    let last = [ada, bryn].iter().map(|player| rally_march(&db, *player).unwrap().arrives).max().unwrap();
+    // The city comes under peace while they march.
+    let mut city = Table::<City>::get(&db, cities[2].id).unwrap();
+    city.shield = db.clock + 86_400;
+    db.update(city);
+    until(&mut db, last);
+    assert!(Table::<Rally>::get(&db, rally.id).is_none());
+    for player in [ada, bryn] {
+        assert_eq!(rally_march(&db, player).unwrap().state, March::RETURNING);
+        let told = reports(&db, player, Report::ATTACK);
+        assert!(told[0].words.starts_with("Your alliance's rally found nothing to storm"), "{}", told[0].words);
+    }
+    assert!(reports(&db, cole, Report::DEFENCE).is_empty());
+
+    // Home again, a rally no one joins stands down when its muster ends, its soldiers ready, no energy spent.
+    wait(&mut db, 100_000);
+    let mut row = Table::<City>::get(&db, cities[2].id).unwrap();
+    row.shield = 0;
+    db.update(row);
+    let before = (ready(&db, &cities[0]), energy(&db, ada));
+    let alone = db.call(|db| rules::call_rally(db, ada, Hex::unpacked(cities[2].hex), &spears(1_000), 0)).unwrap();
+    until(&mut db, alone.sets_out);
+    assert!(rally_march(&db, ada).is_none());
+    assert_eq!((ready(&db, &cities[0]), energy(&db, ada)), before);
+    let told = reports(&db, ada, Report::ATTACK);
+    assert_eq!(told.last().unwrap().words, "No one joined your rally against Cole's city. Your army has stood down.");
 }

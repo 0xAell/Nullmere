@@ -315,7 +315,7 @@ impl fmt::Display for Refusal {
             Refusal::AlreadyHelped => "You have helped with that already.",
             Refusal::HelpedEnough => "That work has had all the help it may.",
             Refusal::AlreadyRallying => "You have an army in a rally already.",
-            Refusal::RallyCalled => "Your alliance is rallying against that barrow already. Join it.",
+            Refusal::RallyCalled => "Your alliance has called a rally there already. Join it.",
             Refusal::NoSuchRally => "Your alliance has no such rally.",
             Refusal::RallyFull => "That rally has all the armies it can take.",
             Refusal::RallySetOut => "That rally has set out.",

@@ -162,6 +162,13 @@ pub(super) fn warn_of_attack(db: &mut impl Db, march: &March) {
     let now = db.now();
     let attacker = name_of(db, march.owner);
     let words = format!("{attacker}'s army is marching on your city, and arrives in {}.", catalog::spoken((march.arrives - now).max(0)));
+    warn(db, &city, march.owner, march.soldiers, words);
+}
+
+/// A warning to a city's owner of what is coming against it, from whom,
+/// and how many.
+pub(super) fn warn(db: &mut impl Db, city: &City, foe: u64, soldiers: u64, words: String) {
+    let now = db.now();
     report(
         db,
         Report {
@@ -171,9 +178,9 @@ pub(super) fn warn_of_attack(db: &mut impl Db, march: &March) {
             kind: Report::WARNING,
             hex: city.hex,
             won: false,
-            foe: march.owner,
+            foe,
             rounds: 0,
-            fought: march.soldiers,
+            fought: soldiers,
             wounded: 0,
             dead: 0,
             stood: 0,
@@ -215,29 +222,51 @@ pub(super) fn besiege(db: &mut impl Db, march: &mut March) -> bool {
 /// the Storehouse keeps safe, and the city is at peace for a while. Both
 /// players are told.
 pub(super) fn stormed(db: &mut impl Db, march: &mut March) {
-    let Some(mut city) = Table::<City>::get(db, march.target) else { return };
-    let (attacker, defender) = (name_of(db, march.owner), name_of(db, city.owner));
+    storm(db, std::slice::from_mut(march));
+}
 
-    let mut own = squads(db, march.id);
-    own.sort_by_key(|squad| (std::cmp::Reverse(squad.tier), squad.kind));
-    let army: Vec<Unit> = own.iter().filter_map(|squad| Troops::of(squad.kind).map(|kind| Unit { kind, tier: squad.tier, count: squad.count })).collect();
+/// A rally's assault on a city is over: its armies fought as one, under
+/// the caller's commander, whose army is first. Each loses what fell of
+/// its own and carries home wounded what its own city has room for; what
+/// is carried off is shared by what each can bear. Every army's owner is
+/// told, and the city's.
+pub(super) fn stormed_together(db: &mut impl Db, marches: &mut [March]) {
+    storm(db, marches);
+}
+
+fn storm(db: &mut impl Db, marches: &mut [March]) {
+    let Some(first) = marches.first() else { return };
+    let Some(mut city) = Table::<City>::get(db, first.target) else { return };
+    let (leader, attacker, defender) = (first.owner, name_of(db, first.owner), name_of(db, city.owner));
+    let armies = marches.len();
+    let rally = armies > 1;
+
+    // Every squad of every army, the best first, each remembering whose it is.
+    let mut own: Vec<(usize, Squad)> = Vec::new();
+    for (index, march) in marches.iter().enumerate() {
+        own.extend(squads(db, march.id).into_iter().map(|squad| (index, squad)));
+    }
+    own.sort_by_key(|(index, squad)| (std::cmp::Reverse(squad.tier), squad.kind, *index));
+    own.retain(|(_, squad)| Troops::of(squad.kind).is_some());
+    let army: Vec<Unit> = own.iter().filter_map(|(_, squad)| Troops::of(squad.kind).map(|kind| Unit { kind, tier: squad.tier, count: squad.count })).collect();
     let mut garrison: Vec<Troop> = Table::<Troop>::by(db, 0, city.id).into_iter().filter(|row| row.ready > 0 && Troops::of(row.kind).is_some()).collect();
     garrison.sort_by_key(|row| (std::cmp::Reverse(row.tier), row.kind));
     let defenders: Vec<Unit> = garrison.iter().filter_map(|row| Troops::of(row.kind).map(|kind| Unit { kind, tier: row.tier, count: row.ready })).collect();
     let wall = building_of(db, city.id, Kind::Wall).map(|building| building.level).unwrap_or(0);
     let mut rolls: Vec<u64> = (0..2 * MOST_ROUNDS).map(|_| db.chance()).collect();
     // A Wall shelters its city less from an army a wallbreaker leads.
-    let shelter = catalog::shelter(wall) * (100 - leading_of(db, march).breaches.min(100)) / 100;
-    let outcome = fight_learned(&army, &defenders, [led(db, march), super::defence_of(db, city.id, city.owner)], shelter, || rolls.pop().unwrap_or(0));
+    let shelter = catalog::shelter(wall) * (100 - leading_of(db, &marches[0]).breaches.min(100)) / 100;
+    let outcome = fight_learned(&army, &defenders, [led(db, &marches[0]), super::defence_of(db, city.id, city.owner)], shelter, || rolls.pop().unwrap_or(0));
 
-    // The army's fallen: half carried home wounded, while there is room.
-    let mut room = room_for_wounded(db, march.city);
-    let (mut wounded, mut dead) = (0, 0);
-    for (squad, lost) in own.iter_mut().zip(&outcome.attackers_lost) {
-        let saved = (lost / 2).min(room);
-        room -= saved;
-        wounded += saved;
-        dead += lost - saved;
+    // Each army's fallen: half carried home wounded, while its own city has room.
+    let mut room: Vec<u64> = marches.iter().map(|march| room_for_wounded(db, march.city)).collect();
+    let (mut fought, mut wounded, mut dead) = (vec![0u64; armies], vec![0u64; armies], vec![0u64; armies]);
+    for ((index, squad), lost) in own.iter_mut().zip(&outcome.attackers_lost) {
+        let saved = (lost / 2).min(room[*index]);
+        room[*index] -= saved;
+        fought[*index] += squad.count;
+        wounded[*index] += saved;
+        dead[*index] += lost - saved;
         squad.count -= lost;
         squad.wounded += saved;
         if squad.count + squad.wounded == 0 {
@@ -246,8 +275,11 @@ pub(super) fn stormed(db: &mut impl Db, march: &mut March) {
             db.update(squad.clone());
         }
     }
-    let fought: u64 = army.iter().map(|unit| unit.count).sum();
-    march.soldiers = fought - outcome.attackers_lost.iter().sum::<u64>();
+    for (index, march) in marches.iter_mut().enumerate() {
+        march.soldiers = fought[index] - wounded[index] - dead[index];
+    }
+    let together: u64 = fought.iter().sum();
+    let standing: u64 = marches.iter().map(|march| march.soldiers).sum();
 
     // The city's fallen: wounded within it, while there is room.
     let mut room = room_for_wounded(db, city.id);
@@ -263,12 +295,13 @@ pub(super) fn stormed(db: &mut impl Db, march: &mut March) {
     }
     let stood: u64 = defenders.iter().map(|unit| unit.count).sum();
     let fell: u64 = outcome.defenders_lost.iter().sum();
-    seen_by_leader(db, march, 2 * fell + fought / 10);
+    seen_by_leader(db, &marches[0], 2 * fell + together / 10);
     // Whoever kept the city has seen as much of its attackers fall.
-    let felled: u64 = outcome.attackers_lost.iter().sum();
-    super::seen_by_keeper(db, city.owner, 2 * felled);
+    super::seen_by_keeper(db, city.owner, 2 * (together - standing));
 
-    let mut taken = Goods::NONE;
+    // What is carried off: as much as all of them can bear, each army's
+    // share as much as it can bear of it.
+    let mut won = vec![Goods::NONE; armies];
     let now = db.now();
     let pace = realm(db).map(|realm| realm.pace).unwrap_or(1);
     if outcome.won {
@@ -277,45 +310,34 @@ pub(super) fn stormed(db: &mut impl Db, march: &mut March) {
             let safe = catalog::kept_safe(storehouse);
             let open = goods(&stock).parts().map(|part| part.saturating_sub(safe));
             let all: u64 = open.iter().sum();
-            let load = load(db, march);
-            taken = Goods::from_parts(open.map(|part| if all > load { (part as u128 * load as u128 / all as u128) as u64 } else { part }));
-            let left = goods(&stock).minus(taken);
+            let loads: Vec<u64> = marches.iter().map(|march| load(db, march)).collect();
+            let bearable: u64 = loads.iter().sum();
+            let taken = Goods::from_parts(open.map(|part| if all > bearable { (part as u128 * bearable as u128 / all as u128) as u64 } else { part }));
+            for (index, share) in won.iter_mut().enumerate() {
+                *share = if armies == 1 {
+                    taken
+                } else {
+                    Goods::from_parts(taken.parts().map(|part| (part as u128 * loads[index] as u128 / bearable.max(1) as u128) as u64))
+                };
+            }
+            let carried = won.iter().fold(Goods::NONE, |sum, share| sum.plus(*share));
+            let left = goods(&stock).minus(carried);
             set_goods(&mut stock, left);
             db.update(stock);
         }
-        if !taken.is_none() {
-            db.insert(Haul { march: march.id, owner: march.owner, grain: taken.grain, timber: taken.timber, stone: taken.stone, moonsalt: taken.moonsalt });
+        for (index, march) in marches.iter().enumerate() {
+            let share = won[index];
+            if !share.is_none() {
+                db.insert(Haul { march: march.id, owner: march.owner, grain: share.grain, timber: share.timber, stone: share.stone, moonsalt: share.moonsalt });
+            }
         }
         city.shield = now + catalog::paced(catalog::BEATEN_PEACE, pace);
         db.update(city.clone());
     }
+    let taken = won.iter().fold(Goods::NONE, |sum, share| sum.plus(*share));
 
     // Each side is told, in its own words.
-    let mut to_attacker = if outcome.won {
-        format!("Your army took {defender}'s city by storm.")
-    } else {
-        format!("Your army was beaten at {defender}'s city. {} of its defenders still stood.", catalog::grouped(stood - fell))
-    };
-    to_attacker += " ";
-    to_attacker += &fallen(fought, wounded, dead, "soldier", "soldiers");
-    if outcome.won {
-        to_attacker += &if taken.is_none() { " There was nothing to carry off.".to_string() } else { format!(" It is bringing home {taken}.") };
-    }
-    let mut to_defender = if outcome.won {
-        if taken.is_none() {
-            format!("{attacker}'s army took your city by storm, and found nothing to carry off.")
-        } else {
-            format!("{attacker}'s army took your city by storm and carried off {taken}.")
-        }
-    } else {
-        format!("{attacker}'s army attacked your city and was beaten. {} of its {} fell.", catalog::grouped(fought - march.soldiers), catalog::grouped(fought))
-    };
-    to_defender += " ";
-    to_defender += &if stood == 0 { "Your city had no defenders.".to_string() } else { fallen(stood, hurt, slain, "defender", "defenders") };
-    if outcome.won {
-        to_defender += &format!(" Your city is at peace for {}.", catalog::spoken(catalog::paced(catalog::BEATEN_PEACE, pace)));
-    }
-    let told = |player: u64, kind: u8, won: bool, foe: u64, mine: (u64, u64, u64), theirs: (u64, u64), words: String| Report {
+    let report_of = |player: u64, kind: u8, won: bool, foe: u64, mine: (u64, u64, u64), theirs: (u64, u64), goods: Goods, words: String| Report {
         id: 0,
         player,
         at: now,
@@ -329,14 +351,50 @@ pub(super) fn stormed(db: &mut impl Db, march: &mut March) {
         dead: mine.2,
         stood: theirs.0,
         fell: theirs.1,
-        grain: taken.grain,
-        timber: taken.timber,
-        stone: taken.stone,
-        moonsalt: taken.moonsalt,
+        grain: goods.grain,
+        timber: goods.timber,
+        stone: goods.stone,
+        moonsalt: goods.moonsalt,
         words,
         read: false,
     };
-    report(db, told(march.owner, Report::ATTACK, outcome.won, city.owner, (fought, wounded, dead), (stood, fell), to_attacker));
-    report(db, told(city.owner, Report::DEFENCE, !outcome.won, march.owner, (stood, hurt, slain), (fought, fought - march.soldiers), to_defender));
+    for (index, march) in marches.iter().enumerate() {
+        let mut words = match (rally, outcome.won) {
+            (false, true) => format!("Your army took {defender}'s city by storm."),
+            (false, false) => format!("Your army was beaten at {defender}'s city. {} of its defenders still stood.", catalog::grouped(stood - fell)),
+            (true, true) => format!("Your alliance's rally took {defender}'s city by storm: {armies} armies, {} soldiers in all.", catalog::grouped(together)),
+            (true, false) => format!(
+                "Your alliance's rally was beaten at {defender}'s city: {armies} armies, {} soldiers in all. {} of its defenders still stood.",
+                catalog::grouped(together),
+                catalog::grouped(stood - fell)
+            ),
+        };
+        words += " ";
+        words += &fallen(fought[index], wounded[index], dead[index], "soldier", "soldiers");
+        if outcome.won {
+            words += &match (won[index].is_none(), rally) {
+                (true, _) => " There was nothing to carry off.".to_string(),
+                (false, false) => format!(" It is bringing home {}.", won[index]),
+                (false, true) => format!(" Your army is bringing home {}.", won[index]),
+            };
+        }
+        report(db, report_of(march.owner, Report::ATTACK, outcome.won, city.owner, (fought[index], wounded[index], dead[index]), (stood, fell), won[index], words));
+    }
+    let by = if rally { format!("{attacker}'s rally of {armies} armies") } else { format!("{attacker}'s army") };
+    let mut to_defender = if outcome.won {
+        if taken.is_none() {
+            format!("{by} took your city by storm, and found nothing to carry off.")
+        } else {
+            format!("{by} took your city by storm and carried off {taken}.")
+        }
+    } else {
+        format!("{by} attacked your city and was beaten. {} of its {} fell.", catalog::grouped(together - standing), catalog::grouped(together))
+    };
+    to_defender += " ";
+    to_defender += &if stood == 0 { "Your city had no defenders.".to_string() } else { fallen(stood, hurt, slain, "defender", "defenders") };
+    if outcome.won {
+        to_defender += &format!(" Your city is at peace for {}.", catalog::spoken(catalog::paced(catalog::BEATEN_PEACE, pace)));
+    }
+    report(db, report_of(city.owner, Report::DEFENCE, !outcome.won, leader, (stood, hurt, slain), (together, together - standing), taken, to_defender));
     reckon(db, city.id);
 }
