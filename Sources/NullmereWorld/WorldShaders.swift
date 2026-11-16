@@ -160,6 +160,22 @@ public enum WorldShaders {
         return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
     }
 
+    // The noise's slope at a point, from the same four corners one lookup
+    // reads: how much it rises a unit east and a unit south, for a relief
+    // the light finds, at a third of the cost of reading it three times.
+    float2 nm_noiseSlope(float2 p) {
+        float2 i = floor(p);
+        float2 f = fract(p);
+        float2 u = f * f * (3.0 - 2.0 * f);
+        float2 du = 6.0 * f * (1.0 - f);
+        float a = nm_hash12(i);
+        float b = nm_hash12(i + float2(1.0, 0.0));
+        float c = nm_hash12(i + float2(0.0, 1.0));
+        float d = nm_hash12(i + float2(1.0, 1.0));
+        float k = a - b - c + d;
+        return du * float2(b - a + k * u.y, c - a + k * u.x);
+    }
+
     float nm_fbm(float2 p) {
         float total = 0.0;
         float amplitude = 0.5;
@@ -233,7 +249,7 @@ public enum WorldShaders {
             float3 reach = mix(dry, lush, smoothstep(0.3, 0.7, country));
             // Swards a hex or less across, some yellower and some bluer, so
             // a meadow under the sun is never one green.
-            float sward = nm_fbm2(p * 1.9 + float2(5.3, 27.1));
+            float sward = nm_noise(p * 1.9 + float2(5.3, 27.1));
             reach *= mix(float3(1.07, 1.03, 0.82), float3(0.86, 1.0, 0.98), smoothstep(0.3, 0.7, sward));
             // Glades: paler grass in rounds a hex or so across.
             float glade = smoothstep(0.6, 0.8, nm_fbm2(p * 0.9 + float2(41.0, 8.0)));
@@ -849,14 +865,13 @@ public enum WorldShaders {
             // None at night, none once smaller than a few pixels.
             float green = clamp((colour.g - max(colour.r, colour.b)) * 7.0, 0.0, 1.0);
             float bare = (1.0 - green) * (1.0 - smoothstep(0.3, 0.42, min(colour.r, min(colour.g, colour.b)))) * step(0.0, world.y);
-            float tussocks = day * (green + 0.55 * bare) * (1.0 - smoothstep(0.03, 0.08, pixel));
+            // Only while a tussock, a third of a world unit, is some twenty
+            // pixels or more: a realm's wide view near (CI run 1065: the
+            // ninety-six seats' frame past its 16.7 ms) pays nothing for it.
+            float tussocks = day * (green + 0.55 * bare) * (1.0 - smoothstep(0.009, 0.016, pixel));
             if (tussocks > 0.0) {
-                float2 q = grounded.xz * 3.1;
-                float here = nm_noise(q);
-                float2 slope = float2(nm_noise(q + float2(0.3, 0.0)) - here, nm_noise(q + float2(0.0, 0.3)) - here);
-                float2 r = grounded.xz * 8.7 + float2(13.0, 7.0);
-                float fine = nm_noise(r);
-                slope += 0.6 * float2(nm_noise(r + float2(0.3, 0.0)) - fine, nm_noise(r + float2(0.0, 0.3)) - fine);
+                float2 slope = 0.3 * nm_noiseSlope(grounded.xz * 3.1)
+                    + 0.18 * nm_noiseSlope(grounded.xz * 8.7 + float2(13.0, 7.0));
                 n = normalize(n - float3(slope.x, 0.0, slope.y) * 2.0 * tussocks);
             }
         #else
@@ -997,11 +1012,8 @@ public enum WorldShaders {
             * (1.0 - smoothstep(0.04, 0.12, max(fwidth(world.x), fwidth(world.z))));
         if (daylit > 0.0) {
             float2 w = (world.xz + frame.origin.xy) * 2.3;
-            float2 a = w + nm_drift(time, 0.06);
-            float2 b = w * 1.9 + float2(7.0, 3.0) - nm_drift(time + 11.0, 0.05);
-            float ha = nm_noise(a), hb = nm_noise(b);
-            float2 slope = float2(nm_noise(a + float2(0.25, 0.0)) - ha, nm_noise(a + float2(0.0, 0.25)) - ha)
-                + 0.6 * float2(nm_noise(b + float2(0.25, 0.0)) - hb, nm_noise(b + float2(0.0, 0.25)) - hb);
+            float2 slope = 0.25 * nm_noiseSlope(w + nm_drift(time, 0.06))
+                + 0.15 * nm_noiseSlope(w * 1.9 + float2(7.0, 3.0) - nm_drift(time + 11.0, 0.05));
             float3 wave = normalize(float3(-slope.x * 1.5 * daylit, 1.0, -slope.y * 1.5 * daylit));
             float3 sun = normalize(frame.key.xyz);
             body *= 1.0 + 0.9 * (dot(wave, sun) - sun.y);
