@@ -65,6 +65,25 @@ and economy. Random.swift is used by no kept source, only HexTests.
   Models directly. They go with the old rules, and scripts/check-voices.sh
   with them; check-counsel.sh moves to the rebuilt realm's counsel.
 
+## The trailer's world, without the old game
+
+TrailerWorld plays twelve stewards for 72 watches and then dresses three
+holds by hand (a seat raised whole, a Moonspire at its third stage, a
+hold walled in stone). Two ways off the old rules:
+
+- **The rebuilt realm's own world (preferred).** The realm's rules run
+  here (`cargo test` in realm/): a small Rust test or binary opens a realm,
+  joins a dozen players beside each other, plays their cities up for a
+  while at the realm's pace, and writes the rows a client would read
+  (land chunks, cities, buildings, sites, barrows) to a JSON file kept
+  with the trailer. TrailerWorld reads it through `LiveWorld` and
+  `LiveWindow`, which already turn those rows into the renderer's map and
+  holds, and dresses its three holds as now. The trailer then shows the
+  game as it is, not the one deleted.
+- A snapshot of the world the old game made, written once by a Mac test
+  and kept as a file: no Swift runs here to write it, so it would need a
+  CI step to bring the file back, and it keeps the old game's look.
+
 ## Order
 
 1. The trailer's world without GameState (its pictures compared before
