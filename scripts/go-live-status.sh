@@ -99,57 +99,18 @@ else
     also "scripts/set-release-secrets.sh DeveloperID.p12 AuthKey_XXXXXXXXXX.p8 <issuer id>, then tag a version"
 fi
 
-# 3. On a real Mac: the voices heard with Apple Intelligence, a commander's
-# counsel heard from the same model within its rules, and the figures
-# measured on Apple silicon, all on record (scripts/check-on-mac.sh).
-on_mac=0
-report="$(ls perf/mac/*-voices.txt 2>/dev/null | head -n 1 || true)"
-[ -n "$report" ] || report=build/voices-report.txt
-if [ -s "$report" ] && grep -q "Every line within the rules." "$report"; then
-    line "3. The voices" "HEARD, within their rules ($report)"
-    on_mac=$((on_mac + 1))
-elif [ -s "$report" ]; then
-    line "3. The voices" "OUT OF BOUNDS: see $report"
-    also "scripts/check-voices.sh"
-else
-    line "3. The voices" "NOT YET HEARD"
-    also "scripts/check-on-mac.sh  (on a Mac with Apple Intelligence)"
-fi
-counsel="$(ls perf/mac/*-counsel.txt 2>/dev/null | head -n 1 || true)"
-[ -n "$counsel" ] || counsel=build/counsel-report.txt
-if [ -s "$counsel" ] && grep -q "Counsel kept to its rules." "$counsel"; then
-    line "3. Counsel" "HEARD from the model, within its rules ($counsel)"
-    on_mac=$((on_mac + 1))
-elif [ -s "$counsel" ] && head -n 1 "$counsel" | grep -q ", not ready ("; then
-    line "3. Counsel" "UNVERIFIED: that Mac's model wasn't ready ($counsel)"
-    also "scripts/check-on-mac.sh  (on a Mac with Apple Intelligence)"
-elif [ -s "$counsel" ]; then
-    line "3. Counsel" "OUT OF BOUNDS: see $counsel"
-    also "scripts/check-counsel.sh"
-else
-    line "3. Counsel" "NOT YET HEARD"
-    also "scripts/check-on-mac.sh  (on a Mac with Apple Intelligence)"
-fi
-# Counsel and the clerk on the phone, through the simulator whose model is
-# its Mac's: told beside the Mac's own, not counted among step 3's three.
-phone="$(ls perf/mac/*-counsel-phone.txt 2>/dev/null | head -n 1 || true)"
-[ -n "$phone" ] || phone=build/counsel-phone-report.txt
-if [ -s "$phone" ] && grep -q "Counsel kept to its rules." "$phone"; then
-    line "3. On the phone" "HEARD from its Mac's model, within its rules ($phone)"
-elif [ -s "$phone" ]; then
-    line "3. On the phone" "UNVERIFIED or OUT OF BOUNDS: see $phone"
-else
-    line "3. On the phone" "NOT YET HEARD: scripts/check-on-mac.sh (on a Mac with Apple Intelligence and an iPhone simulator)"
-fi
+# 3. On a real Mac: the figures measured on Apple silicon, on record
+# (scripts/check-on-mac.sh). The rebuilt realm's counsel through Apple's
+# on-device model has no check on a real Mac yet (docs/GAPS.md).
 measured="$(ls perf/mac/*.json 2>/dev/null | tr '\n' ' ' || true)"
 if [ -n "$measured" ]; then
     line "3. The figures" "MEASURED: $measured"
-    on_mac=$((on_mac + 1))
+    done_steps=$((done_steps + 1))
 else
     line "3. The figures" "NOT YET MEASURED"
     also "scripts/check-on-mac.sh  (on a Mac with Apple silicon)"
 fi
-[ "$on_mac" = 3 ] && done_steps=$((done_steps + 1))
+line "3. Counsel" "NO CHECK YET on a real Mac: the rebuilt realm's counsel through Apple's on-device model (docs/GAPS.md)"
 
 # 4. VoiceOver, listened to: no machine can tell how it sounds.
 line "4. VoiceOver" "BY EAR: docs/GO-LIVE.md, step 4 (CI audits every screen and walks the map: scripts/ui-test.sh)"

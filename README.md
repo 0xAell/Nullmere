@@ -49,7 +49,7 @@ interface over it: [the trailer](https://github.com/ael-dev3/Nullmere/releases/t
 
 You need a Mac with Apple silicon on macOS 26 Tahoe or later, with Apple
 Intelligence turned on and its model downloaded (System Settings), and
-Xcode 26 or later to build. The voices speak through Apple's
+Xcode 26 or later to build. Commanders take counsel through Apple's
 [Foundation Models](https://developer.apple.com/documentation/foundationmodels)
 framework, so the game runs only where that model does.
 

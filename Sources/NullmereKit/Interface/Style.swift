@@ -1,7 +1,7 @@
 import AppKit
 import LauncherCore
 import LauncherKit
-import NullmereCore
+import NullmereLand
 import NullmereWorld
 import Observation
 import SwiftUI

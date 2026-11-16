@@ -1,7 +1,6 @@
 import AppKit
 import LauncherCore
 import LauncherKit
-import NullmereCounsel
 import NullmereKit
 import SwiftUI
 
@@ -27,44 +26,6 @@ struct NullmereOnlineApp: App {
 @MainActor
 final class OnlineAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // The checks are heard in debug builds, and in a release build made
-        // for them alone (scripts/build-app.sh with CHECKS=1, which defines
-        // NULLMERE_CHECKS); the app as it ships never heeds them.
-        #if DEBUG || NULLMERE_CHECKS
-        // scripts/check-voices.sh: the voices heard from this Mac's own
-        // model, asked by the app as it runs on a keeper's Mac, each line
-        // held to the voices' rules; the report written, the app goes.
-        if let path = ProcessInfo.processInfo.environment["NULLMERE_VOICES_REPORT"], !path.isEmpty {
-            Task { @MainActor in
-                // The model's state settles a moment after the app opens:
-                // asked at once, it can say this Mac isn't eligible while
-                // the launcher, asking later, finds it ready.
-                let opened = Date()
-                while !OnDeviceVoice.isAvailable, Date().timeIntervalSince(opened) < 30 {
-                    try? await Task.sleep(for: .seconds(1))
-                }
-                let report = await VoiceCheck.run(OnDeviceVoice(), source: "Apple's on-device model on this Mac, \(OnDeviceVoice.availability)")
-                try? report.text.write(toFile: path, atomically: true, encoding: .utf8)
-                exit(report.failures.isEmpty ? 0 : 1)
-            }
-            return
-        }
-        // scripts/check-counsel.sh: counsel taken of a commander through this
-        // Mac's own model, as a keeper takes it, held to counsel's rules; the
-        // report written, the app goes.
-        if let path = ProcessInfo.processInfo.environment["NULLMERE_COUNSEL_REPORT"], !path.isEmpty {
-            Task { @MainActor in
-                let opened = Date()
-                while !OnDeviceVoice.isAvailable, Date().timeIntervalSince(opened) < 30 {
-                    try? await Task.sleep(for: .seconds(1))
-                }
-                let report = await CounselCheck.run()
-                try? report.text.write(toFile: path, atomically: true, encoding: .utf8)
-                exit(report.failures.isEmpty ? 0 : 1)
-            }
-            return
-        }
-        #endif
         // A copy already running: it comes forward, and this one goes.
         if SingleInstance.handOver() {
             NSApp.terminate(nil)

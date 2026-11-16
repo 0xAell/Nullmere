@@ -175,6 +175,18 @@ hold walled in stone). Two ways off the old rules:
    NullmereLand and NullmereModels alone.
 3. Test fixtures rebuilt on it, a few files at a time, each step green.
 4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
+   Done on 16 November: the old game's voices (Voices.swift,
+   VoiceCheck.swift and their three test files), its counsel
+   (NullmereCounsel and its tests), the app's debug reports that asked
+   them through this Mac's model (`NULLMERE_VOICES_REPORT`,
+   `NULLMERE_COUNSEL_REPORT`), their scripts (check-voices.sh,
+   check-counsel.sh), the release build made for them (`CHECKS=1`) and
+   the Model check workflow that ran it. check-on-mac.sh measures the
+   figures alone, and go-live-status.sh's third step is the figures. The
+   rebuilt realm's counsel (`LiveCounselSession`) has no check on a real
+   Mac yet: recorded in docs/GAPS.md, and the next thing for counsel
+   (plan 6.1). NullmereKit then names nothing of the rules but Lake and
+   StoreMarks, the land's, and depends on NullmereLand, not the rules.
 5. NullmereCore and NullmereCoreTests deleted; coverage floors and
    perf/baseline.json (realm.watch.*, calibration's home) follow:
    `CalibrationTests` lives in NullmereCoreTests and must move first.

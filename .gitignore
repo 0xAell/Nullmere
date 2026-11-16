@@ -1,6 +1,5 @@
 .DS_Store
 /.build/
-/.build-checks/
 /build/
 /.swiftpm/
 *.xcodeproj/xcuserdata/

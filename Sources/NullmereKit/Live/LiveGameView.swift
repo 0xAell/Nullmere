@@ -1,6 +1,6 @@
 import Foundation
 import LauncherCore
-import NullmereCore
+import NullmereLand
 import NullmereLive
 import NullmereLiveStage
 import NullmereModels

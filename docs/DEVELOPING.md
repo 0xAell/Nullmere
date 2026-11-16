@@ -91,7 +91,6 @@ make smoke                 # build the app, open the launcher, check it starts a
 make smoke-menu            # open a debug build of the launcher with the model ready, Apple Intelligence off and the model downloading; type into it, photograph every screen
 make smoke-realm           # publish realm/ to the SpacetimeDB server on this Mac, play a dozen players in, press Play, take pictures
 scripts/ui-test.sh         # through Xcode's UI testing: every screen put to its accessibility audit, the map walked as VoiceOver walks it
-scripts/check-voices.sh    # the turn-based game's voices, spoken by this Mac's on-device model through the debug app (CI no longer runs it)
 ```
 
 CI runs all of these but the voices on a macOS 26 runner for every pull request and every
@@ -147,7 +146,6 @@ builds also take:
 | `NULLMERE_REBUILT_SHOW` | Once in: `city` or `troops` (the city chosen, its buildings or troops open), `reports`, `rankings`, or `barrow` or `site` (the nearest chosen) |
 | `NULLMERE_IDENTITY_FILE` | Keep the player's identity in this file instead of the keychain |
 | `NULLMERE_TEXT` | `larger`: show the larger type without remembering it |
-| `NULLMERE_COUNSEL_REPORT` | Take counsel of a commander through this Mac's own model, held to counsel's rules, write the report to this file and quit (scripts/check-counsel.sh) |
 
 Release builds ignore them all and always require the model.
 
@@ -437,8 +435,7 @@ Sources/
   NullmereSound/      The game's sound apart from the Mac's audio engine: the synthesiser, its instruments and their recorded notes (Recorded/, made by Art/sound/make.py), its hall and the score. Pure Swift
   NullmereTrailer/    The trailer apart from the GPU: its world, its shots and what moves in them, and its score. Pure Swift
   NullmereKit/        The window's realm: its screens over the rebuilt realm (Live/), the Metal world, the audio engine
-  NullmereCounsel/    Counsel of a House's commanders through Apple's on-device model (Foundation Models), and its check on a real Mac
-Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereLiveTests, NullmereLiveStageTests, NullmereCounselTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a stand-in line and sample realm, a stub HTTP server and WebSocket server)
+Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereLiveTests, NullmereLiveStageTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a stand-in line and sample realm, a stub HTTP server and WebSocket server)
 realm/                The rebuilt realm: its rules (Rust) inside one SpacetimeDB module, tested by realm/check.sh
 news/                 news.json, the launcher's news feed
 perf/                 CI's performance baseline; scripts/measure-mac.sh adds figures from real Macs in perf/mac/

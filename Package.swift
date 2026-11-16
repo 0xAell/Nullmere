@@ -74,17 +74,13 @@ products.append(.executable(name: "NullmereLauncher", targets: ["NullmereLaunche
 targets += [
     // The SwiftUI/AppKit/Metal launcher interface.
     .target(name: "LauncherKit", dependencies: ["LauncherCore"]),
-    // Counsel of a House's commanders, spoken by Apple's on-device model
-    // through the Foundation Models framework.
-    .target(name: "NullmereCounsel", dependencies: ["NullmereCore"]),
-    .testTarget(name: "NullmereCounselTests", dependencies: ["NullmereCounsel", "NullmereCore"]),
     // The window's realm: its screens, the Metal world, its sound.
-    .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel",
+    .target(name: "NullmereKit", dependencies: ["NullmereLand", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound",
                                                 "NullmereLive", "NullmereLiveStage", "LauncherCore", "LauncherKit"]),
     // The "Nullmere Online" app: the launcher, and through Play, the realm.
-    .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherCore", "LauncherKit", "NullmereKit", "NullmereCounsel"]),
+    .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherCore", "LauncherKit", "NullmereKit"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
-    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereLive", "NullmereLiveStage", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
+    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereLive", "NullmereLiveStage", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
 // The trailer drawn by the game's own renderers and written to a film,
 // built only when scripts/render-trailer.sh asks for it: then the trailer's

@@ -1,20 +1,14 @@
 #!/usr/bin/env bash
-# Everything going live asks of a real Mac, in one command: Apple's
-# on-device model heard speaking every voice within its rules
-# (scripts/check-voices.sh), a commander taking counsel through it, held to
-# counsel's rules (scripts/check-counsel.sh), the game's frame, GPU and
-# turn figures measured on Apple silicon beside CI's (scripts/measure-mac.sh).
-# The figures are kept in perf/mac/ and, when all pass, committed, so they
-# are on record.
-# Needs a Mac with Apple silicon, macOS 26, Xcode 26, and Apple
-# Intelligence turned on and downloaded.
+# What going live asks of a real Mac, in one command: the frame, GPU and
+# other figures CI holds the game to, measured on Apple silicon beside CI's
+# (scripts/measure-mac.sh). The figures are kept in perf/mac/ and, when
+# they pass, committed, so they are on record. (The rebuilt realm's counsel
+# through Apple's on-device model has no check on a real Mac yet:
+# docs/GAPS.md.)
+# Needs a Mac with Apple silicon, macOS 26 and Xcode 26.
 #
-#   scripts/check-on-mac.sh             # check, hear, measure, commit
-#   scripts/check-on-mac.sh --no-commit # check, hear, measure; leave perf/mac/ to commit
-#
-# Each part runs even when another fails; the summary says which passed,
-# and the command fails unless all did. Counsel not taken because this Mac's
-# model isn't ready is said to be unverified, not passed.
+#   scripts/check-on-mac.sh             # check, measure, commit
+#   scripts/check-on-mac.sh --no-commit # check, measure; leave perf/mac/ to commit
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -35,30 +29,16 @@ xcodebuild -version >/dev/null 2>&1 || fail "this needs Xcode 26: install it, th
 echo "This Mac: $(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo 'Apple silicon'), macOS $(sw_vers -productVersion), $(xcodebuild -version | head -n 1)"
 echo
 
-voices=failed
-counsel=failed
 figures=failed
-echo "== 1 of 3: the voices"
-if scripts/check-voices.sh; then voices=passed; fi
-echo
-echo "== 2 of 3: a commander's counsel"
-heard=0
-scripts/check-counsel.sh || heard=$?
-case "$heard" in
-    0) counsel=passed ;;
-    2) counsel="unverified (the model isn't ready)" ;;
-esac
-echo
-echo "== 3 of 3: the figures"
+echo "== The figures"
 if scripts/measure-mac.sh; then figures=passed; fi
 
 echo
 echo "== Summary"
-printf '  %-28s %s\n' "The voices (Apple Intelligence)" "$voices" "Counsel (Apple Intelligence)" "$counsel" \
-    "The figures (Apple silicon)" "$figures"
-if [ "$voices" != passed ] || [ "$counsel" != passed ] || [ "$figures" != passed ]; then
+printf '  %-28s %s\n' "The figures (Apple silicon)" "$figures"
+if [ "$figures" != passed ]; then
     echo
-    echo "error: not everything passed; nothing was committed. See build/voices-report.txt, build/counsel-report.txt, and build/mac-perf.log." >&2
+    echo "error: the figures didn't pass; nothing was committed. See build/mac-perf.log." >&2
     exit 1
 fi
 
@@ -67,7 +47,7 @@ if [ "$commit" = 1 ]; then
     if git diff --cached --quiet -- perf/mac; then
         echo "Nothing new to commit in perf/mac/."
     else
-        git commit -m "Hear the voices and counsel, and measure the game on $(sysctl -n hw.model)" -- perf/mac
+        git commit -m "Measure the game on $(sysctl -n hw.model)" -- perf/mac
         echo "Committed. Put it on record: git push"
     fi
 else
