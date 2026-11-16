@@ -257,14 +257,19 @@ public enum WorldShaders {
         }
         // Salt: the palest, least coloured ground. Under the sun it stood a
         // blank glare (run 991's pictures: a salt flat at 227, 223, 211,
-        // read as a cloud); it is set a little lower and crusted, thin dark
-        // cracks wandering through it and its crust patchy. Only where
-        // there is salt.
-        float salt = smoothstep(0.62, 0.72, least) * (1.0 - growth);
+        // read as a cloud; run 1018's, at 228 to 237 under the brighter
+        // day, as snow beside grass at 72 to 127). It is set lower, toward
+        // a warm grey, and crusted: its crust patchy and thin dark cracks
+        // wandering through it, plain enough to read as a flat of salt.
+        // Only where there is salt: the palest ground but snow, and warm
+        // where snow is blue (by the linear colours the land is lit by, in
+        // which salt's least is near half; at the 0.62 asked before, no
+        // salt ever was, and none of this was drawn).
+        float salt = smoothstep(0.38, 0.44, least) * smoothstep(0.03, 0.08, albedo.r - albedo.b) * (1.0 - growth);
         if (salt > 0.0) {
             float crack = 1.0 - smoothstep(0.0, 0.035, abs(nm_noise(p * 1.7 + float2(5.0, 13.0)) - 0.5));
-            float crust = 0.9 + 0.12 * nm_fbm2(p * 2.6 + float2(31.0, 2.0));
-            shown *= mix(1.0, 0.86 * crust * (1.0 - 0.22 * crack), salt);
+            float crust = 0.84 + 0.2 * nm_fbm2(p * 2.6 + float2(31.0, 2.0));
+            shown *= mix(float3(1.0), float3(0.72, 0.7, 0.66) * crust * (1.0 - 0.35 * crack), salt);
         }
         // Blades and grit, close to: none looked for once they are smaller
         // than a pixel.
