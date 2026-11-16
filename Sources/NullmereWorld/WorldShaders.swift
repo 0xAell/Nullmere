@@ -922,8 +922,13 @@ public enum WorldShaders {
                 float bare = (1.0 - green) * (1.0 - smoothstep(0.3, 0.42, min(colour.r, min(colour.g, colour.b)))) * step(0.0, world.y);
                 float tussocks = day * (green + 0.55 * bare) * (1.0 - smoothstep(0.009, 0.016, pixel));
                 if (tussocks > 0.0) {
-                    float2 slope = 0.3 * nm_noiseSlope(grounded.xz * 3.1)
-                        + 0.18 * nm_noiseSlope(grounded.xz * 8.7 + float2(13.0, 7.0));
+                    float2 slope = 0.3 * nm_noiseSlope(grounded.xz * 3.1);
+                    // The finer octave, a ninth of a unit, only while that is
+                    // a dozen pixels or more.
+                    float finer = 1.0 - smoothstep(0.009, 0.014, pixel);
+                    if (finer > 0.0) {
+                        slope += 0.18 * finer * nm_noiseSlope(grounded.xz * 8.7 + float2(13.0, 7.0));
+                    }
                     n = normalize(n - float3(slope.x, 0.0, slope.y) * 2.0 * tussocks);
                 }
             }
@@ -1068,8 +1073,14 @@ public enum WorldShaders {
                 * (1.0 - smoothstep(0.04, 0.12, max(fwidth(world.x), fwidth(world.z))));
             if (daylit > 0.0) {
                 float2 w = (world.xz + frame.origin.xy) * 2.3;
-                float2 slope = 0.25 * nm_noiseSlope(w + nm_drift(time, 0.06))
-                    + 0.15 * nm_noiseSlope(w * 1.9 + float2(7.0, 3.0) - nm_drift(time + 11.0, 0.05));
+                float2 slope = 0.25 * nm_noiseSlope(w + nm_drift(time, 0.06));
+                // The finer train, a wave of it a fifth of a unit, only while
+                // that is a dozen pixels or more, fading in by twenty: the
+                // wide views keep the broader train and pay for it alone.
+                float finer = 1.0 - smoothstep(0.012, 0.02, max(fwidth(world.x), fwidth(world.z)));
+                if (finer > 0.0) {
+                    slope += 0.15 * finer * nm_noiseSlope(w * 1.9 + float2(7.0, 3.0) - nm_drift(time + 11.0, 0.05));
+                }
                 float3 wave = normalize(float3(-slope.x * 1.5 * daylit, 1.0, -slope.y * 1.5 * daylit));
                 float3 sun = normalize(frame.key.xyz);
                 body *= 1.0 + 0.9 * (dot(wave, sun) - sun.y);
@@ -1077,9 +1088,10 @@ public enum WorldShaders {
                 glints = frame.keyColour.rgb * frame.key.w * spark * 0.5 * daylit;
             }
         }
-        float3 starlit = frame.water.rgb + body
-            + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moonFace.xyz)) * night * fresnel
-            + nm_daySky(mirrored NM_FRAME_PASS) * glass;
+        float3 starlit = frame.water.rgb + body + nm_daySky(mirrored NM_FRAME_PASS) * glass;
+        if (night > 0.0) {
+            starlit += (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moonFace.xyz)) * night * fresnel;
+        }
         float3 moonlit = nm_moonlight(mirrored, frame.moonFace.xyz) * fresnel * frame.moonFace.w + glints;
         // The moon's road: on the still water's faint swell, a broken glitter
         // of its light along its bearing from the eye, narrow near the moon's
@@ -1177,18 +1189,22 @@ public enum WorldShaders {
         float4 far = frame.inverseViewProjection * float4(ndc, 1.0, 1.0);
         float3 d = normalize(far.xyz / far.w - near.xyz / near.w);
         float time = frame.eye.w;
-        // The sky's own stars brighter than their image on the water, and a
-        // second, finer field of them behind, so the night over the far
-        // shore is full.
-        float3 colour = nm_stars(d, time) * 2.4 + nm_stars(float3(d.z, d.x, d.y) * 1.0, time + 31.0) * 0.9
-            + nm_milkyWay(d) + nm_moonGlow(d, frame.moonFace.xyz) + nm_moonlight(d, frame.moonFace.xyz) * frame.moonFace.w;
-        // The night's haze lies thick along the horizon and thins upward,
-        // so the far shore stands dark against a lighter band of air.
-        float up = max(d.y, 0.0);
-        float3 horizon = frame.mistColour.rgb * 1.6 + kMoonColour * 0.004;
-        colour = mix(horizon, colour, smoothstep(0.0, 0.035, up));
-        // As much of the night as the hour shows, and the day's sky over it.
-        colour = colour * frame.keyColour.a + nm_daySky(d NM_FRAME_PASS);
+        // As much of the night as the hour shows, and the day's sky over
+        // it; none of the night's worked out where the hour shows none.
+        float3 colour = float3(0.0);
+        if (frame.keyColour.a > 0.0) {
+            // The sky's own stars brighter than their image on the water, and a
+            // second, finer field of them behind, so the night over the far
+            // shore is full.
+            colour = nm_stars(d, time) * 2.4 + nm_stars(float3(d.z, d.x, d.y) * 1.0, time + 31.0) * 0.9
+                + nm_milkyWay(d) + nm_moonGlow(d, frame.moonFace.xyz) + nm_moonlight(d, frame.moonFace.xyz) * frame.moonFace.w;
+            // The night's haze lies thick along the horizon and thins upward,
+            // so the far shore stands dark against a lighter band of air.
+            float up = max(d.y, 0.0);
+            float3 horizon = frame.mistColour.rgb * 1.6 + kMoonColour * 0.004;
+            colour = mix(horizon, colour, smoothstep(0.0, 0.035, up)) * frame.keyColour.a;
+        }
+        colour += nm_daySky(d NM_FRAME_PASS);
         return float4(nm_output(colour NM_FRAME_PASS), 1.0);
     }
 
