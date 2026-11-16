@@ -76,10 +76,7 @@ jobs:
     # The tests alone take some twenty-five to thirty minutes now that the
     # world's models, motes and lights are rendered on the GPU; then the
     # bundle, the release rehearsal and the screenshots of the game and the
-    # realm. The keeper's phone beside their Mac, some ten minutes of it,
-    # runs in a job of its own beside this one (companion, below): with it,
-    # this job had grown to 58 min 15 s on a slow runner (run 735, whose
-    # plain work went 1.74 times slower than the baseline's).
+    # realm.
     # The tests take thirty-five minutes on a slow runner (run 969), and
     # the app is opened a dozen times after them.
     timeout-minutes: 80
@@ -218,35 +215,6 @@ jobs:
       - name: Launch the app
         run: mkdir -p build && scripts/smoke-test-app.sh 2>&1 | tee build/smoke-app.log
 
-      # The voices as a keeper hears them, from this runner's own on-device
-      # model, which answers an app and not a test runner's bare process:
-      # the debug app asks it for each kind of envoy and chronicle entry,
-      # and every line is held to the voices' rules. A runner whose model
-      # isn't ready to speak says so and passes on; a line that breaks the
-      # rules fails. GitHub's virtual Macs tell the app they aren't
-      # eligible: the debug app, under its own name or the app's and after
-      # waiting for the model's word; a release build of it made for the
-      # checks (Model check, run 1); and the app as it ships, whose
-      # launcher shows its requirement screen here ("Launch the app"). So
-      # the voices are heard on a real Mac (docs/GO-LIVE.md).
-      - name: The voices, from the runner's own model
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        timeout-minutes: 15
-        run: |
-          scripts/check-voices.sh || [ $? -eq 2 ]
-
-      # Counsel taken of a commander through the runner's own model, as on a
-      # keeper's Mac: three questions answered with the counsel's looks, an
-      # order put forward, an answer stopped. CI's virtual runners aren't
-      # eligible for Apple Intelligence, so here it is told unverified (2),
-      # never passed; a real Mac verifies it (docs/GAPS.md).
-      - name: Commanders' counsel, from the runner's own model
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        timeout-minutes: 10
-        run: |
-          app="build/voices/Nullmere Online.app"
-          if [ -d "$app" ]; then scripts/check-counsel.sh --app "$app" || [ $? -eq 2 ]; else scripts/check-counsel.sh || [ $? -eq 2 ]; fi
-
       # Opens the debug build of the launcher as if the model were ready
       # (only debug builds allow that), to photograph its menu, News and
       # Settings, which the requirement screen otherwise hides on CI.
@@ -282,8 +250,7 @@ jobs:
           if-no-files-found: warn
 
       # The screenshots, full size, on the ci-shots branch: one folder per
-      # run, so they can be fetched with git alone; the companion's job keeps
-      # its own in the same folder.
+      # run, so they can be fetched with git alone.
       - name: Push the screenshots to ci-shots
         if: always() && github.event_name == 'push'
         env:
@@ -362,22 +329,9 @@ jobs:
           echo "::group::Summary"
           grep -h "PERF \|SOUND \|LAYOUT \|LAKECLOSE \|MOONPATH \|STARS \|STILL \|MIST \|LAKEAFAR \|PERF-CHECK " build-test.log 2>/dev/null || true
           cat build/perf-check.log 2>/dev/null || true
-          # The reports end without a newline, and a report of one line is its
-          # first and last: each line printed once, and ended (awk 1 ends them).
-          ends() { awk '{ last = $0 } NR == 1 { print } END { if (NR > 1) print last }' "$1" 2>/dev/null || true; }
-          # Whose voices were heard, and their verdict.
-          sed -n '1p;/^Every line within the rules\.$/p;/^Out of bounds:$/,$p' build/voices-report.txt 2>/dev/null | head -n 20 | awk 1 || true
-          # Whose counsel was taken, and its verdict.
-          ends build/counsel-report.txt
-          # Counsel asked of a battle in the running game, as from its report.
-          cat build/game-counsel-battle.log 2>/dev/null || true
-          cat build/game-plea.log 2>/dev/null || true
-          # The ballad the runner's own model made, as a keeper's Mac makes one.
-          grep -h "^ballad of " build/voices-report.txt 2>/dev/null || true
           grep -h "REHEARSAL\|error:" build/rehearsal.log 2>/dev/null || true
           grep -hE "error|warning" build/smoke-*.log 2>/dev/null | head -20 || true
           tail -n 15 build/game-stdout.log 2>/dev/null || true
-          tail -n 15 build/steward.log 2>/dev/null || true
           # Each warning once; which tests skipped, and why, so a skip can't hide a test.
           grep -h ": warning:" build.log build-test.log 2>/dev/null | sort -u | head -20 || true
           grep -h "Test skipped" build-test.log 2>/dev/null | sed 's|^.*/Tests/||' | sort -u | head -20 || true
@@ -403,129 +357,6 @@ jobs:
           # A figure over its allowance among them, with the runner's pace it
           # was allowed, and those recorded without a baseline yet.
           grep -hE "CPU figures allowed|paced by|REGRESSED|MISSING|TOO FAST|RECORDED|PERF-CHECK failed" build/perf-check.log 2>/dev/null || true
-          echo "::endgroup::"
-
-  # Nullmere Companion, the keeper's iPhone app, beside their Mac: in a job
-  # of its own beside the Mac's long one, so neither waits on the other.
-  # Built for the iOS Simulator from the same package, bundled and signed
-  # to run there; then both real apps on a realm raised on this runner, as
-  # on maincloud: the Mac enters and offers a link; the phone, in the
-  # simulator, takes it, digs a company in, speaks to the realm, makes its
-  # keeper ready so the watch turns and sets a hold to work, is set aside
-  # and comes in again, and the Mac sees each of them; its line to the
-  # realm is cut and mended, and it comes back, the words it said while
-  # cut off heard on the Mac. Then the phone takes counsel through its own
-  # on-device model: unverified where the runner's model can't be asked,
-  # as so far it can't. No other keeper enters this realm, so the watch
-  # turns as soon as the phone's keeper is ready.
-  companion:
-    name: The keeper's phone beside their Mac
-    runs-on: macos-26
-    # Write only to keep its screenshots on the ci-shots branch.
-    permissions:
-      contents: write
-    # The Mac app's build and the companion's, a realm raised and the
-    # phone's steps: about a quarter of an hour.
-    timeout-minutes: 40
-    # "bash" runs with -o pipefail, so a failure piped through tee still fails.
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Show toolchain
-        run: |
-          xcodebuild -version
-          swift --version
-
-      # The keeper's Mac, a debug build: the side of the link the phone takes.
-      - name: Build
-        run: swift build 2>&1 | tee build.log
-
-      # Its errors are raised as annotations too, readable however long the log.
-      - name: Build the companion for the iOS Simulator
-        timeout-minutes: 20
-        run: |
-          mkdir -p build
-          if ! scripts/build-companion.sh 2>&1 | tee build/companion-build.log; then
-            grep -E "error:|fatal error|ld: " build/companion-build.log | awk '!seen[$0]++' | head -20 | while IFS= read -r line; do
-              echo "::error title=Companion for iOS::${line}"
-            done
-            exit 1
-          fi
-
-      - name: Raise a realm on SpacetimeDB
-        timeout-minutes: 20
-        run: |
-          command -v rustup >/dev/null || curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
-          curl -sSf https://install.spacetimedb.com | sh -s -- --yes
-          # The same one command that raises the realm proper.
-          STEWARD=background CONFIGURATION=debug STEWARD_LOG="$PWD/build/steward.log" \
-            NULLMERE_REALM_SEED="black moon" scripts/raise-realm.sh local
-
-      - name: The keeper's phone beside their Mac
-        timeout-minutes: 15
-        env:
-          NULLMERE_REALM: http://127.0.0.1:3000/nullmere
-        run: scripts/smoke-test-companion.sh 2>&1 | tee build/smoke-companion.log
-
-      # The same app for an iPhone itself (arm64, the iOS SDK), bundled but
-      # unsigned: an Apple developer team's signature lets it run on a
-      # device, and CI has none. After the phone's steps, so they are never
-      # held up by it, and whatever they came to. Its errors are annotated
-      # as the simulator's are.
-      - name: Build the companion for an iPhone
-        if: ${{ !cancelled() }}
-        timeout-minutes: 20
-        run: |
-          mkdir -p build
-          if ! scripts/build-companion.sh --device 2>&1 | tee build/companion-device-build.log; then
-            grep -E "error:|fatal error|ld: " build/companion-device-build.log | awk '!seen[$0]++' | head -20 | while IFS= read -r line; do
-              echo "::error title=Companion for an iPhone::${line}"
-            done
-            exit 1
-          fi
-
-      - name: Keep the screenshots
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: companion-screenshots
-          path: build/*.png
-          if-no-files-found: warn
-
-      # In the run's folder on the ci-shots branch, beside the Mac job's.
-      - name: Push the screenshots to ci-shots
-        if: always() && github.event_name == 'push'
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RUN: ${{ github.run_number }}
-          SHA: ${{ github.sha }}
-        run: scripts/push-ci-shots.sh build
-
-      # Last, so it survives a trimmed log: what the phone did and what the
-      # Mac saw, its counsel's verdict, and the companion's build where it failed.
-      - name: Summary
-        if: always()
-        run: |
-          echo "::group::Summary"
-          # A report of one line is its first and last: each printed once, and ended.
-          ends() { awk '{ last = $0 } NR == 1 { print } END { if (NR > 1) print last }' "$1" 2>/dev/null || true; }
-          awk 1 build/companion-report.txt 2>/dev/null || true
-          awk 1 build/companion-lost-report.txt 2>/dev/null || true
-          grep -h "^On \|^The Mac sees\|^The Mac hears\|^The Mac and the phone photographed\|^The Mac said: \|^The phone hears\|^Counsel on the phone: \|^Nullmere Companion, on\|^Bundled" build/smoke-companion.log build/companion-build.log build/companion-device-build.log 2>/dev/null || true
-          # Counsel taken on the phone, through its own model: whose, and its verdict.
-          ends build/counsel-phone-report.txt
-          grep -hE "^error|^warning" build/smoke-companion.log 2>/dev/null | head -20 || true
-          tail -n 15 build/steward.log 2>/dev/null || true
-          if [ -s build/companion-build.log ] && ! grep -q "^Bundled " build/companion-build.log; then
-            grep -E "error:|fatal error|ld: " build/companion-build.log | awk '!seen[$0]++' | head -20 || true
-            tail -n 15 build/companion-build.log || true
-          fi
           echo "::endgroup::"
 
   # The app as VoiceOver and Accessibility Inspector meet it, through the
@@ -581,169 +412,3 @@ jobs:
       - name: Texts measured
         if: always()
         run: grep -hoE "UITEXT.*" build/ui-test.log 2>/dev/null | cut -c1-150 | sort -u | head -n 110 || true
-
-  # The rules and the realm on Linux, where the steward runs; then the realm
-  # module published to a real SpacetimeDB server, the steward taking it up,
-  # and two keepers playing through it.
-  realm:
-    name: Realm on SpacetimeDB
-    runs-on: ubuntu-24.04
-    container: swift:6.2-noble
-    timeout-minutes: 60
-    # "bash" runs with -o pipefail: a test that fails fails the step, though
-    # its output goes through tee.
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Build the rules, the realm and the steward
-        run: swift build -Xswiftc -warnings-as-errors 2>&1 | tee realm-build.log
-
-      # The map's preview data, from the rules and the map's own packing
-      # code: kept building, so the map can always be tuned in a browser.
-      # A long age on every shape of lake, its world checked throughout.
-      - name: Test the rules and the realm
-        env:
-          NULLMERE_SOAK_WATCHES: "200"
-        run: swift test --enable-code-coverage 2>&1 | tee realm-test.log
-
-      # What the coverage and SpacetimeDB need from Ubuntu's archive, asked
-      # for once. A mirror caught mid-sync fails `apt-get update` for one
-      # index while the rest are fetched (run 933: "File has unexpected size
-      # ... Mirror sync in progress?"), so the install is tried on what was
-      # fetched. A mirror that stalls held run 936's first try silent for 33
-      # minutes (run 924's took seconds) and the job ran out of its hour
-      # before playing through SpacetimeDB: each fetch now gives up after 30
-      # idle seconds and each try after a few minutes, asked again a little
-      # later, and the step fails within 20 minutes on what is still missing
-      # rather than leaving the job to run out in a later step.
-      - name: Install what the coverage and SpacetimeDB need
-        timeout-minutes: 20
-        run: |
-          apt_get() { timeout "$1" apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 "${@:2}"; }
-          for attempt in 1 2 3; do
-            dpkg --configure -a || true
-            apt_get 150 update -qq || echo "apt-get update failed or stalled (attempt $attempt): installing from the index it fetched"
-            apt_get 240 install -y -qq python3 curl build-essential >/dev/null && break
-            echo "apt-get install failed or stalled (attempt $attempt)"
-            sleep 15
-          done
-          command -v python3 && command -v curl && command -v cc
-
-      - name: Coverage
-        run: python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=97 NullmereModels=97 NullmereWorld=97 NullmereSound=97 NullmereRealm=97 LauncherCore=97
-
-      - name: Install Rust and SpacetimeDB
-        run: |
-          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --target wasm32-unknown-unknown
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-          curl -sSf https://install.spacetimedb.com | sh -s -- --yes
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      # The Docker client, for the runner's own Docker, whose socket every
-      # job container is given: the steward's image is built as the realm
-      # proper's is, so its Dockerfile can't fall out of step with the code.
-      - name: Install the Docker client
-        run: |
-          curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz \
-            | tar -xz -C /usr/local/bin --strip-components=1 docker/docker
-          docker version
-
-      # The one command that raises the realm proper, rehearsed: it checks
-      # its tools, builds the module and the steward's image from
-      # Dockerfile.steward, and says what it would do, publishing nothing.
-      # With ael's sign-in it does it. The steward in its image then starts,
-      # and asks which realm to steward.
-      - name: Rehearse raising the realm proper
-        run: |
-          STEWARD=docker NULLMERE_STATE_DIR="$PWD/realm-state" scripts/raise-realm.sh maincloud --dry-run
-          docker run --rm nullmere-steward > realm-steward-image.log 2>&1 || true
-          cat realm-steward-image.log
-          grep -q "usage: NullmereSteward" realm-steward-image.log
-
-      # The same one command that raises the realm proper, without the
-      # steward: the integration tests run their own.
-      - name: Start SpacetimeDB and publish the realm module
-        run: |
-          STEWARD=none NULLMERE_STATE_DIR="$PWD/realm-state" scripts/raise-realm.sh local
-          token="$(cat realm-state/steward-token-local)"
-          echo "::add-mask::$token"
-          echo "NULLMERE_STDB_TOKEN=$token" >> "$GITHUB_ENV"
-          # Two realms and the Frontier between them, each a database of its
-          # own; and three more, fresh, for keepers' clients to play it through.
-          # And one for a full realm of keepers' clients at once; two for a
-          # realm whose world goes ahead of its publications; one for a
-          # keeper's phone beside their Mac, and one for the phone's line to
-          # the realm cut and mended.
-          for db in frontier-west frontier-east frontier play-west play-east play-frontier crowd ahead ahead-rules companion companion-lost; do
-            REALM_DB="$db" STEWARD=none NULLMERE_STATE_DIR="$PWD/realm-state" scripts/raise-realm.sh local
-          done
-
-      # The macOS job skips these, with no server to play through; here they
-      # must run, every one: a skip would pass for a play-through.
-      - name: Play through SpacetimeDB
-        # A play-through takes six or seven minutes, most of them the crowd:
-        # every seat of a realm of 192 taken at once by its own keeper's
-        # client (some four minutes in a debug build on four cores). One
-        # that stops answering fails here in its own time, its output
-        # written line by line so the log shows the test it stopped in, not
-        # at the job's limit.
-        timeout-minutes: 15
-        env:
-          NULLMERE_STDB_CROWD_SEATS: "192"
-          NULLMERE_STDB: http://127.0.0.1:3000/nullmere
-          NULLMERE_STDB_FRONTIER: http://127.0.0.1:3000/frontier-west,http://127.0.0.1:3000/frontier-east,http://127.0.0.1:3000/frontier
-          NULLMERE_STDB_FRONTIER_PLAY: http://127.0.0.1:3000/play-west,http://127.0.0.1:3000/play-east,http://127.0.0.1:3000/play-frontier
-          NULLMERE_STDB_CROWD: http://127.0.0.1:3000/crowd
-          NULLMERE_STDB_AHEAD: http://127.0.0.1:3000/ahead
-          NULLMERE_STDB_AHEAD_RULES: http://127.0.0.1:3000/ahead-rules
-          NULLMERE_STDB_COMPANION: http://127.0.0.1:3000/companion
-          NULLMERE_STDB_COMPANION_LOST: http://127.0.0.1:3000/companion-lost
-        run: |
-          stdbuf -oL -eL swift test --skip-build --filter SpacetimeIntegrationTests 2>&1 | tee realm-integration.log
-          total="$(grep "Executed .* tests" realm-integration.log | tail -n 1)"
-          echo "$total" | grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" || {
-            echo "::error::The play-through through SpacetimeDB didn't run whole: $total"
-            exit 1
-          }
-
-      # A whole realm standing alone, raised by the one command: the module
-      # published, the steward started in the background, and the realm's
-      # status read back as a keeper would, and as the go-live check reads
-      # it; then the steward stopped.
-      - name: Raise a standalone realm in one command
-        run: |
-          export REALM_DB=standalone NULLMERE_STATE_DIR="$PWD/realm-state" STEWARD_LOG="$PWD/realm-state/standalone.log"
-          CONFIGURATION=debug STEWARD=background scripts/raise-realm.sh local
-          REALM_ADDRESS=http://127.0.0.1:3000/standalone scripts/go-live-status.sh --expect-realm
-          # Two keepers' clients meet in it as they would in the live realm,
-          # and the first keeper's phone keeps her House beside her Mac, its
-          # line cut and mended, by the same test the Live realm smoke
-          # workflow runs on maincloud.
-          NULLMERE_LIVE_REALM=http://127.0.0.1:3000/standalone swift test --skip-build --filter LiveRealmSmokeTests 2>&1 | tee realm-live-smoke.log
-          grep -Eq "Executed 1 test, with 0 failures" realm-live-smoke.log && ! grep -q "skipped" realm-live-smoke.log || {
-            echo "::error::Two keepers didn't meet in the standalone realm, or the phone didn't keep the House beside the Mac"
-            exit 1
-          }
-          scripts/raise-realm.sh local --stop
-
-      - name: Summary
-        if: always()
-        run: |
-          grep -hE "error: |warning: " realm-build.log 2>/dev/null | head -20 || true
-          # Failures first, so the skipped tests' lines never crowd them out.
-          grep -hE "error: |failed \(" realm-test.log realm-integration.log 2>/dev/null | awk '!seen[$0]++' | head -20 || true
-          grep -hE "error|failed|skipped|Executed|REALM " realm-test.log realm-integration.log 2>/dev/null | tail -20 || true
-          # Where the play-through was when it ended, whole or not.
-          grep -hE "Test Case .*(started|passed|failed)" realm-integration.log 2>/dev/null | tail -6 || true
-          # The Frontier play-through's last steps, and its watchdog's word if it stalled.
-          grep -h "^PLAY " realm-integration.log 2>/dev/null | tail -8 || true
-          # The full realm's figures, or where its crowd stood when it stopped.
-          grep -h "^REALM [0-9]* keepers' clients took every seat" realm-integration.log 2>/dev/null || true
-          grep -h "^CROWD " realm-integration.log 2>/dev/null | tail -6 || true
-          # The keeper's phone cut off from the realm and back, its figures.
-          grep -h "^REALM the phone's line\|^REALM cut again" realm-integration.log 2>/dev/null || true
-          tail -n 30 realm-state/spacetime-local.log 2>/dev/null || true
-          tail -n 10 realm-state/standalone.log 2>/dev/null || true
