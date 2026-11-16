@@ -147,6 +147,7 @@ final class LiveWindowTests: XCTestCase {
     /// The window staged as the app stages a world, with its land's
     /// furniture: written out for the browser preview where a folder is
     /// named, from the rows above or, where a realm is named, from it.
+    @MainActor
     func testAnAlliancesLandIsTintedInItsColour() {
         var rows = LiveWindowTests.rows()
         // A wardstone of the fifth alliance two hexes east of Ada's city, standing since 1,500; another raised but not yet standing.
@@ -172,6 +173,7 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(TileTexture.terrain(tiles[((0 + 12) * side + 2 + 12) * 4]), Terrain.greyfield.code)
     }
 
+    @MainActor
     func testGatesAndWardstonesStandAsHoldsAndEnvoysWaitAtTheGate() {
         var rows = LiveWindowTests.rows()
         func n(_ value: Double) -> JSONValue { .number(value) }
