@@ -622,6 +622,19 @@ final class LiveSessionTests: XCTestCase {
         line.clear()
         await session.perform(claim)
         XCTAssertEqual(line.asked, ["claim place in 1"])
+
+        // A commander's counsel knows it: where she stands while the round
+        // runs, and what she may claim once it is over.
+        rows["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(3), n(4), n(200), n(0)]]
+        let running = self.session(StandInLine(rows: rows), at: 1_000 + 86_400)
+        await running.open()
+        let told = try XCTUnwrap(running.counsel(of: 11)).realmLook
+        XCTAssertTrue(told.contains("The Long Hunt runs: your lord stands 1st of 2, with 250 points."), told)
+        let over = self.session(StandInLine(rows: rows), at: 1_000 + 4 * 86_400)
+        await over.open()
+        let later = try XCTUnwrap(over.counsel(of: 11)).realmLook
+        XCTAssertFalse(later.contains("runs:"), later)
+        XCTAssertTrue(later.contains("Your lord was 1st in The Long Hunt when its last round ended, and may claim 60,000 grain, 60,000 timber, 30,000 stone and 900 moonsalt"), later)
     }
 
     func testRalliesGatesAndWardstonesAreCalledFromTheirCards() async throws {

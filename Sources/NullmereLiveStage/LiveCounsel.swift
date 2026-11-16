@@ -156,12 +156,27 @@ public struct LiveCounsel: Sendable {
         return lines.joined(separator: " ")
     }
 
-    /// The realm: where the player stands in it.
+    /// The realm: where the player stands in it, and in the contests that
+    /// run today, and what a place in one's last round gave them to claim.
     public var realmLook: String {
         var lines: [String] = []
         if let place = world.powerPlace { lines.append("Your lord stands \(LiveWords.ordinal(place)) in power in the realm.") }
         if let season = world.season {
             lines.append("Season \(season.number), \(LiveWords.spoken(season.left(at: seconds))) left.")
+        }
+        let day = world.today(at: seconds)
+        for trial in world.trials.values.sorted(by: { $0.id < $1.id }) {
+            if trial.runs(on: day) {
+                let standings = world.standings(of: trial.id, round: world.contestRound(of: trial, day: day))
+                if let me = world.me?.id, let index = standings.firstIndex(where: { $0.player == me }) {
+                    lines.append("\(trial.name) runs: your lord stands \(LiveWords.ordinal(index + 1)) of \(standings.count), with \(LiveWords.grouped(standings[index].points)) points.")
+                } else {
+                    lines.append("\(trial.name) runs: your lord has scored nothing in it yet.")
+                }
+            }
+            if let laurel = world.laurelToClaim(of: trial, day: day) {
+                lines.append("Your lord was \(LiveWords.ordinal(laurel.place)) in \(trial.name) when its last round ended, and may claim \(world.holdings(laurel.goods, laurel.hastes)).")
+            }
         }
         return lines.isEmpty ? "Little is known of the realm beyond the city." : lines.joined(separator: " ")
     }
