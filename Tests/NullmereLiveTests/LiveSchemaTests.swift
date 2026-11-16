@@ -77,16 +77,17 @@ final class LiveSchemaTests: XCTestCase {
             XCTAssertEqual(listed.key, declared.key, "\(name)'s key")
             checked += 1
         }
-        XCTAssertEqual(checked, 53)
+        XCTAssertEqual(checked, 57)
         XCTAssertNotNil(byType["Player"])
 
         // What is a player's alone stays closed: read only through a view.
         for table in ["pace", "building", "job", "stock", "troop", "squad", "haul", "hunt", "report", "applicant", "alliance_chat", "progress", "lore", "commander",
-                      "daily", "favour", "satchel", "tally", "rally", "muster", "plea", "helper", "gift", "skill", "bond", "keeper"] {
+                      "daily", "favour", "satchel", "tally", "rally", "muster", "plea", "helper", "gift", "skill", "bond", "keeper", "envoy", "prisoner",
+                      "petition"] {
             XCTAssertNil(LiveSchema.tables[table], "\(table) is not a client's to read")
             XCTAssertTrue(try source("rows.rs").contains("table(accessor = \(table))"), "\(table) is private in the module")
         }
-        XCTAssertEqual(LiveSchema.queries.count, 53)
+        XCTAssertEqual(LiveSchema.queries.count, 57)
         XCTAssertTrue(LiveSchema.queries.contains("SELECT * FROM my_stock"))
     }
 
@@ -113,7 +114,9 @@ final class LiveSchemaTests: XCTestCase {
                                       ("answer_applicant", 2), ("expel", 1), ("set_rank", 2), ("set_alliance", 2), ("say", 2), ("claim_task", 0), ("learn", 1),
                                       ("call_rally", 4), ("join_rally", 3), ("ask_help", 1), ("help", 1), ("raise_ward", 2), ("raze_ward", 1),
                                       ("give_to_learning", 4), ("give_to_spire", 4), ("learn_talent", 2), ("forget_talents", 1), ("pair", 2),
-                                      ("keep_city", 1), ("speed_up", 1), ("use_item", 2), ("open_chest", 1), ("claim_prize", 2)] {
+                                      ("keep_city", 1), ("speed_up", 1), ("use_item", 2), ("open_chest", 1), ("claim_prize", 2), ("send_envoy", 3),
+                                      ("answer_envoy", 2), ("break_pact", 1), ("ransom", 1), ("release_prisoner", 1), ("petition_alliance", 4),
+                                      ("answer_petition", 5), ("withdraw_petition", 0)] {
             let signature = try XCTUnwrap(module.range(of: "pub fn \(reducer)(ctx: &ReducerContext"), "\(reducer) is a reducer")
             let rest = module[signature.upperBound...].prefix { $0 != ")" }
             XCTAssertEqual(rest.filter { $0 == ":" }.count, arguments, "\(reducer) takes \(arguments): \(rest)")

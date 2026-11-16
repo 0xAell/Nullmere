@@ -43,6 +43,8 @@ public struct LiveWorld: Equatable, Sendable {
     public var learnings: [UInt64: LiveLearning] = [:]
     /// The gates of the ridge, by their number.
     public var gates: [UInt64: LiveGate] = [:]
+    /// Every pact between alliances, by its number.
+    public var pacts: [UInt64: LivePact] = [:]
 
     public var me: LivePlayer?
     public var city: LiveCity?
@@ -88,6 +90,12 @@ public struct LiveWorld: Equatable, Sendable {
     public var pleas: [LivePlea] = []
     public var helped: Set<UInt64> = []
     public var gift: LiveGift?
+    /// The envoys from or to the player's alliance, the prisoners they
+    /// hold and their own commanders held (by the commander), and their
+    /// alliance's petitions (by who made them).
+    public var envoys: [LiveEnvoy] = []
+    public var prisoners: [UInt64: LivePrisoner] = [:]
+    public var petitions: [UInt64: LivePetition] = [:]
 
     public init() {}
 
@@ -144,6 +152,7 @@ public struct LiveWorld: Equatable, Sendable {
         wards = Dictionary(rows("ward", LiveWard.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         learnings = Dictionary(rows("learning", LiveLearning.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         gates = Dictionary(rows("gate", LiveGate.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        pacts = Dictionary(rows("pact", LivePact.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         daily = rows("my_daily", LiveDaily.init).first
         favour = rows("my_favour", LiveFavour.init).first
         for row in snapshot["my_satchel"] ?? [] {
@@ -165,6 +174,9 @@ public struct LiveWorld: Equatable, Sendable {
         pleas = rows("my_pleas", LivePlea.init).sorted { $0.job < $1.job }
         helped = Set((snapshot["my_helps"] ?? []).compactMap { Cells(row: $0).unsigned(1) })
         gift = rows("my_gift", LiveGift.init).first
+        envoys = rows("my_envoys", LiveEnvoy.init).sorted { $0.id < $1.id }
+        prisoners = Dictionary(rows("my_prisoners", LivePrisoner.init).map { ($0.commander, $0) }, uniquingKeysWith: { _, new in new })
+        petitions = Dictionary(rows("my_petitions", LivePetition.init).map { ($0.asker, $0) }, uniquingKeysWith: { _, new in new })
     }
 
     private static func key(_ kind: Int, _ level: Int) -> UInt64 { UInt64(kind) << 32 | UInt64(level) }
@@ -270,6 +282,40 @@ public struct LiveWorld: Equatable, Sendable {
     /// whose standing wardstone within reach of it was raised first.
     public func landOf(_ hex: LiveHex, at seconds: Double) -> UInt64? {
         wards.values.filter { $0.stands(at: seconds) && $0.hex.distance(to: hex) <= LiveWard.reach }.min { $0.id < $1.id }?.alliance
+    }
+
+    /// The pacts of an alliance that hold at a moment.
+    public func pacts(of alliance: UInt64, at seconds: Double) -> [LivePact] {
+        pacts.values.filter { ($0.first == alliance || $0.second == alliance) && $0.holds(at: seconds) }.sorted { $0.id < $1.id }
+    }
+
+    /// Whether the player's alliance is at truce with another at a moment.
+    public func atTruce(with alliance: UInt64, at seconds: Double) -> Bool {
+        guard let mine = myMembership?.alliance, mine != alliance else { return false }
+        return pacts(of: mine, at: seconds).contains { $0.terms == LivePact.truce && $0.other(than: mine) == alliance }
+    }
+
+    /// The envoys come to the player's alliance and still waiting on an answer.
+    public func envoysWaiting(at seconds: Double) -> [LiveEnvoy] {
+        guard let mine = myMembership?.alliance else { return [] }
+        return envoys.filter { $0.receiver == mine && Double($0.sentAt + LiveEnvoy.waits) > seconds }
+    }
+
+    /// The petitions of the player's alliance that still stand at a moment, the oldest first.
+    public func petitionsStanding(at seconds: Double) -> [LivePetition] {
+        petitions.values.filter { Double($0.madeAt + LivePetition.stands) > seconds }.sorted { ($0.madeAt, $0.asker) < ($1.madeAt, $1.asker) }
+    }
+
+    /// The prisoner a commander of the player's is, if they are held.
+    public func held(_ commander: UInt64) -> LivePrisoner? {
+        guard let prisoner = prisoners[commander], prisoner.owner == me?.id else { return nil }
+        return prisoner
+    }
+
+    /// The prisoners the player holds.
+    public var captives: [LivePrisoner] {
+        guard let me else { return [] }
+        return prisoners.values.filter { $0.captor == me.id }.sorted { $0.commander < $1.commander }
     }
 
     /// The gates an alliance holds, by their number.

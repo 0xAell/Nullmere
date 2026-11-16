@@ -267,6 +267,39 @@ public final class LiveClient: @unchecked Sendable {
     /// Opens a chest of the day's work, by its number.
     public func openChest(_ chest: Int) async throws { try await ask("open_chest", [.integer(UInt64(chest))]) }
 
+    // MARK: Envoys, pacts, prisoners and petitions
+
+    /// Sends another alliance an envoy with the terms of a pact
+    /// (`LivePact.truce` or `.passage`) for so many days.
+    public func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async throws {
+        try await ask("send_envoy", [.integer(alliance), .integer(UInt64(terms)), .integer(UInt64(days))])
+    }
+
+    /// Accepts, or turns away, an envoy come to the player's alliance.
+    public func answerEnvoy(_ envoy: UInt64, accept: Bool) async throws { try await ask("answer_envoy", [.integer(envoy), .bool(accept)]) }
+
+    /// Breaks a pact of the player's alliance: it holds a day more.
+    public func breakPact(_ pact: UInt64) async throws { try await ask("break_pact", [.integer(pact)]) }
+
+    /// Ransoms one of the player's commanders held prisoner.
+    public func ransom(commander: UInt64) async throws { try await ask("ransom", [.integer(commander)]) }
+
+    /// Lets a commander the player holds prisoner go, for nothing.
+    public func releasePrisoner(commander: UInt64) async throws { try await ask("release_prisoner", [.integer(commander)]) }
+
+    /// Petitions the player's alliance for goods.
+    public func petition(_ goods: LiveGoods) async throws {
+        try await ask("petition_alliance", [.integer(goods.grain), .integer(goods.timber), .integer(goods.stone), .integer(goods.moonsalt)])
+    }
+
+    /// Answers an ally's petition with goods from the player's city.
+    public func answerPetition(of asker: UInt64, _ goods: LiveGoods) async throws {
+        try await ask("answer_petition", [.integer(asker), .integer(goods.grain), .integer(goods.timber), .integer(goods.stone), .integer(goods.moonsalt)])
+    }
+
+    /// Withdraws the player's petition.
+    public func withdrawPetition() async throws { try await ask("withdraw_petition", []) }
+
     /// Claims a prize of one of the realm's contests, by its place.
     public func claimPrize(contest: Int, place: Int) async throws {
         try await ask("claim_prize", [.integer(UInt64(contest)), .integer(UInt64(place))])

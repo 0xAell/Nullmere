@@ -382,3 +382,106 @@ public struct LiveLearning: Equatable, Sendable, Identifiable {
         return LiveGoods(grain: each, timber: each, stone: each)
     }
 }
+
+/// A pact between two alliances, and until when it holds.
+public struct LivePact: Equatable, Sendable, Identifiable {
+    /// A truce, and passage through one another's gates, as the module numbers them.
+    public static let truce = 1, passage = 2
+
+    public let id: UInt64
+    public let first: UInt64
+    public let second: UInt64
+    public let terms: Int
+    public let began: Int
+    public let ends: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let first = cells.unsigned(1), let second = cells.unsigned(2), let terms = cells.whole(3),
+              let began = cells.whole(4), let ends = cells.whole(5) else { return nil }
+        (self.id, self.first, self.second, self.terms, self.began, self.ends) = (id, first, second, terms, began, ends)
+    }
+
+    /// Whether it holds at a moment.
+    public func holds(at seconds: Double) -> Bool { Double(ends) > seconds }
+
+    /// The other alliance of the pact, to one of its two.
+    public func other(than alliance: UInt64) -> UInt64 { first == alliance ? second : first }
+}
+
+/// An envoy from or to the player's alliance, with the terms it carries.
+public struct LiveEnvoy: Equatable, Sendable, Identifiable {
+    /// How long an envoy waits for its answer.
+    public static let waits = 86_400
+
+    public let id: UInt64
+    public let sender: UInt64
+    public let receiver: UInt64
+    public let name: String
+    public let terms: Int
+    public let days: Int
+    public let sentAt: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let sender = cells.unsigned(1), let receiver = cells.unsigned(2), let name = cells.text(3),
+              let terms = cells.whole(4), let days = cells.whole(5), let sentAt = cells.whole(6) else { return nil }
+        (self.id, self.sender, self.receiver, self.name, self.terms, self.days, self.sentAt) = (id, sender, receiver, name, terms, days, sentAt)
+    }
+
+    /// Its terms in words: "a truce of 3 days".
+    public var words: String {
+        let span = days == 1 ? "a day" : "\(days) days"
+        return terms == LivePact.truce ? "a truce of \(span)" : "passage through one another's gates for \(span)"
+    }
+}
+
+/// A commander held prisoner: whose, by whom, the ransom asked, and when
+/// they go free of themselves.
+public struct LivePrisoner: Equatable, Sendable, Identifiable {
+    public let commander: UInt64
+    public let owner: UInt64
+    public let captor: UInt64
+    public let name: String
+    public let ransom: LiveGoods
+    public let freedAt: Int
+    public var id: UInt64 { commander }
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let commander = cells.unsigned(0), let owner = cells.unsigned(1), let captor = cells.unsigned(2), let name = cells.text(3),
+              let freedAt = cells.whole(7) else { return nil }
+        (self.commander, self.owner, self.captor, self.name, self.freedAt) = (commander, owner, captor, name, freedAt)
+        ransom = LiveGoods(grain: cells.unsigned(4) ?? 0, timber: cells.unsigned(5) ?? 0, stone: cells.unsigned(6) ?? 0)
+    }
+}
+
+/// A member's petition to the player's alliance for goods: what it asks,
+/// what allies have sent, and when it was made.
+public struct LivePetition: Equatable, Sendable, Identifiable {
+    /// How long a petition stands, the most of each good it asks, and the
+    /// hundredths of what is sent the road takes.
+    public static let stands = 86_400, most: UInt64 = 500_000, toll: UInt64 = 10
+
+    public let asker: UInt64
+    public let alliance: UInt64
+    public let name: String
+    public let asked: LiveGoods
+    public let sent: LiveGoods
+    public let madeAt: Int
+    public var id: UInt64 { asker }
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let asker = cells.unsigned(0), let alliance = cells.unsigned(1), let name = cells.text(2), let madeAt = cells.whole(11) else { return nil }
+        (self.asker, self.alliance, self.name, self.madeAt) = (asker, alliance, name, madeAt)
+        asked = LiveGoods(grain: cells.unsigned(3) ?? 0, timber: cells.unsigned(4) ?? 0, stone: cells.unsigned(5) ?? 0, moonsalt: cells.unsigned(6) ?? 0)
+        sent = LiveGoods(grain: cells.unsigned(7) ?? 0, timber: cells.unsigned(8) ?? 0, stone: cells.unsigned(9) ?? 0, moonsalt: cells.unsigned(10) ?? 0)
+    }
+
+    /// What it still asks.
+    public var still: LiveGoods {
+        LiveGoods(grain: asked.grain - min(sent.grain, asked.grain), timber: asked.timber - min(sent.timber, asked.timber),
+                  stone: asked.stone - min(sent.stone, asked.stone), moonsalt: asked.moonsalt - min(sent.moonsalt, asked.moonsalt))
+    }
+}

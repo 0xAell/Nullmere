@@ -52,6 +52,14 @@ public protocol LiveLine: AnyObject, Sendable {
     func useItem(_ item: Int, on job: UInt64) async throws
     func openChest(_ chest: Int) async throws
     func claimPrize(contest: Int, place: Int) async throws
+    func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async throws
+    func answerEnvoy(_ envoy: UInt64, accept: Bool) async throws
+    func breakPact(_ pact: UInt64) async throws
+    func ransom(commander: UInt64) async throws
+    func releasePrisoner(commander: UInt64) async throws
+    func petition(_ goods: LiveGoods) async throws
+    func answerPetition(of asker: UInt64, _ goods: LiveGoods) async throws
+    func withdrawPetition() async throws
 }
 
 extension LiveClient: LiveLine {}
@@ -417,6 +425,14 @@ public final class LiveSession {
     public func useItem(_ item: Int, on job: UInt64) async { await ask { try await $0.useItem(item, on: job) } }
     public func openChest(_ chest: Int) async { await ask { try await $0.openChest(chest) } }
     public func claimPrize(contest: Int, place: Int) async { await ask { try await $0.claimPrize(contest: contest, place: place) } }
+    public func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async { await ask { try await $0.sendEnvoy(to: alliance, terms: terms, days: days) } }
+    public func answerEnvoy(_ envoy: UInt64, accept: Bool) async { await ask { try await $0.answerEnvoy(envoy, accept: accept) } }
+    public func breakPact(_ pact: UInt64) async { await ask { try await $0.breakPact(pact) } }
+    public func ransom(commander: UInt64) async { await ask { try await $0.ransom(commander: commander) } }
+    public func releasePrisoner(commander: UInt64) async { await ask { try await $0.releasePrisoner(commander: commander) } }
+    public func petition(_ goods: LiveGoods) async { await ask { try await $0.petition(goods) } }
+    public func answerPetition(of asker: UInt64, _ goods: LiveGoods) async { await ask { try await $0.answerPetition(of: asker, goods) } }
+    public func withdrawPetition() async { await ask { try await $0.withdrawPetition() } }
 
     /// Joins a rally of the player's alliance with everyone ready, led by
     /// the highest commander in the city.

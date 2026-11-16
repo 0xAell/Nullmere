@@ -753,4 +753,9 @@ public struct LiveCommander: Equatable, Sendable, Identifiable {
 
     /// Whether they are in the city, free to lead an army.
     public var isFree: Bool { march == 0 }
+
+    /// Whether they are held prisoner: neither in the city nor out with an
+    /// army, as the module marks them (two to the fifty-third).
+    public static let held: UInt64 = 1 << 53
+    public var isHeld: Bool { march == LiveCommander.held }
 }

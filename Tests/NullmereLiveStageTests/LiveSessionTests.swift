@@ -572,6 +572,18 @@ final class LiveSessionTests: XCTestCase {
                                     "give [1, 2, 3, 4] to the Moonspire", "talent 6 for 11", "forget talents of 11", "pair 11 with 12", "keep city 12",
                                     "speed up 4", "use 2 on 4", "open chest 1", "claim prize 2 of 1"])
         line.clear()
+        await session.sendEnvoy(to: 6, terms: LivePact.truce, days: 3)
+        await session.answerEnvoy(5, accept: true)
+        await session.answerEnvoy(7, accept: false)
+        await session.breakPact(2)
+        await session.ransom(commander: 11)
+        await session.releasePrisoner(commander: 21)
+        await session.petition(LiveGoods(grain: 50_000))
+        await session.answerPetition(of: 2, LiveGoods(timber: 10_000))
+        await session.withdrawPetition()
+        XCTAssertEqual(line.asked, ["envoy to 6: 1 for 3 days", "accept envoy 5", "turn away envoy 7", "break pact 2", "ransom 11", "let 21 go",
+                                    "petition for [50000, 0, 0, 0]", "answer 2's petition with [0, 10000, 0, 0]", "withdraw petition"])
+        line.clear()
         await session.callRally(at: LiveHex(q: 8, r: -2))
         await session.joinRally(6)
         XCTAssertEqual(line.asked.count, 2)

@@ -389,6 +389,55 @@ final class LiveWorldTests: XCTestCase {
         }
     }
 
+    func testPactsEnvoysPrisonersAndPetitionsAreRead() throws {
+        let snapshot: [String: [[JSONValue]]] = [
+            "me": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)]],
+            "member": [[n(1), n(4), n(5), n(1_000)]],
+            "my_commanders": [[n(11), n(1), .string("Corwen"), n(1), n(6), n(0), n(Double(LiveCommander.held))], [n(12), n(1), .string("Halen"), n(5), n(1), n(0), n(0)]],
+            "pact": [[n(1), n(4), n(6), n(1), n(1_000), n(260_200)], [n(2), n(6), n(4), n(2), n(1_000), n(1_500)], [n(3), n(7), n(8), n(1), n(1_000), n(900_000)]],
+            "my_envoys": [[n(5), n(9), n(4), .string("[ASH] Ashfall"), n(1), n(3), n(1_900)], [n(6), n(4), n(9), .string("[MERE] Keepers"), n(2), n(1), n(1_900)],
+                          [n(7), n(10), n(4), .string("[OLD] Old"), n(2), n(1), n(-90_000)]],
+            "my_prisoners": [[n(11), n(1), n(3), .string("Corwen"), n(30_000), n(30_000), n(30_000), n(260_000), n(41)],
+                             [n(21), n(3), n(1), .string("Sela"), n(5_000), n(5_000), n(5_000), n(250_000), n(42)]],
+            "my_petitions": [[n(2), n(4), .string("[MERE] Bryn"), n(100_000), n(50_000), n(0), n(0), n(60_000), n(0), n(0), n(0), n(1_500)],
+                             [n(3), n(4), .string("[MERE] Cole"), n(10), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(-200_000)]],
+        ]
+        let world = LiveWorld(snapshot: snapshot)
+        // Pacts: those of the player's alliance holding at a moment; a truce with the sixth.
+        XCTAssertEqual(world.pacts(of: 4, at: 2_000).map(\.id), [1], "the passage ended at 1,500")
+        XCTAssertEqual(world.pacts(of: 4, at: 1_200).map(\.id), [1, 2])
+        XCTAssertTrue(world.atTruce(with: 6, at: 2_000))
+        XCTAssertFalse(world.atTruce(with: 7, at: 2_000), "not the player's alliance's")
+        XCTAssertFalse(world.atTruce(with: 6, at: 300_000), "ended")
+        XCTAssertEqual(world.pacts[2]?.other(than: 4), 6)
+        // Envoys: those come to the player's alliance and still waiting.
+        XCTAssertEqual(world.envoysWaiting(at: 2_000).map(\.id), [5])
+        XCTAssertEqual(world.envoys[0].words, "a truce of 3 days")
+        XCTAssertEqual(world.envoys[1].words, "passage through one another's gates for a day")
+        // Prisoners: the player's own commander held, and the one they hold.
+        XCTAssertTrue(world.commanders[0].isHeld)
+        XCTAssertFalse(world.commanders[0].isFree)
+        XCTAssertFalse(world.commanders[1].isHeld)
+        XCTAssertEqual(world.held(11)?.ransom, LiveGoods(grain: 30_000, timber: 30_000, stone: 30_000))
+        XCTAssertNil(world.held(21), "Sela is not the player's")
+        XCTAssertEqual(world.captives.map(\.name), ["Sela"])
+        // Petitions: those still standing, and what each still asks.
+        XCTAssertEqual(world.petitionsStanding(at: 2_000).map(\.name), ["[MERE] Bryn"])
+        XCTAssertEqual(world.petitions[2]?.still, LiveGoods(grain: 40_000, timber: 50_000))
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        if let catalog = try? String(contentsOf: root.appendingPathComponent("realm/src/catalog.rs"), encoding: .utf8),
+           let rows = try? String(contentsOf: root.appendingPathComponent("realm/src/rows.rs"), encoding: .utf8) {
+            XCTAssertTrue(catalog.contains("pub const PETITION_MOST: u64 = 500_000;") && LivePetition.most == 500_000)
+            XCTAssertTrue(catalog.contains("pub const PETITION_TOLL: u64 = \(LivePetition.toll);"))
+            XCTAssertTrue(catalog.contains("pub const PETITION_STANDS: i64 = DAY;") && LivePetition.stands == 86_400)
+            XCTAssertTrue(catalog.contains("pub const ENVOY_WAITS: i64 = DAY;") && LiveEnvoy.waits == 86_400)
+            XCTAssertTrue(rows.contains("pub const TRUCE: u8 = \(LivePact.truce);") && rows.contains("pub const PASSAGE: u8 = \(LivePact.passage);"))
+            if let prisoners = try? String(contentsOf: root.appendingPathComponent("realm/src/rules/prisoners.rs"), encoding: .utf8) {
+                XCTAssertTrue(prisoners.contains("pub const HELD: u64 = 1 << 53;") && LiveCommander.held == 1 << 53)
+            }
+        }
+    }
+
     func testACallsArgumentsGoAsTheModuleReadsThem() throws {
         let arguments: [ReducerArgument] = [.signed(-3), .signed(5), .integer(2), .records([["kind": 1, "tier": 2, "count": 20]])]
         XCTAssertEqual(arguments[0].json as? Int64, -3)
