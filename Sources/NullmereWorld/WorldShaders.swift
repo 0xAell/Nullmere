@@ -210,14 +210,37 @@ public enum WorldShaders {
     // The ground's own grain: broad patches of richer and poorer earth, and
     // a fine speckle over them, darker and lighter about the land's colour
     // and never changing its mean.
-    float3 nm_grain(float2 p, float3 albedo) {
+    float3 nm_grain(float2 p, float3 albedo, float pixel) {
         // Patches the size of a hex, swinging the shade by half, were the
         // lake view's grey banks: seen low across the shore they drew out
         // into streaks of cloud (run 540 without the land's light lost
         // them). The ground's grain is now at the scale of tussocks and
         // stones, and its shade swings little.
-        float patches = nm_fbm(p * 4.2 + float2(3.7, 1.3));
-        float speckle = nm_noise(p * 11.0 + float2(11.0, 5.0));
+        // Each octave of it, and the speckle, only while it is two pixels
+        // across or more, fading in by four: finer, it is never seen but
+        // shimmers, and stands at its mean, and the wide views don't pay
+        // for it. Close to, all of it, as it always was.
+        float2 q = p * 4.2 + float2(3.7, 1.3);
+        float patches = 0.0;
+        float amplitude = 0.5;
+        float period = 1.0 / 4.2;
+        for (int octave = 0; octave < 4; octave++) {
+            float seen = clamp(period / (2.0 * pixel) - 1.0, 0.0, 1.0);
+            if (seen > 0.0) {
+                patches += amplitude * mix(0.5, nm_noise(q), seen);
+            } else {
+                patches += amplitude * 0.5;
+            }
+            q = q * 2.03 + float2(17.1, 9.2);
+            amplitude *= 0.5;
+            period /= 2.03;
+        }
+        patches /= 0.9375;
+        float speckled = clamp(1.0 / (11.0 * 2.0 * pixel) - 1.0, 0.0, 1.0);
+        float speckle = 0.5;
+        if (speckled > 0.0) {
+            speckle = mix(0.5, nm_noise(p * 11.0 + float2(11.0, 5.0)), speckled);
+        }
         float shade = 0.88 + 0.14 * patches + 0.1 * speckle;
         // The poorer patches lean a little toward earth, the richer toward moss.
         float3 earth = albedo * float3(1.06, 0.98, 0.9);
@@ -235,7 +258,7 @@ public enum WorldShaders {
     // the moon, whose land is drawn as it always was.
     float3 nm_ground(float3 world, float3 n, float3 albedo, float pixel, float day) {
         float2 p = world.xz;
-        float3 c = nm_grain(p, albedo);
+        float3 c = nm_grain(p, albedo, pixel);
         if (day <= 0.0) {
             return c;
         }
@@ -872,10 +895,12 @@ public enum WorldShaders {
                 // of its own, a third of a hex or so across, that the light
                 // finds, so a meadow is grass and not a sheet; the heath and
                 // the sand a gentler one; salt and snow lie flat, and the
-                // lake's bed. None once a tussock is under twenty pixels or so.
+                // lake's bed. None once a tussock is under twenty pixels or so:
+                // a realm's wide view (scale 28, two pixels a point) pays
+                // nothing for them, the opening view on a Retina Mac has them.
                 float green = clamp((colour.g - max(colour.r, colour.b)) * 7.0, 0.0, 1.0);
                 float bare = (1.0 - green) * (1.0 - smoothstep(0.3, 0.42, min(colour.r, min(colour.g, colour.b)))) * step(0.0, world.y);
-                float tussocks = day * (green + 0.55 * bare) * (1.0 - smoothstep(0.012, 0.03, pixel));
+                float tussocks = day * (green + 0.55 * bare) * (1.0 - smoothstep(0.009, 0.016, pixel));
                 if (tussocks > 0.0) {
                     float2 slope = 0.3 * nm_noiseSlope(grounded.xz * 3.1)
                         + 0.18 * nm_noiseSlope(grounded.xz * 8.7 + float2(13.0, 7.0));

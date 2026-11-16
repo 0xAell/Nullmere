@@ -56,6 +56,25 @@ final class WorldPerformanceTests: XCTestCase {
             XCTAssertLessThan(median, 1000.0 / 60 * 0.85, "The world at scale \(scale) must fit a 60 Hz frame with room to spare")
         }
         print("PERF world \(Self.width)x\(Self.height) on \(device.name): " + results.joined(separator: ", "))
+
+        // By day, at the realm's own scale: the land and the water alone,
+        // with the day's ground, relief and waves, beside the night's above;
+        // told, to be held once it is known.
+        let fraction = WorldMetalView.renderScale(forCameraScale: 28)
+        let target = try renderer.makeTarget(width: Int((Double(Self.width) * fraction).rounded()),
+                                             height: Int((Double(Self.height) * fraction).rounded()))
+        var camera = Camera(scale: 28)
+        camera.focus(on: seat)
+        let size = CGSize(width: Double(Self.width) / 2, height: Double(Self.height) / 2)
+        var times: [Double] = []
+        for frame in 0..<85 {
+            let uniforms = FrameUniforms.make(camera: camera, size: size, pixelsPerPoint: 2 * fraction, time: Float(3 + Double(frame) / 60),
+                                              motion: 1, radius: state.map.radius, terrain: terrain, hovered: seat, selected: seat,
+                                              daylight: .day)
+            if let ms = renderer.measureFrame(uniforms, into: target) { times.append(ms) }
+        }
+        let settled = Array(times.dropFirst(5)).sorted()
+        print("PERFMETRIC world.gpu.scale28.day.p50 \(String(format: "%.3f", settled[settled.count / 2]))")
     }
 
     /// A realm of forty-eight seats, its lake twice as wide and its land's
