@@ -810,8 +810,10 @@ final class LiveSessionTests: XCTestCase {
         rows["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(3), n(4), n(200), n(0)]]
         rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]
         rows["my_stock"] = [[n(7), n(60_000), n(60_000), n(60_000), n(0), n(2_000), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(200_000)]]
-        // Her Farm may be raised to its third level, and a Sawmill built.
-        rows["blueprint"] = [[n(2 << 32 | 3), n(2), n(3), .string("Farm"), n(0), n(300), n(0), n(0), n(30), n(0), n(0), n(0), n(0), n(1), n(0), n(0), n(20)],
+        // Her Farm may be raised to its third level, and a Sawmill built (a
+        // building is named by its first level's blueprint).
+        rows["blueprint"] = [[n(2 << 32 | 1), n(2), n(1), .string("Farm"), n(0), n(100), n(0), n(0), n(10), n(0), n(0), n(0), n(0), n(1), n(0), n(0), n(20)],
+                             [n(2 << 32 | 3), n(2), n(3), .string("Farm"), n(0), n(300), n(0), n(0), n(30), n(0), n(0), n(0), n(0), n(1), n(0), n(0), n(20)],
                              [n(3 << 32 | 1), n(3), n(1), .string("Sawmill"), n(0), n(100), n(0), n(0), n(10), n(0), n(0), n(0), n(0), n(1), n(0), n(0), n(10)]]
         let session = session(StandInLine(rows: rows))
         await session.open()
