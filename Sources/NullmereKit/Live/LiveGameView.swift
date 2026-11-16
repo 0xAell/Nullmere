@@ -12,7 +12,7 @@ import SwiftUI
 /// alliance, what is being said, or the reports.
 public struct LiveGameView: View {
     /// What the side of the window is given over to.
-    enum Panel: Equatable {
+    enum Panel: Hashable {
         case city
         case troops
         case studies
@@ -20,6 +20,52 @@ public struct LiveGameView: View {
         case chat
         case reports
         case day
+        case realm
+
+        var title: String {
+            switch self {
+            case .city: return "Buildings"
+            case .troops: return "Troops"
+            case .studies: return "Studies"
+            case .alliance: return "Alliance"
+            case .chat: return "Chat"
+            case .reports: return "Reports"
+            case .day: return "Today"
+            case .realm: return "The Mere"
+            }
+        }
+
+        /// Which of the four destinations it belongs to.
+        var destination: Destination { Destination.allCases.first { $0.panels.contains(self) } ?? .house }
+    }
+
+    /// The four places beside the world: the player's House (their city,
+    /// troops, studies and the day's work), their alliance, the realm
+    /// (its season, contests and what is said in it), and their mail.
+    enum Destination: CaseIterable, Hashable {
+        case house
+        case alliance
+        case realm
+        case mail
+
+        var title: String {
+            switch self {
+            case .house: return "House"
+            case .alliance: return "Alliance"
+            case .realm: return "Realm"
+            case .mail: return "Mail"
+            }
+        }
+
+        /// What it holds, the first opened when it is.
+        var panels: [Panel] {
+            switch self {
+            case .house: return [.city, .troops, .studies, .day]
+            case .alliance: return [.alliance]
+            case .realm: return [.realm, .chat]
+            case .mail: return [.reports]
+            }
+        }
     }
 
     private let session: LiveSession
@@ -215,7 +261,7 @@ struct LiveHUD: View {
                     }
                 }
                 if let panel {
-                    LiveSidePanel(session: session, seconds: seconds, panel: panel) { self.panel = nil }
+                    LiveSidePanel(session: session, seconds: seconds, panel: panel, close: { self.panel = nil }, choose: { self.panel = $0 })
                 }
             }
             .padding(12)
@@ -309,34 +355,32 @@ struct LiveTaskChip: View {
     }
 }
 
-/// The doors to everything that is not the world: each opens a side of
-/// the window, or closes it again.
+/// The four destinations beside the world: each opens a side of the
+/// window at its first part, or closes it again; the mail says how much
+/// is unread.
 struct LiveDock: View {
-    struct Door: Identifiable {
-        let title: String
-        let panel: LiveGameView.Panel
-        var id: String { title }
-    }
-
-    static let doors = [Door(title: "Buildings", panel: .city), Door(title: "Troops", panel: .troops), Door(title: "Studies", panel: .studies),
-                        Door(title: "Alliance", panel: .alliance), Door(title: "Today", panel: .day), Door(title: "Chat", panel: .chat),
-                        Door(title: "Reports", panel: .reports)]
+    static let destinations = LiveGameView.Destination.allCases
 
     let session: LiveSession
     @Binding var panel: LiveGameView.Panel?
 
     var body: some View {
         HStack(spacing: 2) {
-            ForEach(Self.doors) { door in
-                let unread = door.panel == .reports ? session.world.unread + session.world.unreadLetters : 0
-                QuietButton(title: unread > 0 ? "\(door.title) \(unread)" : door.title, prominent: panel == door.panel || unread > 0,
-                            name: unread > 0 ? "\(door.title), \(unread) unread" : door.title) {
-                    panel = panel == door.panel ? nil : door.panel
-                }
+            ForEach(Self.destinations, id: \.self) { place in
+                let unread = place == .mail ? session.world.unread + session.world.unreadLetters : 0
+                let open = panel?.destination == place
+                QuietButton(title: unread > 0 ? "\(place.title) \(unread)" : place.title, prominent: open || unread > 0,
+                            name: unread > 0 ? "\(place.title), \(unread) unread" : place.title) { panel = LiveDock.pressed(place, while: panel) }
             }
         }
         .padding(4)
         .panelBackground()
+    }
+
+    /// What is open once a destination is pressed: it closes if it was
+    /// open, and opens at its first part if not.
+    static func pressed(_ place: LiveGameView.Destination, while open: LiveGameView.Panel?) -> LiveGameView.Panel? {
+        open?.destination == place ? nil : place.panels.first
     }
 }
 

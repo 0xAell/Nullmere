@@ -9,8 +9,8 @@ import SwiftUI
 // rallies, help, wardstones and gates.
 
 /// What the player may do today: the day's deeds and how far each is
-/// along, the chests their marks open, the items they hold, their favour,
-/// and the realm's contest.
+/// along, the chests their marks open, the items they hold, and their
+/// favour.
 struct LiveDayPanel: View {
     let session: LiveSession
     let seconds: Double
@@ -86,8 +86,21 @@ struct LiveDayPanel: View {
         if let favour = world.favour {
             LiveSmall(words: "Favour: level \(favour.level), \(LiveWords.grouped(favour.points)) points.")
         }
-        LiveMere(session: session)
+    }
+}
 
+/// The realm beyond the player's own: its season, the Lord of the Mere
+/// and the titles they bestow, and its contests with their prizes.
+struct LiveRealmPanel: View {
+    let session: LiveSession
+    let seconds: Double
+
+    var body: some View {
+        let world = session.world
+        LiveMere(session: session)
+        if world.trials.isEmpty {
+            LiveSmall(words: "The realm's contests have not been told of yet.", dim: true)
+        }
         ForEach(world.trials.values.sorted { $0.id < $1.id }) { trial in
             let tally = world.tallies.filter { $0.trial == trial.id }.max { $0.round < $1.round }
             VStack(alignment: .leading, spacing: 3) {

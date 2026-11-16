@@ -150,15 +150,23 @@ final class LiveGameTests: XCTestCase {
 
         XCTAssertGreaterThan(try drawn(LiveTaskChip(session: session), width: 420, height: 70), 60)
         XCTAssertGreaterThan(try drawn(LiveDock(session: session, panel: binding), width: 640, height: 50), 100)
-        XCTAssertEqual(LiveDock.doors.map(\.panel), [.city, .troops, .studies, .alliance, .day, .chat, .reports])
+        // Four destinations: the House of four parts, the alliance, the realm of two, the mail.
+        XCTAssertEqual(LiveDock.destinations.map(\.title), ["House", "Alliance", "Realm", "Mail"])
+        XCTAssertEqual(LiveGameView.Destination.house.panels, [.city, .troops, .studies, .day])
+        XCTAssertEqual(LiveGameView.Destination.realm.panels, [.realm, .chat])
+        XCTAssertEqual([LiveGameView.Panel.day, LiveGameView.Panel.chat, LiveGameView.Panel.reports].map(\.destination), [.house, .realm, .mail])
+        // Pressed, a destination opens at its first part, and closes again from any of its parts.
+        XCTAssertEqual(LiveDock.pressed(.house, while: nil), .city)
+        XCTAssertNil(LiveDock.pressed(.house, while: .studies))
+        XCTAssertEqual(LiveDock.pressed(.realm, while: .studies), .realm)
         // Each side panel, with something of everything in it.
-        for side in [LiveGameView.Panel.city, .troops, .studies, .alliance, .day, .chat, .reports] {
+        for side in [LiveGameView.Panel.city, .troops, .studies, .alliance, .day, .realm, .chat, .reports] {
             let lit = try drawn(LiveSidePanel(session: session, seconds: 2_015, panel: side) {}, width: 340, height: 700, as: "live-\(side).png")
             XCTAssertGreaterThan(lit, 800, "\(side)")
         }
         // And with nothing in them: no soldiers yet, no reports yet.
         let (empty, _) = await playing(LiveSample.rows())
-        for side in [LiveGameView.Panel.troops, .studies, .alliance, .day, .chat, .reports] {
+        for side in [LiveGameView.Panel.troops, .studies, .alliance, .day, .realm, .chat, .reports] {
             XCTAssertGreaterThan(try drawn(LiveSidePanel(session: empty, seconds: 2_015, panel: side) {}, width: 340, height: 700), 150, "\(side)")
         }
         XCTAssertEqual(try drawn(LiveTaskChip(session: empty), width: 420, height: 70), 0, "No task set, nothing shown")

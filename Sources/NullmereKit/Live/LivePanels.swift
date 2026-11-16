@@ -10,26 +10,25 @@ struct LiveSidePanel: View {
     let seconds: Double
     let panel: LiveGameView.Panel
     let close: () -> Void
-
-    private var title: String {
-        switch panel {
-        case .city: return "Buildings"
-        case .troops: return "Troops"
-        case .studies: return "Studies"
-        case .alliance: return "Alliance"
-        case .chat: return "Chat"
-        case .reports: return "Reports"
-        case .day: return "Today"
-        }
-    }
+    /// Turns to another part of the same destination.
+    var choose: (LiveGameView.Panel) -> Void = { _ in }
 
     var body: some View {
+        let parts = panel.destination.panels
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Caps(title, size: 11, weight: .medium)
+                Caps(panel.destination.title, size: 11, weight: .medium)
                     .foregroundStyle(Palette.ink)
                 Spacer(minLength: 0)
                 QuietButton(title: "Close", action: close)
+            }
+            // A destination of more than one part shows each, the open one marked.
+            if parts.count > 1 {
+                HStack(spacing: 2) {
+                    ForEach(parts, id: \.self) { part in
+                        QuietButton(title: part.title, prominent: part == panel, name: "\(part.title), in \(panel.destination.title)") { choose(part) }
+                    }
+                }
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
@@ -47,6 +46,7 @@ struct LiveSidePanel: View {
                         LiveLetters(session: session, seconds: seconds)
                         LiveReports(session: session, seconds: seconds)
                     case .day: LiveDayPanel(session: session, seconds: seconds)
+                    case .realm: LiveRealmPanel(session: session, seconds: seconds)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
