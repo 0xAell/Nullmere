@@ -62,6 +62,7 @@ public enum LiveSchema {
         "learning": .init(columns: ["id", "alliance", "topic", "level", "rises_at", "timer", "grain", "timber", "stone"], key: "id"),
         "gate": .init(columns: ["id", "hex", "holder", "holder_name", "taken_at", "fighter"], key: "id"),
         "pact": .init(columns: ["id", "first", "second", "terms", "began", "ends"], key: "id"),
+        "title": .init(columns: ["title", "holder", "name", "since"], key: "title"),
         "my_daily": .init(columns: ["player", "day", "trained", "gathered", "cleared", "begun", "hastened", "opened"], key: "player"),
         "my_favour": .init(columns: ["player", "points", "level"], key: "player"),
         "my_satchel": .init(columns: ["id", "player", "item", "count"], key: "id"),
@@ -75,6 +76,7 @@ public enum LiveSchema {
         "my_skills": .init(columns: ["id", "commander", "owner", "talent", "points"], key: "id"),
         "my_bonds": .init(columns: ["commander", "owner", "partner"], key: "commander"),
         "my_keeper": .init(columns: ["player", "commander"], key: "player"),
+        "my_letters": .init(columns: ["id", "sender", "receiver", "name", "words", "at", "read"], key: "id"),
         "my_envoys": .init(columns: ["id", "sender", "receiver", "name", "terms", "days", "sent_at"], key: "id"),
         "my_prisoners": .init(columns: ["commander", "owner", "captor", "name", "grain", "timber", "stone", "freed_at", "timer"], key: "commander"),
         "my_petitions": .init(columns: ["asker", "alliance", "name", "grain", "timber", "stone", "moonsalt", "sent_grain", "sent_timber", "sent_stone",
@@ -89,6 +91,7 @@ public enum LiveSchema {
         "my_daily": "daily", "my_favour": "favour", "my_satchel": "satchel",
         "my_tallies": "tally", "my_rallies": "rally", "my_musters": "muster", "my_pleas": "plea", "my_helps": "helper", "my_gift": "gift",
         "my_skills": "skill", "my_bonds": "bond", "my_keeper": "keeper", "my_envoys": "envoy", "my_prisoners": "prisoner", "my_petitions": "petition",
+        "my_letters": "letter",
     ]
 
     /// The queries that watch all of them.

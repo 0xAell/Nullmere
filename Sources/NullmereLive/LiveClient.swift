@@ -300,6 +300,26 @@ public final class LiveClient: @unchecked Sendable {
     /// Withdraws the player's petition.
     public func withdrawPetition() async throws { try await ask("withdraw_petition", []) }
 
+    // MARK: Titles and letters
+
+    /// Bestows a title of the Mere on a player, as the Lord of the Mere.
+    public func bestowTitle(_ title: Int, on player: UInt64) async throws { try await ask("bestow_title", [.integer(UInt64(title)), .integer(player)]) }
+
+    /// Takes a title of the Mere back, as the Lord of the Mere.
+    public func takeTitle(_ title: Int) async throws { try await ask("take_title", [.integer(UInt64(title))]) }
+
+    /// Writes a letter to another player.
+    public func sendLetter(to player: UInt64, _ words: String) async throws { try await ask("send_letter", [.integer(player), .string(words)]) }
+
+    /// Writes one letter to every other member of the player's alliance, as an officer.
+    public func sendAllianceLetter(_ words: String) async throws { try await ask("send_alliance_letter", [.string(words)]) }
+
+    /// Marks a letter to the player read.
+    public func readLetter(_ letter: UInt64) async throws { try await ask("read_letter", [.integer(letter)]) }
+
+    /// Forgets a letter to the player.
+    public func forgetLetter(_ letter: UInt64) async throws { try await ask("forget_letter", [.integer(letter)]) }
+
     /// Claims a prize of one of the realm's contests, by its place.
     public func claimPrize(contest: Int, place: Int) async throws {
         try await ask("claim_prize", [.integer(UInt64(contest)), .integer(UInt64(place))])

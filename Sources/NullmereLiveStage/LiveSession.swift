@@ -60,6 +60,12 @@ public protocol LiveLine: AnyObject, Sendable {
     func petition(_ goods: LiveGoods) async throws
     func answerPetition(of asker: UInt64, _ goods: LiveGoods) async throws
     func withdrawPetition() async throws
+    func bestowTitle(_ title: Int, on player: UInt64) async throws
+    func takeTitle(_ title: Int) async throws
+    func sendLetter(to player: UInt64, _ words: String) async throws
+    func sendAllianceLetter(_ words: String) async throws
+    func readLetter(_ letter: UInt64) async throws
+    func forgetLetter(_ letter: UInt64) async throws
 }
 
 extension LiveClient: LiveLine {}
@@ -440,6 +446,12 @@ public final class LiveSession {
     public func petition(_ goods: LiveGoods) async { await ask { try await $0.petition(goods) } }
     public func answerPetition(of asker: UInt64, _ goods: LiveGoods) async { await ask { try await $0.answerPetition(of: asker, goods) } }
     public func withdrawPetition() async { await ask { try await $0.withdrawPetition() } }
+    public func bestowTitle(_ title: Int, on player: UInt64) async { await ask { try await $0.bestowTitle(title, on: player) } }
+    public func takeTitle(_ title: Int) async { await ask { try await $0.takeTitle(title) } }
+    public func sendLetter(to player: UInt64, _ words: String) async { await ask { try await $0.sendLetter(to: player, words) } }
+    public func sendAllianceLetter(_ words: String) async { await ask { try await $0.sendAllianceLetter(words) } }
+    public func readLetter(_ letter: UInt64) async { await ask { try await $0.readLetter(letter) } }
+    public func forgetLetter(_ letter: UInt64) async { await ask { try await $0.forgetLetter(letter) } }
 
     /// Joins a rally of the player's alliance with everyone ready, led by
     /// the highest commander in the city.

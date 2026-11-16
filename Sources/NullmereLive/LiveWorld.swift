@@ -43,8 +43,10 @@ public struct LiveWorld: Equatable, Sendable {
     public var learnings: [UInt64: LiveLearning] = [:]
     /// The gates of the ridge, by their number.
     public var gates: [UInt64: LiveGate] = [:]
-    /// Every pact between alliances, by its number.
+    /// Every pact between alliances, by its number; the titles of the Mere
+    /// held, by the title.
     public var pacts: [UInt64: LivePact] = [:]
+    public var titles: [Int: LiveTitle] = [:]
 
     public var me: LivePlayer?
     public var city: LiveCity?
@@ -96,6 +98,8 @@ public struct LiveWorld: Equatable, Sendable {
     public var envoys: [LiveEnvoy] = []
     public var prisoners: [UInt64: LivePrisoner] = [:]
     public var petitions: [UInt64: LivePetition] = [:]
+    /// The letters the player has written and been written, the latest first.
+    public var letters: [LiveLetter] = []
 
     public init() {}
 
@@ -153,6 +157,7 @@ public struct LiveWorld: Equatable, Sendable {
         learnings = Dictionary(rows("learning", LiveLearning.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         gates = Dictionary(rows("gate", LiveGate.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         pacts = Dictionary(rows("pact", LivePact.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        titles = Dictionary(rows("title", LiveTitle.init).map { ($0.title, $0) }, uniquingKeysWith: { _, new in new })
         daily = rows("my_daily", LiveDaily.init).first
         favour = rows("my_favour", LiveFavour.init).first
         for row in snapshot["my_satchel"] ?? [] {
@@ -177,6 +182,7 @@ public struct LiveWorld: Equatable, Sendable {
         envoys = rows("my_envoys", LiveEnvoy.init).sorted { $0.id < $1.id }
         prisoners = Dictionary(rows("my_prisoners", LivePrisoner.init).map { ($0.commander, $0) }, uniquingKeysWith: { _, new in new })
         petitions = Dictionary(rows("my_petitions", LivePetition.init).map { ($0.asker, $0) }, uniquingKeysWith: { _, new in new })
+        letters = rows("my_letters", LiveLetter.init).sorted { $0.id > $1.id }
     }
 
     private static func key(_ kind: Int, _ level: Int) -> UInt64 { UInt64(kind) << 32 | UInt64(level) }
@@ -283,6 +289,20 @@ public struct LiveWorld: Equatable, Sendable {
     public func landOf(_ hex: LiveHex, at seconds: Double) -> UInt64? {
         wards.values.filter { $0.stands(at: seconds) && $0.hex.distance(to: hex) <= LiveWard.reach }.min { $0.id < $1.id }?.alliance
     }
+
+    /// The Lord of the Mere: the leader of the alliance that won the latest
+    /// season won, if it stands.
+    public var lord: UInt64? {
+        seasons.values.filter { $0.victor != 0 }.max { $0.number < $1.number }.flatMap { alliances[$0.victor]?.leader }
+    }
+
+    /// Whether the player is the Lord of the Mere.
+    public var isLord: Bool { me.map { $0.id == lord } ?? false }
+
+    /// The letters written to the player, the latest first, and how many
+    /// are unread.
+    public var lettersReceived: [LiveLetter] { letters.filter { $0.receiver == me?.id } }
+    public var unreadLetters: Int { lettersReceived.filter { !$0.read }.count }
 
     /// The pacts of an alliance that hold at a moment.
     public func pacts(of alliance: UInt64, at seconds: Double) -> [LivePact] {

@@ -439,6 +439,46 @@ final class LiveWorldTests: XCTestCase {
         }
     }
 
+    func testTitlesTheLordAndLettersAreRead() throws {
+        var snapshot: [String: [[JSONValue]]] = [
+            "me": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)]],
+            "alliance": [[n(4), n(1), n(2), .string("Keepers of the Mere"), .string("MERE"), n(1), n(1_000), n(2), .bool(true), .string("")],
+                         [n(6), n(3), n(4), .string("Wardens"), .string("WRD"), n(3), n(1_000), n(1), .bool(true), .string("")]],
+            "season": [[n(1), n(0), n(2_419_200), n(4), .string("Keepers of the Mere"), n(900_000)], [n(2), n(2_419_200), n(4_838_400), n(0), .string(""), n(0)]],
+            "title": [[n(1), n(5), .string("Edda"), n(1_000_000)], [n(3), n(2), .string("Bryn"), n(1_100_000)]],
+            "my_letters": [[n(7), n(5), n(1), .string("Edda"), .string("The east road is clear."), n(2_000), .bool(false)],
+                           [n(8), n(1), n(5), .string("[MERE] Ada"), .string("We come."), n(2_010), .bool(false)],
+                           [n(9), n(2), n(1), .string("[MERE] Bryn"), .string("Muster at dusk."), n(2_020), n(1)]],
+        ]
+        var world = LiveWorld(snapshot: snapshot)
+        // The Lord: the leader of the alliance that won the latest season won.
+        XCTAssertEqual(world.lord, 1)
+        XCTAssertTrue(world.isLord)
+        XCTAssertEqual(world.titles[1]?.name, "Edda")
+        XCTAssertEqual(world.titles[3]?.holder, 2)
+        XCTAssertEqual(LiveTitle.names[1]?.name, "Steward of the Mere")
+        XCTAssertEqual(LiveTitle.names.count, 5)
+        // Letters: the latest first; those to the player, and how many unread.
+        XCTAssertEqual(world.letters.map(\.id), [9, 8, 7])
+        XCTAssertEqual(world.lettersReceived.map(\.id), [9, 7])
+        XCTAssertEqual(world.unreadLetters, 1)
+        XCTAssertEqual(world.letters[2].words, "The east road is clear.")
+        // A later season won by the Wardens: their leader is the Lord.
+        snapshot["season"]?.append([n(3), n(4_838_400), n(7_257_600), n(6), .string("Wardens"), n(5_000_000)])
+        world = LiveWorld(snapshot: snapshot)
+        XCTAssertEqual(world.lord, 3)
+        XCTAssertFalse(world.isLord)
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        if let catalog = try? String(contentsOf: root.appendingPathComponent("realm/src/catalog.rs"), encoding: .utf8) {
+            let kinds = ["", "Steward", "Marshal", "Mason", "Warden", "Herald"]
+            for (title, named) in LiveTitle.names {
+                let kind = kinds[title]
+                XCTAssertTrue(catalog.contains("Title::\(kind) => \"\(named.name)\""), named.name)
+            }
+            XCTAssertTrue(catalog.contains("pub const LETTER_LONGEST: usize = 1_000;") && LiveLetter.longest == 1_000)
+        }
+    }
+
     func testACallsArgumentsGoAsTheModuleReadsThem() throws {
         let arguments: [ReducerArgument] = [.signed(-3), .signed(5), .integer(2), .records([["kind": 1, "tier": 2, "count": 20]])]
         XCTAssertEqual(arguments[0].json as? Int64, -3)

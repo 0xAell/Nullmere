@@ -182,6 +182,12 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func petition(_ goods: LiveGoods) async throws { try take("petition for \(goods.parts)") }
     public func answerPetition(of asker: UInt64, _ goods: LiveGoods) async throws { try take("answer \(asker)'s petition with \(goods.parts)") }
     public func withdrawPetition() async throws { try take("withdraw petition") }
+    public func bestowTitle(_ title: Int, on player: UInt64) async throws { try take("title \(title) on \(player)") }
+    public func takeTitle(_ title: Int) async throws { try take("take title \(title)") }
+    public func sendLetter(to player: UInt64, _ words: String) async throws { try take("letter to \(player): \(words)") }
+    public func sendAllianceLetter(_ words: String) async throws { try take("letter to the alliance: \(words)") }
+    public func readLetter(_ letter: UInt64) async throws { try take("read letter \(letter)") }
+    public func forgetLetter(_ letter: UInt64) async throws { try take("forget letter \(letter)") }
 }
 
 /// How many times something has been tried.

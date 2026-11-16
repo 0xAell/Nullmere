@@ -581,7 +581,15 @@ final class LiveSessionTests: XCTestCase {
         await session.petition(LiveGoods(grain: 50_000))
         await session.answerPetition(of: 2, LiveGoods(timber: 10_000))
         await session.withdrawPetition()
-        XCTAssertEqual(line.asked, ["envoy to 6: 1 for 3 days", "accept envoy 5", "turn away envoy 7", "break pact 2", "ransom 11", "let 21 go",
+        await session.bestowTitle(1, on: 5)
+        await session.takeTitle(3)
+        await session.sendLetter(to: 5, "We come.")
+        await session.sendAllianceLetter("Muster at dusk.")
+        await session.readLetter(7)
+        await session.forgetLetter(7)
+        XCTAssertEqual(Array(line.asked.suffix(6)), ["title 1 on 5", "take title 3", "letter to 5: We come.", "letter to the alliance: Muster at dusk.", "read letter 7",
+                                                     "forget letter 7"])
+        XCTAssertEqual(Array(line.asked.prefix(9)), ["envoy to 6: 1 for 3 days", "accept envoy 5", "turn away envoy 7", "break pact 2", "ransom 11", "let 21 go",
                                     "petition for [50000, 0, 0, 0]", "answer 2's petition with [0, 10000, 0, 0]", "withdraw petition"])
         line.clear()
         await session.callRally(at: LiveHex(q: 8, r: -2))

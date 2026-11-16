@@ -492,3 +492,49 @@ public struct LivePetition: Equatable, Sendable, Identifiable {
                   stone: asked.stone - min(sent.stone, asked.stone), moonsalt: asked.moonsalt - min(sent.moonsalt, asked.moonsalt))
     }
 }
+
+/// A title of the Mere and who holds it.
+public struct LiveTitle: Equatable, Sendable, Identifiable {
+    /// The titles, as the module's catalogue numbers and names them, with
+    /// what each lends.
+    public static let names: [Int: (name: String, lends: String)] = [
+        1: ("Steward of the Mere", "Their armies gather faster, as two levels of Gathering."),
+        2: ("Marshal of the Mere", "Their soldiers are trained sooner, as four levels of Drill."),
+        3: ("Mason of the Mere", "Their buildings are raised sooner, as four levels of Building."),
+        4: ("Warden of the Mere", "Everyone they send or keep is harder to bring down, as three levels of Shields."),
+        5: ("Herald of the Mere", "Their armies march faster, as three levels of Marching."),
+    ]
+
+    public let title: Int
+    public let holder: UInt64
+    public let name: String
+    public let since: Int
+    public var id: Int { title }
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let title = cells.whole(0), let holder = cells.unsigned(1), let name = cells.text(2), let since = cells.whole(3) else { return nil }
+        (self.title, self.holder, self.name, self.since) = (title, holder, name, since)
+    }
+}
+
+/// A letter the player has written or been written.
+public struct LiveLetter: Equatable, Sendable, Identifiable {
+    /// The most characters a letter holds.
+    public static let longest = 1_000
+
+    public let id: UInt64
+    public let sender: UInt64
+    public let receiver: UInt64
+    public let name: String
+    public let words: String
+    public let at: Int
+    public let read: Bool
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let sender = cells.unsigned(1), let receiver = cells.unsigned(2), let name = cells.text(3),
+              let words = cells.text(4), let at = cells.whole(5), let read = cells.flag(6) else { return nil }
+        (self.id, self.sender, self.receiver, self.name, self.words, self.at, self.read) = (id, sender, receiver, name, words, at, read)
+    }
+}
