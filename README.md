@@ -13,35 +13,24 @@
   <a href="https://github.com/ael-dev3/Nullmere/releases/tag/trailer"><img src="docs/images/seat-at-night.jpg" width="820" alt="A House's seat at night: a walled keep with lit windows and pink-roofed towers, its town and fields about it"></a>
 </p>
 
-Nullmere Online is one world shared by everyone who plays it: a great dead
-lake, still as black glass under a full moon, ringed by the seats of twelve
-Houses (a realm may be raised with up to a thousand and twenty-four). Each player is a
-keeper and holds a House. Keepers found holds and work the land, raise works
-and pursue studies, muster companies by the thousand under their commanders,
-make and break pacts and alliances, and win the age by dominion over the
-lake or by raising the Moonspire. The realm keeps the world on its server
-and plays every House no keeper holds. When an age ends, its holds lie
-drowned beneath the next age's lake, for new keepers to find.
+Nullmere Online is one world shared by everyone who plays it, kept in real
+time on a SpacetimeDB server: a continent ringed about a great dead lake,
+still as black glass under the moon, parted from the richer lake country by
+a ridge with six passes. Each player founds a city on it beside those who
+arrived with them, raises its buildings on timers, trains troops in four
+kinds and five tiers, and sends armies under commanders to gather from the
+land, clear the barrows of the Unquiet and find the cairns the old folk
+left, or to fall on other players' cities and armies. Alliances help each
+other build, rally against barrows, cities and the gates of the ridge,
+share learning and stores, and race to raise their Moonspire first in each
+season of twenty-eight days; the season's victor names the Lord of the Mere.
 
 It is a native Mac app for Apple silicon: SwiftUI and AppKit, every frame
 drawn with Metal, every model made for this game alone, its score written as
 it plays on recorded orchestral instruments, nearly all its cues recorded
 sounds as well, and its night, its towns and the roar of its battles sounded
-in code. Envoys, a chronicler, a clerk who reads orders written in plain
-words and the House's own commanders, taking counsel with their keeper,
-speak through Apple's on-device model, on each keeper's own Mac. Nullmere
-Companion, its iPhone app, keeps the keeper's House from their phone beside
-their Mac, linked by a code the Mac shows: a chart of its land and its
-borders, its works, musters and companies sent from the chart, its
-commanders with their gear and stars, the Ring, the Spine and the Forge,
-the caretaker's standing orders for while the keeper is away, the Lantern
-Inn and the pedlar, letters to other keepers and to the age to come, the
-watch's labours and the realm's happenings, its alliance's studies, help,
-rallies and stores, its dealings with the Houses nearest (envoys, gifts,
-trades and war), the realm's law, oaths, auguries, whispers and titles,
-the Sundering and the Frontier, and counsel with its commanders and orders
-in the keeper's own words, read by the phone's own on-device model. Out of
-reach, it says so and keeps the House; back, it takes up where it was.
+in code. A player's commanders take counsel with them through Apple's
+on-device model, grounded on what the realm holds.
 Website: [nullmere.online](https://nullmere.online).
 
 ## The trailer
@@ -67,11 +56,12 @@ framework, so the game runs only where that model does.
 ```sh
 git clone https://github.com/ael-dev3/Nullmere.git
 cd Nullmere
-NULLMERE_REALM=local swift run NullmereLauncher
+scripts/serve-realm.sh nullmere   # SpacetimeDB on this Mac, with the realm published to it
+make play                         # the launcher; its Play enters that realm
 ```
 
-That builds the game and opens its launcher with a realm hosted on your own
-Mac: press Play, choose the name you'll go by, and enter as a keeper. To
+That builds the game and opens its launcher; press Play, choose the name
+you'll go by, and found your city. To
 build the app itself:
 
 ```sh
@@ -87,28 +77,36 @@ Xcode, the tests, releases and the previews;
 
 ## Where it stands
 
-Nullmere Online is in active development. It plays end to end on a realm of
-your own, and CI plays it through a real SpacetimeDB server whenever the
-code changes: keepers' clients meet, trade, ally, speak and make war there,
-and the app enters a realm across the network. Going live takes five steps
-that need the maintainer's own accounts and ears, each a checklist in
-[GO-LIVE.md](docs/GO-LIVE.md). Measured honestly against Rise of Kingdoms,
-it falls well short of it today. An audit on 14 November found the game
+Nullmere Online is in active development, being rebuilt in the open. An
+audit on 14 November measured it against Rise of Kingdoms and found it
 turn-based where it should be persistent, its world too dark and plain, its
 interface mostly text, and no live realm; [rework-plan.md](docs/rework-plan.md)
-has the audit and the plan to rebuild it, and [GAPS.md](docs/GAPS.md) the
-record before it.
+has the audit and the plan, with a status table saying what is done, what is
+unverified and what has not been started.
 
-The rebuild is under way beside the game described above, which is still
-what the app opens. A new realm (`realm/`) keeps one persistent world in
-real time with every rule inside the SpacetimeDB module: cities and their
-buildings on timers, troops, armies that march, gather and fight, the
-Unquiet's barrows, attacks on cities, research, alliances, chat and a new
-player's first tasks, each tested and played through on a real server in
-CI. The world now keeps a day. A debug build of the Mac app can open on
-the new realm; it is not yet what Play opens, it has not been published,
-and its screens are a first cut. The plan's status table says what is
-done, what is unverified, and what has not been started.
+The launcher's Play opens the rebuilt realm (`realm/`): one persistent world
+in real time, every rule inside the SpacetimeDB module. Cities and their
+buildings on timers, troops trained and raised a tier, armies that march,
+gather and fight, in the field as well as at barrows and cities, the
+Unquiet's barrows, cairns for scouts to find, kill points and rankings,
+research, commanders with talents, skills, tomes and gear from the Forge,
+alliances with chat, help, rallies, gifts, honour, stores, territory and
+learning, the day's work and favour, contests, the Moonspire and the gates
+of the ridge, envoys, prisoners, petitions and letters, and its chat kept at
+peace by reports its owner reads. CI plays it through on a real SpacetimeDB
+server whenever it changes, holds its rules to a budget at a thousand
+players, and builds, tests and bundles the Mac app and opens it on that
+realm through Play. The public realm on maincloud is not raised yet; until
+it is, a realm of your own (above) is the way in. Going live takes steps
+that need the maintainer's own accounts, each a checklist in
+[GO-LIVE.md](docs/GO-LIVE.md).
+
+The turn-based game the app used to open has been deleted from the app, its
+phone companion and its realm with it; its rules still sit in the package
+(`Sources/NullmereCore`) beside the land the world is drawn on, and are to
+go once the land stands apart ([core-split.md](docs/core-split.md)). The
+trailer was drawn from that game's world. The phone is to be rebuilt on the
+rebuilt realm.
 
 ## Also in this repository
 
