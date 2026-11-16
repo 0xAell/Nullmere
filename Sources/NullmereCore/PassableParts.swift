@@ -1,3 +1,4 @@
+import NullmereLand
 extension WorldMap {
     /// The stretches of ground a march may cross, each hex's by its index:
     /// -1 where no company may step, and two hexes share a number only where

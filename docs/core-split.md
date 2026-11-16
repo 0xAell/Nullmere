@@ -126,7 +126,11 @@ hold walled in stone). Two ways off the old rules:
    to look at, shot by shot, against the last one drawn from the old
    world.
 2. A land module (`NullmereLand`): the whole and in-part files above,
-   trimmed; kept modules import it instead of NullmereCore.
+   trimmed; kept modules import it instead of NullmereCore. Begun with
+   the three whole files that are the land's own (Hex, PlainCases,
+   Varint, their members the rules used made public), NullmereCore
+   depending on it and passing it on (`@_exported`), so nothing else
+   changes yet; the in-part files follow a few at a time.
 3. Test fixtures rebuilt on it, a few files at a time, each step green.
 4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
 5. NullmereCore and NullmereCoreTests deleted; coverage floors and

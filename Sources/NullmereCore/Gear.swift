@@ -1,3 +1,4 @@
+import NullmereLand
 /// Where a commander wears a piece of gear: one of each.
 public enum GearSlot: String, CaseIterable, Codable, Sendable, PlainCases {
     case weapon, armour, charm

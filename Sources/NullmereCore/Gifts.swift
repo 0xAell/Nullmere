@@ -1,3 +1,4 @@
+import NullmereLand
 /// A gift one House sent another, kept a while for the goodwill it buys.
 public struct Gift: Codable, Equatable, Sendable {
     public let from: Int

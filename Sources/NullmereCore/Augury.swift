@@ -1,3 +1,4 @@
+import NullmereLand
 /// The Augury: a keeper foretells a turn of the realm's course, a House
 /// fallen, a hold taken, a war, a Moonspire risen, by a watch to come, and
 /// stakes moonsalt on it; other keepers back it or stand against it while

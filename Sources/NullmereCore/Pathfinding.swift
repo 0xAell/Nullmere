@@ -1,4 +1,5 @@
 import Foundation
+import NullmereLand
 
 extension GameState {
     /// The cheapest route for a unit from its position to `target`, as the

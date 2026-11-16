@@ -1,3 +1,4 @@
+import NullmereLand
 /// Now and then the lake itself turns: an omen falls on the whole realm for
 /// a few watches, the same for every House, told in the chronicle.
 public enum OmenKind: String, Codable, CaseIterable, Sendable, PlainCases {

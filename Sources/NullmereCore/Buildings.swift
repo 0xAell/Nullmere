@@ -1,3 +1,4 @@
+import NullmereLand
 /// What a hold can build. Each building rises through levels; every level
 /// costs more and takes longer, and each completed level adds its effect.
 public enum BuildingKind: String, CaseIterable, Codable, Sendable, PlainCases {

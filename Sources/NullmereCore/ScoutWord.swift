@@ -1,4 +1,5 @@
 import Foundation
+import NullmereLand
 
 /// The word of the keeper's Lanterns back from scouting another House's
 /// hold, given by a device's own model on the Mac and the phone alike from

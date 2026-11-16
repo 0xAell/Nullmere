@@ -1,3 +1,4 @@
+import NullmereLand
 /// How a world is made.
 public struct GameSettings: Codable, Equatable, Sendable {
     /// Words that name the world; the same words make the same world.

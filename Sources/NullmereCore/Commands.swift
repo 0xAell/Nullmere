@@ -1,3 +1,4 @@
+import NullmereLand
 /// Everything a House can order. Commands are validated against the rules
 /// before anything changes; a rejected command changes nothing.
 public enum Command: Codable, Equatable, Sendable {

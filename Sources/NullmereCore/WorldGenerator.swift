@@ -1,4 +1,5 @@
 import Foundation
+import NullmereLand
 
 /// The shape of the black water. Each age of the realm lies on a lake of
 /// its own shape, in turn.

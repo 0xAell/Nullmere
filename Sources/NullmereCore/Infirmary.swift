@@ -1,3 +1,4 @@
+import NullmereLand
 /// A company of war carried from the field to an Infirmary: kept in one of
 /// its beds until its House pays for its healing, and lost if its hold
 /// falls first.

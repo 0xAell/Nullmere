@@ -54,7 +54,7 @@ public struct Hex: Hashable, Codable, Sendable, Comparable, CustomStringConverti
     /// them but row by row, none laid out: for those that ask of each
     /// what it is, not which comes first.
     @inline(__always)
-    func forEach(within radius: Int, _ body: (Hex) -> Void) {
+    public func forEach(within radius: Int, _ body: (Hex) -> Void) {
         let radius = max(radius, 0)
         for dr in -radius...radius {
             for dq in max(-radius, -dr - radius)...min(radius, radius - dr) {

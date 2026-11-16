@@ -1,3 +1,4 @@
+import NullmereLand
 /// The four resources of the shore. Grain, timber and stone are common;
 /// moonsalt, the pale crust that forms where moonlight lies on the dead
 /// water's edge, is rare and feeds every great work.

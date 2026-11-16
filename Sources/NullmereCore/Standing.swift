@@ -1,3 +1,4 @@
+import NullmereLand
 /// How near a House stands to winning the lake, by either road.
 public struct Standing: Equatable, Sendable {
     public let house: Int

@@ -1,4 +1,5 @@
 import Foundation
+import NullmereLand
 
 /// A House's settlement: its seat, or a hold founded later. A hold works
 /// the land around it, builds, trains, and has a ward that attackers must

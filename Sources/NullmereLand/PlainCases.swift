@@ -13,5 +13,5 @@ extension PlainCases {
 
     /// Which case it is: a kind of plain cases, from two to 256 of them, is
     /// held in a byte numbering its case.
-    @inlinable var caseNumber: UInt8 { unsafeBitCast(self, to: UInt8.self) }
+    @inlinable public var caseNumber: UInt8 { unsafeBitCast(self, to: UInt8.self) }
 }

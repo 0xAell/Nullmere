@@ -1,3 +1,4 @@
+import NullmereLand
 /// What must always hold of a world, however long it runs: the realm's
 /// steward and the tests ask, and a world that answers anything is wrong.
 extension GameState {

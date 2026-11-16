@@ -1,3 +1,4 @@
+import NullmereLand
 /// An alliance's hall: the fortress its leader raises on the alliance's
 /// own land, for stores. It rises over four watches, its ward growing as it
 /// does; whole, the land three tiles about it is the alliance's, the

@@ -1,3 +1,4 @@
+import NullmereLand
 /// The Lantern Inn (after Rise of Kingdoms' tavern): where the lake's
 /// sell-swords and storytellers drink, a keeper opens chests with keys.
 /// A silver key comes each watch, a gold one every few; a gold chest may

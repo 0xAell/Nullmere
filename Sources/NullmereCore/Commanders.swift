@@ -1,3 +1,4 @@
+import NullmereLand
 /// What a commander is: the kind of company it leads best.
 public enum Archetype: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Holds the line, and the walls.

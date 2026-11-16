@@ -10,8 +10,15 @@ var targets: [Target] = [
     // The game's rules and the realm's authority: world, economy, war,
     // diplomacy, keepers, watches and ages. Pure Swift, deterministic, and
     // the same on every machine.
+    // The land the world is drawn on, apart from the rules: hexes and their
+    // layout, and the plain kinds and small numbers it is written in.
+    .target(
+        name: "NullmereLand",
+        linkerSettings: [.linkedLibrary("m", .when(platforms: [.linux]))]
+    ),
     .target(
         name: "NullmereCore",
+        dependencies: ["NullmereLand"],
         linkerSettings: [.linkedLibrary("m", .when(platforms: [.linux]))]
     ),
     // The line to a realm on a SpacetimeDB server: its HTTP API, its

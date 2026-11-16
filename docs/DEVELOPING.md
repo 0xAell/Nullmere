@@ -427,6 +427,7 @@ Sources/
   LauncherCore/       Platform-independent logic: settings, navigation, news, model readiness, composition
   LauncherKit/        SwiftUI interface, Metal backdrop, services (on-device model, news)
   NullmereLauncher/   The Nullmere Online app's entry point
+  NullmereLand/       The land the world is drawn on, apart from the rules: hexes and their layout, plain kinds, small numbers. Pure Swift
   NullmereCore/       The rules and the realm's authority: world generation, economy, war, diplomacy, stewards, keepers, watches, ages. Pure, deterministic Swift
   NullmereModels/     The world's shapes: the land's relief and mesh, the models made in Blender read from their glTF files, and every other model built from solids in code, with the rigs that move them. Pure Swift
   NullmereWorld/      The world as the GPU draws it, apart from the GPU: the camera, the shaders' source, the frame's data. Pure Swift

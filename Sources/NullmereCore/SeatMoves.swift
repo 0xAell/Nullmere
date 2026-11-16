@@ -1,3 +1,4 @@
+import NullmereLand
 extension GameState {
     /// What raising a seat anew costs: Rise of Kingdoms' teleport, here
     /// within a House's own land.

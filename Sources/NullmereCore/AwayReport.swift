@@ -1,4 +1,5 @@
 import Foundation
+import NullmereLand
 
 /// A store's change, for those that moved.
 public struct StockChange: Hashable, Sendable {

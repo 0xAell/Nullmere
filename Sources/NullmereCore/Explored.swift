@@ -1,4 +1,5 @@
 import Foundation
+import NullmereLand
 
 /// The tiles a House has ever seen, by map index: one bit to a tile, read
 /// and written as a list of yes and no. A lake of many seats has hundreds

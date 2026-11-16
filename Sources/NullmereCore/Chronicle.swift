@@ -1,3 +1,4 @@
+import NullmereLand
 /// One line of the lake's history. The chronicle keeps what mattered:
 /// foundings, wars, pacts and their breaking, sieges, falls, great works.
 public struct ChronicleEntry: Codable, Equatable, Sendable {

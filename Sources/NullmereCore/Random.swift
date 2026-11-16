@@ -1,3 +1,4 @@
+import NullmereLand
 /// Deterministic randomness. Every random choice in the rules flows from the
 /// world seed through these functions, so a world and its history replay
 /// exactly on any machine. Only integer operations are used.

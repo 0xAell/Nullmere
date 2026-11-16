@@ -1,3 +1,4 @@
+import NullmereLand
 /// What an attack would most likely do, before chance has its say: the
 /// least and most damage each side can suffer.
 public struct Forecast: Equatable, Sendable {
