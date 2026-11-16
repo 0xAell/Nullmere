@@ -626,6 +626,12 @@ pub fn claim_task(ctx: &ReducerContext) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::claim_task(&mut Stdb(ctx), player)))
 }
 
+/// Have one of the caller's commanders read so many tomes of war.
+#[reducer]
+pub fn read_tome(ctx: &ReducerContext, commander: u64, item: u8, count: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::read_tome(&mut Stdb(ctx), player, commander, item, count)).map(|_| ()))
+}
+
 /// Buy so many of a thing from the caller's alliance's stores with their honour.
 #[reducer]
 pub fn buy(ctx: &ReducerContext, item: u8, count: u64) -> Result<(), String> {

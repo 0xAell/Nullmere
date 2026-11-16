@@ -72,7 +72,9 @@ fn the_items_are_written_out_and_the_chests_say_what_they_hold() {
             (5, 0, Ware::MATERIAL),
             (6, 0, Ware::MATERIAL),
             (7, 0, Ware::MATERIAL),
-            (8, 0, Ware::MATERIAL)
+            (8, 0, Ware::MATERIAL),
+            (9, 0, Ware::TOME),
+            (10, 0, Ware::TOME)
         ]
     );
     assert_eq!(wares[0].name, "Five minutes' haste");
@@ -157,7 +159,7 @@ fn a_haste_is_refused_where_it_cannot_be_used_and_is_not_spent() {
     let theirs = rules::building_of(&db, other.id, Kind::Farm).unwrap();
     let foreign = db.call(|db| rules::upgrade(db, bryn, theirs.id)).unwrap();
 
-    assert_eq!(db.call(|db| rules::use_item(db, ada, 9, job.id)), Err(Refusal::NoSuchItem));
+    assert_eq!(db.call(|db| rules::use_item(db, ada, 99, job.id)), Err(Refusal::NoSuchItem));
     assert_eq!(db.call(|db| rules::use_item(db, ada, Item::Haste60 as u8, job.id)), Err(Refusal::NoneLeft));
     assert_eq!(db.call(|db| rules::use_item(db, ada, Item::Haste5 as u8, foreign.id)), Err(Refusal::NoSuchJob), "another's work");
     assert_eq!(db.call(|db| rules::use_item(db, ada, Item::Haste5 as u8, 999_999)), Err(Refusal::NoSuchJob));

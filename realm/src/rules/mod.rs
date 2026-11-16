@@ -130,6 +130,10 @@ pub enum Refusal {
     FoundAlready,
     ScoutsOnTheWay,
     NoSuchWare,
+    NotATome,
+    ForACommander,
+    /// The commander, at the top of what may be seen.
+    SeenAll(String),
     /// How much honour the player has.
     NotEnoughHonour(u64),
     /// The most that may be asked for at once.
@@ -356,6 +360,7 @@ impl fmt::Display for Refusal {
             Refusal::AtPeaceLonger(left) => return write!(f, "Your city is at peace for another {} already.", crate::catalog::spoken(*left)),
             Refusal::ShortOfMaterials(words) => return write!(f, "You need {words} more."),
             Refusal::HeldPrisoner(name) => return write!(f, "{name} is held prisoner."),
+            Refusal::SeenAll(name) => return write!(f, "{name} has seen all there is to see of war."),
             Refusal::NoFreeMarch(1) => return write!(f, "Your one army is out. Raise your Keep to send more."),
             Refusal::NoFreeMarch(most) => return write!(f, "All {most} of your armies are out."),
             _ => {}
@@ -383,6 +388,8 @@ impl fmt::Display for Refusal {
             Refusal::FoundAlready => "Your scouts have found what that cairn held already.",
             Refusal::ScoutsOnTheWay => "Your scouts are on their way to that cairn already.",
             Refusal::NoSuchWare => "The alliance's stores sell no such thing.",
+            Refusal::NotATome => "That is not a tome.",
+            Refusal::ForACommander => "A tome is read by one of your commanders.",
             Refusal::NoSuchOrder => "The realm knows no such order.",
             Refusal::NothingThere => "There is nothing to gather there.",
             Refusal::SiteTaken => "Another army is gathering there.",

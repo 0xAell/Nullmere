@@ -59,10 +59,10 @@ fn cairns_stand_on_open_ground_about_the_land() {
     assert!(mean(1) > mean(4).min(mean(5)), "level ones lie out toward the mountains");
 
     // What each level holds.
-    assert_eq!(rules::hoard_of(1), (Goods::of(2_000, 2_000, 2_000, 0), None));
-    assert_eq!(rules::hoard_of(3), (Goods::of(12_000, 12_000, 12_000, 0), Some(Item::Haste5)));
-    assert_eq!(rules::hoard_of(4), (Goods::of(20_000, 20_000, 20_000, 500), Some(Item::Haste5)));
-    assert_eq!(rules::hoard_of(5), (Goods::of(30_000, 30_000, 30_000, 1_000), Some(Item::Haste60)));
+    assert_eq!(rules::hoard_of(1), (Goods::of(2_000, 2_000, 2_000, 0), vec![Item::Tome]));
+    assert_eq!(rules::hoard_of(3), (Goods::of(12_000, 12_000, 12_000, 0), vec![Item::Haste5, Item::Tome]));
+    assert_eq!(rules::hoard_of(4), (Goods::of(20_000, 20_000, 20_000, 500), vec![Item::Haste5, Item::Tome]));
+    assert_eq!(rules::hoard_of(5), (Goods::of(30_000, 30_000, 30_000, 1_000), vec![Item::Haste60, Item::GreatTome]));
 }
 
 #[test]
@@ -94,6 +94,7 @@ fn scouts_find_what_a_cairn_holds_once_for_each_player() {
     until(&mut db, march.arrives);
     assert_eq!(stock_at(&db, hers.id, march.arrives), before.plus(Goods::of(30_000, 30_000, 30_000, 1_000)));
     assert_eq!(held(&db, ada, Item::Haste60), 1);
+    assert_eq!(held(&db, ada, Item::GreatTome), 1);
     assert!(rules::has_found(&db, ada, cairn.id));
     let found = Table::<Find>::by(&db, 0, ada);
     assert_eq!((found.len(), found[0].cairn, found[0].at), (1, cairn.id, march.arrives));
@@ -101,7 +102,7 @@ fn scouts_find_what_a_cairn_holds_once_for_each_player() {
     assert_eq!((told.kind, told.won, told.foe, told.hex, told.grain, told.moonsalt), (Report::CAIRN, true, 5, cairn.hex, 30_000, 1_000));
     assert_eq!(
         told.words,
-        "Your scouts found what the old folk laid in a cairn of level 5: 30,000 grain, 30,000 timber, 30,000 stone and 1,000 moonsalt, and an hour's haste. It is in your city."
+        "Your scouts found what the old folk laid in a cairn of level 5: 30,000 grain, 30,000 timber, 30,000 stone and 1,000 moonsalt, and an hour's haste and a great tome of war. It is in your city."
     );
     // The scouts come home whole.
     let back = Table::<March>::get(&db, march.id).unwrap();

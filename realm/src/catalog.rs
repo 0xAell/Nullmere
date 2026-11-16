@@ -1016,10 +1016,14 @@ pub enum Item {
     Leather = 6,
     Bone = 7,
     Silver = 8,
+    /// Read by a commander: so much more seen of war (`Item::seen`).
+    Tome = 9,
+    GreatTome = 10,
 }
 
 impl Item {
-    pub const ALL: [Item; 8] = [Item::Haste5, Item::Haste60, Item::Haste480, Item::Peace8, Item::Iron, Item::Leather, Item::Bone, Item::Silver];
+    pub const ALL: [Item; 10] =
+        [Item::Haste5, Item::Haste60, Item::Haste480, Item::Peace8, Item::Iron, Item::Leather, Item::Bone, Item::Silver, Item::Tome, Item::GreatTome];
 
     /// The materials, in the order a piece's cost names them.
     pub const MATERIALS: [Item; 4] = [Item::Iron, Item::Leather, Item::Bone, Item::Silver];
@@ -1035,7 +1039,7 @@ impl Item {
             Item::Haste5 => 300,
             Item::Haste60 => 3_600,
             Item::Haste480 | Item::Peace8 => 28_800,
-            Item::Iron | Item::Leather | Item::Bone | Item::Silver => 0,
+            Item::Iron | Item::Leather | Item::Bone | Item::Silver | Item::Tome | Item::GreatTome => 0,
         }
     }
 
@@ -1049,6 +1053,20 @@ impl Item {
         self == Item::Peace8
     }
 
+    /// Whether a commander reads it, rather than it hastening a work.
+    pub fn is_tome(self) -> bool {
+        self.seen() > 0
+    }
+
+    /// What a commander who reads it has seen of war the more.
+    pub fn seen(self) -> u64 {
+        match self {
+            Item::Tome => 500,
+            Item::GreatTome => 5_000,
+            _ => 0,
+        }
+    }
+
     pub fn name(self) -> &'static str {
         match self {
             Item::Haste5 => "Five minutes' haste",
@@ -1059,6 +1077,8 @@ impl Item {
             Item::Leather => "Leather",
             Item::Bone => "Bone",
             Item::Silver => "Silver",
+            Item::Tome => "Tome of war",
+            Item::GreatTome => "Great tome of war",
         }
     }
 
@@ -1069,6 +1089,9 @@ impl Item {
         }
         if self.is_material() {
             return "Worked at the Forge into gear for your commanders. The barrows of the Unquiet yield it.".to_string();
+        }
+        if self.is_tome() {
+            return format!("Read by one of your commanders: {} more seen of war, toward their next level.", grouped(self.seen()));
         }
         format!("Takes {} off a work under way in your city.", spoken(self.seconds()))
     }

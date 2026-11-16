@@ -5,9 +5,9 @@
 //! one who leads, adding half of their own way; and one may keep the
 //! city, adding what they bring to its defence.
 
-use super::{asking, building_of, city_of, goods, set_goods, settle, Mastery, Refusal};
-use crate::catalog::{self, Building as Kind, Leading, Talent, Way, TOP_COMMAND, TALENT_MOST};
-use crate::rows::{Bond, Commander, Db, Keeper, March, Skill};
+use super::{asking, building_of, city_of, goods, held, set_goods, settle, take, Mastery, Refusal};
+use crate::catalog::{self, Building as Kind, Item, Leading, Talent, Way, TOP_COMMAND, TALENT_MOST};
+use crate::rows::{Bond, Commander, Db, Keeper, March, Prisoner, Skill};
 use crate::store::Table;
 
 const FIRST: [&str; 24] = [
@@ -127,6 +127,37 @@ fn seen_by(db: &mut impl Db, commander: u64, amount: u64) {
         commander.level += 1;
     }
     db.update(commander);
+}
+
+/// The most tomes read at once.
+pub const MOST_READ: u64 = 100;
+
+/// A player has one of their commanders read so many tomes of war: what
+/// each tells is added to what the commander has seen, and they rise as
+/// it carries them. Not a commander held prisoner, nor one who has seen
+/// all there is. What the commander is now.
+pub fn read_tome(db: &mut impl Db, player: u64, commander: u64, item: u8, count: u64) -> Result<Commander, Refusal> {
+    asking(db, player)?;
+    let reader = Table::<Commander>::get(db, commander).filter(|row| row.owner == player).ok_or(Refusal::NoSuchCommander)?;
+    let tome = Item::of(item).filter(|item| item.is_tome()).ok_or(Refusal::NotATome)?;
+    if count == 0 {
+        return Err(Refusal::NothingAsked);
+    }
+    if count > MOST_READ {
+        return Err(Refusal::TooMany(MOST_READ));
+    }
+    if Table::<Prisoner>::get(db, commander).is_some() {
+        return Err(Refusal::HeldPrisoner(reader.name));
+    }
+    if reader.level >= TOP_COMMAND {
+        return Err(Refusal::SeenAll(reader.name));
+    }
+    if held(db, player, tome) < count {
+        return Err(Refusal::NoneLeft);
+    }
+    take(db, player, tome, count);
+    seen_by(db, commander, tome.seen() * count);
+    Table::<Commander>::get(db, commander).ok_or(Refusal::NoSuchCommander)
 }
 
 /// A march's commanders have seen something of war or of work: the one

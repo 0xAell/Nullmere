@@ -1,7 +1,7 @@
 //! Commanders over a store kept in memory: who a player has, taking on
 //! more, an army led, and what its leader adds and learns.
 
-use realm::catalog::{self, Building as Kind, Goods, Leading, Troops, Way};
+use realm::catalog::{self, Building as Kind, Goods, Item, Leading, Troops, Way};
 use realm::hex::Hex;
 use realm::land;
 use realm::rows::{Barrow, Building, City, Commander, Haul, March, Report, Site, Stock, Troop};
@@ -264,4 +264,36 @@ fn a_commander_rises_with_what_they_have_seen() {
     until(&mut db, march.arrives + catalog::FIGHT_SECONDS);
     assert!(Table::<March>::get(&db, march.id).is_none());
     assert_eq!(Table::<Commander>::get(&db, commander.id).unwrap().march, 0);
+}
+
+#[test]
+fn a_commander_reads_tomes_of_war_and_rises() {
+    let (mut db, player, _city, commander) = led(10);
+    let commander = make(&mut db, &commander, Way::Vanguard, 1);
+    // None held: nothing to read; and what is no tome is never read.
+    let refusal = db.call(|db| rules::read_tome(db, player, commander.id, Item::Tome as u8, 1)).unwrap_err();
+    assert_eq!((refusal.clone(), refusal.to_string()), (Refusal::NoneLeft, Refusal::NoneLeft.to_string()));
+    let refusal = db.call(|db| rules::read_tome(db, player, commander.id, Item::Haste5 as u8, 1)).unwrap_err();
+    assert_eq!((refusal.clone(), refusal.to_string()), (Refusal::NotATome, "That is not a tome.".to_string()));
+    assert_eq!(db.call(|db| rules::read_tome(db, player, 999, Item::Tome as u8, 1)), Err(Refusal::NoSuchCommander));
+
+    // Two tomes, 1,000 seen: from the first level past the third (100 + 400 = 500 to the third, 900 more for the fourth).
+    rules::give(&mut db, player, Item::Tome, 3);
+    assert_eq!(db.call(|db| rules::read_tome(db, player, commander.id, Item::Tome as u8, 0)), Err(Refusal::NothingAsked));
+    assert_eq!(db.call(|db| rules::read_tome(db, player, commander.id, Item::Tome as u8, 101)), Err(Refusal::TooMany(rules::MOST_READ)));
+    let read = db.call(|db| rules::read_tome(db, player, commander.id, Item::Tome as u8, 2)).unwrap();
+    assert_eq!((read.level, read.seen), (3, 500), "100 to the second, 400 to the third, 500 toward the fourth");
+    assert_eq!(rules::held(&db, player, Item::Tome), 1);
+    // A tome is never used on a work.
+    let refusal = db.call(|db| rules::use_item(db, player, Item::Tome as u8, 1)).unwrap_err();
+    assert_eq!((refusal.clone(), refusal.to_string()), (Refusal::ForACommander, "A tome is read by one of your commanders.".to_string()));
+
+    // A great tome is ten of them; and one at the top has seen all there is.
+    rules::give(&mut db, player, Item::GreatTome, 1);
+    let read = db.call(|db| rules::read_tome(db, player, commander.id, Item::GreatTome as u8, 1)).unwrap();
+    assert!(read.level > 3);
+    let topped = make(&mut db, &commander, Way::Vanguard, catalog::TOP_COMMAND);
+    let refusal = db.call(|db| rules::read_tome(db, player, topped.id, Item::Tome as u8, 1)).unwrap_err();
+    assert_eq!(refusal.to_string(), format!("{} has seen all there is to see of war.", topped.name));
+    assert_eq!(rules::held(&db, player, Item::Tome), 1, "nothing taken for it");
 }

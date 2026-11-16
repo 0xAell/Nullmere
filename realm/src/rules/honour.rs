@@ -4,7 +4,7 @@
 //! help, up to a thousand of it from helping in a day of the realm; and
 //! by giving goods toward what the alliance learns, one for every
 //! thousand taken. Honour is the member's own and stays with them through
-//! any alliance they are in. It buys hastes and peace from the stores
+//! any alliance they are in. It buys hastes, peace and tomes from the stores
 //! of whatever alliance they are in now, at prices the realm writes out
 //! for clients to show.
 
@@ -23,7 +23,8 @@ pub const GOODS_AN_HONOUR: u64 = 1_000;
 pub const MOST_BOUGHT: u64 = 100;
 
 /// What the stores sell, and for how much honour each.
-pub const PRICES: [(Item, u64); 4] = [(Item::Haste5, 100), (Item::Haste60, 1_000), (Item::Haste480, 6_000), (Item::Peace8, 5_000)];
+pub const PRICES: [(Item, u64); 6] =
+    [(Item::Haste5, 100), (Item::Haste60, 1_000), (Item::Haste480, 6_000), (Item::Peace8, 5_000), (Item::Tome, 250), (Item::GreatTome, 2_000)];
 
 /// Writes the stores' prices out as rows, for clients to show, as the
 /// realm opens.

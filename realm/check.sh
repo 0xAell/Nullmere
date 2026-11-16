@@ -247,10 +247,12 @@ check("no scouts go where no cairn stands", call(bryn, "send", home[0], home[1],
 check("nor to a cairn from a city without a Scout Camp", call(bryn, "send", *unpacked(cairns[0]["hex"]), 7, [{"kind": 1, "tier": 1, "count": 1}], 0), "Raise your Scout Camp to level 1 first.")
 check("no cairn's hoard is found yet", rows(bryn, "SELECT * FROM my_finds"), [])
 check("and no one reads the finds' table itself", isinstance(rows(bryn, "SELECT * FROM find"), str), True)
-check("the alliance's stores' prices are for all to read", sorted((price["item"], price["honour"]) for price in rows(nobody, "SELECT * FROM price")), [(1, 100), (2, 1000), (3, 6000), (4, 5000)])
+check("the alliance's stores' prices are for all to read", sorted((price["item"], price["honour"]) for price in rows(nobody, "SELECT * FROM price")), [(1, 100), (2, 1000), (3, 6000), (4, 5000), (9, 250), (10, 2000)])
 check("one in no alliance has no honour", rows(bryn, "SELECT * FROM my_honour"), [])
 check("and buys nothing from an alliance's stores", call(bryn, "buy", 1, 1), "You are in no alliance.")
 check("and no one reads the honour table itself", isinstance(rows(bryn, "SELECT * FROM honour"), str), True)
+check("tomes of war are among the realm's wares, read by commanders", sorted((ware["item"], ware["kind"]) for ware in rows(nobody, "SELECT * FROM ware") if ware["item"] >= 9), [(9, 4), (10, 4)])
+check("no tome is read by a commander one does not have", call(bryn, "read_tome", 999, 9, 1), "You have no such commander.")
 
 # A player's first tasks: the first is to raise the Keep, which Ada has done.
 tasks = rows(nobody, "SELECT * FROM task")

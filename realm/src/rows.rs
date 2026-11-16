@@ -1214,6 +1214,8 @@ impl Ware {
     pub const PEACE: u8 = 2;
     /// Worked at the Forge into gear.
     pub const MATERIAL: u8 = 3;
+    /// Read by a commander.
+    pub const TOME: u8 = 4;
 }
 
 /// How many of an item a player keeps: theirs alone to read. Keyed by

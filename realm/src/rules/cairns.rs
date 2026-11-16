@@ -5,7 +5,7 @@
 //! the higher the nearer the lake. A player sends scouts to one from a
 //! city with a Scout Camp. The first time their scouts come to a cairn
 //! they find what was laid in it: grain, timber and stone by its level,
-//! moonsalt too from the fourth, and a haste from the third, all of it
+//! moonsalt too from the fourth, a tome of war and from the third a haste, all of it
 //! sent into their city at once and told in a report. Each player finds
 //! each cairn once; it stays for everyone else to find after them.
 
@@ -22,16 +22,26 @@ pub const TOP_CAIRN: u32 = 5;
 
 /// What a cairn of a level holds: a thousand of each of grain, timber
 /// and stone times the level and the next, five hundred moonsalt a level
-/// past the third, and a haste from the third level, an hour's at the top.
-pub fn hoard_of(level: u32) -> (Goods, Option<Item>) {
+/// past the third; a tome of war, and from the third level a haste too;
+/// at the top an hour's haste and a great tome.
+pub fn hoard_of(level: u32) -> (Goods, Vec<Item>) {
     let each = 1_000 * level as u64 * (level as u64 + 1);
     let moonsalt = 500 * level.saturating_sub(3) as u64;
-    let haste = match level {
-        0..=2 => None,
-        3 | 4 => Some(Item::Haste5),
-        _ => Some(Item::Haste60),
+    let items = match level {
+        0..=2 => vec![Item::Tome],
+        3 | 4 => vec![Item::Haste5, Item::Tome],
+        _ => vec![Item::Haste60, Item::GreatTome],
     };
-    (Goods::of(each, each, each, moonsalt), haste)
+    (Goods::of(each, each, each, moonsalt), items)
+}
+
+/// One of a thing in words: "a tome of war", "an hour's haste".
+fn one(item: Item) -> String {
+    let name = item.name().to_lowercase();
+    match item {
+        Item::Haste60 => name,
+        _ => format!("a {name}"),
+    }
 }
 
 /// The cairn at a hex, if one stands there.
@@ -120,7 +130,7 @@ pub(super) fn explored(db: &mut impl Db, march: &March) {
     }
     let now = db.now();
     db.insert(Find { id: Find::key(march.owner, cairn.id), player: march.owner, cairn: cairn.id, at: now });
-    let (hoard, haste) = hoard_of(cairn.level);
+    let (hoard, items) = hoard_of(cairn.level);
     if let Ok(city) = city_of(db, march.owner) {
         if let Ok(mut stock) = settle(db, city.id) {
             let more = goods(&stock).plus(hoard);
@@ -128,16 +138,11 @@ pub(super) fn explored(db: &mut impl Db, march: &March) {
             db.update(stock);
         }
     }
-    if let Some(item) = haste {
-        give(db, march.owner, item, 1);
+    for item in &items {
+        give(db, march.owner, *item, 1);
     }
-    let mut words = format!("Your scouts found what the old folk laid in a cairn of level {}: {hoard}", cairn.level);
-    match haste {
-        Some(Item::Haste60) => words.push_str(", and an hour's haste"),
-        Some(item) => words.push_str(&format!(", and a {}", item.name().to_lowercase())),
-        None => {}
-    }
-    words.push_str(". It is in your city.");
+    let named: Vec<String> = items.iter().map(|item| one(*item)).collect();
+    let words = format!("Your scouts found what the old folk laid in a cairn of level {}: {hoard}, and {}. It is in your city.", cairn.level, named.join(" and "));
     report(
         db,
         Report {
