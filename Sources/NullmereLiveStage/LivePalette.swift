@@ -25,6 +25,9 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case buy(Int)
         /// Have a commander read one tome of war.
         case readTome(commander: UInt64, item: Int)
+        /// Hasten a work by a quarter for goods, or use a haste on it.
+        case speedUp(UInt64)
+        case useHaste(item: Int, job: UInt64)
     }
 
     public let title: String
@@ -91,6 +94,17 @@ extension LiveSession {
             let name = line.tiers.first?.soldier.name ?? line.name
             all.append(LiveCommand(title: "Raise \(LiveWords.grouped(raise.count)) tier \(raise.from) \(name) to tier \(raise.to)",
                                    act: .promote(building: line.building.id, from: raise.from, to: raise.to, count: raise.count)))
+        }
+        // Each work under way: hastened by a quarter for goods, or by a haste held.
+        let hastes = world.heldItems.filter { !$0.ware.isPeace && !$0.ware.isMaterial && !$0.ware.isTome }
+        let affords = (world.stock?.goods(at: seconds) ?? LiveGoods()).covers(LiveWorld.hastening)
+        for work in world.works(at: seconds) {
+            if affords {
+                all.append(LiveCommand(title: "Hasten \(work.words) by a quarter, for \(LiveWorld.hastening.words)", act: .speedUp(work.job.id)))
+            }
+            for haste in hastes {
+                all.append(LiveCommand(title: "Use \(haste.ware.name.lowercased()) on \(work.words)", act: .useHaste(item: haste.ware.item, job: work.job.id)))
+            }
         }
         for line in world.forgeLines(at: seconds) where line.block == nil {
             all.append(LiveCommand(title: "Make a piece at the Forge: \(line.pattern.name)", act: .forge(line.pattern.piece)))
@@ -172,6 +186,8 @@ extension LiveSession {
         case .helpAll: await helpAll()
         case .buy(let item): await buy(item: item)
         case .readTome(let commander, let item): await readTome(commander: commander, item: item)
+        case .speedUp(let job): await speedUp(job: job)
+        case .useHaste(let item, let job): await useItem(item, on: job)
         }
         return nil
     }
