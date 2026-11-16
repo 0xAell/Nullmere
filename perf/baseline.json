@@ -117,7 +117,7 @@
     "live.stage.cpu.p50": {
       "baseline": 7.0,
       "cpu": true,
-      "note": "the rebuilt realm's frame staged, by the clock (LiveStagingTimeTests: 50 cities and 51 armies in a laptop's window), CI runs 1037 to 1057 brought to the calibration's pace: 6.1 to 7.9"
+      "note": "the rebuilt realm's frame staged, by the clock (LiveStagingTimeTests: 50 cities and 51 armies in a laptop's window), CI runs 1037 to 1057 brought to the calibration's pace: 6.1 to 7.9, the view opening at scale 46; from 64 it shows less, so a ceiling"
     },
     "live.stage.cpu.p95": {
       "baseline": 9.0,

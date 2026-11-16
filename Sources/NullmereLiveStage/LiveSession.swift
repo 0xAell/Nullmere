@@ -134,8 +134,11 @@ public final class LiveSession {
     public static let reach = 24
     public static let stray = 8
     /// How close the view opens on a city, and the furthest out it draws
-    /// back: no further than keeps the window's rim out of sight.
-    public static let openingScale = 46.0
+    /// back: no further than keeps the window's rim out of sight. It opens
+    /// on her city and its neighbours, some thirteen hexes across a
+    /// laptop's window (at 46, nineteen, her city stood small in a broad
+    /// green, CI run 1057's pictures); further out is a scroll away.
+    public static let openingScale = 64.0
     public static let furthestScale = 22.0
 
     public private(set) var phase: Phase = .opening
