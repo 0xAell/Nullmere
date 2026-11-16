@@ -17,33 +17,6 @@ public enum Heritage: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Of the strand: grain, and gathering.
     case strandfolk
 
-    /// Its people, as a line names them: "the Saltborn".
-    public var title: String {
-        switch self {
-        case .saltborn: return "the Saltborn"
-        case .fenfolk: return "the Fenfolk"
-        case .blackwood: return "the Blackwood Kin"
-        case .spinewardens: return "the Spinewardens"
-        case .moundClans: return "the Mound Clans"
-        case .strandfolk: return "the Strandfolk"
-        }
-    }
-
-    /// Its people as a heading names them: "The Saltborn".
-    public var name: String { title.prefix(1).uppercased() + title.dropFirst() }
-
-    /// Who its people are, in a line.
-    public var origin: String {
-        switch self {
-        case .saltborn: return "Salt-rakers of the white flats, who read the moon in the brine"
-        case .fenfolk: return "Reed-cutters of the shallows, who see far over still water"
-        case .blackwood: return "Woodwards of the old trees, who ride the dark paths"
-        case .spinewardens: return "Quarriers of the spine, who hold a line like its rock"
-        case .moundClans: return "Keepers of the barrows, who forget no lesson of the dead"
-        case .strandfolk: return "Fisher-farmers of the strand, who bring in every harvest"
-        }
-    }
-
     /// The kind of its own company, at the fifth tier.
     public var signature: UnitKind {
         switch self {

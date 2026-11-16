@@ -21,6 +21,7 @@ on:
       - Sources/NullmereWorld/**
       - Sources/NullmereModels/**
       - Sources/NullmereSound/**
+      - Tests/NullmereLandTests/**
       - Tests/NullmereModelsTests/**
       - Tests/NullmereWorldTests/**
       - Tests/NullmereSoundTests/**
@@ -41,6 +42,7 @@ on:
       - Sources/NullmereWorld/**
       - Sources/NullmereModels/**
       - Sources/NullmereSound/**
+      - Tests/NullmereLandTests/**
       - Tests/NullmereModelsTests/**
       - Tests/NullmereWorldTests/**
       - Tests/NullmereSoundTests/**
@@ -142,10 +144,10 @@ jobs:
       # The land, its models, the world as the GPU takes it and the sound,
       # all pure Swift, tested here as on the Mac and sooner: what they
       # draw and sound from a test world, not the realm's server.
-      - name: The models, the world and the sound, on Linux
+      - name: The land, the models, the world and the sound, on Linux
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
-          stdbuf -oL -eL swift test --skip-build --filter "NullmereModelsTests|NullmereWorldTests|NullmereSoundTests" 2>&1 | tee pure-swift.log || true
+          stdbuf -oL -eL swift test --skip-build --filter "NullmereLandTests|NullmereModelsTests|NullmereWorldTests|NullmereSoundTests" 2>&1 | tee pure-swift.log || true
           total="$(grep "Executed .* tests" pure-swift.log | tail -n 1)"
           echo "$total" | grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" || {
             echo "::error::The models', the world's or the sound's tests failed on Linux: $total"

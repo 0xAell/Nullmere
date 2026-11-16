@@ -2,7 +2,7 @@
 /// A House's settlement: its seat, or a hold founded later. A hold works
 /// the land around it, builds, trains, and has a ward that attackers must
 /// break before they can take it.
-public struct Hold: Codable, Equatable, Identifiable, Sendable {
+public struct Hold: Equatable, Identifiable, Sendable {
     public struct Project: Codable, Equatable, Sendable {
         public var kind: BuildingKind
         public var targetLevel: Int
@@ -45,9 +45,6 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
             self.tier = tier.flatMap { $0 > 1 ? $0 : nil }
             self.helpers = nil
         }
-
-        /// The tier it musters at.
-        public var musteredTier: Int { tier ?? 1 }
     }
 
     public let id: Int
@@ -93,44 +90,6 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
         levels[kind] ?? 0
     }
 
-    // Written in a fixed order, as a dictionary would be in any order: the
-    // steward sends a keeper's view only when its words change.
-    private enum CodingKeys: String, CodingKey {
-        case id, name, owner, position, isSeat, levels, project, training, ward, struck, foundedWatch, wounded, places, raisedAnew
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(name, forKey: .name)
-        try container.encode(owner, forKey: .owner)
-        try container.encode(position, forKey: .position)
-        try container.encode(isSeat, forKey: .isSeat)
-        var built = container.nestedUnkeyedContainer(forKey: .levels)
-        for kind in BuildingKind.allCases {
-            if let level = levels[kind] {
-                try built.encode(kind)
-                try built.encode(level)
-            }
-        }
-        try container.encodeIfPresent(project, forKey: .project)
-        try container.encodeIfPresent(training, forKey: .training)
-        try container.encode(ward, forKey: .ward)
-        try container.encode(struck, forKey: .struck)
-        try container.encode(foundedWatch, forKey: .foundedWatch)
-        try container.encodeIfPresent(wounded, forKey: .wounded)
-        if let places {
-            var set = container.nestedUnkeyedContainer(forKey: .places)
-            for kind in BuildingKind.allCases {
-                if let place = places[kind] {
-                    try set.encode(kind)
-                    try set.encode(place)
-                }
-            }
-        }
-        try container.encodeIfPresent(raisedAnew, forKey: .raisedAnew)
-    }
-
     public var maximumWard: Int { Hold.maximumWard(wallLevel: level(.walls), isSeat: isSeat) }
 
     public static func maximumWard(wallLevel: Int, isSeat: Bool = false) -> Int {
@@ -142,9 +101,4 @@ extension Hold {
     /// How many places a hold's works may be set in round its keep: twelve
     /// about it, and six further out.
     public static let placeCount = 18
-
-    /// Where a work stands if its keeper has set it.
-    public func place(of kind: BuildingKind) -> Int? {
-        places?[kind]
-    }
 }

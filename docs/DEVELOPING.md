@@ -443,7 +443,7 @@ Sources/
   NullmereSound/      The game's sound apart from the Mac's audio engine: the synthesiser, its instruments and their recorded notes (Recorded/, made by Art/sound/make.py), its hall and the score. Pure Swift
   NullmereTrailer/    The trailer apart from the GPU: its world, its shots and what moves in them, and its score. Pure Swift
   NullmereKit/        The window's realm: its screens over the rebuilt realm (Live/), the Metal world, the audio engine
-Tests/                LauncherCoreTests, LauncherKitTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereLiveTests, NullmereLiveStageTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a stand-in line and sample realm, a test world made by the land's generator, a stub HTTP server and WebSocket server)
+Tests/                LauncherCoreTests, LauncherKitTests, NullmereLandTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereLiveTests, NullmereLiveStageTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a stand-in line and sample realm, a test world made by the land's generator, a stub HTTP server and WebSocket server)
 realm/                The rebuilt realm: its rules (Rust) inside one SpacetimeDB module, tested by realm/check.sh
 news/                 news.json, the launcher's news feed
 perf/                 CI's performance baseline; scripts/measure-mac.sh adds figures from real Macs in perf/mac/

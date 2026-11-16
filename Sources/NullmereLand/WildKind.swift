@@ -13,14 +13,4 @@ public enum WildKind: String, CaseIterable, Codable, Sendable, PlainCases {
     case spineHunters
     /// The drowned, who walk the strand by night.
     case drowned
-
-    public var title: String {
-        switch self {
-        case .saltwights: return "Saltwights"
-        case .reavers: return "Blackwood Reavers"
-        case .barrowkin: return "Barrowkin"
-        case .spineHunters: return "Spine Hunters"
-        case .drowned: return "the Drowned"
-        }
-    }
 }

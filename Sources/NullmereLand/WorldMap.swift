@@ -28,7 +28,7 @@ public struct Tile: Codable, Equatable, Sendable {
 
 /// The hexagonal world: every hex within `radius` of the origin, stored row
 /// by row so a hex's index is computed rather than looked up.
-public struct WorldMap: Codable, Equatable, Sendable {
+public struct WorldMap: Equatable, Sendable {
 
     public let radius: Int
     public private(set) var tiles: [Tile]
@@ -40,28 +40,10 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// `Hex.directions`, -1 past the world's edge: laid out once, for the
     /// generator's searches over the land.
     package let neighbours: [Int32]
-    /// The nearest hex of a terrain to each hex it was sought from, kept
-    /// while the ground is as it is: shared by the map's copies, and let go
-    /// of by any copy whose ground changes.
-    package private(set) var nearest = Nearest()
     /// The deepest of its open water, kept while the ground is as it is:
     /// shared by the map's copies, and let go of by any copy whose ground
     /// changes.
     package private(set) var deep = Deepest()
-
-    private enum CodingKeys: String, CodingKey {
-        case radius
-        case tiles
-        /// Three bytes a tile, base64: terrain, feature (0 for none),
-        /// relief. Maps were kept so before their ground went as its runs.
-        case cells
-        /// The terrain and feature of every tile, each as its runs
-        /// (`WorldMap.ground(of:)`).
-        case ground
-        /// Every tile's relief, each as its difference from the one before
-        /// it (`WorldMap.relief(of:)`).
-        case relief
-    }
 
     public init(radius: Int, fill: Tile) {
         precondition(radius >= 1, "radius must be positive")
@@ -72,169 +54,9 @@ public struct WorldMap: Codable, Equatable, Sendable {
         neighbours = WorldMap.neighbours(radius: radius, of: hexList)
     }
 
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let radius = try container.decode(Int.self, forKey: .radius)
-        let tiles: [Tile]
-        if let ground = try container.decodeIfPresent(String.self, forKey: .ground) {
-            guard let decoded = WorldMap.tiles(ground: ground, relief: try container.decode(String.self, forKey: .relief)) else {
-                throw DecodingError.dataCorruptedError(forKey: .ground, in: container, debugDescription: "Unreadable ground")
-            }
-            tiles = decoded
-        } else if let cells = try container.decodeIfPresent(String.self, forKey: .cells) {
-            guard let decoded = WorldMap.tiles(fromCells: cells) else {
-                throw DecodingError.dataCorruptedError(forKey: .cells, in: container, debugDescription: "Unreadable tiles")
-            }
-            tiles = decoded
-        } else {
-            tiles = try container.decode([Tile].self, forKey: .tiles)
-        }
-        guard let map = WorldMap(radius: radius, tiles: tiles) else {
-            throw DecodingError.dataCorruptedError(forKey: .tiles, in: container, debugDescription: "Tile count doesn't match the radius")
-        }
-        self = map
-    }
-
-    /// A map of these tiles, row by row; nil if they aren't as many as a
-    /// world of this radius has.
-    package init?(radius: Int, tiles: [Tile]) {
-        guard radius >= 1, tiles.count == WorldMap.count(radius: radius) else { return nil }
-        self.radius = radius
-        self.tiles = tiles
-        rowStarts = WorldMap.rowStarts(radius: radius)
-        hexList = WorldMap.hexes(radius: radius)
-        neighbours = WorldMap.neighbours(radius: radius, of: hexList)
-    }
-
     // The rest of a map is laid out from its radius.
     public static func == (a: WorldMap, b: WorldMap) -> Bool {
         a.radius == b.radius && a.tiles == b.tiles
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(radius, forKey: .radius)
-        try container.encode(WorldMap.ground(of: tiles), forKey: .ground)
-        try container.encode(WorldMap.relief(of: tiles), forKey: .relief)
-    }
-
-    // The order of terrains and features is part of the stored world: new
-    // ones go at the end.
-
-    /// A run of tiles' ground, base64: how many tiles there are, then the
-    /// terrain of each as its runs (how many tiles, then which terrain),
-    /// then each one's feature so (0 for none, else its place and one).
-    /// The lake's ground lies together, so a page of the map is a few
-    /// hundred runs, and a House that knows a little of the lake is told a
-    /// little; the relief goes apart (`relief(of:)`), as it is the same
-    /// however much of the lake is known.
-    package static func ground<Tiles: Collection>(of tiles: Tiles) -> String where Tiles.Element == Tile {
-        var bytes: [UInt8] = []
-        Varint.append(tiles.count, to: &bytes)
-        runs(of: tiles.lazy.map { tile in tile.terrain.code }, into: &bytes)
-        runs(of: tiles.lazy.map { tile in tile.feature.map { $0.code + 1 } ?? 0 }, into: &bytes)
-        return Data(bytes).base64EncodedString()
-    }
-
-    private static func runs<Codes: Sequence>(of codes: Codes, into bytes: inout [UInt8]) where Codes.Element == UInt8 {
-        var code: UInt8?
-        var run = 0
-        for next in codes {
-            if next == code {
-                run += 1
-                continue
-            }
-            if let code {
-                Varint.append(run, to: &bytes)
-                bytes.append(code)
-            }
-            code = next
-            run = 1
-        }
-        if let code {
-            Varint.append(run, to: &bytes)
-            bytes.append(code)
-        }
-    }
-
-    /// A run of tiles' relief, base64: how many tiles there are, then each
-    /// one's relief as its difference from the one before it (the first's
-    /// from none). The land rises and falls by a little from tile to tile,
-    /// so each is a byte.
-    package static func relief<Tiles: Collection>(of tiles: Tiles) -> String where Tiles.Element == Tile {
-        var bytes: [UInt8] = []
-        bytes.reserveCapacity(tiles.count + 3)
-        Varint.append(tiles.count, to: &bytes)
-        var last = 0
-        for tile in tiles {
-            Varint.append(Varint.zigzag(tile.relief &- last), to: &bytes)
-            last = tile.relief
-        }
-        return Data(bytes).base64EncodedString()
-    }
-
-    /// The tiles `ground(of:)` and `relief(of:)` wrote; nil unless each
-    /// reads whole and both tell of the same tiles.
-    package static func tiles(ground: String, relief: String) -> [Tile]? {
-        guard let reliefs = reliefs(fromText: relief), var tiles = tiles(fromGround: ground, count: reliefs.count) else { return nil }
-        for index in tiles.indices { tiles[index].relief = reliefs[index] }
-        return tiles
-    }
-
-    /// Each tile's relief as `relief(of:)` wrote it; nil unless it reads
-    /// whole.
-    package static func reliefs(fromText text: String) -> [Int]? {
-        guard let data = Data(base64Encoded: text) else { return nil }
-        var read = Varint.Reader([UInt8](data))
-        // A byte at the least for each tile's: no more tiles than bytes.
-        guard let count = read.count(), count <= data.count else { return nil }
-        var reliefs: [Int] = []
-        reliefs.reserveCapacity(count)
-        var relief = 0
-        for _ in 0..<count {
-            guard let step = read.next() else { return nil }
-            relief &+= Varint.unzigzag(step)
-            reliefs.append(relief)
-        }
-        return read.isAtEnd ? reliefs : nil
-    }
-
-    /// The `count` tiles `ground(of:)` wrote, their relief none; nil unless
-    /// it tells of `count` tiles and reads whole.
-    package static func tiles(fromGround text: String, count: Int) -> [Tile]? {
-        guard let data = Data(base64Encoded: text) else { return nil }
-        var read = Varint.Reader([UInt8](data))
-        guard read.count() == count else { return nil }
-        func codes(below limit: Int) -> [UInt8]? {
-            var codes: [UInt8] = []
-            codes.reserveCapacity(count)
-            while codes.count < count {
-                guard let run = read.count(), run >= 1, run <= count - codes.count, let code = read.byte(), Int(code) < limit else { return nil }
-                codes.append(contentsOf: repeatElement(code, count: run))
-            }
-            return codes
-        }
-        let terrains = Terrain.allCases, features = Feature.allCases
-        guard let terrain = codes(below: terrains.count), let feature = codes(below: features.count + 1), read.isAtEnd else { return nil }
-        return zip(terrain, feature).map { terrain, feature in
-            Tile(terrain: terrains[Int(terrain)], feature: feature == 0 ? nil : features[Int(feature) - 1])
-        }
-    }
-
-    /// The tiles of a map kept before its ground went as its runs: three
-    /// bytes a tile, base64 (terrain, feature or 0, relief).
-    package static func tiles(fromCells text: String) -> [Tile]? {
-        guard let data = Data(base64Encoded: text), data.count % 3 == 0 else { return nil }
-        let bytes = [UInt8](data)
-        var tiles: [Tile] = []
-        tiles.reserveCapacity(bytes.count / 3)
-        for start in stride(from: 0, to: bytes.count, by: 3) {
-            let terrain = Int(bytes[start]), feature = Int(bytes[start + 1])
-            guard terrain < Terrain.allCases.count, feature <= Feature.allCases.count else { return nil }
-            tiles.append(Tile(terrain: Terrain.allCases[terrain], feature: feature == 0 ? nil : Feature.allCases[feature - 1],
-                              relief: Int(bytes[start + 2])))
-        }
-        return tiles
     }
 
     private static func rowStarts(radius: Int) -> [Int] {
@@ -269,22 +91,6 @@ public struct WorldMap: Codable, Equatable, Sendable {
         let r = hex.r
         let qMin = max(-radius, -r - radius)
         return rowStarts[r + radius] + hex.q - qMin
-    }
-
-    /// The hex at a tile index.
-    public func hex(at index: Int) -> Hex {
-        precondition(tiles.indices.contains(index), "index out of range")
-        var remaining = index
-        var r = -radius
-        while true {
-            let width = 2 * radius + 1 - abs(r)
-            if remaining < width {
-                let qMin = max(-radius, -r - radius)
-                return Hex(qMin + remaining, r)
-            }
-            remaining -= width
-            r += 1
-        }
     }
 
     /// Every hex in index order.
@@ -333,22 +139,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
     package mutating func set(index: Int, _ tile: Tile) {
         tiles[index] = tile
         // What its other copies still keep of their ground is theirs.
-        if isKnownUniquelyReferenced(&nearest) { nearest.clear() } else { nearest = Nearest() }
         if isKnownUniquelyReferenced(&deep) { deep.clear() } else { deep = Deepest() }
-    }
-
-    /// The hex of a terrain nearest a hex, the lowest q and then r among
-    /// those as near; nil if the map has none. Found ring by ring out from
-    /// the hex once, and kept while the ground is as it is.
-    public func nearest(_ terrain: Terrain, to hex: Hex) -> Hex? {
-        if let known = nearest.hex(of: terrain, near: hex) { return known }
-        var found: Hex?
-        for distance in 0...(2 * radius + 1) {
-            found = hex.ring(distance).filter { self[$0]?.terrain == terrain }.min { ($0.q, $0.r) < ($1.q, $1.r) }
-            if found != nil { break }
-        }
-        nearest.keep(found, of: terrain, near: hex)
-        return found
     }
 
     public mutating func set(_ hex: Hex, _ tile: Tile) {

@@ -30,39 +30,6 @@ public enum Terrain: String, CaseIterable, Codable, Sendable, PlainCases {
     /// step at a time, and a poor place to stand and fight.
     case shoal
 
-    public var title: String {
-        switch self {
-        case .still: return "The Still"
-        case .shallows: return "Dead Shallows"
-        case .strand: return "Strand"
-        case .saltFlat: return "Salt Flat"
-        case .greyfield: return "Greyfield"
-        case .blackwood: return "Blackwood"
-        case .barrow: return "Barrows"
-        case .spine: return "The Spine"
-        case .ford: return "The Moonford"
-        case .stream: return "Stream"
-        case .shoal: return "Shoal"
-        }
-    }
-
-    /// The ground as a line says it: "the blackwood", "the dead shallows",
-    /// and a name of its own as it is, "the Moonford", never "the the
-    /// moonford".
-    public var ground: String {
-        title.hasPrefix("The ") ? "the " + title.dropFirst(4) : "the " + title.lowercased()
-    }
-
-    /// Where a thing is on the ground, as a line says it: in among the
-    /// trees and the waters ("in the blackwood", "in the dead shallows"),
-    /// on all the rest ("on the strand", "on the Moonford").
-    public var place: String {
-        switch self {
-        case .blackwood, .shallows, .stream: return "in " + ground
-        case .still, .strand, .saltFlat, .greyfield, .barrow, .spine, .ford, .shoal: return "on " + ground
-        }
-    }
-
     // These ask by case, not `==`, which for an enum of strings can come
     // to comparing the strings: the search for ways asks them of every
     // tile it looks at.
@@ -88,31 +55,6 @@ public enum Terrain: String, CaseIterable, Codable, Sendable, PlainCases {
         case .still, .shallows, .spine, .ford, .stream, .shoal: return false
         }
     }
-
-    /// Movement points to enter.
-    public var moveCost: Int {
-        switch self {
-        case .strand, .saltFlat, .greyfield, .ford: return 1
-        case .shallows, .blackwood, .barrow, .shoal: return 2
-        case .still, .spine, .stream: return 99
-        }
-    }
-
-    /// Bonus to a defender standing here, in percent.
-    public var defenseBonus: Int {
-        switch self {
-        case .blackwood: return 25
-        case .barrow: return 50
-        case .shallows, .shoal: return -25
-        default: return 0
-        }
-    }
-
-    /// Extra sight for a unit standing here.
-    public var visionBonus: Int {
-        if case .barrow = self { return 1 }
-        return 0
-    }
 }
 
 /// Something notable on a tile.
@@ -128,14 +70,4 @@ public enum Feature: String, CaseIterable, Codable, Sendable, PlainCases {
     /// A half-sunken ruin of whoever was here before. The first to reach it
     /// finds what remains.
     case drownedRuin
-
-    public var title: String {
-        switch self {
-        case .moonsaltBed: return "Moonsalt Bed"
-        case .elderGrove: return "Elder Grove"
-        case .stoneSeam: return "Stone Seam"
-        case .darkLoam: return "Dark Loam"
-        case .drownedRuin: return "Drowned Ruin"
-        }
-    }
 }

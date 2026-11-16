@@ -31,24 +31,6 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Stewards raise none.
     case lodge
 
-    public var title: String {
-        switch self {
-        case .granary: return "Granary"
-        case .sawpit: return "Sawpit"
-        case .quarry: return "Quarry"
-        case .saltworks: return "Saltworks"
-        case .musterHall: return "Muster Hall"
-        case .walls: return "Walls"
-        case .beacon: return "Beacon"
-        case .infirmary: return "Infirmary"
-        case .archive: return "Archive"
-        case .moonspire: return "Moonspire"
-        case .forge: return "Forge"
-        case .wayhouse: return "Wayhouse"
-        case .lodge: return "Masons' Lodge"
-        }
-    }
-
     public var maxLevel: Int {
         switch self {
         case .beacon: return 3

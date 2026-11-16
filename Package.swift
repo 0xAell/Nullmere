@@ -16,6 +16,7 @@ var targets: [Target] = [
         name: "NullmereLand",
         linkerSettings: [.linkedLibrary("m", .when(platforms: [.linux]))]
     ),
+    .testTarget(name: "NullmereLandTests", dependencies: ["NullmereLand"]),
     // The line to a realm on a SpacetimeDB server: its HTTP API, its
     // subscriptions pushed over a WebSocket, a player's identity, and
     // trouble said in plain words. Foundation only.

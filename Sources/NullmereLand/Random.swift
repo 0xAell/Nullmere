@@ -28,18 +28,9 @@ public struct SeededRandom: RandomNumberGenerator, Codable, Sendable, Equatable 
         }
     }
 
-    public mutating func int(in range: ClosedRange<Int>) -> Int {
-        range.lowerBound + int(below: range.count)
-    }
-
     /// True with the given chance, in percent.
     public mutating func chance(_ percent: Int) -> Bool {
         int(below: 100) < percent
-    }
-
-    /// A value in 0..<1 with 53 bits of precision.
-    public mutating func unit() -> Double {
-        Double(next() >> 11) * 0x1.0p-53
     }
 
     public mutating func pick<T>(_ items: [T]) -> T {

@@ -14,8 +14,6 @@ public struct Hex: Hashable, Codable, Sendable, Comparable, CustomStringConverti
 
     public static let origin = Hex(0, 0)
 
-    public var s: Int { -q - r }
-
     /// The six neighbours' offsets, clockwise from east.
     public static let directions: [Hex] = [
         Hex(1, 0), Hex(1, -1), Hex(0, -1), Hex(-1, 0), Hex(-1, 1), Hex(0, 1),
@@ -50,19 +48,6 @@ public struct Hex: Hashable, Codable, Sendable, Comparable, CustomStringConverti
         return result
     }
 
-    /// This hex and every hex within `radius` steps, as `spiral` holds
-    /// them but row by row, none laid out: for those that ask of each
-    /// what it is, not which comes first.
-    @inline(__always)
-    public func forEach(within radius: Int, _ body: (Hex) -> Void) {
-        let radius = max(radius, 0)
-        for dr in -radius...radius {
-            for dq in max(-radius, -dr - radius)...min(radius, radius - dr) {
-                body(Hex(q + dq, r + dr))
-            }
-        }
-    }
-
     /// This hex and every hex within `radius` steps, nearest first.
     public func spiral(_ radius: Int) -> [Hex] {
         var result = [self]
@@ -90,15 +75,6 @@ public struct Hex: Hashable, Codable, Sendable, Comparable, CustomStringConverti
         result.reserveCapacity(steps + 1)
         for step in 0...steps { result.append(point(step, of: steps, toward: other)) }
         return result
-    }
-
-    /// The hex `step` hexes along the line to `other`, as `line(to:)` has
-    /// it, found without the rest of the line; its last if the line is
-    /// shorter.
-    public func step(_ step: Int, alongLineTo other: Hex) -> Hex {
-        let steps = distance(to: other)
-        guard steps > 0 else { return self }
-        return point(min(max(step, 0), steps), of: steps, toward: other)
     }
 
     private func point(_ step: Int, of steps: Int, toward other: Hex) -> Hex {
@@ -143,20 +119,6 @@ public struct HexLayout: Sendable, Equatable {
         let q = (HexLayout.root3 / 3 * x - y / 3) / size
         let r = (2.0 / 3 * y) / size
         return HexLayout.round(q: q, r: r)
-    }
-
-    /// The six corners, clockwise from the top.
-    public func corners(of hex: Hex) -> [(x: Double, y: Double)] {
-        let c = center(of: hex)
-        let half = size * HexLayout.root3 / 2
-        return [
-            (c.x, c.y - size),
-            (c.x + half, c.y - size / 2),
-            (c.x + half, c.y + size / 2),
-            (c.x, c.y + size),
-            (c.x - half, c.y + size / 2),
-            (c.x - half, c.y - size / 2),
-        ]
     }
 
     static func round(q: Double, r: Double) -> Hex {

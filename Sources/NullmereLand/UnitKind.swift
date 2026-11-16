@@ -12,18 +12,5 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Settlers who found a new hold where they stand.
     case founder
 
-    public var title: String {
-        switch self {
-        case .lantern: return "Lanterns"
-        case .spear: return "Spears"
-        case .bow: return "Bows"
-        case .rider: return "Riders"
-        case .mangonel: return "Mangonels"
-        case .founder: return "Founders"
-        }
-    }
-
     public var isMilitary: Bool { self != .lantern && self != .founder }
-
-    // MARK: Tiers
 }
