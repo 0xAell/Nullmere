@@ -2,9 +2,10 @@ import LauncherCore
 @testable import LauncherKit
 import Metal
 import XCTest
-@testable import NullmereCore
 @testable import NullmereKit
+import NullmereLand
 import NullmereModels
+import NullmereTestSupport
 import NullmereWorld
 
 /// The map's Metal view outside the happy path: tiles that come before
@@ -41,9 +42,9 @@ final class WorldMetalViewTests: XCTestCase {
 
     func testTilesWaitForTheShaderAndFailuresAreSaidOnce() throws {
         guard let device = WorldMetalView.systemDevice else { throw XCTSkip("No Metal device available") }
-        let state = GameState(settings: GameSettings(seedText: "waiting tiles", houseCount: 3, radius: 16, keepers: 1))
+        let state = TestWorld(seedText: "waiting tiles", houses: 3, radius: 16)
         let side = TileTexture.side(for: state.map)
-        let bytes = TileTexture.bytes(for: state, viewer: state.player)
+        let bytes = state.tiles { $0.distance(to: state.holds[0].position) <= 5 }
 
         // Tiles first, the shader after: the tiles are kept, then taken.
         let view = WorldMetalView()

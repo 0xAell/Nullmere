@@ -130,22 +130,6 @@ final class WorldPreviewTests: XCTestCase {
         return sights
     }
 
-    /// The tiles as a keeper knows them: the tiles `known` watched, each
-    /// hold on them lit and its land named its House's.
-    static func tiles(_ world: TestWorld, known: (Hex) -> Bool) -> [UInt8] {
-        let ground = TileTexture.Ground(map: world.map)
-        var bytes = ground.bytes
-        for (index, hex) in world.map.hexes.enumerated() where known(hex) {
-            let offset = ground.offsets[index]
-            bytes[offset + 1] |= 2 * TileTexture.seenStep
-            if let hold = world.holds.first(where: { $0.position == hex }) {
-                bytes[offset + 1] |= TileTexture.holdFlag
-                TileTexture.name(hold.owner + 1, in: &bytes, at: offset)
-            }
-        }
-        return bytes
-    }
-
     /// A frame's models as the preview reads them: each kind's instances,
     /// as the GPU takes them, and the poses.
     static func export(_ scene: SceneFrame) -> [String: Any] {
@@ -174,8 +158,8 @@ final class WorldPreviewTests: XCTestCase {
         let seat = world.holds[0].position
         // The country about the seat known, as its keeper first knows it,
         // and then the whole lake.
-        let opening = WorldPreviewTests.tiles(world) { $0.distance(to: seat) <= 5 }
-        let whole = WorldPreviewTests.tiles(world) { _ in true }
+        let opening = world.tiles { $0.distance(to: seat) <= 5 }
+        let whole = world.tiles()
         let terrain = TerrainMesh(relief: Relief(map: world.map), spacing: 0.3)
         // The seat walled, with works for its townsfolk to go about.
         world.holds[0].levels = [.walls: 2, .granary: 2, .sawpit: 1, .quarry: 1, .saltworks: 1, .beacon: 1]

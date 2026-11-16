@@ -1,12 +1,13 @@
 import NullmereLand
 @testable import NullmereModels
 import XCTest
+import NullmereTestSupport
 
 /// A work rising stands with its family's own rig beside its scaffold,
 /// its builders at work; a work standing whole has none.
 final class RaisingTests: XCTestCase {
     func testAWorkRisesWithItsFamilysRigAtWork() throws {
-        let relief = Relief(map: GameState(settings: GameSettings(seedText: "raising", keepers: 1)).map)
+        let relief = Relief(map: TestWorld(seedText: "raising").map)
         let seat = Hex(0, 0)
         for kind in Raising.families {
             let rising = HoldLayout.Plan(hex: seat, isSeat: true, levels: [HoldLayout.Work(kind): 1],

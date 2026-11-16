@@ -1,12 +1,13 @@
 import NullmereLand
 @testable import NullmereModels
 import XCTest
+import NullmereTestSupport
 
 /// The land's furniture where a company stands: whatever would rise among
 /// its ranks gives way to it, in its hex and the edge of each beside it;
 /// what lies underfoot stays, and no piece moves for it.
 final class ScatterTests: XCTestCase {
-    private static let state = GameState(settings: GameSettings(seedText: "a glade", houseCount: 3, radius: 12, keepers: 1))
+    private static let state = TestWorld(seedText: "a glade", houses: 3, radius: 12)
     private static let relief = Relief(map: state.map)
 
     private func reach(_ piece: Piece, from hex: Hex) -> Float {

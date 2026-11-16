@@ -2,6 +2,7 @@ import Foundation
 import NullmereLand
 @testable import NullmereModels
 import XCTest
+import NullmereTestSupport
 
 /// The models as a browser previews them: always made and checked; written
 /// out for Tools/model-preview when NULLMERE_MODEL_PREVIEW names a folder,
@@ -90,7 +91,7 @@ final class PreviewTests: XCTestCase {
             try write(try PreviewExport.json(entries), as: "clip-\(clip.rawValue).json")
         }
 
-        let state = GameState(settings: GameSettings(seedText: "preview", houseCount: 6, radius: 14))
+        let state = TestWorld(seedText: "preview", houses: 6, radius: 14)
         let terrain = TerrainMesh(relief: Relief(map: state.map), spacing: 0.35)
         try write(try PreviewExport.json([("terrain", Model(name: "terrain", mesh: terrain.mesh))]), as: "terrain.json")
         try write(try PreviewExport.json([("companies", Model(name: "companies", mesh: PreviewTests.companies()))]), as: "companies.json")
@@ -135,7 +136,7 @@ final class PreviewTests: XCTestCase {
 
     /// The land round a seat with its hold laid out, the land's furniture
     /// and a few companies, baked into one mesh.
-    static func scene(_ state: GameState, around seat: Hex, grand: Bool) -> Mesh {
+    static func scene(_ state: TestWorld, around seat: Hex, grand: Bool) -> Mesh {
         let relief = Relief(map: state.map)
         var levels: [HoldLayout.Work: Int] = [.building(.walls): grand ? 5 : 2, .building(.granary): grand ? 5 : 1,
                                               .building(.sawpit): 3, .building(.quarry): grand ? 5 : 2, .building(.musterHall): 3]

@@ -1,7 +1,8 @@
 import Metal
-@testable import NullmereCore
 @testable import NullmereKit
+import NullmereLand
 import NullmereModels
+import NullmereTestSupport
 import NullmereWorld
 import XCTest
 
@@ -14,15 +15,13 @@ final class FrameHarnessTests: XCTestCase {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
-        var state = GameState(settings: GameSettings(seedText: "panning frames", keepers: 1))
-        for _ in 0..<40 {
-            _ = state.stewardTurn(for: state.player)
-            _ = state.endWatch()
-        }
+        // A world well known about the seat, as a keeper's is some
+        // watches in.
+        let state = TestWorld(seedText: "panning frames")
+        let seat = state.holds[0].position
         try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
-        try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
+        try renderer.updateTiles(state.tiles { $0.distance(to: seat) <= 10 }, side: TileTexture.side(for: state.map))
         let terrain = try XCTUnwrap(renderer.land).terrain
-        let seat = try XCTUnwrap(state.seat(of: state.player)).position
         let start = HexLayout(size: 1).center(of: seat)
         let scale = 28.0
         let fraction = WorldMetalView.renderScale(forCameraScale: scale)

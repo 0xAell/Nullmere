@@ -3,7 +3,7 @@ import Metal
 import SwiftUI
 import LauncherCore
 import LauncherKit
-@testable import NullmereCore
+import NullmereLand
 import NullmereRealm
 import XCTest
 @testable import NullmereKit
@@ -11,13 +11,18 @@ import NullmereModels
 import NullmereSound
 import NullmereWorld
 
+/// The first twelve colours, the elder Houses' as the old game named
+/// them, the ones set plainly apart.
+enum HouseColourTests {
+    static let elder = 12
+}
+
 final class WorldShaderTests: XCTestCase {
     /// Every House that may sit around the lake has its colour, the same
     /// in the interface and on the map: the map's are the interface's,
     /// made linear for the shaders.
     func testEachHouseHasOneColourEverywhere() throws {
-        XCTAssertEqual(Palette.houses.count, Names.houses.count)
-        XCTAssertEqual(Names.houses.count, WorldGenerator.mostHouses)
+        XCTAssertEqual(Palette.houses.count, WorldGenerator.mostHouses, "A colour for every seat the widest lake has")
         XCTAssertEqual(WorldRenderer.houseColours.count, Palette.houseRGB.count)
         for (shader, interface) in zip(WorldRenderer.houseColours, Palette.houseRGB) {
             XCTAssertEqual(Double(shader.x), pow(interface.red, 2.2), accuracy: 1e-5)
@@ -29,15 +34,15 @@ final class WorldShaderTests: XCTestCase {
         // from any beside it, and each of the widest lakes' still its own,
         // as far from every other as a thousand colours can be.
         let components = Palette.houses.compactMap { NSColor($0).usingColorSpace(.sRGB) }
-        XCTAssertEqual(components.count, Names.houses.count)
-        let hand = Names.houses.count - HousePalette.widestLakes.count
+        XCTAssertEqual(components.count, Palette.houses.count)
+        let hand = Palette.houses.count - HousePalette.widestLakes.count
         XCTAssertEqual(hand, 96, "Ninety-six named by hand")
         var nearest = (elder: Double.infinity, hand: Double.infinity, widest: Double.infinity)
         for (index, a) in components.enumerated() {
             for (other, b) in components.enumerated() where other > index {
                 let distance = Double(abs(a.redComponent - b.redComponent) + abs(a.greenComponent - b.greenComponent)
                     + abs(a.blueComponent - b.blueComponent))
-                if other < Names.elder.count { nearest.elder = min(nearest.elder, distance) }
+                if other < HouseColourTests.elder { nearest.elder = min(nearest.elder, distance) }
                 else if other < hand { nearest.hand = min(nearest.hand, distance) }
                 else { nearest.widest = min(nearest.widest, distance) }
             }

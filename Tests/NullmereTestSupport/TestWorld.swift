@@ -1,4 +1,5 @@
 import NullmereLand
+import NullmereWorld
 
 /// A world made as the turn-based game made an age's world, without its
 /// rules: the land's generator's map, seats round the lake and streams, a
@@ -52,5 +53,24 @@ public struct TestWorld: Sendable {
         }
         self.holds = holds
         self.companies = companies
+    }
+}
+
+extension TestWorld {
+    /// The tile texture as a keeper knows this world: the tiles `known`
+    /// watched, each hold on them lit and its land named its House's (an
+    /// owner's sigil its index here).
+    public func tiles(known: (Hex) -> Bool = { _ in true }) -> [UInt8] {
+        let ground = TileTexture.Ground(map: map)
+        var bytes = ground.bytes
+        for (index, hex) in map.hexes.enumerated() where known(hex) {
+            let offset = ground.offsets[index]
+            bytes[offset + 1] |= 2 * TileTexture.seenStep
+            if let hold = holds.first(where: { $0.position == hex }) {
+                bytes[offset + 1] |= TileTexture.holdFlag
+                TileTexture.name(hold.owner + 1, in: &bytes, at: offset)
+            }
+        }
+        return bytes
     }
 }

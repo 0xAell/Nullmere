@@ -60,7 +60,7 @@ var targets: [Target] = [
     .testTarget(name: "NullmereTrailerTests", dependencies: ["NullmereTrailer", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound"]),
     // SpacetimeDB in memory, and credentials kept in memory, for tests of
     // the realm across the network: the realm's and the app's.
-    .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereLive", "NullmereLiveStage", "NullmereLand"], path: "Tests/NullmereTestSupport"),
+    .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereLive", "NullmereLiveStage", "NullmereLand", "NullmereWorld"], path: "Tests/NullmereTestSupport"),
     .testTarget(name: "NullmereRealmTests", dependencies: ["NullmereRealm", "NullmereTestSupport"]),
     // Platform-independent launcher logic: settings, navigation, scene
     // constants, the news feed and the moon's veil. Pure Swift, so it is
