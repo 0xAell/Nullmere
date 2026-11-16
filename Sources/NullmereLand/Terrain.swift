@@ -1,4 +1,3 @@
-import NullmereLand
 /// The ground of the basin around the Nullmere, from the dead water outward
 /// to the mountains that wall it in.
 public enum Terrain: String, CaseIterable, Codable, Sendable, PlainCases {
@@ -114,18 +113,6 @@ public enum Terrain: String, CaseIterable, Codable, Sendable, PlainCases {
         if case .barrow = self { return 1 }
         return 0
     }
-
-    /// What one worked tile yields each watch.
-    public var yield: Stock {
-        switch self {
-        case .still, .shallows, .spine, .ford, .stream, .shoal: return .zero
-        case .strand: return Stock(grain: 1)
-        case .saltFlat: return Stock(moonsalt: 1)
-        case .greyfield: return Stock(grain: 2)
-        case .blackwood: return Stock(timber: 2)
-        case .barrow: return Stock(stone: 2)
-        }
-    }
 }
 
 /// Something notable on a tile.
@@ -149,17 +136,6 @@ public enum Feature: String, CaseIterable, Codable, Sendable, PlainCases {
         case .stoneSeam: return "Stone Seam"
         case .darkLoam: return "Dark Loam"
         case .drownedRuin: return "Drowned Ruin"
-        }
-    }
-
-    /// Added to the tile's yield when worked.
-    public var yield: Stock {
-        switch self {
-        case .moonsaltBed: return Stock(moonsalt: 2)
-        case .elderGrove: return Stock(timber: 4)
-        case .stoneSeam: return Stock(stone: 4)
-        case .darkLoam: return Stock(grain: 4)
-        case .drownedRuin: return .zero
         }
     }
 }

@@ -1,5 +1,4 @@
 import Foundation
-import NullmereLand
 
 extension Terrain {
     /// Its place among the terrains: the case it is, as it is held, which
@@ -25,16 +24,15 @@ public struct Tile: Codable, Equatable, Sendable {
         self.feature = feature
         self.relief = relief
     }
-
-    /// What a hold gets from working this tile each watch.
-    public var yield: Stock {
-        terrain.yield + (feature?.yield ?? .zero)
-    }
 }
 
 /// The hexagonal world: every hex within `radius` of the origin, stored row
 /// by row so a hex's index is computed rather than looked up.
 public struct WorldMap: Codable, Equatable, Sendable {
+    /// How many tiles a page of a map is, as a map is sent and set apart
+    /// page by page.
+    public static let page = 2_048
+
     public let radius: Int
     public private(set) var tiles: [Tile]
     /// Index of the first hex in each row, from `-radius` to `radius`.
@@ -44,40 +42,40 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// Each tile's neighbours' indices, six to a tile in the order of
     /// `Hex.directions`, -1 past the world's edge: laid out once, for the
     /// search for ways.
-    let neighbours: [Int32]
+    package let neighbours: [Int32]
     /// What stepping onto each tile costs a company, 0 where none may: kept
     /// as the tiles change, for the search for ways.
-    private(set) var steps: [UInt8]
+    package private(set) var steps: [UInt8]
     /// The lie of the land toward the goals far marches have sought, kept
     /// while the ground is as it is: shared by the map's copies, and let go
     /// of by any copy whose ground changes.
-    private(set) var lie = LieOfTheLand()
+    package private(set) var lie = LieOfTheLand()
     /// Each tile's hold as the holds that last asked claim it, kept while
     /// the ground is as it is and they stand as they stood: shared by the
     /// map's copies, and let go of by any copy whose ground changes.
-    private(set) var claims = Claims()
+    package private(set) var claims = Claims()
     /// The nearest hex of a terrain to each hex it was sought from, kept
     /// while the ground is as it is: shared by the map's copies, and let go
     /// of by any copy whose ground changes.
-    private(set) var nearest = Nearest()
+    package private(set) var nearest = Nearest()
     /// The deepest of its open water, kept while the ground is as it is:
     /// shared by the map's copies, and let go of by any copy whose ground
     /// changes.
-    private(set) var deep = Deepest()
+    package private(set) var deep = Deepest()
     /// Which relief it has: shared by the map's copies and by the maps a
     /// keeper is shown of it (`unexplored`, `known(by:from:)`), which keep
     /// its relief, and let go of by any copy whose relief changes; two maps
     /// that share it have the same relief, though not a tile of it is
     /// compared.
-    private(set) var reliefOf = ReliefOf()
+    package private(set) var reliefOf = ReliefOf()
     /// Which ground it lies on, page by page: shared by the map's copies
     /// and by the maps a keeper is shown of the unexplored map, which keep
     /// its ground but where they are told otherwise; and the pages of it
     /// this map has written tiles of its own to (`apart`). Two maps of one
     /// ground have the same tiles on every page neither set apart, though
     /// not a tile of them is compared.
-    private(set) var groundOf = GroundOf()
-    private(set) var apart: Set<Int> = []
+    package private(set) var groundOf = GroundOf()
+    package private(set) var apart: Set<Int> = []
 
     private enum CodingKeys: String, CodingKey {
         case radius
@@ -128,7 +126,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
 
     /// A map of these tiles, row by row; nil if they aren't as many as a
     /// world of this radius has.
-    init?(radius: Int, tiles: [Tile]) {
+    package init?(radius: Int, tiles: [Tile]) {
         guard radius >= 1, tiles.count == WorldMap.count(radius: radius) else { return nil }
         self.radius = radius
         self.tiles = tiles
@@ -139,10 +137,10 @@ public struct WorldMap: Codable, Equatable, Sendable {
     }
 
     /// This map as one who has explored none of it knows it: every tile as
-    /// `GameState.unknown` tells it.
-    public var unexplored: WorldMap {
+    /// `unknown` tells it (the rules' `unexplored` gives theirs).
+    public func unexplored(as unknown: (Tile) -> Tile) -> WorldMap {
         var map = self
-        map.tiles = tiles.map(GameState.unknown)
+        map.tiles = tiles.map(unknown)
         // Ground of its own.
         map.groundOf = GroundOf()
         map.apart = []
@@ -158,12 +156,12 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// `unexplored`, this map as `unexplored` gives it, with each tile known
     /// as it is here. Worked out from the tiles known alone, so a House
     /// that has explored a little of a wide lake costs a little.
-    func known(by known: Explored, from unexplored: WorldMap) -> WorldMap {
+    package func known(seen: ((Int) -> Void) -> Void, from unexplored: WorldMap) -> WorldMap {
         precondition(unexplored.count == count, "The unexplored map of another world")
         var map = unexplored
         var any = false
         var page = -1
-        known.forEachSeen { index in
+        seen { index in
             guard index < tiles.count else { return }
             if !any {
                 any = true
@@ -174,8 +172,8 @@ public struct WorldMap: Codable, Equatable, Sendable {
             map.tiles[index] = tiles[index]
             map.steps[index] = steps[index]
             // The tiles seen come in order: each page set apart once.
-            if index / RealmState.mapPage != page {
-                page = index / RealmState.mapPage
+            if index / WorldMap.page != page {
+                page = index / WorldMap.page
                 map.apart.insert(page)
             }
         }
@@ -185,16 +183,16 @@ public struct WorldMap: Codable, Equatable, Sendable {
         return map
     }
 
-    /// Whether a page of it (`RealmState.mapPage` tiles a page, `range`
+    /// Whether a page of it (`WorldMap.page` tiles a page, `range`
     /// its tiles) is `other`'s, tile for tile: at a glance where both lie
     /// on one ground and neither has written tiles of its own to the page.
-    func hasTheGround(of other: WorldMap, onPage page: Int, tiles range: Range<Int>) -> Bool {
+    package func hasTheGround(of other: WorldMap, onPage page: Int, tiles range: Range<Int>) -> Bool {
         (groundOf === other.groundOf && !apart.contains(page) && !other.apart.contains(page)) || tiles[range] == other.tiles[range]
     }
 
     /// Whether its relief is `other`'s, tile for tile: at a glance where
     /// both have the relief of one map.
-    func hasTheRelief(of other: WorldMap) -> Bool {
+    package func hasTheRelief(of other: WorldMap) -> Bool {
         reliefOf === other.reliefOf || (count == other.count && tiles.lazy.map(\.relief).elementsEqual(other.tiles.lazy.map(\.relief)))
     }
 
@@ -207,7 +205,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
     }
 
     /// What stepping onto ground costs, 0 where it can't be entered.
-    static func step(onto terrain: Terrain) -> UInt8 {
+    package static func step(onto terrain: Terrain) -> UInt8 {
         terrain.isPassable ? UInt8(terrain.moveCost) : 0
     }
 
@@ -233,7 +231,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// hundred runs, and a House that knows a little of the lake is told a
     /// little; the relief goes apart (`relief(of:)`), as it is the same
     /// however much of the lake is known.
-    static func ground<Tiles: Collection>(of tiles: Tiles) -> String where Tiles.Element == Tile {
+    package static func ground<Tiles: Collection>(of tiles: Tiles) -> String where Tiles.Element == Tile {
         var bytes: [UInt8] = []
         Varint.append(tiles.count, to: &bytes)
         runs(of: tiles.lazy.map { tile in tile.terrain.code }, into: &bytes)
@@ -266,7 +264,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// one's relief as its difference from the one before it (the first's
     /// from none). The land rises and falls by a little from tile to tile,
     /// so each is a byte.
-    static func relief<Tiles: Collection>(of tiles: Tiles) -> String where Tiles.Element == Tile {
+    package static func relief<Tiles: Collection>(of tiles: Tiles) -> String where Tiles.Element == Tile {
         var bytes: [UInt8] = []
         bytes.reserveCapacity(tiles.count + 3)
         Varint.append(tiles.count, to: &bytes)
@@ -280,7 +278,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
 
     /// The tiles `ground(of:)` and `relief(of:)` wrote; nil unless each
     /// reads whole and both tell of the same tiles.
-    static func tiles(ground: String, relief: String) -> [Tile]? {
+    package static func tiles(ground: String, relief: String) -> [Tile]? {
         guard let reliefs = reliefs(fromText: relief), var tiles = tiles(fromGround: ground, count: reliefs.count) else { return nil }
         for index in tiles.indices { tiles[index].relief = reliefs[index] }
         return tiles
@@ -288,7 +286,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
 
     /// Each tile's relief as `relief(of:)` wrote it; nil unless it reads
     /// whole.
-    static func reliefs(fromText text: String) -> [Int]? {
+    package static func reliefs(fromText text: String) -> [Int]? {
         guard let data = Data(base64Encoded: text) else { return nil }
         var read = Varint.Reader([UInt8](data))
         // A byte at the least for each tile's: no more tiles than bytes.
@@ -306,7 +304,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
 
     /// The `count` tiles `ground(of:)` wrote, their relief none; nil unless
     /// it tells of `count` tiles and reads whole.
-    static func tiles(fromGround text: String, count: Int) -> [Tile]? {
+    package static func tiles(fromGround text: String, count: Int) -> [Tile]? {
         guard let data = Data(base64Encoded: text) else { return nil }
         var read = Varint.Reader([UInt8](data))
         guard read.count() == count else { return nil }
@@ -328,7 +326,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
 
     /// The tiles of a map kept before its ground went as its runs: three
     /// bytes a tile, base64 (terrain, feature or 0, relief).
-    static func tiles(fromCells text: String) -> [Tile]? {
+    package static func tiles(fromCells text: String) -> [Tile]? {
         guard let data = Data(base64Encoded: text), data.count % 3 == 0 else { return nil }
         let bytes = [UInt8](data)
         var tiles: [Tile] = []
@@ -380,7 +378,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// `Hex.forEach(within:)` walks them, those off the map left out. The
     /// tiles are kept row by row, so each row of the disc is a run of
     /// indices side by side: found by its ends, not hex by hex.
-    func forEachIndex(within range: Int, of centre: Hex, _ body: (Int) -> Void) {
+    package func forEachIndex(within range: Int, of centre: Hex, _ body: (Int) -> Void) {
         let range = max(range, 0)
         for dr in -range...range {
             let r = centre.r + dr
@@ -453,14 +451,14 @@ public struct WorldMap: Codable, Equatable, Sendable {
         set { set(index: index, newValue) }
     }
 
-    mutating func set(index: Int, _ tile: Tile) {
+    package mutating func set(index: Int, _ tile: Tile) {
         // Relief its other copies still have is theirs.
         if tiles[index].relief != tile.relief { reliefOf = ReliefOf() }
         tiles[index] = tile
         // The ground of its page its own, if another map lies on its
         // ground: the others keep theirs. A ground no other shares is just
         // this map's, whatever its tiles.
-        if !isKnownUniquelyReferenced(&groundOf) { apart.insert(index / RealmState.mapPage) }
+        if !isKnownUniquelyReferenced(&groundOf) { apart.insert(index / WorldMap.page) }
         // Claims its other copies still keep are theirs, of their ground.
         if isKnownUniquelyReferenced(&claims) { claims.clear() } else { claims = Claims() }
         if isKnownUniquelyReferenced(&nearest) { nearest.clear() } else { nearest = Nearest() }
@@ -520,7 +518,7 @@ extension WorldMap {
     }
 
     /// The deepest water, sought through every tile of the lake.
-    func seekDeepestWater() -> DeepWater? {
+    package func seekDeepestWater() -> DeepWater? {
         // Hexes of open water, by their distance from anything that isn't.
         var depth = [Int](repeating: -1, count: count)
         var frontier: [Int] = []

@@ -20,7 +20,7 @@ extension RealmState {
     public static let relationPage = 32
     /// How many of the map's tiles go to a part: a wide lake's map is a
     /// megabyte, and a keeper's view of it changes only where they explore.
-    public static let mapPage = 2_048
+    public static let mapPage = WorldMap.page
 
     /// Each part's name and its JSON. Joined by `init(parts:)`, they give
     /// back this realm exactly.

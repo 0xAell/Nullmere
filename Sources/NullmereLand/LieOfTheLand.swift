@@ -1,5 +1,4 @@
 import Foundation
-import NullmereLand
 
 /// The lie of the land toward a goal: how dear every tile of the land is
 /// from it by the cheapest way over the ground alone, as if no company or
@@ -9,25 +8,25 @@ import NullmereLand
 /// ninety-six seats a march of a hundred and fifty steps looked over six
 /// thousand tiles. Worked out once for each goal far marches seek, and
 /// kept with the map while its ground stays as it is.
-final class LieOfTheLand: @unchecked Sendable {
+package final class LieOfTheLand: @unchecked Sendable {
     private let lock = NSLock()
     private var fields: [Int: [UInt16]] = [:]
     private var order: [Int] = []
 
     /// How many goals' lie is kept: the oldest goes first.
-    static let kept = 64
+    package static let kept = 64
     /// What a tile no way over the ground reaches costs.
-    static let unreached = UInt16.max
+    package static let unreached = UInt16.max
 
     /// How many goals' lie is kept.
-    var count: Int {
+    package var count: Int {
         lock.lock()
         defer { lock.unlock() }
         return fields.count
     }
 
     /// Lets go of every goal's lie, as the ground has changed.
-    func clear() {
+    package func clear() {
         lock.lock()
         defer { lock.unlock() }
         fields.removeAll()
@@ -36,7 +35,7 @@ final class LieOfTheLand: @unchecked Sendable {
 
     /// The lie of the land toward a tile: worked out the first time it is
     /// asked for, and kept.
-    func toward(_ goal: Int, on map: WorldMap) -> [UInt16] {
+    package func toward(_ goal: Int, on map: WorldMap) -> [UInt16] {
         lock.lock()
         if let found = fields[goal] {
             lock.unlock()
@@ -57,7 +56,7 @@ final class LieOfTheLand: @unchecked Sendable {
     /// Each tile's cheapest cost to the goal over the ground, each step
     /// costing what the ground it enters does, as a march's does: the
     /// cheapest first, in buckets by cost, as the costs are small.
-    static func measure(toward goal: Int, on map: WorldMap) -> [UInt16] {
+    package static func measure(toward goal: Int, on map: WorldMap) -> [UInt16] {
         let neighbours = map.neighbours, steps = map.steps
         var cost = [UInt16](repeating: unreached, count: map.count)
         cost[goal] = 0
@@ -91,23 +90,23 @@ final class LieOfTheLand: @unchecked Sendable {
 /// holds that last asked, by what decides it (each hold's id, where it
 /// stands, when it was founded and how far it reaches), and given again
 /// only to holds the same in all of it, in the same order.
-final class Claims: @unchecked Sendable {
-    struct Claimant: Equatable {
-        let id: Int
-        let position: Hex
-        let founded: Int
-        let reach: Int
+package final class Claims: @unchecked Sendable {
+    package struct Claimant: Equatable {
+        package let id: Int
+        package let position: Hex
+        package let founded: Int
+        package let reach: Int
 
         /// Whether it claims before the hold of `id`, founded in `watch`:
         /// the older first, and of two founded alike the lower id.
-        func precedes(_ id: Int, foundedIn watch: Int) -> Bool {
+        package func precedes(_ id: Int, foundedIn watch: Int) -> Bool {
             (founded, self.id) < (watch, id)
         }
     }
 
     /// Whether a hold may claim a tile of this ground: land, and of the
     /// Spine only the tile it stands on itself.
-    static func claimable(_ terrain: Terrain, tile: Int, home: Int?) -> Bool {
+    package static func claimable(_ terrain: Terrain, tile: Int, home: Int?) -> Bool {
         switch terrain {
         case .still, .shallows, .ford, .stream, .shoal: return false
         case .spine: return tile == home
@@ -117,14 +116,14 @@ final class Claims: @unchecked Sendable {
 
     /// The most holds that may differ from those that last asked for what
     /// they claim to be amended from it, not worked out afresh.
-    static let mostAmended = 32
+    package static let mostAmended = 32
 
     private let lock = NSLock()
     private var kept: (token: UInt64, claimants: [Claimant], owners: [Int?])?
 
     /// What holds of this token claim, if they were the last to ask: told
     /// by the token alone (`Holdings.claims`), not hold by hold.
-    func owners(forToken token: UInt64) -> [Int?]? {
+    package func owners(forToken token: UInt64) -> [Int?]? {
         lock.lock()
         defer { lock.unlock() }
         guard let kept, kept.token == token else { return nil }
@@ -133,7 +132,7 @@ final class Claims: @unchecked Sendable {
 
     /// What these holds claim, if holds the same in all that decides it
     /// were the last to ask: kept from now under their token.
-    func owners(for claimants: [Claimant], token: UInt64) -> [Int?]? {
+    package func owners(for claimants: [Claimant], token: UInt64) -> [Int?]? {
         lock.lock()
         defer { lock.unlock() }
         guard let found = kept, found.claimants == claimants else { return nil }
@@ -141,7 +140,7 @@ final class Claims: @unchecked Sendable {
         return found.owners
     }
 
-    func keep(_ owners: [Int?], for claimants: [Claimant], token: UInt64) {
+    package func keep(_ owners: [Int?], for claimants: [Claimant], token: UInt64) {
         lock.lock()
         defer { lock.unlock() }
         kept = (token, claimants, owners)
@@ -155,7 +154,7 @@ final class Claims: @unchecked Sendable {
     /// each hold come takes every tile it reaches that it claims before the
     /// holder of. The same tile by tile as worked out afresh, and kept from
     /// now under their token. Nil where nothing is kept or too many differ.
-    func amend(to claimants: [Claimant], token: UInt64, on map: WorldMap) -> [Int?]? {
+    package func amend(to claimants: [Claimant], token: UInt64, on map: WorldMap) -> [Int?]? {
         lock.lock()
         defer { lock.unlock() }
         guard let before = kept?.claimants else { return nil }
@@ -212,7 +211,7 @@ final class Claims: @unchecked Sendable {
     /// When the hold of an id among these was founded: found by halving
     /// the list, as holds are founded each with an id above the one before,
     /// or looked for in each should any be out of that order.
-    static func founded(of id: Int, in claimants: [Claimant]) -> Int? {
+    package static func founded(of id: Int, in claimants: [Claimant]) -> Int? {
         var low = 0, high = claimants.count
         while low < high {
             let middle = (low + high) / 2
@@ -223,7 +222,7 @@ final class Claims: @unchecked Sendable {
     }
 
     /// Lets go of what was kept, as the ground has changed.
-    func clear() {
+    package func clear() {
         lock.lock()
         defer { lock.unlock() }
         kept = nil
@@ -232,35 +231,35 @@ final class Claims: @unchecked Sendable {
 
 /// A map's relief, as one: its copies, and the maps a keeper is shown of it,
 /// keep the same one while their relief is its relief.
-final class ReliefOf: Sendable {}
+package final class ReliefOf: Sendable {}
 
-/// A map's ground, as one, page by page (`RealmState.mapPage` tiles a
+/// A map's ground, as one, page by page (`WorldMap.page` tiles a
 /// page, as its pages go): its copies, and the maps a keeper is shown of
 /// it, keep the same one, each setting apart the pages it writes tiles of
 /// its own to.
-final class GroundOf: Sendable {}
+package final class GroundOf: Sendable {}
 
 /// The nearest hex of a terrain to the hexes it was sought from: kept with
 /// the map while its ground stays as it is, the oldest let go of first.
-final class Nearest: @unchecked Sendable {
-    struct Key: Hashable {
-        let terrain: Terrain
-        let from: Hex
+package final class Nearest: @unchecked Sendable {
+    package struct Key: Hashable {
+        package let terrain: Terrain
+        package let from: Hex
     }
 
     private let lock = NSLock()
     private var kept: [Key: Hex?] = [:]
     /// How many are kept before all are let go.
-    static let most = 256
+    package static let most = 256
 
     /// What was found, if it was sought before: a hex, or none at all.
-    func hex(of terrain: Terrain, near hex: Hex) -> Hex?? {
+    package func hex(of terrain: Terrain, near hex: Hex) -> Hex?? {
         lock.lock()
         defer { lock.unlock() }
         return kept[Key(terrain: terrain, from: hex)]
     }
 
-    func keep(_ found: Hex?, of terrain: Terrain, near hex: Hex) {
+    package func keep(_ found: Hex?, of terrain: Terrain, near hex: Hex) {
         lock.lock()
         defer { lock.unlock() }
         if kept.count >= Nearest.most { kept.removeAll() }
@@ -268,7 +267,7 @@ final class Nearest: @unchecked Sendable {
     }
 
     /// Lets go of what was kept, as the ground has changed.
-    func clear() {
+    package func clear() {
         lock.lock()
         defer { lock.unlock() }
         kept.removeAll()
@@ -279,25 +278,25 @@ final class Nearest: @unchecked Sendable {
 /// ground stays as it is: sought through every tile of the lake the first
 /// time it is asked, given again every time after. A wide lake's every
 /// steward asks it at every pace of the full moon's walks on the mirror.
-final class Deepest: @unchecked Sendable {
+package final class Deepest: @unchecked Sendable {
     private let lock = NSLock()
     /// Unasked, or what was found: the deepest water, or none at all.
     private var kept: DeepWater??
 
-    var water: DeepWater?? {
+    package var water: DeepWater?? {
         lock.lock()
         defer { lock.unlock() }
         return kept
     }
 
-    func keep(_ found: DeepWater?) {
+    package func keep(_ found: DeepWater?) {
         lock.lock()
         defer { lock.unlock() }
         kept = .some(found)
     }
 
     /// Lets go of what was kept, as the ground has changed.
-    func clear() {
+    package func clear() {
         lock.lock()
         defer { lock.unlock() }
         kept = nil

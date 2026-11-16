@@ -16,6 +16,10 @@ on:
       - Tests/NullmereLiveStageTests/**
       - Sources/NullmereRealm/**
       - Tests/NullmereRealmTests/**
+      - Sources/NullmereLand/**
+      - Sources/NullmereCore/**
+      - Sources/NullmereWorld/**
+      - Sources/NullmereModels/**
       - Tests/NullmereTestSupport/**
       - Package.swift
       - .github/workflows/realm-check.yml
@@ -29,6 +33,10 @@ on:
       - Tests/NullmereLiveStageTests/**
       - Sources/NullmereRealm/**
       - Tests/NullmereRealmTests/**
+      - Sources/NullmereLand/**
+      - Sources/NullmereCore/**
+      - Sources/NullmereWorld/**
+      - Sources/NullmereModels/**
       - Tests/NullmereTestSupport/**
       - Package.swift
       - .github/workflows/realm-check.yml
