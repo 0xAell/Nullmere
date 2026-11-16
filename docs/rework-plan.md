@@ -398,6 +398,20 @@ A new module beside the old one.
 
 Updated as slices land.
 
+**The Macs' run of 16 November.** CI run 1018 (`043382c`), the first Mac
+run to build since run 1000, ran 2,386 tests with one failure (sixteen
+skipped: those needing a server or a model), and opened
+the rebuilt realm through Play on the runner. So wherever a row below
+says "unverified until the Macs' run" of work in `043382c` or before,
+that work's Mac tests passed there. Two things did not pass. The one
+failing test was the wider realm drawn near: 17.93 ms of GPU against
+the 16.7 a frame allows; the forty-eight seats' realm passed, at
+15.99 ms. And the accessibility job's audit found 73 issues on the
+realm's screens. Both are answered in `e5c2519` and `13e3276`,
+**unverified** until the next Macs' run. The pictures of run 1018
+(`ci-shots/1018`, the `live-*` and `rebuilt-*` images) are still to be
+looked at.
+
 | Slice | State | Commit | Evidence |
 |---|---|---|---|
 | Audit and plan | Done | `14a20ba` | This document |
