@@ -122,7 +122,7 @@ jobs:
       # How much of each module the tests run, held to a floor.
       - name: Coverage
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: mkdir -p build && python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereModels=98 NullmereWorld=98 NullmereSound=98 NullmereRealm=94.5 NullmereKit=87.5 LauncherCore=98.5 LauncherKit=98 --worst 40 --lines 40 | tee build/coverage.log
+        run: mkdir -p build && python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereLand=96 NullmereModels=98 NullmereWorld=98 NullmereSound=98 NullmereRealm=94.5 NullmereKit=87.5 LauncherCore=98.5 LauncherKit=98 --worst 40 --lines 40 | tee build/coverage.log
 
       # How long each scene takes the GPU at a MacBook Pro's native
       # resolution, a whole frame while the camera pans, an order and a
