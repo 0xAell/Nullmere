@@ -398,8 +398,9 @@ pub(super) fn fight_as_one(db: &mut impl Db, marches: &mut [March], foe: &[Unit]
 /// as many of them as its own city has room to tend. If they won, the
 /// barrow is cleared, the spoils are shared by how many of each army
 /// still stand, as far as each can carry, and it counts for each player
-/// as a barrow cleared; what one may attack alone is as it was. Each
-/// player is told in a report.
+/// as a barrow cleared; what one may attack alone is as it was; what it
+/// yields for the Forge goes to whoever called the rally. Each player is
+/// told in a report.
 pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
     let Some(mut barrow) = marches.first().and_then(|first| Table::<Barrow>::get(db, first.target)) else { return };
     let unquiet = catalog::barrow(barrow.level);
@@ -408,6 +409,8 @@ pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
 
     let standing: u64 = marches.iter().map(|march| march.soldiers).sum();
     let mut won = vec![Goods::of(0, 0, 0, 0); armies];
+    // What the barrow yields for the Forge goes to whoever called the rally.
+    let mut found = [0u64; 4];
     if outcome.won {
         let spoils = catalog::spoils(barrow.level);
         for (index, march) in marches.iter().enumerate() {
@@ -428,6 +431,7 @@ pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
             did(db, march.owner, Deed::Clear, 1);
             scored(db, march.owner, Contest::Hunt, 10 * barrow.level as u64);
         }
+        found = super::yielded(db, marches[0].owner, barrow.level, barrow.id);
     } else {
         // The Unquiet who fell rise again: the barrow stands as it stood.
         barrow.fighter = 0;
@@ -456,6 +460,9 @@ pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
         }
         if !won[index].is_none() {
             words += &format!(" Your army is bringing home {}.", won[index]);
+        }
+        if index == 0 && found.iter().any(|count| *count > 0) {
+            words += &format!(" It found {} for the Forge.", super::materials_words(found));
         }
         report(
             db,
