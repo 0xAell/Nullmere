@@ -5,7 +5,8 @@ name: Realm rules
 # a play-through of the published module on a SpacetimeDB server started
 # on the runner, through the HTTP API a client uses (realm/check.sh).
 # Linux only, a few minutes: it runs apart from CI, which builds and tests
-# the apps on Macs.
+# the apps on Macs. Its client job also tests the pure Swift beneath the
+# app here, the models, the world and the sound, sooner than the Mac can.
 on:
   pull_request:
     paths:
@@ -20,6 +21,10 @@ on:
       - Sources/NullmereCore/**
       - Sources/NullmereWorld/**
       - Sources/NullmereModels/**
+      - Sources/NullmereSound/**
+      - Tests/NullmereModelsTests/**
+      - Tests/NullmereWorldTests/**
+      - Tests/NullmereSoundTests/**
       - Tests/NullmereTestSupport/**
       - Package.swift
       - .github/workflows/realm-check.yml
@@ -37,6 +42,10 @@ on:
       - Sources/NullmereCore/**
       - Sources/NullmereWorld/**
       - Sources/NullmereModels/**
+      - Sources/NullmereSound/**
+      - Tests/NullmereModelsTests/**
+      - Tests/NullmereWorldTests/**
+      - Tests/NullmereSoundTests/**
       - Tests/NullmereTestSupport/**
       - Package.swift
       - .github/workflows/realm-check.yml
@@ -99,6 +108,7 @@ jobs:
       # A build that fails fails here, not as a play-through that finds
       # nothing built, and says its errors, not its last lines.
       - name: Build the client and its tests
+        id: build
         shell: bash
         run: |
           swift build --build-tests -Xswiftc -warnings-as-errors > build-client.log 2>&1 || {
@@ -125,9 +135,23 @@ jobs:
           # And a window of that realm staged for the renderer: its land, its
           # cities and its armies, from the rows the server holds.
           NULLMERE_REALM_CHECK=http://127.0.0.1:3000/nullmere-client stdbuf -oL -eL swift test --skip-build --filter NullmereLiveStageTests 2>&1 | tee realm-stage.log || true
-          grep -q "^LIVE a window" realm-stage.log && grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" realm-stage.log || {
+          grep -q "^LIVE a window" realm-stage.log && grep "Executed .* tests" realm-stage.log | tail -n 1 | grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" || {
             echo "::error::A window of the realm wasn't staged from its rows"
             grep -E ": error: |' failed \(" realm-stage.log | head -n 20
+            exit 1
+          }
+
+      # The land, its models, the world as the GPU takes it and the sound,
+      # all pure Swift, tested here as on the Mac and sooner: what they
+      # draw and sound from a test world, not the realm's server.
+      - name: The models, the world and the sound, on Linux
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          stdbuf -oL -eL swift test --skip-build --filter "NullmereModelsTests|NullmereWorldTests|NullmereSoundTests" 2>&1 | tee pure-swift.log || true
+          total="$(grep "Executed .* tests" pure-swift.log | tail -n 1)"
+          echo "$total" | grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" || {
+            echo "::error::The models', the world's or the sound's tests failed on Linux: $total"
+            grep -E ": error: |' failed \(" pure-swift.log | head -n 30
             exit 1
           }
 
