@@ -337,7 +337,8 @@ pub(super) fn reached(db: &mut impl Db, mut march: March) {
     let marches = armies(db, &rally);
     let Some(first) = marches.first() else { return };
     let lasts = if rally.city != 0 {
-        let stands = Table::<City>::get(db, rally.city).is_some_and(|city| city.hex == rally.hex && city.shield <= now && !allied(db, rally.caller, city.owner));
+        let stands = Table::<City>::get(db, rally.city)
+            .is_some_and(|city| city.hex == rally.hex && city.shield <= now && !allied(db, rally.caller, city.owner) && !super::at_truce(db, rally.caller, city.owner));
         if !stands {
             let words = "Your alliance's rally found nothing to storm when its last army came up: the city had moved, was at peace, or was an ally's. Your army is turning for home.";
             for army in marches {

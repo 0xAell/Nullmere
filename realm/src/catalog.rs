@@ -674,6 +674,13 @@ pub fn gate_garrison() -> Vec<Unit> {
     barrow(TOP_BARROW).into_iter().map(|unit| Unit { count: unit.count * 2, ..unit }).collect()
 }
 
+/// The most days an alliance's envoy may offer a pact for, and how long
+/// an envoy waits for an answer before it is gone; how long a pact goes on
+/// once broken, at the realm's pace.
+pub const PACT_MOST_DAYS: u32 = 14;
+pub const ENVOY_WAITS: i64 = DAY;
+pub const PACT_NOTICE: i64 = DAY;
+
 /// Who keeps a wardstone against a rally sent to take it down: as many as
 /// keep a barrow of the twelfth level.
 pub fn ward_garrison() -> Vec<Unit> {

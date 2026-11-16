@@ -18,6 +18,7 @@ mod help;
 mod items;
 mod learning;
 mod march;
+mod pacts;
 mod rally;
 mod siege;
 mod spire;
@@ -39,6 +40,7 @@ pub use help::*;
 pub use items::*;
 pub use learning::*;
 pub use march::*;
+pub use pacts::*;
 pub use rally::*;
 pub use siege::*;
 pub use spire::*;
@@ -204,6 +206,14 @@ pub enum Refusal {
     GateFought,
     LakelandShut,
     OwnWard,
+    OwnAlliance,
+    /// Terms that are not a truce or passage, or of more days than so many.
+    NoSuchTerms(u32),
+    PactHolds,
+    EnvoySent,
+    NoSuchEnvoy,
+    NoSuchPact,
+    AtTruce,
     NoSuchTopic,
     AlreadyStudying,
     /// The Academy can't be raised while it studies.
@@ -270,6 +280,7 @@ impl fmt::Display for Refusal {
             Refusal::AlreadyPaired(name) => return write!(f, "{name} already goes out with another commander."),
             Refusal::WardsAll(most) => return write!(f, "Your alliance has all the wardstones it may: {most}. It may raise one more for every five members, twenty at most."),
             Refusal::OthersLand(theirs) => return write!(f, "That land is {theirs}'s."),
+            Refusal::NoSuchTerms(most) => return write!(f, "A pact is a truce or passage, for a day to {most} days."),
             Refusal::GatesShut(left) => return write!(f, "The gates of the ridge may be stormed in {}.", crate::catalog::spoken(*left)),
             Refusal::NothingMoreToLearn(topic) => return write!(f, "You have learnt all there is of {}.", topic.name()),
             Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
@@ -365,6 +376,12 @@ impl fmt::Display for Refusal {
             Refusal::GateFought => "Another rally is at that gate.",
             Refusal::LakelandShut => "Only an alliance that holds a gate of the ridge may move into the lake country.",
             Refusal::OwnWard => "That wardstone is your alliance's.",
+            Refusal::OwnAlliance => "That is your own alliance.",
+            Refusal::PactHolds => "Such a pact holds between your alliances already.",
+            Refusal::EnvoySent => "Your alliance's envoy with those terms is waiting on their answer.",
+            Refusal::NoSuchEnvoy => "That envoy is gone.",
+            Refusal::NoSuchPact => "Your alliance has no such pact.",
+            Refusal::AtTruce => "Your alliances are at truce.",
             Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",

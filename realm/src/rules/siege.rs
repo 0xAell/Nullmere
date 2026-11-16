@@ -31,6 +31,9 @@ pub(super) fn may_attack(db: &impl Db, player: u64, to: Hex) -> Result<City, Ref
     if allied(db, player, city.owner) {
         return Err(Refusal::AllysCity);
     }
+    if super::at_truce(db, player, city.owner) {
+        return Err(Refusal::AtTruce);
+    }
     let left = city.shield - db.now();
     if left > 0 {
         return Err(Refusal::AtPeace(left));
@@ -200,7 +203,8 @@ pub(super) fn warn(db: &mut impl Db, city: &City, foe: u64, soldiers: u64, words
 /// False if there is nothing to attack.
 pub(super) fn besiege(db: &mut impl Db, march: &mut March) -> bool {
     let now = db.now();
-    let stands = Table::<City>::get(db, march.target).is_some_and(|city| city.hex == march.to && city.shield <= now);
+    // Gone, at peace, or its owner's alliance at truce with the attacker's since the army set out: nothing to attack.
+    let stands = Table::<City>::get(db, march.target).is_some_and(|city| city.hex == march.to && city.shield <= now && !super::at_truce(db, march.owner, city.owner));
     if !stands {
         return false;
     }

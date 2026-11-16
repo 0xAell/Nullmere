@@ -294,6 +294,10 @@ check("nor takes one down", call(ada, "raze_ward", 1), "You are in no alliance."
 # What an alliance learns together: for all to read; given toward only by its members.
 check("what alliances have learnt is for all to read, and there is nothing yet", rows(nobody, "SELECT * FROM learning"), [])
 check("one in no alliance gives nothing toward it", call(ada, "give_to_learning", 1, 10, 10, 10), "You are in no alliance.")
+# Envoys and pacts between alliances: every pact for all to read, an envoy its two alliances' alone.
+check("every pact is for all to read, and there are none yet", rows(nobody, "SELECT * FROM pact"), [])
+check("one in no alliance sends no envoy", call(ada, "send_envoy", 1, 1, 3), "You are in no alliance.")
+check("one in no alliance sees no envoys, and no one reads the table itself", (rows(ada, "SELECT * FROM my_envoys"), isinstance(rows(ada, "SELECT * FROM envoy"), str)), ([], True))
 # The gates of the ridge: six, for all to read, held by the Unquiet as the realm opens; stormed only by an alliance's rally.
 gates = sorted(rows(nobody, "SELECT * FROM gate"), key=lambda gate: gate["id"])
 check("six gates stand in the ridge's passes, held by the Unquiet", [(gate["id"], gate["holder"], gate["fighter"]) for gate in gates], [(n, 0, 0) for n in range(1, 7)])

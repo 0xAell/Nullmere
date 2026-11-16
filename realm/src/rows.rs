@@ -520,6 +520,9 @@ impl Report {
     pub const GATE: u8 = 9;
     /// A rally at a wardstone, or a wardstone lost: `foe` is the wardstone.
     pub const WARD: u8 = 10;
+    /// An envoy come or answered, or a pact made, broken or ended: `foe`
+    /// is the other alliance.
+    pub const PACT: u8 = 11;
 }
 
 /// An alliance of players. Everyone may read it.
@@ -792,6 +795,54 @@ pub struct Gate {
     pub fighter: u64,
 }
 row!(Gate in gate, by id);
+
+/// An envoy sent by one alliance to another with the terms of a pact,
+/// waiting on an answer. The two alliances' alone to read: their members
+/// see it through `my_envoys`.
+#[spacetimedb::table(accessor = envoy)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Envoy {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub sender: u64,
+    #[index(btree)]
+    pub receiver: u64,
+    /// The sending alliance's name, as it was then.
+    pub name: String,
+    /// `Pact::TRUCE` or `Pact::PASSAGE`, and for how many days.
+    pub terms: u8,
+    pub days: u32,
+    pub sent_at: Seconds,
+}
+row!(Envoy in envoy, auto, by id, sender, receiver);
+
+/// A pact between two alliances, and until when it holds. For everyone
+/// to read: who is at truce with whom is plain to all.
+#[spacetimedb::table(accessor = pact, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Pact {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub first: u64,
+    #[index(btree)]
+    pub second: u64,
+    pub terms: u8,
+    pub began: Seconds,
+    pub ends: Seconds,
+}
+row!(Pact in pact, auto, by id, first, second);
+
+impl Pact {
+    /// No attacks between the two alliances' members, nor rallies against
+    /// one another's cities, wardstones or gates.
+    pub const TRUCE: u8 = 1;
+    /// Each passes the other's gates of the ridge.
+    pub const PASSAGE: u8 = 2;
+}
 
 /// A wardstone: an alliance's mark on the land. Once it stands it claims
 /// every hex within `catalog::WARD_REACH` of it that an older one does
@@ -1199,6 +1250,8 @@ pub trait Db:
     + Table<Ward>
     + Table<Learning>
     + Table<Gate>
+    + Table<Envoy>
+    + Table<Pact>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1256,6 +1309,8 @@ impl<
             + Table<Ward>
             + Table<Learning>
             + Table<Gate>
+            + Table<Envoy>
+            + Table<Pact>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

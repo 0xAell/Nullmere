@@ -38,10 +38,15 @@ pub fn gate_at(db: &impl Db, hex: Hex) -> Option<Gate> {
 }
 
 /// The hexes of the gates a player's armies may not pass: every gate but
-/// those their alliance holds.
+/// those their alliance holds, or an alliance it has passage with.
 pub fn gates_barred_to(db: &impl Db, player: u64) -> Vec<Hex> {
     let alliance = member_of(db, player).map(|member| member.alliance).unwrap_or(0);
-    Table::<Gate>::all(db).into_iter().filter(|gate| gate.holder == 0 || gate.holder != alliance).map(|gate| Hex::unpacked(gate.hex)).collect()
+    let passage = if alliance == 0 { Vec::new() } else { super::passage_for(db, alliance) };
+    Table::<Gate>::all(db)
+        .into_iter()
+        .filter(|gate| gate.holder == 0 || (gate.holder != alliance && !passage.contains(&gate.holder)))
+        .map(|gate| Hex::unpacked(gate.hex))
+        .collect()
 }
 
 /// Whether an alliance holds a gate of the ridge.
@@ -69,6 +74,9 @@ pub(super) fn may_storm(db: &impl Db, player: u64, gate: &Gate) -> Result<(), Re
     }
     if gate.fighter != 0 {
         return Err(Refusal::GateFought);
+    }
+    if super::pact_holds(db, member.alliance, gate.holder, crate::rows::Pact::TRUCE) {
+        return Err(Refusal::AtTruce);
     }
     Ok(())
 }

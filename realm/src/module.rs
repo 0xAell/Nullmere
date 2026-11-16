@@ -10,12 +10,12 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 use crate::hex::Hex;
 use crate::rows::{
     alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
-    chest as _, daily as _, daily__view as _, duty as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _,
+    chest as _, daily as _, daily__view as _, duty as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _,
     building__view as _, city as _, city__view as _, commander as _, commander__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
     march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
     realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
     troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Bond, Building, Chest, City, Commander, Daily, Duty, Favour, Gift, Grace, Haul, Helper, Hunt, Job, Keeper, Land, Lore, March, Member, Muster, Rally,
-    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware, Ward, Learning, Gate,
+    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware, Ward, Learning, Gate, Envoy, Pact,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
@@ -172,6 +172,8 @@ stored!(Keeper in keeper by player);
 stored!(Ward in ward by id, alliance);
 stored!(Learning in learning by id, alliance);
 stored!(Gate in gate by id);
+stored!(Envoy in envoy by id, sender, receiver);
+stored!(Pact in pact by id, first, second);
 stored!(Lore in lore by id, city);
 stored!(Study in study by id);
 stored!(Commander in commander by id, owner);
@@ -347,6 +349,25 @@ pub fn raze_ward(ctx: &ReducerContext, ward: u64) -> Result<(), String> {
 #[reducer]
 pub fn give_to_learning(ctx: &ReducerContext, topic: u8, grain: u64, timber: u64, stone: u64) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::give_to_learning(&mut Stdb(ctx), player, topic, crate::catalog::Goods::of(grain, timber, stone, 0))))
+}
+
+/// Send another alliance an envoy with the terms of a pact (1 a truce, 2
+/// passage) for so many days, as an officer of the caller's alliance.
+#[reducer]
+pub fn send_envoy(ctx: &ReducerContext, alliance: u64, terms: u8, days: u32) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::send_envoy(&mut Stdb(ctx), player, alliance, terms, days)))
+}
+
+/// Accept or turn away an envoy come to the caller's alliance, as an officer.
+#[reducer]
+pub fn answer_envoy(ctx: &ReducerContext, envoy: u64, accept: bool) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::answer_envoy(&mut Stdb(ctx), player, envoy, accept)))
+}
+
+/// Break a pact of the caller's alliance, as an officer: it holds a day more.
+#[reducer]
+pub fn break_pact(ctx: &ReducerContext, pact: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::break_pact(&mut Stdb(ctx), player, pact)))
 }
 
 /// Give goods from the caller's city toward their alliance's Moonspire.
@@ -625,6 +646,13 @@ fn my_bonds(ctx: &ViewContext) -> Vec<Bond> {
 #[view(accessor = my_keeper, public)]
 fn my_keeper(ctx: &ViewContext) -> Option<Keeper> {
     ctx.db.keeper().player().find(viewer(ctx)?)
+}
+
+/// The envoys from or to the caller's alliance.
+#[view(accessor = my_envoys, public)]
+fn my_envoys(ctx: &ViewContext) -> Vec<Envoy> {
+    let Some(alliance) = viewer(ctx).and_then(|player| ctx.db.member().player().find(player)).map(|member| member.alliance) else { return Vec::new() };
+    ctx.db.envoy().sender().filter(alliance).chain(ctx.db.envoy().receiver().filter(alliance)).collect()
 }
 
 /// What the caller has given toward their alliance's Moonspire this season.

@@ -102,6 +102,9 @@ pub(super) fn may_raze(db: &impl Db, player: u64, ward: &Ward) -> Result<(), Ref
     if ward.alliance == member.alliance {
         return Err(Refusal::OwnWard);
     }
+    if super::pact_holds(db, member.alliance, ward.alliance, crate::rows::Pact::TRUCE) {
+        return Err(Refusal::AtTruce);
+    }
     Ok(())
 }
 
