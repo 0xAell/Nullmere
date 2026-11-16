@@ -1,0 +1,78 @@
+# Splitting NullmereCore (plan 3.4, step B, last part)
+
+NullmereCore holds the turn-based game's rules (37,089 lines in 153 files
+on 16 November) and, beside them, the land the kept code still draws:
+hexes, the map, terrain and the kinds of things that stand on it. The old
+rules go; the land moves to a module of its own. This is the map of that
+split, read from the source (no compiler here), for whoever does it.
+
+## What the kept code needs
+
+Kept: NullmereWorld, NullmereModels, NullmereLiveStage, NullmereLive,
+NullmereSound, NullmereTrailer, LauncherCore, LauncherKit,
+NullmereLauncher and NullmereKit (the window, the rebuilt realm's
+screens, the Metal world, the audio engine).
+
+**Whole (4 files, 359 lines):** Hex.swift (`Hex`, `HexLayout`),
+PlainCases.swift, Varint.swift (WorldMap's encoding), StoreMarks.swift
+(Style.swift's marks of the stores; it names `Resource`).
+
+**In part (24 files, about 1,100 lines of code needed of 6,300):**
+
+| File | Needed | Its old-rule ties, to cut |
+| --- | --- | --- |
+| WorldMap.swift | `Tile` (terrain, feature, relief); `WorldMap`'s layout, inits, subscripts, `set(_:_:)` and `set(index:)`, `contains`, `index(of:)`, `hex(at:)`, `hexes`, `neighbors(of:)`, `==`, Codable helpers; `Terrain.code`, `Feature.code` | `Tile.yield` (Stock), `unexplored` (Fog), `known(by:from:)` (Explored, RealmState), `set(index:)` touches `RealmState.mapPage`, the caches (LieOfTheLand.swift, which itself is clean), `steps` (`Terrain.moveCost`) |
+| Terrain.swift | `Terrain`, `Feature` | `yield` (Stock) |
+| Hold.swift | `Hold` with `Project` (and its `progress`), `Training`, `level(_:)`, `maximumWard` | `wounded` (Infirmary's `Wounded`, which nothing kept reads), `House`, `Bits`, the view's extensions |
+| Buildings.swift | `BuildingKind`, `maxLevel`, `buildWatches(toLevel:)` | `cost` (Stock), `effect` (GearQuality, GameState) |
+| Units.swift | `UnitKind` | `cost`, the `Unit` struct |
+| Heritages, Wilds, Resources, Shrines, Omens, Commanders (`Skill`, `Archetype`), Finds (`Find.Kind`), Crests (`Crest`, `Tincture`, `Charge`), AllianceMarks (`AllianceMark.Kind`), Petitions (`Petition.Plea`) | the kind enums | their GameState extensions, Stock, Bonus, Unit |
+| Burials.swift | `FieldOfDead`; `GameState.unquietAt` 6000, `unquietPerLevel` 4000 (CorpseLights) | the rest |
+| Moonford.swift, Calm.swift, Lyceum.swift, Expeditions.swift | `lunarMonth` 30, `Calm.deepest` 10, `Lyceum.questions` 5, `ExpeditionStage.count` 12 | the rest: move the constants |
+| WorldGenerator.swift | the `Lake` enum (NullmereSound's score, Ambience, RealmSound) | the generator: only the trailer reaches it, through GameState |
+| Fields.swift, Infirmary.swift, LieOfTheLand.swift | `Fighter` (only `handToHand`), `Wounded` (only `Hold.wounded`), WorldMap's caches | |
+
+**Old only (125 files, 30,430 lines):** everything else: GameState,
+Realm, RealmParts, Rules, Commands, RivalMind, Pathfinding, Fog,
+Explored, Watch, Progress, SHA256, the envoys, stewards, war, diplomacy
+and economy. Random.swift is used by no kept source, only HexTests.
+
+## What must change first
+
+- **The trailer plays the old game.** `NullmereTrailer/TrailerWorld.swift`
+  makes a `GameState` and plays 72 watches; Actors.swift and Trailer.swift
+  read its houses, holds, seats, sites, holy sites and lairs. The trailer
+  needs a world of its own (a generated map and holds set out by hand, or
+  the rebuilt realm's sample) before NullmereCore can go; while it plays
+  the old game, nearly all of NullmereCore stays.
+- **Kept modules' APIs only tests call:** `TileTexture.bytes(for: GameState)`,
+  `Fronts.handToHand(in: GameState)`, `CorpseLights.kindled(FieldOfDead)`,
+  `Weather.of(OmenKind)`, `FuryLook.of(Skill)`, `markHue`/`markLights`,
+  `crestBoards`. Delete them, or move them to tests, and Fields, Burials
+  (but its two constants), Omens, Commanders, AllianceMarks, Crests and
+  Petitions become old only.
+- **Test fixtures built from GameState:** 21 of NullmereWorldTests' 28
+  files, 5 of NullmereModelsTests', and NullmereKitTests' FrameHarness,
+  WorldMetalView, WorldPerformance, WorldRender and NullmereKitTests.swift.
+  They need a world built without the rules: a WorldMap from the land's
+  generator (moved with the land) or from the rebuilt realm's sample
+  (`LiveSample`, `LiveWindow`), and holds and companies set out by the test.
+- **Voices and counsel of the old game:** Voices.swift, VoiceCheck.swift
+  and NullmereCounsel use GameState throughout; only NullmereLauncherApp's
+  debug reports (`NULLMERE_VOICES_REPORT`, `NULLMERE_COUNSEL_REPORT` via
+  `CounselCheck`) reach them. The rebuilt realm's counsel
+  (`LiveCounselSession`) and the launcher's model gate call Foundation
+  Models directly. They go with the old rules, and scripts/check-voices.sh
+  with them; check-counsel.sh moves to the rebuilt realm's counsel.
+
+## Order
+
+1. The trailer's world without GameState (its pictures compared before
+   and after in the Trailer workflow's stills).
+2. A land module (`NullmereLand`): the whole and in-part files above,
+   trimmed; kept modules import it instead of NullmereCore.
+3. Test fixtures rebuilt on it, a few files at a time, each step green.
+4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
+5. NullmereCore and NullmereCoreTests deleted; coverage floors and
+   perf/baseline.json (realm.watch.*, calibration's home) follow:
+   `CalibrationTests` lives in NullmereCoreTests and must move first.
