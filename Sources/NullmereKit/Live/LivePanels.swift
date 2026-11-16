@@ -24,9 +24,10 @@ struct LiveSidePanel: View {
                 Spacer(minLength: 0)
                 QuietButton(title: "Close", action: close)
             }
-            // A destination of more than one part shows each, the open one marked.
+            // A destination of more than one part shows each, the open one
+            // marked, in rows that wrap: five parts don't fit in one.
             if parts.count > 1 {
-                HStack(spacing: 2) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 2, alignment: .leading)], alignment: .leading, spacing: 2) {
                     ForEach(parts, id: \.self) { part in
                         QuietButton(title: part.title, prominent: part == panel, name: "\(part.title), in \(panel.destination.title)") { choose(part) }
                     }
