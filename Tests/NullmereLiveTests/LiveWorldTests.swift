@@ -460,7 +460,7 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertTrue(world.isLord)
         XCTAssertEqual(world.titles[1]?.name, "Edda")
         XCTAssertEqual(world.titles[3]?.holder, 2)
-        XCTAssertEqual(LiveTitle.names[1]?.name, "Steward of the Mere")
+        XCTAssertEqual(LiveTitle.names[1]?.name, "Forager of the Mere")
         XCTAssertEqual(LiveTitle.names.count, 5)
         // Letters: the latest first; those to the player, and how many unread.
         XCTAssertEqual(world.letters.map(\.id), [9, 8, 7])
@@ -474,7 +474,7 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertFalse(world.isLord)
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         if let catalog = try? String(contentsOf: root.appendingPathComponent("realm/src/catalog.rs"), encoding: .utf8) {
-            let kinds = ["", "Steward", "Marshal", "Mason", "Warden", "Herald"]
+            let kinds = ["", "Forager", "Marshal", "Mason", "Warden", "Herald"]
             for (title, named) in LiveTitle.names {
                 let kind = kinds[title]
                 XCTAssertTrue(catalog.contains("Title::\(kind) => \"\(named.name)\""), named.name)

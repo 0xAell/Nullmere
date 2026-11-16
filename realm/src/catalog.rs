@@ -685,7 +685,7 @@ pub const LETTERS_KEPT: usize = 100;
 #[repr(u8)]
 pub enum Title {
     /// Their armies gather faster.
-    Steward = 1,
+    Forager = 1,
     /// Their soldiers are trained sooner.
     Marshal = 2,
     /// Their buildings are raised sooner.
@@ -697,7 +697,7 @@ pub enum Title {
 }
 
 impl Title {
-    pub const ALL: [Title; 5] = [Title::Steward, Title::Marshal, Title::Mason, Title::Warden, Title::Herald];
+    pub const ALL: [Title; 5] = [Title::Forager, Title::Marshal, Title::Mason, Title::Warden, Title::Herald];
 
     pub fn of(code: u8) -> Option<Title> {
         Title::ALL.into_iter().find(|title| *title as u8 == code)
@@ -705,7 +705,7 @@ impl Title {
 
     pub fn name(self) -> &'static str {
         match self {
-            Title::Steward => "Steward of the Mere",
+            Title::Forager => "Forager of the Mere",
             Title::Marshal => "Marshal of the Mere",
             Title::Mason => "Mason of the Mere",
             Title::Warden => "Warden of the Mere",
@@ -716,7 +716,7 @@ impl Title {
     /// The study it lends, and as many levels of it as.
     pub fn lends(self) -> (Topic, u32) {
         match self {
-            Title::Steward => (Topic::Gathering, 2),
+            Title::Forager => (Topic::Gathering, 2),
             Title::Marshal => (Topic::Drill, 4),
             Title::Mason => (Topic::Building, 4),
             Title::Warden => (Topic::Shields, 3),
@@ -1061,11 +1061,11 @@ pub enum Contest {
     /// Goods brought home: a point for each hundred.
     Harvest = 2,
     /// Soldiers trained: a point for each, times their tier.
-    Muster = 3,
+    Arms = 3,
 }
 
 impl Contest {
-    pub const ALL: [Contest; 3] = [Contest::Hunt, Contest::Harvest, Contest::Muster];
+    pub const ALL: [Contest; 3] = [Contest::Hunt, Contest::Harvest, Contest::Arms];
 
     pub fn of(code: u8) -> Option<Contest> {
         Contest::ALL.into_iter().find(|contest| *contest as u8 == code)
@@ -1075,7 +1075,7 @@ impl Contest {
         match self {
             Contest::Hunt => "The Long Hunt",
             Contest::Harvest => "The Harvest Moon",
-            Contest::Muster => "The Muster",
+            Contest::Arms => "The Call to Arms",
         }
     }
 
@@ -1084,7 +1084,7 @@ impl Contest {
         match self {
             Contest::Hunt => "Clear barrows of the Unquiet: ten points for each level of each one you clear.",
             Contest::Harvest => "Bring goods home from the land: a point for every hundred your armies carry back.",
-            Contest::Muster => "Train soldiers: a point for each one you set to training, times their tier.",
+            Contest::Arms => "Train soldiers: a point for each one you set to training, times their tier.",
         }
     }
 
@@ -1095,7 +1095,7 @@ impl Contest {
         match self {
             Contest::Hunt => (7, 3, 0),
             Contest::Harvest => (7, 3, 2),
-            Contest::Muster => (7, 3, 4),
+            Contest::Arms => (7, 3, 4),
         }
     }
 
@@ -1113,7 +1113,7 @@ impl Contest {
                 (1_000, Goods::of(0, 0, 8_000, 100), vec![(Item::Haste60, 1)]),
                 (4_000, Goods::of(10_000, 10_000, 20_000, 400), vec![(Item::Haste480, 1), (Item::Peace8, 1)]),
             ],
-            Contest::Muster => vec![
+            Contest::Arms => vec![
                 (300, Goods::of(5_000, 2_000, 0, 0), vec![(Item::Haste5, 2)]),
                 (1_500, Goods::of(12_000, 6_000, 0, 0), vec![(Item::Haste60, 1)]),
                 (6_000, Goods::of(30_000, 15_000, 5_000, 300), vec![(Item::Haste480, 1), (Item::Peace8, 1)]),

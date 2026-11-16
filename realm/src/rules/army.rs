@@ -80,7 +80,7 @@ pub fn train(db: &mut impl Db, player: u64, building: u64, tier: u32, count: u64
     job.timer = db.after(ends, TIMER_JOB, job.id);
     db.update(job.clone());
     did(db, player, Deed::Train, count);
-    super::scored(db, player, crate::catalog::Contest::Muster, count * tier as u64);
+    super::scored(db, player, crate::catalog::Contest::Arms, count * tier as u64);
     Ok(job)
 }
 

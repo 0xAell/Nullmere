@@ -273,7 +273,7 @@ check("and one a player has not got is refused", call(ada, "use_peace", 4), "You
 trials = rows(nobody, "SELECT * FROM trial")
 prizes = sorted(rows(nobody, "SELECT * FROM prize"), key=lambda prize: prize["place"])
 trials = sorted(trials, key=lambda trial: trial["id"])
-check("the contests and their prizes are written out for all to read", ([(trial["name"], trial["every"], trial["lasts"], trial["opens"]) for trial in trials], [prize["points"] for prize in prizes if prize["trial"] == 1]), ([("The Long Hunt", 7, 3, 0), ("The Harvest Moon", 7, 3, 2), ("The Muster", 7, 3, 4)], [100, 400, 1000]))
+check("the contests and their prizes are written out for all to read", ([(trial["name"], trial["every"], trial["lasts"], trial["opens"]) for trial in trials], [prize["points"] for prize in prizes if prize["trial"] == 1]), ([("The Long Hunt", 7, 3, 0), ("The Harvest Moon", 7, 3, 2), ("The Call to Arms", 7, 3, 4)], [100, 400, 1000]))
 check("a prize not yet earned is refused", call(ada, "claim_prize", 1, 1), "That prize is for 100 points.")
 check("and one that is not there", call(ada, "claim_prize", 1, 9), "There is no such prize.")
 check("no one reads another's tallies", isinstance(rows(ada, "SELECT * FROM tally"), str), True)

@@ -506,7 +506,7 @@ public struct LiveTitle: Equatable, Sendable, Identifiable {
     /// The titles, as the module's catalogue numbers and names them, with
     /// what each lends.
     public static let names: [Int: (name: String, lends: String)] = [
-        1: ("Steward of the Mere", "Their armies gather faster, as two levels of Gathering."),
+        1: ("Forager of the Mere", "Their armies gather faster, as two levels of Gathering."),
         2: ("Marshal of the Mere", "Their soldiers are trained sooner, as four levels of Drill."),
         3: ("Mason of the Mere", "Their buildings are raised sooner, as four levels of Building."),
         4: ("Warden of the Mere", "Everyone they send or keep is harder to bring down, as three levels of Shields."),

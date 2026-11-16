@@ -56,7 +56,7 @@ fn the_lord_of_the_mere_bestows_titles_that_lend_what_studies_would() {
     let (mut db, [ada, bryn, cole, edda], cities) = realm();
     // No season won yet: there is no Lord.
     assert_eq!(rules::lord(&db), None);
-    assert_eq!(db.call(|db| rules::bestow_title(db, ada, Kind2::Steward as u8, edda)), Err(Refusal::NotTheLord));
+    assert_eq!(db.call(|db| rules::bestow_title(db, ada, Kind2::Forager as u8, edda)), Err(Refusal::NotTheLord));
     assert_eq!(
         Refusal::NotTheLord.to_string(),
         "Only the Lord of the Mere bestows its titles: the leader of the alliance that won the last season won."
@@ -65,24 +65,24 @@ fn the_lord_of_the_mere_bestows_titles_that_lend_what_studies_would() {
     // The Keepers raise their Moonspire whole and win the season: Ada is the Lord.
     raise_whole(&mut db, ada);
     assert_eq!(rules::lord(&db), Some(ada));
-    assert_eq!(db.call(|db| rules::bestow_title(db, bryn, Kind2::Steward as u8, edda)), Err(Refusal::NotTheLord));
+    assert_eq!(db.call(|db| rules::bestow_title(db, bryn, Kind2::Forager as u8, edda)), Err(Refusal::NotTheLord));
     assert_eq!(db.call(|db| rules::bestow_title(db, ada, 9, edda)), Err(Refusal::NoSuchTitle));
-    assert_eq!(db.call(|db| rules::bestow_title(db, ada, Kind2::Steward as u8, 999)), Err(Refusal::NoSuchPlayer));
+    assert_eq!(db.call(|db| rules::bestow_title(db, ada, Kind2::Forager as u8, 999)), Err(Refusal::NoSuchPlayer));
 
-    // A title on anyone in the realm, ally or not: Edda, in no alliance, is made Steward.
+    // A title on anyone in the realm, ally or not: Edda, in no alliance, is made Forager.
     let before = rules::boost(&db, cities[3].id, Topic::Gathering);
-    let made = db.call(|db| rules::bestow_title(db, ada, Kind2::Steward as u8, edda)).unwrap();
-    assert_eq!((made.title, made.holder, made.name.as_str()), (Kind2::Steward as u64, edda, "Edda"));
+    let made = db.call(|db| rules::bestow_title(db, ada, Kind2::Forager as u8, edda)).unwrap();
+    assert_eq!((made.title, made.holder, made.name.as_str()), (Kind2::Forager as u64, edda, "Edda"));
     assert_eq!(rules::boost(&db, cities[3].id, Topic::Gathering), before + 2 * Topic::Gathering.each(), "as two levels of Gathering");
-    assert_eq!(last_title_words(&db, edda), "The Lord of the Mere has made you Steward of the Mere.");
-    assert_eq!(db.call(|db| rules::bestow_title(db, ada, Kind2::Steward as u8, edda)), Err(Refusal::TitleHeld));
+    assert_eq!(last_title_words(&db, edda), "The Lord of the Mere has made you Forager of the Mere.");
+    assert_eq!(db.call(|db| rules::bestow_title(db, ada, Kind2::Forager as u8, edda)), Err(Refusal::TitleHeld));
 
     // Bestowed on another, it is taken from the one who held it.
     wait(&mut db, 10);
-    db.call(|db| rules::bestow_title(db, ada, Kind2::Steward as u8, cole)).unwrap();
+    db.call(|db| rules::bestow_title(db, ada, Kind2::Forager as u8, cole)).unwrap();
     assert_eq!(rules::boost(&db, cities[3].id, Topic::Gathering), before);
     assert_eq!(rules::boost(&db, cities[2].id, Topic::Gathering), 2 * Topic::Gathering.each());
-    assert_eq!(last_title_words(&db, edda), "The Lord of the Mere has taken the title of Steward of the Mere from you.");
+    assert_eq!(last_title_words(&db, edda), "The Lord of the Mere has taken the title of Forager of the Mere from you.");
 
     // Each title lends its own study; one player may hold more than one.
     db.call(|db| rules::bestow_title(db, ada, Kind2::Mason as u8, bryn)).unwrap();

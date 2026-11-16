@@ -109,16 +109,16 @@ pub(super) fn may_raze(db: &impl Db, player: u64, ward: &Ward) -> Result<(), Ref
 }
 
 /// A rally's fight at a wardstone is over. Its armies fought as one
-/// against its keepers behind its ring of stones, each losing what fell of
+/// against its guards behind its ring of stones, each losing what fell of
 /// its own and carrying home as wounded what its own city has room for.
 /// If they won, the wardstone falls, and the land it claimed with it.
 /// Every army's owner is told, and the members of the alliance whose
 /// wardstone it was.
 pub(super) fn stormed_ward(db: &mut impl Db, marches: &mut [March], rally: &Rally) {
     let Some(ward) = ward_at(db, Hex::unpacked(rally.hex)) else { return };
-    let keepers = catalog::ward_garrison();
-    let together = fight_as_one(db, marches, &keepers, catalog::ward_shelter());
-    let stood: u64 = keepers.iter().map(|unit| unit.count).sum();
+    let guards = catalog::ward_garrison();
+    let together = fight_as_one(db, marches, &guards, catalog::ward_shelter());
+    let stood: u64 = guards.iter().map(|unit| unit.count).sum();
     let fell_there: u64 = together.outcome.defenders_lost.iter().sum();
     let won = together.outcome.won;
     if won {
@@ -133,7 +133,7 @@ pub(super) fn stormed_ward(db: &mut impl Db, marches: &mut [March], rally: &Rall
             format!("Your alliance's rally took down a wardstone: {armies} armies, {} soldiers in all. The land it claimed is no one's for it now.", catalog::grouped(all))
         } else {
             format!(
-                "Your alliance's rally was beaten at a wardstone: {armies} armies, {} soldiers in all. {} of its keepers still stood.",
+                "Your alliance's rally was beaten at a wardstone: {armies} armies, {} soldiers in all. {} of its guards still stood.",
                 catalog::grouped(all),
                 catalog::grouped(stood - fell_there)
             )

@@ -215,11 +215,11 @@ fn another_alliances_rally_takes_a_wardstone_down_and_its_land_with_it() {
     assert_eq!(db.call(|db| rules::call_rally(db, bryn, spot, &spears(100), 0)), Err(Refusal::OwnWard));
     assert_eq!(Refusal::OwnWard.to_string(), "That wardstone is your alliance's.");
 
-    // Another's: enough to beat its keepers behind their stones when chance gives neither side anything, and as much again.
-    let keepers = catalog::ward_garrison();
+    // Another's: enough to beat its guards behind their stones when chance gives neither side anything, and as much again.
+    let guards = catalog::ward_garrison();
     let enough = (1..100)
         .map(|hundreds| hundreds * 100)
-        .find(|count| rules::fight_sheltered(&[realm::catalog::Unit { kind: Troops::Spearmen, tier: 1, count: *count }], &keepers, catalog::ward_shelter(), || 10).won)
+        .find(|count| rules::fight_sheltered(&[realm::catalog::Unit { kind: Troops::Spearmen, tier: 1, count: *count }], &guards, catalog::ward_shelter(), || 10).won)
         .expect("some number is enough");
     let rally = db.call(|db| rules::call_rally(db, cole, spot, &spears(enough), 0)).unwrap();
     assert_eq!((rally.barrow, rally.city, rally.hex), (0, 0, spot.packed()));

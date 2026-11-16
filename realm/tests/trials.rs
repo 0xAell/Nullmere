@@ -72,7 +72,7 @@ fn the_contests_and_their_prizes_are_written_out_for_clients() {
     let trials = Table::<Trial>::all(&db);
     assert_eq!(
         trials.iter().map(|trial| (trial.id, trial.name.as_str(), trial.every, trial.lasts, trial.opens)).collect::<Vec<_>>(),
-        vec![(1, "The Long Hunt", 7, 3, 0), (2, "The Harvest Moon", 7, 3, 2), (3, "The Muster", 7, 3, 4)]
+        vec![(1, "The Long Hunt", 7, 3, 0), (2, "The Harvest Moon", 7, 3, 2), (3, "The Call to Arms", 7, 3, 4)]
     );
     assert!(trials.iter().all(|trial| trial.words.ends_with('.')));
     let all = Table::<Prize>::all(&db);
@@ -182,15 +182,15 @@ fn the_weeks_contests_overlap_and_the_harvest_and_the_muster_score_their_own() {
     assert!(brought >= 100, "something was brought home: {brought}");
     let harvested = rules::tally_of(&db, player, Contest::Harvest).points;
     assert!(harvested >= brought / 100 - 1 && harvested <= brought / 100 + 1, "{harvested} points for {brought} goods");
-    assert_eq!(rules::tally_of(&db, player, Contest::Muster).points, 0);
+    assert_eq!(rules::tally_of(&db, player, Contest::Arms).points, 0);
 
     // Two days on, the muster runs: soldiers set to training score their number times their tier.
     wait(&mut db, 2 * catalog::DAY);
-    assert!(rules::round_of(&db, Contest::Muster).1);
+    assert!(rules::round_of(&db, Contest::Arms).1);
     let barracks = db.insert(Building { id: 0, city: city.id, kind: Kind::Barracks as u8, level: 5 });
     let mut row = rules::grown(&Table::<Stock>::get(&db, city.id).unwrap(), db.clock);
     (row.grain, row.timber, row.stone) = (500_000, 500_000, 500_000);
     db.update(row);
     db.call(|db| rules::train(db, player, barracks.id, 1, 50)).unwrap();
-    assert_eq!(rules::tally_of(&db, player, Contest::Muster).points, 50);
+    assert_eq!(rules::tally_of(&db, player, Contest::Arms).points, 50);
 }
