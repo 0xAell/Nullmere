@@ -292,7 +292,7 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(home.buttons.map(\.title), ["Buildings", "Troops"])
         XCTAssertEqual(home.buttons.map(\.act), [.city, .troops])
         XCTAssertEqual(home.buttons.map(\.icon), ["building.2", "person.3"], "each drawn as a symbol in the ring about it")
-        let acts: [LiveCard.Act] = [.city, .troops, .send, .recall(1), .rally, .raiseWard, .razeWard(1), .scout, .reinforce, .moveCity]
+        let acts: [LiveCard.Act] = [.city, .troops, .send, .recall(1), .rally, .raiseWard, .razeWard(1), .scout, .reinforce, .explore, .moveCity]
         XCTAssertEqual(Set(acts.map { LiveCard.Button(title: "", act: $0, why: nil).icon }).count, acts.count, "no two acts drawn alike")
         XCTAssertEqual(LiveCard.Button(title: "Gather with 40 soldiers", act: .send, why: nil).icon, "shippingbox")
         // Ada has one army out and a Keep of the third level: no second
@@ -670,6 +670,66 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(card(6, -1).buttons.map(\.act), [.send])
         XCTAssertEqual(card(4, -6).buttons, [])
         XCTAssertEqual(card(12, -7).buttons.map(\.act), [.moveCity], "nor a wardstone to raise; her city may still move there")
+    }
+
+    /// The old folk's cairns: each told on a card with what it holds, a
+    /// scout sent from a Scout Camp to one not yet found, the nearest of
+    /// those in the palette, and each read on the map.
+    func testACairnIsToldOnItsCardAndAScoutIsSentToIt() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]
+        rows["march"] = rows["march"]?.filter { $0[1] != .number(1) }
+        // A third-level cairn beside Ada's city, whose hoard her scouts have
+        // found; a first-level one three hexes off, not yet found.
+        let (near, far) = (LiveHex(q: 9, r: -4), LiveHex(q: 12, r: -7))
+        rows["cairn"] = [[n(1), n(near.packed), n(3)], [n(2), n(far.packed), n(1)]]
+        rows["place"]?.append([n(near.packed), n(6), n(1)])
+        rows["place"]?.append([n(far.packed), n(6), n(2)])
+        rows["my_finds"] = [[n(UInt64(1) << 32 | 1), n(1), n(1), n(2_000)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        func card(_ hex: LiveHex) -> LiveCard { session.card(for: session.selection(at: hex)) }
+
+        guard case .cairn(let found) = session.selection(at: near) else { return XCTFail("the cairn is chosen") }
+        XCTAssertEqual(found.level, 3)
+        XCTAssertTrue(session.world.hasFound(found))
+        XCTAssertEqual(LiveCairn.hoard(level: 3).haste, "a five minutes' haste")
+        XCTAssertEqual(found.hoardWords, "12,000 grain, 12,000 timber and 12,000 stone, and a five minutes' haste")
+        XCTAssertEqual(LiveCairn.hoard(level: 5).goods, LiveGoods(grain: 30_000, timber: 30_000, stone: 30_000, moonsalt: 1_000), "as the module's hoard_of")
+        XCTAssertEqual(card(near), LiveCard(title: "Cairn, level 3", lines: ["Your scouts have found what it held. It stands for others to find."],
+                                            buttons: [.init(title: "Send a scout", act: .explore, why: "Your scouts have found what this cairn held already.")]))
+        XCTAssertEqual(card(far), LiveCard(title: "Cairn, level 1", lines: ["The old folk laid 2,000 grain, 2,000 timber and 2,000 stone in it."],
+                                           buttons: [.init(title: "Send a scout", act: .explore, why: "Raise a Scout Camp first.")]))
+        XCTAssertEqual(card(far).buttons[0].icon, "binoculars")
+
+        // From a Scout Camp, one soldier goes.
+        line.change { $0["my_buildings"]?.append([self.n(31), self.n(7), self.n(18), self.n(1)]) }
+        session.refresh()
+        XCTAssertEqual(card(far).lines.last, "A scout finds it the first time and comes home whole.")
+        XCTAssertNil(card(far).buttons[0].why)
+        session.selected = far
+        await session.press(card(far).buttons[0])
+        XCTAssertEqual(line.asked.last, "explore 12,-7 with 1 of 1.1")
+        // On its way, the card and the army's line say so.
+        let way = [LiveHex(q: 10, r: -4), LiveHex(q: 11, r: -5), LiveHex(q: 12, r: -6), far].flatMap { hex -> [UInt8] in
+            let (q, r) = (UInt16(bitPattern: Int16(hex.q)), UInt16(bitPattern: Int16(hex.r)))
+            return [UInt8(q & 0xFF), UInt8(q >> 8), UInt8(r & 0xFF), UInt8(r >> 8)]
+        }.map { String(format: "%02x", $0) }.joined()
+        line.change {
+            $0["march"]?.append([self.n(12), self.n(1), self.n(7), self.n(7), self.n(1), self.n(LiveHex(q: 10, r: -4).packed), self.n(far.packed), self.n(2),
+                                 self.n(2_015), self.n(2_033), self.n(1), .string(way), self.n(0)])
+        }
+        session.refresh()
+        XCTAssertEqual(card(far).buttons[0].why, "Your scouts are on their way to it already.")
+        XCTAssertEqual(card(far).lines.last, "Your scouts are on their way to it.")
+        XCTAssertEqual(session.world.marchLines().first { $0.march.id == 12 }?.doing, "Scouting a level 1 cairn")
+
+        // The palette goes to the nearest not yet found; the map reads both.
+        XCTAssertTrue(session.commands(at: 2_015).contains(LiveCommand(title: "Go to the nearest cairn your scouts have not found, of level 1", act: .go(far))))
+        let cairns = session.mapItems().filter { $0.kind == .cairn }
+        XCTAssertEqual(cairns.map(\.hex), [near, far], "the nearest first")
+        XCTAssertEqual(cairns.first?.label, "Cairn, level 3. Your scouts have found what it held. It stands for others to find.")
     }
 
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {

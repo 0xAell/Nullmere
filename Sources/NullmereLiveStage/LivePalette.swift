@@ -43,7 +43,7 @@ extension LiveSession {
     /// be opened, the soldiers each training building may raise a tier,
     /// each piece the Forge may make, another commander to take
     /// on and each contest's prize reached, now; and the nearest barrow the
-    /// player may attack,
+    /// player may attack, the nearest cairn their scouts have not found,
     /// and the nearest site of each good no one works, to go to.
     public func commands(at seconds: Double) -> [LiveCommand] {
         var all: [LiveCommand] = []
@@ -107,6 +107,9 @@ extension LiveSession {
             let may = world.hunt?.mayAttack ?? 1
             if let barrow = nearest(world.barrows.values.filter { $0.level <= may && $0.fighter == 0 }, \.hex) {
                 all.append(LiveCommand(title: "Go to the nearest barrow you may attack, of level \(barrow.level)", act: .go(barrow.hex)))
+            }
+            if let cairn = nearest(world.cairns.values.filter { !world.hasFound($0) }, \.hex) {
+                all.append(LiveCommand(title: "Go to the nearest cairn your scouts have not found, of level \(cairn.level)", act: .go(cairn.hex)))
             }
             for (index, good) in LiveSession.goods.enumerated() {
                 if let site = nearest(world.sites.values.filter { $0.kind == index + 1 && $0.gatherer == 0 }, \.hex) {

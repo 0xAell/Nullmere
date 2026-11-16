@@ -145,6 +145,14 @@ public struct LiveWindow: Sendable {
         }
     }
 
+    /// The old folk's cairns in the window, as the stage's found barrows:
+    /// a great grassed mound, the stones of its open mouth before it.
+    public func cairns(in world: LiveWorld) -> [(kind: Find.Kind, hex: Hex)] {
+        world.cairns.values.sorted { $0.id < $1.id }.compactMap { cairn in
+            local(cairn.hex).map { (.barrow, $0) }
+        }
+    }
+
     /// The window's tiles as the world's shader takes them: every hex
     /// known and watched, since the realm keeps nothing of its land from
     /// anyone; a hold where a city stands; and, where a world is given,

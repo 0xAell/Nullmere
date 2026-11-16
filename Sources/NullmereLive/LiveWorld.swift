@@ -107,6 +107,10 @@ public struct LiveWorld: Equatable, Sendable {
     public var gear: [LiveGear] = []
     /// The gifts waiting on the player from their alliance's deeds.
     public var boons: [LiveBoon] = []
+    /// The cairns of the old folk on the land, by number; and those whose
+    /// hoards the player's scouts have found.
+    public var cairns: [UInt64: LiveCairn] = [:]
+    public var finds: Set<UInt64> = []
 
     public init() {}
 
@@ -194,6 +198,8 @@ public struct LiveWorld: Equatable, Sendable {
         patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
         gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
         boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }
+        cairns = Dictionary(rows("cairn", LiveCairn.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        finds = Set(rows("my_finds", LiveCairn.found))
     }
 
     private static func key(_ kind: Int, _ level: Int) -> UInt64 { UInt64(kind) << 32 | UInt64(level) }

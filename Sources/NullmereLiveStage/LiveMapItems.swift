@@ -4,11 +4,11 @@ import NullmereLive
 import NullmereModels
 
 /// One thing on the map as VoiceOver reads it: the player's city, another
-/// city, an army, a barrow or a site, each where it lies in the window,
+/// city, an army, a barrow, a site or a cairn, each where it lies in the window,
 /// saying what it is and how it stands.
 public struct LiveMapItem: Equatable, Identifiable, Sendable {
     public enum Kind: Equatable, Sendable {
-        case home, city, army, ownArmy, barrow, site, gate, ward
+        case home, city, army, ownArmy, barrow, site, gate, ward, cairn
     }
 
     public let hex: LiveHex
@@ -20,7 +20,7 @@ public struct LiveMapItem: Equatable, Identifiable, Sendable {
 extension LiveSession {
     /// Everything in the window VoiceOver reads, the player's own city
     /// first, then their armies, then every other city, army, barrow,
-    /// site, gate and wardstone, the nearest to the player's city first;
+    /// site, gate, wardstone and cairn, the nearest to the player's city first;
     /// each labelled by its card's title and first line.
     public func mapItems() -> [LiveMapItem] {
         guard let window else { return [] }
@@ -45,6 +45,7 @@ extension LiveSession {
             case .site: kind = .site
             case .gate: kind = .gate
             case .ward: kind = .ward
+            case .cairn: kind = .cairn
             case .land: return nil
             }
             let card = card(for: chosen)

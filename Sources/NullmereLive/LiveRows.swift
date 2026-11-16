@@ -175,6 +175,7 @@ public struct LivePlace: Equatable, Sendable {
     public static let barrow = 3
     public static let ward = 4
     public static let gate = 5
+    public static let cairn = 6
 
     public let hex: LiveHex
     public let kind: Int
@@ -219,6 +220,8 @@ public struct LiveMarch: Equatable, Sendable, Identifiable {
     public static let scout = 4
     public static let reinforce = 5
     public static let rally = 6
+    /// Scouts to find what a cairn of the old folk holds.
+    public static let explore = 7
 
     public static let going = 1
     public static let working = 2

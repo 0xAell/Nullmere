@@ -36,6 +36,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func setAlliance(open: Bool, words: String) async throws
     func say(_ words: String, withinAlliance: Bool) async throws
     func scout(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
+    func explore(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
     func reinforce(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
     func callRally(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
     func joinRally(_ rally: UInt64, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
@@ -88,6 +89,8 @@ public enum LiveSelection: Equatable, Sendable {
     /// A gate of the ridge, and an alliance's wardstone.
     case gate(LiveGate)
     case ward(LiveWard)
+    /// A cairn of the old folk.
+    case cairn(LiveCairn)
     /// An army there now, and whether it is the player's own.
     case army(LiveMarch, own: Bool)
     /// Bare land: its ground, as the module numbers it, where it is known.
@@ -344,22 +347,24 @@ public final class LiveSession {
     }
 
     /// What stands and moves in the window at a moment, staged for the
-    /// renderer: its cities and their works, the sites and the Unquiet's
-    /// barrows, the armies where they are, and the land's own furniture.
+    /// renderer: its cities and their works, the sites, the Unquiet's
+    /// barrows and the old folk's cairns, the armies where they are, and
+    /// the land's own furniture.
     public func frame(time: Double) -> SceneFrame {
         var frame = SceneFrame()
         guard let window, let land = land(), let stage = staged?.stage else { return frame }
         let seconds = now
         let sights = window.holds(in: world, colours: LiveSession.colours, at: seconds)
-        let sites = window.sites(in: world), barrows = window.barrows(in: world)
+        let sites = window.sites(in: world), barrows = window.barrows(in: world), cairns = window.cairns(in: world)
         if fixed.isEmpty {
-            fixed = stage.furnish(occupied: Set(sites.map(\.hex) + barrows.map(\.hex)), holds: Set(sights.map(\.hold.position)))
+            fixed = stage.furnish(occupied: Set(sites.map(\.hex) + barrows.map(\.hex) + cairns.map(\.hex)), holds: Set(sights.map(\.hold.position)))
         }
         frame.fixed = fixed
         frame.fixedVersion = windowVersion * 100_000 + standingVersion
         let (holds, _) = stage.holds(sights, time: Float(time), into: &frame)
         let poses = window.companies(in: world, relief: land.relief, at: seconds)
-        frame.batches = holds + stage.sites(sites) + stage.lairs(barrows).batches + stage.companies(poses, houses: LiveSession.colours, into: &frame)
+        frame.batches = holds + stage.sites(sites) + stage.lairs(barrows).batches + stage.finds(cairns).batches
+            + stage.companies(poses, houses: LiveSession.colours, into: &frame)
         return frame
     }
 
@@ -391,6 +396,8 @@ public final class LiveSession {
                 if let gate = world.gates[place.id] { return .gate(gate) }
             case LivePlace.ward:
                 if let ward = world.wards[place.id] { return .ward(ward) }
+            case LivePlace.cairn:
+                if let cairn = world.cairns[place.id] { return .cairn(cairn) }
             default: break
             }
         }
@@ -501,6 +508,12 @@ public final class LiveSession {
     public func scout(at hex: LiveHex) async {
         let party = scoutParty
         await ask { try await $0.scout(at: hex, soldiers: party) }
+    }
+
+    /// Sends a scout to find what the cairn at a hex holds.
+    public func explore(at hex: LiveHex) async {
+        let party = scoutParty
+        await ask { try await $0.explore(at: hex, soldiers: party) }
     }
 
     /// Sends everyone ready to stay in an ally's city at a hex, led by the

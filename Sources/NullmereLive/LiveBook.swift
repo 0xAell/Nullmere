@@ -326,6 +326,7 @@ extension LiveWorld {
             case (LiveMarch.hunt, LiveMarch.fighting): doing = level.map { "Fighting at a level \($0) barrow" } ?? "Fighting at a barrow"
             case (LiveMarch.attack, LiveMarch.going): doing = "On its way to \(cities[march.target].map { "\($0.name)'s city" } ?? "a city")"
             case (LiveMarch.attack, LiveMarch.fighting): doing = "Attacking \(cities[march.target].map { "\($0.name)'s city" } ?? "a city")"
+            case (LiveMarch.explore, LiveMarch.going): doing = cairns[march.target].map { "Scouting a level \($0.level) cairn" } ?? "Scouting a cairn"
             default: doing = haul.isNone ? "Coming home" : "Coming home with \(haul.words)"
             }
             return LiveMarchLine(march: march, doing: doing, soldiers: march.soldiers, wounded: own.reduce(0) { $0 + $1.wounded }, carrying: haul,

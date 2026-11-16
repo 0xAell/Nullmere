@@ -152,6 +152,7 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func setAlliance(open: Bool, words: String) async throws { try take("alliance \(open ? "open" : "closed"): \(words)") }
     public func say(_ words: String, withinAlliance: Bool) async throws { try take("say \(withinAlliance ? "within" : "to all"): \(words)") }
     public func scout(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws { try take("scout \(hex.q),\(hex.r) with \(listed(soldiers))") }
+    public func explore(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws { try take("explore \(hex.q),\(hex.r) with \(listed(soldiers))") }
     public func reinforce(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {
         try take("reinforce \(hex.q),\(hex.r) with \(listed(soldiers)) led by \(leader)")
     }

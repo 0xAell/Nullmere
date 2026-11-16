@@ -25,6 +25,8 @@ public struct LiveCard: Equatable, Sendable {
         /// an ally's.
         case scout
         case reinforce
+        /// Send a scout to find what the cairn chosen holds.
+        case explore
         /// Move the player's city to the ground chosen.
         case moveCity
     }
@@ -48,6 +50,7 @@ public struct LiveCard: Equatable, Sendable {
             case .razeWard: return "hammer"
             case .scout: return "eye"
             case .reinforce: return "shield"
+            case .explore: return "binoculars"
             case .moveCity: return "arrow.up.and.down.and.arrow.left.and.right"
             }
         }
@@ -192,6 +195,24 @@ extension LiveSession {
             if gate.fighter != 0 { why = "Another rally is at that gate." }
             return LiveCard(title: "Gate of the ridge", lines: lines, buttons: rallyButton(why: why))
 
+        case .cairn(let cairn):
+            // A scout, one soldier, finds what it holds the first time and comes home whole.
+            var lines = ["The old folk laid \(cairn.hoardWords) in it."]
+            var why: String?
+            if world.hasFound(cairn) {
+                lines = ["Your scouts have found what it held. It stands for others to find."]
+                why = "Your scouts have found what this cairn held already."
+            } else if world.scouting(cairn) {
+                lines.append("Your scouts are on their way to it.")
+                why = "Your scouts are on their way to it already."
+            } else if world.building(LiveSession.scoutCamp) == nil {
+                why = "Raise a Scout Camp first."
+            } else {
+                lines.append("A scout finds it the first time and comes home whole.")
+                why = cannotSend
+            }
+            return LiveCard(title: "Cairn, level \(cairn.level)", lines: lines, buttons: [.init(title: "Send a scout", act: .explore, why: why)])
+
         case .ward(let ward):
             let owner = world.alliances[ward.alliance].map { "[\($0.tag)] \($0.name)" } ?? "An alliance"
             var lines = ["\(owner)'s wardstone. Once it stands it claims the land within \(LiveWard.reach) hexes."]
@@ -263,6 +284,8 @@ extension LiveSession {
             if let selected { await scout(at: selected) }
         case .reinforce:
             if let selected { await reinforce(at: selected) }
+        case .explore:
+            if let selected { await explore(at: selected) }
         case .moveCity:
             if let selected { await moveCity(to: selected) }
         case .city, .troops: break

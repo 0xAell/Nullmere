@@ -121,10 +121,11 @@ public struct LiveGameView: View {
                         .ignoresSafeArea()
                         .accessibilityElement(children: .contain)
                         .accessibilityLabel("The realm's map")
-                        // VoiceOver's rotor goes straight to the player's armies, the cities, or the barrows.
+                        // VoiceOver's rotor goes straight to the player's armies, the cities, the barrows or the cairns.
                         .accessibilityRotor("Your armies", entries: items.filter { $0.kind == .ownArmy }, entryID: \.id, entryLabel: \.label)
                         .accessibilityRotor("Cities", entries: items.filter { $0.kind == .home || $0.kind == .city }, entryID: \.id, entryLabel: \.label)
                         .accessibilityRotor("Barrows", entries: items.filter { $0.kind == .barrow }, entryID: \.id, entryLabel: \.label)
+                        .accessibilityRotor("Cairns", entries: items.filter { $0.kind == .cairn }, entryID: \.id, entryLabel: \.label)
                         // VoiceOver reads the map as what stands and moves on it, each where it
                         // lies, so its cursor rings it on the map; choosing one chooses it there.
                         .accessibilityChildren {
