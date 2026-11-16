@@ -16,7 +16,10 @@ enum Palette {
     static let stoneDark = Vec3(0.37, 0.37, 0.38)
     static let stonePale = Vec3(0.68, 0.67, 0.64)
     static let stoneWhite = Vec3(0.84, 0.84, 0.82)
-    static let rock = Vec3(0.40, 0.40, 0.42)
+    /// Weathered rock, a little warm: a cool grey stood lilac against the
+    /// meadows' green under the day's blue sky (the Spine's crags and the
+    /// boulders, CI run 1057's pictures).
+    static let rock = Vec3(0.42, 0.40, 0.37)
     static let slate = Vec3(0.23, 0.24, 0.28)
     static let thatch = Vec3(0.47, 0.41, 0.29)
     static let earth = Vec3(0.24, 0.21, 0.18)
