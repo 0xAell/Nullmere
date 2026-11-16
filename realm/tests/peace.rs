@@ -183,3 +183,18 @@ fn a_player_forgotten_leaves_their_name_behind() {
     assert_eq!(rules::forget(&mut db, bryn), Err(Refusal::ForgottenAlready));
     assert_eq!(rules::forget(&mut db, 999), Err(Refusal::NoSuchPlayer));
 }
+
+#[test]
+fn a_report_names_a_forgotten_speaker_after_their_alliances_tag() {
+    let (mut db, players) = realm_of(&["Ada", "Bryn"]);
+    let (ada, bryn) = (players[0], players[1]);
+    let city = rules::city_of(&db, ada).unwrap();
+    db.insert(Building { id: 0, city: city.id, kind: Kind::Embassy as u8, level: 1 });
+    db.call(|db| rules::found_alliance(db, ada, "Keepers", "MERE")).unwrap();
+    let line = say(&mut db, ada, "Ada speaks of Ada");
+    let kept = db.call(|db| rules::report_line(db, bryn, line, false)).unwrap();
+    assert_eq!(kept.around, "> [MERE] Ada: Ada speaks of Ada");
+    let name = rules::forget(&mut db, ada).unwrap();
+    // The speaker renamed, after their tag; their words as they were.
+    assert_eq!(Table::<Complaint>::get(&db, kept.id).unwrap().around, format!("> [MERE] {name}: Ada speaks of Ada"));
+}
