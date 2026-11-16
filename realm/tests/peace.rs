@@ -165,7 +165,7 @@ fn a_player_forgotten_leaves_their_name_behind() {
     let name = rules::forget(&mut db, bryn).unwrap();
     assert_eq!(name, format!("Forgotten #{bryn}"));
     let row = Table::<Player>::get(&db, bryn).unwrap();
-    assert_eq!((row.name.clone(), row.name_key), (name.clone(), rules::name_key(&name)));
+    assert_eq!((row.name.clone(), row.name_key, row.online), (name.clone(), rules::name_key(&name), false));
     assert!(rules::name_refusal(&name).is_some(), "no player joins under such a name");
     assert_eq!(Table::<City>::by(&db, 0, bryn)[0].name, name);
     assert_eq!(Table::<RealmChat>::get(&db, rude).unwrap().name, name);
