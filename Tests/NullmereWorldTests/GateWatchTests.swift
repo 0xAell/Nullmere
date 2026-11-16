@@ -1,12 +1,13 @@
 import XCTest
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
+import NullmereTestSupport
 
 /// An ally keeping a hold's gates is seen there: its banner at the gate
 /// and two sentries of its kind pacing across it.
 final class GateWatchTests: XCTestCase {
-    private let state = GameState(settings: GameSettings(seedText: "gate watch", houseCount: 4, radius: 12, keepers: 1))
+    private let state = TestWorld(seedText: "gate watch", houses: 4, radius: 12)
 
     func testAnAllyKeepingTheGatesStandsItsBannerAndSentriesThere() throws {
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))

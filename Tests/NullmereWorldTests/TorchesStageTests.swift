@@ -1,8 +1,9 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// The torches the companies carry through the night: two at the front of
 /// each company in sight, borne in the outer hands of its front rank's
@@ -12,7 +13,7 @@ import XCTest
 /// aboard a barge, in a field of battle or fallen; the nearest so many
 /// companies to the view at most.
 final class TorchesStageTests: XCTestCase {
-    private static let state = GameState(settings: GameSettings(seedText: "stage", houseCount: 4, radius: 12, keepers: 1))
+    private static let state = TestWorld(seedText: "stage", houses: 4, radius: 12)
     private static let relief = Relief(map: state.map)
 
     private func stage() -> WorldStage {
@@ -146,7 +147,7 @@ final class TorchesStageTests: XCTestCase {
 /// flame, embers and smoke, and its light reaching over the ground the
 /// watch keeps.
 final class WatchfireStageTests: XCTestCase {
-    private static let state = GameState(settings: GameSettings(seedText: "stage", houseCount: 4, radius: 12, keepers: 1))
+    private static let state = TestWorld(seedText: "stage", houses: 4, radius: 12)
     private static let relief = Relief(map: state.map)
 
     func testAWatchfireBurnsInItsBrazierAndLightsTheGroundAboutIt() throws {
@@ -178,8 +179,8 @@ final class WatchfireStageTests: XCTestCase {
         XCTAssertEqual(lights.count, 1)
         XCTAssertEqual(lights[0].reach, Happenings.watchfireReach)
         XCTAssertGreaterThan(lights[0].colour.x, lights[0].colour.z, "Firelight")
-        XCTAssertGreaterThanOrEqual(Happenings.watchfireReach, Float(Watchfire.reach) * Relief.hexSpacing * 0.9,
-                                    "Its light reaching about as far as the ground its House sees by it")
+        XCTAssertGreaterThanOrEqual(Happenings.watchfireReach, 2 * Relief.hexSpacing * 0.9,
+                                    "Its light reaching about as far as the ground seen by it, two hexes")
         XCTAssertTrue(happenings.effects(at: 4, leaving: [.flames, .embers, .smoke]).motes.isEmpty, "All of it the fire's")
     }
 }

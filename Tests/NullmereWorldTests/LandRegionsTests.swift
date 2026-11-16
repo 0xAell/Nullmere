@@ -1,14 +1,15 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// The land drawn only where a frame's view reaches, as its furniture is:
 /// its triangles gathered chunk by chunk, each chunk's bounds kept, and a
 /// frame drawing just the chunks it sees, never a triangle it could show.
 final class LandRegionsTests: XCTestCase {
-    private static let state = GameState(settings: GameSettings(seedText: "regions", houseCount: 12, radius: 36))
+    private static let state = TestWorld(seedText: "regions", houses: 12, radius: 36)
     private static let terrain = TerrainMesh.shared(for: state.map)
     private static let land = LandRegions(terrain)
     private static let size = CGSize(width: 1512, height: 982)
@@ -99,8 +100,9 @@ final class LandRegionsTests: XCTestCase {
     /// and near its seat a frame draws about as much of it as the twelve's.
     func testAWideRealmsFrameDrawsNearAsMuchLandAsANarrowOnes() throws {
         func drawnNear(seats: Int) throws -> (drawn: Int, whole: Int) {
-            let state = GameState(settings: GameSettings(seedText: "a wide land", houseCount: seats,
-                                                         radius: RealmState.radius(forSeats: seats)))
+            // As wide as the old realm made a lake for so many seats.
+            let radius = seats > 12 ? Int((36 * (Double(seats) / 12).squareRoot()).rounded()) : 36
+            let state = TestWorld(seedText: "a wide land", houses: seats, radius: radius)
             let land = LandRegions(TerrainMesh.shared(for: state.map))
             var camera = Camera(scale: 28)
             camera.focus(on: try XCTUnwrap(state.holds.first { $0.isSeat }).position)

@@ -1,7 +1,8 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// The lake heard at its edge near the view (`ShoreSound`): only where its
 /// own water meets the land, only water the House has seen, the nearer the
@@ -9,7 +10,7 @@ import XCTest
 /// lake and from far back. How the shore itself sounds is measured in
 /// NullmereSoundTests.
 final class ShoreSoundTests: XCTestCase {
-    private let state = GameState(settings: GameSettings(seedText: "shore", keepers: 1))
+    private let state = TestWorld(seedText: "shore")
 
     private func isEdge(_ hex: Hex) -> Bool {
         guard let tile = state.map[hex], ShoreSound.isLake(tile.terrain) else { return false }
@@ -79,7 +80,7 @@ final class ShoreSoundTests: XCTestCase {
         // The calmer the Still lies, the quieter it laps.
         XCTAssertEqual(ShoreSound.stilled(by: 0), 1)
         XCTAssertEqual(ShoreSound.stilled(by: 4), 0.7, accuracy: 1e-6)
-        XCTAssertEqual(ShoreSound.stilled(by: Calm.deepest), 0.25, accuracy: 1e-6)
+        XCTAssertEqual(ShoreSound.stilled(by: Weather.deepestCalm), 0.25, accuracy: 1e-6)
         XCTAssertEqual(ShoreSound.stilled(by: 99), 0.25, accuracy: 1e-6)
     }
 }

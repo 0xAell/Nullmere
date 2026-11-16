@@ -1,14 +1,15 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// The land's furniture drawn only where a frame's view reaches: gathered
 /// region by region, each region's bounds kept, and a frame drawing just
 /// the runs of each batch its view can see, never a piece it could show.
 final class RegionsTests: XCTestCase {
-    private static let state = GameState(settings: GameSettings(seedText: "regions", houseCount: 12, radius: 36))
+    private static let state = TestWorld(seedText: "regions", houses: 12, radius: 36)
     private static let furniture: (stage: WorldStage, batches: [ModelBatch]) = {
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         return (stage, stage.furnish(occupied: [], holds: Set(state.holds.map(\.position))))
@@ -129,7 +130,7 @@ final class RegionsTests: XCTestCase {
     /// A lake of forty-eight seats has four times the land, and near, a
     /// frame draws no more of it than over the realm proper's.
     func testAWideLakeDrawsNearAsMuchAsTheRealmPropers() throws {
-        let state = GameState(settings: GameSettings(seedText: "regions", houseCount: 48, radius: 72))
+        let state = TestWorld(seedText: "regions", houses: 48, radius: 72)
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         let batches = stage.furnish(occupied: [], holds: Set(state.holds.map(\.position)))
         let regions = try XCTUnwrap(stage.furnitureRegions)

@@ -1,8 +1,9 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// The moon's shadow map over what the view sees close by.
 final class MoonShadowTests: XCTestCase {
@@ -93,7 +94,7 @@ final class MoonShadowTests: XCTestCase {
     /// with a texel's width in the world and in the map; one far out, or
     /// told to cast none, casts none.
     func testAFrameSaysWhetherTheMoonCasts() throws {
-        let state = GameState(settings: GameSettings(seedText: "moonlit", houseCount: 4, radius: 12, keepers: 1))
+        let state = TestWorld(seedText: "moonlit", houses: 4, radius: 12)
         let terrain = TerrainMesh(relief: Relief(map: state.map), spacing: 0.3)
         func frame(_ scale: Double) -> FrameUniforms {
             FrameUniforms.make(camera: camera(scale: scale), size: size, pixelsPerPoint: 2, time: 1, motion: 1, radius: 12,
@@ -105,7 +106,7 @@ final class MoonShadowTests: XCTestCase {
         XCTAssertEqual(close.shadow, matrix)
         XCTAssertEqual(close.still.z, MoonShadow.texel(of: matrix))
         XCTAssertEqual(close.still.w, 1 / Float(MoonShadow.side))
-        close.calm(Calm.deepest)
+        close.calm(Weather.deepestCalm)
         XCTAssertTrue(close.casts, "The Still's calm and the moon's shadows side by side")
         XCTAssertEqual(close.still.x, 1)
         close.cast(nil)

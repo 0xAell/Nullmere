@@ -1,8 +1,9 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// The hamlets and barrows a House has found, as the world draws them: a
 /// hamlet's three homes facing their well, their doors in the free folk's
@@ -10,7 +11,7 @@ import XCTest
 /// mound, the stones of its open mouth before it, a third laid across the
 /// two; each within its own hex.
 final class FindsStageTests: XCTestCase {
-    private static let state = GameState(settings: GameSettings(seedText: "stage", houseCount: 4, radius: 12, keepers: 1))
+    private static let state = TestWorld(seedText: "stage", houses: 4, radius: 12)
     private static let relief = Relief(map: state.map)
 
     private func open(_ count: Int) throws -> [Hex] {

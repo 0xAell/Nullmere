@@ -1,8 +1,9 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// The blackwood burning as the world draws it: three fires to each tile
 /// alight among its trees, on the ground, the nearest to the view first and
@@ -11,7 +12,7 @@ import XCTest
 /// gone, until it grows back; and from afar a warm glow over each tile
 /// alight.
 final class WildfireStageTests: XCTestCase {
-    private static let state = GameState(settings: GameSettings(seedText: "stage", houseCount: 4, radius: 12, keepers: 1))
+    private static let state = TestWorld(seedText: "stage", houses: 4, radius: 12)
     private static let relief = Relief(map: state.map)
 
     private func stage() -> WorldStage {

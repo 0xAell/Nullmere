@@ -1,8 +1,9 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 final class CameraTests: XCTestCase {
     let size = CGSize(width: 1000, height: 700)
@@ -76,7 +77,7 @@ final class CameraTests: XCTestCase {
     }
 
     func testTheReliefPicksTheHexTheLandShows() {
-        let state = GameState(settings: GameSettings(seedText: "camera", houseCount: 6, radius: 14))
+        let state = TestWorld(seedText: "camera", houses: 6, radius: 14)
         let relief = Relief(map: state.map)
         let camera = Camera(scale: 40, tilt: 0.95)
         for hex in [Hex(1, 1), Hex(-3, 2), Hex(4, -4)] {

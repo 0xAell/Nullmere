@@ -184,7 +184,17 @@ hold walled in stone). Two ways off the old rules:
    same seed text, and a seat raised on each with the ids the game gave
    them. The models' tests build their worlds from it (FoundationTests,
    PlacementTests) and import the land alone; a hold's places (how many,
-   and where a work is set) are the land's Hold's.
+   and where a work is set) are the land's Hold's. The world's tests too:
+   TestWorld also sets each seat's Lantern and Spear where the game did,
+   and twenty of the world's twenty-nine test files build from it and
+   import the land alone. Left on the rules: those of the old game's own
+   drawing (OldGameStaging.swift's crest boards, mark hues, omens'
+   weather, fields of the dead, a plea's bearer, hand-to-hand fronts and
+   a GameState's tile texture, and the tests of them in StageTests,
+   EffectsTests, CorpseLightsTests, TownsfolkTests and FrontPressTests),
+   which go with the rules at step 5, and the two that play the old game
+   to draw it (TileTextureTests, WorldPreviewTests), to be rebuilt on the
+   test world.
 4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
    Done on 16 November: the old game's voices (Voices.swift,
    VoiceCheck.swift and their three test files), its counsel

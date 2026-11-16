@@ -1,15 +1,16 @@
 import Foundation
-@testable import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// Where a battle was fought, the field keeps its dead a while: each side's
 /// men lying on its own side of where the fronts met, fewer each watch, the
 /// arrows of a volley standing in the ground about those it felled, and
 /// birds come down to a field fought lately.
 final class FieldDeadTests: XCTestCase {
-    private let state = GameState(settings: GameSettings(seedText: "field dead", houseCount: 4, radius: 14, keepers: 1))
+    private let state = TestWorld(seedText: "field dead", houses: 4, radius: 14)
     private let red = Vec4(0.8, 0.1, 0.1, 1), blue = Vec4(0.1, 0.2, 0.8, 1)
     private let spears = ModelKey.figure(.spear, tier: 2), bows = ModelKey.figure(.bow, tier: 1)
 

@@ -1,5 +1,5 @@
 import Foundation
-@testable import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest

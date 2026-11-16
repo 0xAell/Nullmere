@@ -3,13 +3,14 @@ import Foundation
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// Where the dead lie unburied, corpse-lights hang over the field: more the
 /// more lie there, brighter as the dark of the moon nears over a field that
 /// will rise, cold and pale, straying and breathing, still where motion is
 /// reduced, and seen from across the realm.
 final class CorpseLightsTests: XCTestCase {
-    private let state = GameState(settings: GameSettings(seedText: "corpse lights", houseCount: 4, radius: 14, keepers: 1))
+    private let state = TestWorld(seedText: "corpse lights", houses: 4, radius: 14)
     private var stage: WorldStage { WorldStage(map: state.map, relief: Relief(map: state.map)) }
     private let field = Hex(3, -6)
 
@@ -21,14 +22,14 @@ final class CorpseLightsTests: XCTestCase {
         XCTAssertEqual(WorldStage.corpseLightCount(troops: 0), 0, "none where none lie")
         XCTAssertEqual(WorldStage.corpseLightCount(troops: 400), 1, "one over a few")
         XCTAssertEqual(WorldStage.corpseLightCount(troops: 3_000), 2)
-        XCTAssertEqual(WorldStage.corpseLightCount(troops: GameState.unquietAt - 1), 2, "the land takes these back")
-        XCTAssertEqual(WorldStage.corpseLightCount(troops: GameState.unquietAt), 3, "these rise: three at the least")
-        XCTAssertEqual(WorldStage.corpseLightCount(troops: GameState.unquietAt + GameState.unquietPerLevel), 4, "one more a level")
+        XCTAssertEqual(WorldStage.corpseLightCount(troops: UnburiedSight.unquietAt - 1), 2, "the land takes these back")
+        XCTAssertEqual(WorldStage.corpseLightCount(troops: UnburiedSight.unquietAt), 3, "these rise: three at the least")
+        XCTAssertEqual(WorldStage.corpseLightCount(troops: UnburiedSight.unquietAt + UnburiedSight.unquietPerLevel), 4, "one more a level")
         XCTAssertEqual(WorldStage.corpseLightCount(troops: 90_000), WorldStage.corpseLightsMost, "never more than the most")
     }
 
     func testBrighterAsTheDarkOfTheMoonNearsOverAFieldThatWillRise() {
-        let month = GameState.lunarMonth
+        let month = UnburiedSight.lunarMonth
         func strength(_ troops: Int, _ darkIn: Int) -> Float {
             WorldStage.corpseStrength(UnburiedSight(at: field, troops: troops, darkIn: darkIn))
         }
@@ -89,7 +90,7 @@ final class CorpseLightsTests: XCTestCase {
     /// dark; they are drawn pale and cold, no House's, and those risen this
     /// watch come up out of the dark.
     func testTheRisenCarryTheirFieldsLightsAndComeUpOutOfTheDark() throws {
-        XCTAssertEqual(UnburiedSight.risen(at: field, level: 1).troops, GameState.unquietAt)
+        XCTAssertEqual(UnburiedSight.risen(at: field, level: 1).troops, UnburiedSight.unquietAt)
         XCTAssertTrue(UnburiedSight.risen(at: field, level: 1).rises)
         XCTAssertEqual(WorldStage.corpseLightCount(troops: UnburiedSight.risen(at: field, level: 3).troops), 5, "three and one a level past the first")
         XCTAssertEqual(WorldStage.corpseStrength(UnburiedSight.risen(at: field, level: 2)), 1, accuracy: 0.0001, "as bright as on the eve")

@@ -1,7 +1,8 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// The blackwood burning, heard from the view: as near as the view comes,
 /// the more of it alight about the view's middle the louder, from where it
@@ -9,7 +10,7 @@ import XCTest
 /// How it sounds is held in NullmereSoundTests, the session hearing it in
 /// NullmereKitTests (`FireHeardTests`).
 final class FireSoundTests: XCTestCase {
-    private static let state = GameState(settings: GameSettings(seedText: "stage", houseCount: 4, radius: 12, keepers: 1))
+    private static let state = TestWorld(seedText: "stage", houses: 4, radius: 12)
 
     func testTheFireIsHeardAsNearAsTheViewComesAndFromWhereItBurns() throws {
         let map = Self.state.map

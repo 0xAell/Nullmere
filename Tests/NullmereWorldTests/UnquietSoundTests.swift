@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 @testable import NullmereWorld
 import XCTest
 
@@ -13,7 +13,7 @@ final class UnquietSoundTests: XCTestCase {
     private let field = Hex(3, -2)
 
     private func rising(darkIn: Int, at hex: Hex? = nil) -> UnburiedSight {
-        UnburiedSight(at: hex ?? field, troops: GameState.unquietAt, darkIn: darkIn)
+        UnburiedSight(at: hex ?? field, troops: UnburiedSight.unquietAt, darkIn: darkIn)
     }
 
     func testTheDeadAreHeardAsNearAsTheViewComesAndAsBrightAsTheirLightsBurn() throws {
@@ -36,9 +36,9 @@ final class UnquietSoundTests: XCTestCase {
         // The brighter their lights the louder: a month from the dark,
         // fainter; a field the land will take back, a glimmer, quieter than
         // one that will rise at its faintest.
-        let month = try XCTUnwrap(UnquietSound.heard([rising(darkIn: GameState.lunarMonth)], from: camera))
+        let month = try XCTUnwrap(UnquietSound.heard([rising(darkIn: UnburiedSight.lunarMonth)], from: camera))
         XCTAssertLessThan(month.level, close.level / 2, "A month from the dark, fainter")
-        let few = UnburiedSight(at: field, troops: GameState.unquietAt - 1, darkIn: 1)
+        let few = UnburiedSight(at: field, troops: UnburiedSight.unquietAt - 1, darkIn: 1)
         let glimmer = try XCTUnwrap(UnquietSound.heard([few], from: camera))
         XCTAssertLessThan(glimmer.level, month.level, "Dead the land will take back, a glimmer of a sound")
         // Two fields at their brightest about the middle, as loud as the

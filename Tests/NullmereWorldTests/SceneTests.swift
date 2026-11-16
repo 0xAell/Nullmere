@@ -1,8 +1,9 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 final class SceneTests: XCTestCase {
     func testTheGPUReadsTheFrameAndTheModelsAsTheShadersDeclareThem() {
@@ -128,7 +129,7 @@ final class SceneTests: XCTestCase {
     }
 
     func testAFramesUniformsFollowTheCameraAndTheLand() throws {
-        let state = GameState(settings: GameSettings(seedText: "uniforms", houseCount: 6, radius: 14))
+        let state = TestWorld(seedText: "uniforms", houses: 6, radius: 14)
         let terrain = TerrainMesh.shared(for: state.map, spacing: 0.6)
         XCTAssertEqual(TerrainMesh.shared(for: state.map, spacing: 0.6).mesh.vertices.count, terrain.mesh.vertices.count, "kept, not made again")
         let camera = Camera(centerX: 2, centerY: -1, scale: 30)
@@ -156,7 +157,7 @@ final class SceneTests: XCTestCase {
     }
 
     func testOnlyAFewLandsAreKept() {
-        let maps = (0..<5).map { GameState(settings: GameSettings(seedText: "kept \($0)", houseCount: 6, radius: 12)).map }
+        let maps = (0..<5).map { TestWorld(seedText: "kept \($0)", houses: 6, radius: 12).map }
         for map in maps { _ = TerrainMesh.shared(for: map, spacing: 1.2) }
         let again = TerrainMesh.shared(for: maps[4], spacing: 1.2)
         XCTAssertEqual(again.spacing, 1.2)

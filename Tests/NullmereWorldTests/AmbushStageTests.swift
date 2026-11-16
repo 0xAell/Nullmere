@@ -1,15 +1,16 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// A company of the keeper's lying in wait, hidden in the wood: half seen
 /// while it waits at rest and whole the moment it moves; the trees of the
 /// wood standing among its ranks where every other company's ground gives
 /// way to them; another House's company never drawn so.
 final class AmbushStageTests: XCTestCase {
-    private static let state = GameState(settings: GameSettings(seedText: "stage", houseCount: 4, radius: 12, keepers: 1))
+    private static let state = TestWorld(seedText: "stage", houses: 4, radius: 12)
     private static let relief = Relief(map: state.map)
 
     private func company(_ unit: Int, at hex: Hex, isOwn: Bool, clip: Clip = .idle) -> CompanyPose {
@@ -21,7 +22,7 @@ final class AmbushStageTests: XCTestCase {
     func testACompanyLyingInWaitIsHalfSeenAmongTheTreesOfTheWood() throws {
         let map = Self.state.map
         let wood = try XCTUnwrap(map.hexes.first { hex in
-            Self.state.isCover(hex) && hex.neighbors.allSatisfy { map[$0]?.terrain == .blackwood }
+            Self.state.map[hex]?.terrain == .blackwood && hex.neighbors.allSatisfy { map[$0]?.terrain == .blackwood }
         }, "A hex deep in the blackwood")
         let open = try XCTUnwrap(map.hexes.filter { hex in
             hex.distance(to: wood) > 2 && map[hex]?.terrain.isPassable == true && map[hex]?.terrain.isWater == false

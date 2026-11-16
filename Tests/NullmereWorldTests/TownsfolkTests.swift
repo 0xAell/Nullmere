@@ -3,6 +3,7 @@ import Foundation
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// A hold's townsfolk: one for each work standing whole, up to six, each
 /// the folk of its work's kind, going out from the keep's door to the work
@@ -10,7 +11,7 @@ import XCTest
 /// and never through a home, through the gate and round the walls where the
 /// hold is walled; none about a hold whose ward is broken.
 final class TownsfolkTests: XCTestCase {
-    private let state = GameState(settings: GameSettings(seedText: "townsfolk", houseCount: 4, radius: 14, keepers: 1))
+    private let state = TestWorld(seedText: "townsfolk", houses: 4, radius: 14)
 
     private func seat(_ levels: [BuildingKind: Int]) throws -> Hold {
         var hold = try XCTUnwrap(state.holds.first { $0.isSeat })

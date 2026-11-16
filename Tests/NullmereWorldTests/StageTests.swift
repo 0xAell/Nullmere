@@ -3,13 +3,14 @@ import NullmereCore
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// The world's models gathered for a frame: the land's furniture laid out
 /// once and again only where it changed, holds with their works rising
 /// under scaffolds, companies in formation on the land under their feet,
 /// and what flies over them.
 final class StageTests: XCTestCase {
-    private static let state = GameState(settings: GameSettings(seedText: "stage", houseCount: 4, radius: 12, keepers: 1))
+    private static let state = TestWorld(seedText: "stage", houses: 4, radius: 12)
     private static let relief = Relief(map: state.map)
 
     private func stage() -> WorldStage {
@@ -254,7 +255,7 @@ final class StageTests: XCTestCase {
     }
 
     func testCompaniesStandInFormationOnTheLandUnderEachFigure() throws {
-        let unit = try XCTUnwrap(Self.state.units.first { $0.kind == .spear })
+        let unit = try XCTUnwrap(Self.state.companies.first { $0.kind == .spear })
         let centre = Relief.centre(of: unit.position)
         let at = Vec3(centre.x, Self.relief.height(of: unit.position), centre.z)
         func company(health: Int, heading: Float = 0, clip: Clip = .idle, time: Float = 0, commander: Int? = nil, spread: Float = 1,
@@ -912,7 +913,7 @@ final class StageTests: XCTestCase {
     }
 
     func testACompanyEasesOutOfItsLastClipFigureByFigure() throws {
-        let unit = try XCTUnwrap(Self.state.units.first { $0.kind == .spear })
+        let unit = try XCTUnwrap(Self.state.companies.first { $0.kind == .spear })
         let centre = Relief.centre(of: unit.position)
         let at = Vec3(centre.x, Self.relief.height(of: unit.position), centre.z)
         func company(_ blend: CompanyPose.Blend?) -> CompanyPose {
@@ -1064,7 +1065,7 @@ private extension WorldStage {
 /// instance given its own pose in the frame's palette; still ones left be.
 final class AnimatedLandTests: XCTestCase {
     func testHolySitesAndStandardsArePosedOnTheStage() {
-        let map = GameState(settings: GameSettings(seedText: "posed", houseCount: 2, radius: 16)).map
+        let map = TestWorld(seedText: "posed", houses: 2, radius: 16).map
         let stage = WorldStage(map: map, relief: Relief(map: map))
         var frame = SceneFrame()
         let hexes = [Hex(1, 0), Hex(-2, 1)]
@@ -1082,7 +1083,7 @@ final class AnimatedLandTests: XCTestCase {
 /// its House's colour, shown whatever the keeper knows of its hex.
 final class MirrorTests: XCTestCase {
     func testTheStillWaterShowsFaintCompanies() {
-        let map = GameState(settings: GameSettings(seedText: "mirror", houseCount: 2, radius: 16)).map
+        let map = TestWorld(seedText: "mirror", houses: 2, radius: 16).map
         let stage = WorldStage(map: map, relief: Relief(map: map))
         let red = Vec4(1, 0, 0, 1)
         let batches = stage.mirrored([(.spear, Hex(1, 0), red), (.spear, Hex(2, 0), red), (.bow, Hex(0, 1), red)])
@@ -1097,7 +1098,7 @@ final class MirrorTests: XCTestCase {
 /// four moments a frame: their poses shared.
 final class SharedLandPoseTests: XCTestCase {
     func testManySitesShareFewPoses() {
-        let map = GameState(settings: GameSettings(seedText: "shared poses", houseCount: 2, radius: 16)).map
+        let map = TestWorld(seedText: "shared poses", houses: 2, radius: 16).map
         let stage = WorldStage(map: map, relief: Relief(map: map))
         var frame = SceneFrame()
         let hexes = (0..<40).map { Hex($0 % 8 - 4, $0 / 8 - 2) }
@@ -1257,7 +1258,7 @@ final class HoldGlowTests: XCTestCase {
     /// away and keeping its size on the screen as it does; none as close as
     /// the keeps' own windows and fires are seen.
     func testHoldsGlowFromAfar() throws {
-        let state = GameState(settings: GameSettings(seedText: "glows", houseCount: 4, radius: 12, keepers: 1))
+        let state = TestWorld(seedText: "glows", houses: 4, radius: 12)
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         var seat = try XCTUnwrap(state.holds.first { $0.isSeat })
         seat.ward = seat.maximumWard

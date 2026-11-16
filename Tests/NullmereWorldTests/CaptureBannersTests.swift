@@ -1,14 +1,15 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
+import NullmereTestSupport
 
 /// A hold seen taken changes its banners at its keep: the House it was
 /// taken from has its banner lowered into the earth, then the taker's is
 /// raised out of it, stands a while and fades.
 final class CaptureBannersTests: XCTestCase {
-    private static let state = GameState(settings: GameSettings(seedText: "captures", houseCount: 4, radius: 12, keepers: 1))
+    private static let state = TestWorld(seedText: "captures", houses: 4, radius: 12)
     private static let relief = Relief(map: state.map)
     private var stage: WorldStage { WorldStage(map: Self.state.map, relief: Self.relief) }
     private var hold: Hex { Self.state.holds[0].position }
