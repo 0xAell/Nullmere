@@ -355,6 +355,23 @@ struct LiveHUD: View {
                     }
                 }
                 .padding(12)
+                // Over each city in view, whose it is and its Keep's level: beneath the
+                // interface, and never in the way of a click on the map.
+                .background {
+                    ForEach(session.cityLabels(in: proxy.size)) { label in
+                        Text(verbatim: label.words)
+                            .font(.nm(LiveType.small, weight: label.own ? .semibold : .medium))
+                            .foregroundStyle(label.own || label.ally ? LiveEmphasis.primary : LiveEmphasis.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Palette.panel.opacity(0.7), in: Capsule())
+                            .overlay(Capsule().strokeBorder(label.ally ? Palette.good.opacity(0.6) : .clear, lineWidth: 1))
+                            .fixedSize()
+                            .position(label.point)
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
                 .overlay {
                     // What is chosen, shown about it on the map: its ring and its callout,
                     // the callout to the ring's left where an open destination would cover it.

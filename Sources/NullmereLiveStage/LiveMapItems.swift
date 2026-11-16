@@ -63,3 +63,31 @@ extension LiveSession {
         return camera.viewPoint(of: local, height: height, in: size)
     }
 }
+
+/// A city's name as it hangs over the city on the map: whose, at what
+/// level of its Keep, and whether it is the player's own or an ally's.
+public struct LiveCityLabel: Equatable, Identifiable, Sendable {
+    public let id: UInt64
+    public let words: String
+    public let point: CGPoint
+    public let own: Bool
+    public let ally: Bool
+}
+
+extension LiveSession {
+    /// How far above the heart of a city's hex its name hangs, in points.
+    public static let labelLift: CGFloat = 34
+
+    /// The names over the cities in a view of a size: each city in the
+    /// window whose name would hang within the view, under its owner's name
+    /// as others read it and its Keep's level.
+    public func cityLabels(in size: CGSize) -> [LiveCityLabel] {
+        world.cities.values.sorted { $0.id < $1.id }.compactMap { city in
+            guard let at = viewPoint(of: city.hex, in: size) else { return nil }
+            let point = CGPoint(x: at.x, y: at.y - LiveSession.labelLift)
+            guard point.x > 0, point.x < size.width, point.y > 0, point.y < size.height else { return nil }
+            let name = world.shownName(of: city.owner) ?? city.name
+            return LiveCityLabel(id: city.id, words: "\(name) · \(city.keep)", point: point, own: city.owner == world.me?.id, ally: world.isAlly(city.owner))
+        }
+    }
+}
