@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 
 /// The weather over the lake: what the realm's omen brings, seen in the
@@ -10,16 +10,8 @@ import NullmereModels
 public enum Weather: String, CaseIterable, Sendable {
     case clear, rain, mist, still, bloom, eclipse
 
-    /// The weather an omen brings.
-    public static func of(_ omen: OmenKind?) -> Weather {
-        switch omen {
-        case .leanWatch?: return .rain
-        case .risingMist?: return .mist
-        case .stillNight?: return .still
-        case .moonsaltBloom?: return .bloom
-        case nil: return .clear
-        }
-    }
+    /// The calmest the Still lies, its calm told from zero to this.
+    public static let deepestCalm = 10
 
     /// How much thicker the haze lies.
     public var hazeFactor: Float {
@@ -104,8 +96,9 @@ extension FrameUniforms {
         key.w *= weather.moonFactor
     }
 
-    /// The frame over a Still of a calm (0 to Calm.deepest): its water stiller.
+    /// The frame over a Still of a calm (0 to `Weather.deepestCalm`): its
+    /// water stiller.
     public mutating func calm(_ degrees: Int) {
-        still.x = Float(min(max(degrees, 0), Calm.deepest)) / Float(Calm.deepest)
+        still.x = Float(min(max(degrees, 0), Weather.deepestCalm)) / Float(Weather.deepestCalm)
     }
 }

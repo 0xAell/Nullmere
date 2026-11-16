@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 
 /// A company as a frame draws it: where it stands on the land, which way it
@@ -163,22 +163,6 @@ public struct Hearth: Equatable, Sendable {
     public init(point: Vec3, hex: Hex) {
         self.point = point
         self.hex = hex
-    }
-}
-
-extension Petition.Plea {
-    /// Which of the townsfolk brings a plea of this kind (`Folk`'s
-    /// variants): a porter for the masons, a timber carter for the
-    /// woodwards, an elder for the healers, a farmhand for the reeve's
-    /// folk, a water-carrier for the brewers.
-    public var folk: Int {
-        switch self {
-        case .mend: return Folk.porter
-        case .douse: return Folk.timberCarter
-        case .tend: return Folk.elder
-        case .hands: return Folk.farmhand
-        case .feast: return Folk.waterCarrier
-        }
     }
 }
 
@@ -587,11 +571,6 @@ public final class WorldStage: @unchecked Sendable {
     public static let markRingLights = 20
     public static let markRisingLights = 12
 
-    /// The hue of a mark's light by what it bids (`AllianceMark.Kind.hue`).
-    public static func markHue(_ kind: AllianceMark.Kind) -> Vec3 {
-        Vec3(kind.hue.red, kind.hue.green, kind.hue.blue)
-    }
-
     /// The marks the keeper's alliance has made, each where it lies: the
     /// alliance's banner planted on the marked ground, a little toward the
     /// eye from its heart, so a keep standing there never hides it.
@@ -606,20 +585,20 @@ public final class WorldStage: @unchecked Sendable {
         })
     }
 
-    /// The light of the marks the keeper's alliance has made, in each
-    /// one's hue (`markHue`): a ring of points turning on its ground, light
+    /// The light of the marks the keeper's alliance has made, each in the
+    /// hue of what it bids: a ring of points turning on its ground, light
     /// rising from its heart and fading as it climbs, and over it a soft
     /// glow that keeps its size on the screen as the view draws away, so
     /// the alliance sees from across the realm where its leader bids it
     /// gather, strike, hold or beware. Light only: it hides nothing. Where
     /// motion is reduced it stands still (`time` held).
-    public func markLights(_ marks: [(hex: Hex, kind: AllianceMark.Kind)], scale: Double, time: Float) -> [Mote] {
+    public func markLights(_ marks: [(hex: Hex, hue: Vec3)], scale: Double, time: Float) -> [Mote] {
         var motes: [Mote] = []
         motes.reserveCapacity(marks.count * (WorldStage.markRingLights + WorldStage.markRisingLights + 1))
         for mark in marks {
             let centre = Relief.centre(of: mark.hex)
             let foot = Vec3(centre.x, ground(atX: centre.x, z: centre.z), centre.z)
-            let hue = WorldStage.markHue(mark.kind)
+            let hue = mark.hue
             let own = WorldStage.phase(of: mark.hex, salt: 79)
             // The ring, turning slowly, brightest where it has just passed.
             let ringLights = WorldStage.markRingLights
@@ -1903,43 +1882,10 @@ public final class WorldStage: @unchecked Sendable {
     public static let routBelow: Float = 0.35
     public static let routPace: Float = 1.6
 
-    /// Each tincture's colour, as the interface paints it.
-    public static func colour(of tincture: Crest.Tincture) -> Vec4 {
-        switch tincture {
-        case .silver: return Vec4(0.80, 0.82, 0.85, 1)
-        case .gold: return Vec4(0.84, 0.66, 0.25, 1)
-        case .black: return Vec4(0.10, 0.10, 0.12, 1)
-        case .blue: return Vec4(0.20, 0.37, 0.67, 1)
-        case .red: return Vec4(0.66, 0.20, 0.18, 1)
-        case .green: return Vec4(0.19, 0.49, 0.31, 1)
-        case .purple: return Vec4(0.42, 0.26, 0.62, 1)
-        }
-    }
-
     /// How far out from a hold's heart its crest hangs, and how far to the
     /// side of its gate.
     public static let crestReach: Float = 0.56
     public static let crestAside: Float = 0.2
-
-    /// Each hold's House crest hung on a board beside its gate, facing out:
-    /// the shield in its field tincture, its charge laid on it in its own.
-    public func crestBoards(_ boards: [(hex: Hex, crest: Crest)]) -> [ModelBatch] {
-        var placed: [(ModelKey, ModelInstance)] = []
-        for board in boards {
-            let centre = Relief.centre(of: board.hex)
-            let front = HoldLayout.frontAngle(of: board.hex)
-            let out = Vec3(Float(cos(Double(front))), 0, Float(sin(Double(front))))
-            let side = Vec3(-out.z, 0, out.x)
-            let x = centre.x + out.x * WorldStage.crestReach + side.x * WorldStage.crestAside
-            let z = centre.z + out.z * WorldStage.crestReach + side.z * WorldStage.crestAside
-            let model = Mat4.translation(Vec3(x, ground(atX: x, z: z) - Scatter.sink, z)) * .rotationY(Float(atan2(Double(out.x), Double(out.z))))
-            let hex = SIMD2(Int32(board.hex.q), Int32(board.hex.r))
-            let charge = Crest.Charge.allCases.firstIndex(of: board.crest.charge) ?? 0
-            placed.append((.crestBoard, ModelInstance(model: model, colour: WorldStage.colour(of: board.crest.field), hex: hex)))
-            placed.append((.crestCharge(charge), ModelInstance(model: model, colour: WorldStage.colour(of: board.crest.tincture), hex: hex)))
-        }
-        return WorldStage.batches(placed)
-    }
 
     /// Where a barge rides on the still water and which way it heads: from
     /// the water it pushed off from toward the water it makes for, eased in
@@ -1983,6 +1929,8 @@ public final class WorldStage: @unchecked Sendable {
     /// How the Lyceum's scholars' lights circle its dome while it sits.
     public static let lyceumLightHeight: Float = 0.62
     public static let lyceumLightRadius: Float = 0.36
+    /// The scholars' lights, one for each of the questions a sitting sets.
+    public static let lyceumLights = 5
 
     /// The Lyceum's hall on its open ground. While its scholars sit the
     /// orrery over its dome turns and their lights circle it, one for each
@@ -1996,7 +1944,7 @@ public final class WorldStage: @unchecked Sendable {
         guard lit else { return WorldStage.batches(placed) }
         placed.append((.lyceumOrrery, ModelInstance(model: .translation(base + LyceumHall.orreryAt) * .rotationY(time * 0.6), hex: cell,
                                                     flags: ModelInstance.alwaysShown)))
-        let lights = Lyceum.questions
+        let lights = WorldStage.lyceumLights
         for index in 0..<lights {
             let angle = -time * 0.35 + Float(index) / Float(lights) * 2 * .pi
             let bob = 0.025 * Float(sin(Double(time * 1.4 + Float(index))))
@@ -2200,7 +2148,8 @@ public final class WorldStage: @unchecked Sendable {
         }
         return animate(WorldStage.batches(placed), time: time, into: &frame)
     }
-    public static let waystones = ExpeditionStage.count
+    /// The waystones up an expedition's way, one for each of its stages.
+    public static let waystones = 12
 
     public static let boatCount = 4
     public static let boatScale: Float = 1.6

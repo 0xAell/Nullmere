@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 
 /// The lake heard at its edge near the view: where its own water, the open
 /// Still and the shallows, meets the land, about the view's middle as far
@@ -63,6 +63,6 @@ public enum ShoreSound {
     /// How much quieter the shore laps as the Still lies calmer: its calm,
     /// zero to ten, stilling it to a whisper at the calmest.
     public static func stilled(by calm: Int) -> Float {
-        1 - 0.075 * Float(min(max(calm, 0), Calm.deepest))
+        1 - 0.075 * Float(min(max(calm, 0), Weather.deepestCalm))
     }
 }

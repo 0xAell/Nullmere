@@ -473,7 +473,7 @@ final class StageTests: XCTestCase {
 
         // Its light: a ring on its ground, light rising, a glow over it.
         let ringLights = WorldStage.markRingLights, rising = WorldStage.markRisingLights
-        let close = stage.markLights([(hex: hexes[0], kind: .strike)], scale: 240, time: 3)
+        let close = stage.markLights([(hex: hexes[0], hue: WorldStage.markHue(.strike))], scale: 240, time: 3)
         XCTAssertEqual(close.count, ringLights + rising + 1)
         let centre = Relief.centre(of: hexes[0])
         let foot = stage.ground(atX: centre.x, z: centre.z)
@@ -494,12 +494,12 @@ final class StageTests: XCTestCase {
             XCTAssertEqual(mote.colour.w, 0, "It hides nothing")
         }
         // The glow keeps its size on the screen as the view draws away.
-        let far = stage.markLights([(hex: hexes[0], kind: .strike)], scale: 5, time: 3)
+        let far = stage.markLights([(hex: hexes[0], hue: WorldStage.markHue(.strike))], scale: 5, time: 3)
         XCTAssertEqual(try XCTUnwrap(far.last).place.w * 5, 10, accuracy: 1e-3)
         XCTAssertEqual(try XCTUnwrap(close.last).place.w, 0.32, accuracy: 1e-4, "Never smaller than its ground's heart")
         // Each kind its own hue; the ring turns with the time.
         XCTAssertEqual(Set(AllianceMark.Kind.allCases.map { "\(WorldStage.markHue($0))" }).count, AllianceMark.Kind.allCases.count)
-        let later = stage.markLights([(hex: hexes[0], kind: .strike)], scale: 240, time: 4)
+        let later = stage.markLights([(hex: hexes[0], hue: WorldStage.markHue(.strike))], scale: 240, time: 4)
         XCTAssertNotEqual(later.first?.place, close.first?.place)
         XCTAssertTrue(stage.markLights([], scale: 240, time: 3).isEmpty)
     }

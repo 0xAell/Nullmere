@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 
 /// Every model drawn of one kind in a frame.
@@ -32,7 +32,7 @@ public struct SceneFrame: Equatable, Sendable {
     public var lights: [PointLight]
     /// The weather over the lake this frame.
     public var weather: Weather = .clear
-    /// How calm the Still lies, 0 to Calm.deepest.
+    /// How calm the Still lies, 0 to `Weather.deepestCalm`.
     public var calm = 0
     /// Whether the camera is near enough for the models' fine work.
     public var fine = true

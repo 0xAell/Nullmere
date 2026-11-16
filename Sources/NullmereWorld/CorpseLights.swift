@@ -1,10 +1,10 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 
 /// A field where a keeper's dead lie unburied, as the stage is given it:
 /// where, how many troops lie there, and how many watches until the dark
-/// of the moon, when as many as `GameState.unquietAt` or more rise.
+/// of the moon, when as many as `UnburiedSight.unquietAt` or more rise.
 public struct UnburiedSight: Equatable, Sendable {
     public let at: Hex
     public let troops: Int
@@ -18,27 +18,20 @@ public struct UnburiedSight: Equatable, Sendable {
 
     /// Whether they will rise as Barrowkin at the dark of the moon, unless
     /// buried; the land takes back fewer.
-    public var rises: Bool { troops >= GameState.unquietAt }
+    /// How many must lie unburied for them to rise as the moon goes
+    /// dark, and how many more each level of the barrow they raise.
+    public static let unquietAt = 6_000
+    public static let unquietPerLevel = 4_000
+    /// The watches from one dark of the moon to the next.
+    public static let lunarMonth = 30
+
+    public var rises: Bool { troops >= UnburiedSight.unquietAt }
 
     /// Barrowkin risen at `level`, carrying the lights of the field they
     /// rose from: as many as hung over it, as bright as on the eve of the
     /// dark.
     public static func risen(at hex: Hex, level: Int) -> UnburiedSight {
-        UnburiedSight(at: hex, troops: GameState.unquietAt + max(level - 1, 0) * GameState.unquietPerLevel, darkIn: 1)
-    }
-
-    /// The fields of dead whose lights hang at `watch`, `darkIn` watches from
-    /// the dark of the moon: every one given, unless its dead still lie
-    /// quiet, as they do the watch the first of them fell and any watch a
-    /// blow is struck on the field or from it (`blows`). The lights kindle
-    /// once a field falls quiet, so no battle is fought under them.
-    public static func kindled(_ fields: [FieldOfDead], watch: Int, darkIn: Int, blows: [FieldBlow] = []) -> [UnburiedSight] {
-        guard !fields.isEmpty else { return [] }
-        let fought = Set(blows.filter { $0.watch >= watch }.flatMap { [$0.at, $0.from] })
-        return fields.compactMap { field in
-            guard field.since < watch, !fought.contains(field.at) else { return nil }
-            return UnburiedSight(at: field.at, troops: field.troops, darkIn: darkIn)
-        }
+        UnburiedSight(at: hex, troops: UnburiedSight.unquietAt + max(level - 1, 0) * UnburiedSight.unquietPerLevel, darkIn: 1)
     }
 }
 
@@ -95,8 +88,8 @@ extension WorldStage {
     /// the first, at most six.
     public static func corpseLightCount(troops: Int) -> Int {
         guard troops > 0 else { return 0 }
-        guard troops >= GameState.unquietAt else { return troops < 3_000 ? 1 : 2 }
-        return min(corpseLightsMost, 3 + (troops - GameState.unquietAt) / GameState.unquietPerLevel)
+        guard troops >= UnburiedSight.unquietAt else { return troops < 3_000 ? 1 : 2 }
+        return min(corpseLightsMost, 3 + (troops - UnburiedSight.unquietAt) / UnburiedSight.unquietPerLevel)
     }
 
     /// How strongly a field's lights burn: faint a month from the dark of
@@ -105,7 +98,7 @@ extension WorldStage {
     /// the dark than one that will rise at its faintest. Dead fallen at the
     /// dark itself wait the month round.
     public static func corpseStrength(_ sight: UnburiedSight) -> Float {
-        let month = GameState.lunarMonth
+        let month = UnburiedSight.lunarMonth
         let left = sight.darkIn <= 0 ? month : min(sight.darkIn, month)
         let near = 1 - Float(left - 1) / Float(month - 1)
         return sight.rises ? 0.35 + 0.65 * near : 0.15 + 0.15 * near

@@ -162,7 +162,17 @@ hold walled in stone). Two ways off the old rules:
    rules. Their tests still build worlds from GameState (step 3). The
    trailer can do the same (it names Heritage and WildKind alone), left
    until its sources change for another reason: a change there renders
-   the film again on the Mac.
+   the film again on the Mac. Then NullmereWorld: what of the old game
+   it drew that only its tests still asked for (the tile texture of a
+   GameState, the hand-to-hand fronts of its fields of battle, the
+   corpse lights of its fields of the dead, an omen's weather, an
+   alliance mark's hue, the Houses' crest boards) moved into the tests
+   (NullmereWorldTests/OldGameStaging.swift), to go with them; a plea's
+   bearer, which nothing asked for, went; the mark lights take a hue;
+   and the rules' numbers it read (the Unquiet's six thousand and four
+   thousand a level, the lunar month, the deepest calm, the Lyceum's
+   questions, an expedition's stages) are its own. It depends on
+   NullmereLand and NullmereModels alone.
 3. Test fixtures rebuilt on it, a few files at a time, each step green.
 4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
 5. NullmereCore and NullmereCoreTests deleted; coverage floors and

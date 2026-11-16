@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 
 /// Where the world is looked at from: the point of the map at the middle

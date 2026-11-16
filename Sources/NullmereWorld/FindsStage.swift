@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 
 /// The hamlets and barrows the keeper's House has found in the mist, as the
