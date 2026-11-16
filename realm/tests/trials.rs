@@ -1,10 +1,11 @@
-//! The realm's contests over a store kept in memory: when the Long Hunt
-//! runs, what scores in it, and what its prizes give.
+//! The realm's contests over a store kept in memory: when the Long Hunt,
+//! the Harvest Moon and the Muster run, overlapping each week, what scores
+//! in each, and what their prizes give.
 
 use realm::catalog::{self, Building as Kind, Contest, Goods, Item, Troops};
 use realm::hex::Hex;
 use realm::land;
-use realm::rows::{Barrow, City, March, Prize, Stock, Tally, Trial, Troop};
+use realm::rows::{Barrow, Building, City, March, Prize, Site, Stock, Tally, Trial, Troop};
 use realm::rules::{self, Asked, Refusal};
 use realm::store::{Mem, Seconds, Table};
 
@@ -69,9 +70,14 @@ fn score(db: &mut Mem, player: u64, points: u64) {
 fn the_contests_and_their_prizes_are_written_out_for_clients() {
     let (db, _, _) = armed();
     let trials = Table::<Trial>::all(&db);
-    assert_eq!(trials.iter().map(|trial| (trial.id, trial.name.as_str(), trial.every, trial.lasts)).collect::<Vec<_>>(), vec![(1, "The Long Hunt", 7, 3)]);
-    assert!(trials[0].words.ends_with('.'));
-    let prizes = Table::<Prize>::all(&db);
+    assert_eq!(
+        trials.iter().map(|trial| (trial.id, trial.name.as_str(), trial.every, trial.lasts, trial.opens)).collect::<Vec<_>>(),
+        vec![(1, "The Long Hunt", 7, 3, 0), (2, "The Harvest Moon", 7, 3, 2), (3, "The Muster", 7, 3, 4)]
+    );
+    assert!(trials.iter().all(|trial| trial.words.ends_with('.')));
+    let all = Table::<Prize>::all(&db);
+    assert_eq!(all.len(), 9, "three prizes a contest");
+    let prizes: Vec<Prize> = all.into_iter().filter(|prize| prize.trial == 1).collect();
     assert_eq!(prizes.iter().map(|prize| (prize.trial, prize.place, prize.points)).collect::<Vec<_>>(), vec![(1, 1, 100), (1, 2, 400), (1, 3, 1_000)]);
     assert!(prizes.windows(2).all(|pair| pair[0].grain < pair[1].grain), "a prize that asks more gives more");
     assert_eq!((prizes[0].brief_hastes, prizes[1].hour_hastes, prizes[2].long_hastes), (2, 1, 1));
@@ -111,7 +117,7 @@ fn a_prize_is_claimed_once_a_round_for_the_points_it_asks() {
     let (mut db, player, city) = armed();
     assert_eq!(db.call(|db| rules::claim_prize(db, player, 1, 1)), Err(Refusal::PrizeNotEarned(100)));
     assert_eq!(Refusal::PrizeNotEarned(1_000).to_string(), "That prize is for 1,000 points.");
-    for (contest, place) in [(1, 0), (1, 4), (2, 1), (0, 1), (1, 200)] {
+    for (contest, place) in [(1, 0), (1, 4), (4, 1), (0, 1), (1, 200)] {
         assert_eq!(db.call(|db| rules::claim_prize(db, player, contest, place)), Err(Refusal::NoSuchPrize), "{contest}/{place}");
     }
 
@@ -145,4 +151,46 @@ fn when_the_hunt_comes_round_again_it_begins_afresh() {
     clear(&mut db, player, &city, 1);
     let kept = Table::<Tally>::get(&db, Tally::key(player, Contest::Hunt as u8)).unwrap();
     assert_eq!((kept.round, kept.points, kept.claimed), (1, 10, 0));
+}
+
+#[test]
+fn the_weeks_contests_overlap_and_the_harvest_and_the_muster_score_their_own() {
+    let (mut db, player, city) = armed();
+    // The days each runs, a week from the realm's opening: each opens on the last day of the one before.
+    let mut days = Vec::new();
+    for _ in 0..7 {
+        days.push(Contest::ALL.map(|contest| rules::round_of(&db, contest).1));
+        wait(&mut db, catalog::DAY);
+    }
+    assert_eq!(days.iter().map(|on| on[0]).collect::<Vec<_>>(), [true, true, true, false, false, false, false], "the hunt");
+    assert_eq!(days.iter().map(|on| on[1]).collect::<Vec<_>>(), [false, false, true, true, true, false, false], "the harvest");
+    assert_eq!(days.iter().map(|on| on[2]).collect::<Vec<_>>(), [false, false, false, false, true, true, true], "the muster");
+
+    // The next week's third day: the harvest runs. An army gathers and comes home: a point for each hundred it carries.
+    wait(&mut db, 2 * catalog::DAY);
+    assert!(rules::round_of(&db, Contest::Harvest).1);
+    let from = Hex::unpacked(city.hex);
+    let mut sites = Table::<Site>::all(&db);
+    sites.sort_by_key(|site| (Hex::unpacked(site.hex).distance(from), site.id));
+    let site = sites.into_iter().find(|site| land::way(SEED, RADIUS, from, Hex::unpacked(site.hex)).is_some()).unwrap();
+    let before = stock(&db, city.id);
+    db.call(|db| rules::send(db, player, Hex::unpacked(site.hex), March::GATHER, &[Asked { kind: Troops::Spearmen as u8, tier: 1, count: 200 }])).unwrap();
+    while !Table::<March>::by(&db, 0, player).is_empty() {
+        wait(&mut db, 300);
+    }
+    let brought = stock(&db, city.id).parts().iter().sum::<u64>() - before.parts().iter().sum::<u64>();
+    assert!(brought >= 100, "something was brought home: {brought}");
+    let harvested = rules::tally_of(&db, player, Contest::Harvest).points;
+    assert!(harvested >= brought / 100 - 1 && harvested <= brought / 100 + 1, "{harvested} points for {brought} goods");
+    assert_eq!(rules::tally_of(&db, player, Contest::Muster).points, 0);
+
+    // Two days on, the muster runs: soldiers set to training score their number times their tier.
+    wait(&mut db, 2 * catalog::DAY);
+    assert!(rules::round_of(&db, Contest::Muster).1);
+    let barracks = db.insert(Building { id: 0, city: city.id, kind: Kind::Barracks as u8, level: 5 });
+    let mut row = rules::grown(&Table::<Stock>::get(&db, city.id).unwrap(), db.clock);
+    (row.grain, row.timber, row.stone) = (500_000, 500_000, 500_000);
+    db.update(row);
+    db.call(|db| rules::train(db, player, barracks.id, 1, 50)).unwrap();
+    assert_eq!(rules::tally_of(&db, player, Contest::Muster).points, 50);
 }

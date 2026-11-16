@@ -405,6 +405,7 @@ pub(super) fn home(db: &mut impl Db, march: &March) {
             set_goods(&mut stock, more);
             db.update(stock);
             did(db, march.owner, Deed::Gather, haul.grain + haul.timber + haul.stone + haul.moonsalt);
+            super::scored(db, march.owner, crate::catalog::Contest::Harvest, (haul.grain + haul.timber + haul.stone + haul.moonsalt) / 100);
         }
         Table::<Haul>::delete(db, march.id);
     }

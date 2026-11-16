@@ -1044,8 +1044,11 @@ pub struct Trial {
     pub id: u64,
     pub name: String,
     pub words: String,
+    /// Every how many days it comes round, for how many it runs, and on
+    /// which day of its round it opens.
     pub every: u64,
     pub lasts: u64,
+    pub opens: u64,
 }
 row!(Trial in trial, by id);
 

@@ -53,7 +53,7 @@ public enum LiveSchema {
         "chest": .init(columns: ["id", "marks", "grain", "timber", "stone", "moonsalt", "brief_hastes", "hour_hastes", "long_hastes"], key: "id"),
         "grace": .init(columns: ["level", "points", "sooner"], key: "level"),
         "ware": .init(columns: ["item", "name", "words", "seconds"], key: "item"),
-        "trial": .init(columns: ["id", "name", "words", "every", "lasts"], key: "id"),
+        "trial": .init(columns: ["id", "name", "words", "every", "lasts", "opens"], key: "id"),
         "prize": .init(columns: ["id", "trial", "place", "points", "grain", "timber", "stone", "moonsalt", "brief_hastes", "hour_hastes",
                                  "long_hastes"], key: "id"),
         "spire": .init(columns: ["alliance", "name", "season", "stage", "rises_at", "timer", "grain", "timber", "stone", "moonsalt"], key: "alliance"),

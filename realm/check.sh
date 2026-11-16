@@ -269,7 +269,8 @@ check("and a thing that is no item", call(ada, "use_item", 9, 1), "There is no s
 # The realm's contests: the Long Hunt, running as the realm opens.
 trials = rows(nobody, "SELECT * FROM trial")
 prizes = sorted(rows(nobody, "SELECT * FROM prize"), key=lambda prize: prize["place"])
-check("the contests and their prizes are written out for all to read", ([(trial["name"], trial["every"], trial["lasts"]) for trial in trials], [prize["points"] for prize in prizes]), ([("The Long Hunt", 7, 3)], [100, 400, 1000]))
+trials = sorted(trials, key=lambda trial: trial["id"])
+check("the contests and their prizes are written out for all to read", ([(trial["name"], trial["every"], trial["lasts"], trial["opens"]) for trial in trials], [prize["points"] for prize in prizes if prize["trial"] == 1]), ([("The Long Hunt", 7, 3, 0), ("The Harvest Moon", 7, 3, 2), ("The Muster", 7, 3, 4)], [100, 400, 1000]))
 check("a prize not yet earned is refused", call(ada, "claim_prize", 1, 1), "That prize is for 100 points.")
 check("and one that is not there", call(ada, "claim_prize", 1, 9), "There is no such prize.")
 check("no one reads another's tallies", isinstance(rows(ada, "SELECT * FROM tally"), str), True)

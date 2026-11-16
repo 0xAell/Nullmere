@@ -995,10 +995,14 @@ pub fn chest_items(chest: u8) -> Vec<(Item, u64)> {
 pub enum Contest {
     /// Barrows of the Unquiet cleared: ten points for each level of each.
     Hunt = 1,
+    /// Goods brought home: a point for each hundred.
+    Harvest = 2,
+    /// Soldiers trained: a point for each, times their tier.
+    Muster = 3,
 }
 
 impl Contest {
-    pub const ALL: [Contest; 1] = [Contest::Hunt];
+    pub const ALL: [Contest; 3] = [Contest::Hunt, Contest::Harvest, Contest::Muster];
 
     pub fn of(code: u8) -> Option<Contest> {
         Contest::ALL.into_iter().find(|contest| *contest as u8 == code)
@@ -1007,6 +1011,8 @@ impl Contest {
     pub fn name(self) -> &'static str {
         match self {
             Contest::Hunt => "The Long Hunt",
+            Contest::Harvest => "The Harvest Moon",
+            Contest::Muster => "The Muster",
         }
     }
 
@@ -1014,14 +1020,19 @@ impl Contest {
     pub fn words(self) -> &'static str {
         match self {
             Contest::Hunt => "Clear barrows of the Unquiet: ten points for each level of each one you clear.",
+            Contest::Harvest => "Bring goods home from the land: a point for every hundred your armies carry back.",
+            Contest::Muster => "Train soldiers: a point for each one you set to training, times their tier.",
         }
     }
 
-    /// Every how many days of the realm it comes round, and for how many
-    /// of them it runs.
-    pub fn round(self) -> (u64, u64) {
+    /// Every how many days of the realm it comes round, for how many of
+    /// them it runs, and on which day of its round it opens: the week's
+    /// contests overlap, each opening on the last day of the one before.
+    pub fn round(self) -> (u64, u64, u64) {
         match self {
-            Contest::Hunt => (7, 3),
+            Contest::Hunt => (7, 3, 0),
+            Contest::Harvest => (7, 3, 2),
+            Contest::Muster => (7, 3, 4),
         }
     }
 
@@ -1033,6 +1044,16 @@ impl Contest {
                 (100, Goods::of(3_000, 3_000, 1_500, 0), vec![(Item::Haste5, 2)]),
                 (400, Goods::of(8_000, 8_000, 4_000, 0), vec![(Item::Haste60, 1)]),
                 (1_000, Goods::of(20_000, 20_000, 10_000, 300), vec![(Item::Haste480, 1)]),
+            ],
+            Contest::Harvest => vec![
+                (200, Goods::of(0, 0, 3_000, 0), vec![(Item::Haste5, 2)]),
+                (1_000, Goods::of(0, 0, 8_000, 100), vec![(Item::Haste60, 1)]),
+                (4_000, Goods::of(10_000, 10_000, 20_000, 400), vec![(Item::Haste480, 1)]),
+            ],
+            Contest::Muster => vec![
+                (300, Goods::of(5_000, 2_000, 0, 0), vec![(Item::Haste5, 2)]),
+                (1_500, Goods::of(12_000, 6_000, 0, 0), vec![(Item::Haste60, 1)]),
+                (6_000, Goods::of(30_000, 15_000, 5_000, 300), vec![(Item::Haste480, 1)]),
             ],
         }
     }

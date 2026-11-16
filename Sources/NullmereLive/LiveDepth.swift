@@ -77,19 +77,26 @@ public struct LiveWare: Equatable, Sendable, Identifiable {
     }
 }
 
-/// One of the realm's contests: how often it comes round, in days, and
-/// how many days it runs.
+/// One of the realm's contests: how often it comes round, in days, how
+/// many days it runs, and on which day of its round it opens.
 public struct LiveTrial: Equatable, Sendable, Identifiable {
     public let id: Int
     public let name: String
     public let words: String
     public let every: Int
     public let lasts: Int
+    public let opens: Int
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
         guard let id = cells.whole(0), let name = cells.text(1), let words = cells.text(2), let every = cells.whole(3), let lasts = cells.whole(4) else { return nil }
-        (self.id, self.name, self.words, self.every, self.lasts) = (id, name, words, every, lasts)
+        (self.id, self.name, self.words, self.every, self.lasts, self.opens) = (id, name, words, every, lasts, cells.whole(5) ?? 0)
+    }
+
+    /// Whether it runs on a day of the realm.
+    public func runs(on day: UInt64) -> Bool {
+        let into = Int(day % UInt64(max(every, 1)))
+        return into >= opens && into < opens + lasts
     }
 }
 

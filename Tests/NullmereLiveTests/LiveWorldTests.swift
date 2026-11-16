@@ -336,6 +336,7 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertEqual(world.heldItems.map { $0.ware.name }, ["Five minutes' haste"], "an item none are left of is not held")
         XCTAssertEqual(world.heldItems.first?.count, 3)
         XCTAssertEqual(world.trials[1]?.name, "The Long Hunt")
+        XCTAssertEqual((0..<7).map { world.trials[1]?.runs(on: $0) ?? false }, [true, true, true, false, false, false, false])
         XCTAssertEqual(world.prizes.map(\.place), [1, 2])
         XCTAssertEqual(world.prizes[1].hastes, [0, 2, 0])
         XCTAssertEqual(world.tallies.first?.points, 420)

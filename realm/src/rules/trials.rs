@@ -12,8 +12,8 @@ use crate::store::Table;
 /// as the realm opens.
 pub fn write_trials(db: &mut impl Db) {
     for contest in Contest::ALL {
-        let (every, lasts) = contest.round();
-        db.insert(Trial { id: contest as u64, name: contest.name().to_string(), words: contest.words().to_string(), every, lasts });
+        let (every, lasts, opens) = contest.round();
+        db.insert(Trial { id: contest as u64, name: contest.name().to_string(), words: contest.words().to_string(), every, lasts, opens });
         for (index, (points, gives, items)) in contest.prizes().into_iter().enumerate() {
             let count = |item: Item| items.iter().filter(|(held, _)| *held == item).map(|(_, count)| count).sum();
             let place = index as u8 + 1;
@@ -37,9 +37,10 @@ pub fn write_trials(db: &mut impl Db) {
 /// Which coming-round of a contest today falls in, and whether the
 /// contest is running today.
 pub fn round_of(db: &impl Db, contest: Contest) -> (u64, bool) {
-    let (every, lasts) = contest.round();
+    let (every, lasts, opens) = contest.round();
     let day = today(db);
-    (day / every, day % every < lasts)
+    let into = day % every;
+    (day / every, into >= opens && into < opens + lasts)
 }
 
 /// What a player has scored in a contest this round: nothing, if what is
