@@ -8,7 +8,6 @@ import XCTest
 
 /// What a keeper is told when the realm can't be reached: plain words for
 /// every kind of trouble, never an error's domain, code and user info.
-@MainActor
 final class RealmTroubleTests: XCTestCase {
     func testEachTroubleIsSaidPlainly() {
         let said: [(any Error, String)] = [

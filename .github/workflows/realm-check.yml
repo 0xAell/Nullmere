@@ -14,6 +14,10 @@ on:
       - Tests/NullmereLiveTests/**
       - Sources/NullmereLiveStage/**
       - Tests/NullmereLiveStageTests/**
+      - Sources/NullmereRealm/**
+      - Tests/NullmereRealmTests/**
+      - Tests/NullmereTestSupport/**
+      - Package.swift
       - .github/workflows/realm-check.yml
   push:
     branches: [main, "claude/**"]
@@ -23,6 +27,10 @@ on:
       - Tests/NullmereLiveTests/**
       - Sources/NullmereLiveStage/**
       - Tests/NullmereLiveStageTests/**
+      - Sources/NullmereRealm/**
+      - Tests/NullmereRealmTests/**
+      - Tests/NullmereTestSupport/**
+      - Package.swift
       - .github/workflows/realm-check.yml
   workflow_dispatch:
 
