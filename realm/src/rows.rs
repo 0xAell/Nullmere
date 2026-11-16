@@ -671,6 +671,53 @@ pub struct Chest {
 }
 row!(Chest in chest, by id);
 
+/// The points a commander has put into a talent: their owner's alone to
+/// read. Keyed by commander and talent.
+#[spacetimedb::table(accessor = skill)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Skill {
+    #[primary_key]
+    pub id: u64,
+    #[index(btree)]
+    pub commander: u64,
+    #[index(btree)]
+    pub owner: u64,
+    pub talent: u8,
+    pub points: u32,
+}
+row!(Skill in skill, by id, commander, owner);
+
+impl Skill {
+    pub fn key(commander: u64, talent: u8) -> u64 {
+        (commander << 8) | talent as u64
+    }
+}
+
+/// A commander who goes out beside another, adding half of their own way
+/// of war: their owner's alone to read. Keyed by the commander who leads.
+#[spacetimedb::table(accessor = bond)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Bond {
+    #[primary_key]
+    pub commander: u64,
+    #[index(btree)]
+    pub owner: u64,
+    pub partner: u64,
+}
+row!(Bond in bond, by commander, owner);
+
+/// The commander a player has keep their city, who adds what they bring
+/// to its defence while they are in it: theirs alone to read. Keyed by
+/// player.
+#[spacetimedb::table(accessor = keeper)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Keeper {
+    #[primary_key]
+    pub player: u64,
+    pub commander: u64,
+}
+row!(Keeper in keeper, by player);
+
 /// An alliance's Moonspire this season: the stage it stands at, whether
 /// the next is being raised and till when, and the goods given toward the
 /// next. For everyone to read: the realm's seasons are a race to raise
@@ -1073,6 +1120,9 @@ pub trait Db:
     + Table<Spire>
     + Table<Season>
     + Table<Gift>
+    + Table<Skill>
+    + Table<Bond>
+    + Table<Keeper>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1124,6 +1174,9 @@ impl<
             + Table<Spire>
             + Table<Season>
             + Table<Gift>
+            + Table<Skill>
+            + Table<Bond>
+            + Table<Keeper>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

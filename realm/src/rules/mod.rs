@@ -172,6 +172,15 @@ pub enum Refusal {
     /// The commander named is out with another army: their name.
     CommanderAway(String),
     NoMoreCommanders,
+    NoSuchTalent,
+    /// A commander has put the most points there are into this talent.
+    TalentFull(String),
+    /// A commander has spent every point their level brings: whose.
+    NoTalentPoints(String),
+    NothingToForget,
+    SameCommander,
+    /// A commander already goes out beside another, or has one beside them: whose.
+    AlreadyPaired(String),
     NoSuchTopic,
     AlreadyStudying,
     /// The Academy can't be raised while it studies.
@@ -233,6 +242,9 @@ impl fmt::Display for Refusal {
                 return write!(f, "You have only {} wounded tier {tier} {}.", crate::catalog::grouped(*wounded), troops.name());
             }
             Refusal::CommanderAway(name) => return write!(f, "{name} is out with another army."),
+            Refusal::TalentFull(name) => return write!(f, "{name} has learnt all there is of that."),
+            Refusal::NoTalentPoints(name) => return write!(f, "{name} has no points left to spend. They gain one with each level."),
+            Refusal::AlreadyPaired(name) => return write!(f, "{name} already goes out with another commander."),
             Refusal::NothingMoreToLearn(topic) => return write!(f, "You have learnt all there is of {}.", topic.name()),
             Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
             Refusal::ChestNotEarned(marks) => return write!(f, "That chest opens at {marks} marks of the day's work."),
@@ -314,6 +326,9 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchTopic => "There is no such study.",
             Refusal::NoSuchCommander => "You have no such commander.",
             Refusal::NoMoreCommanders => "Your city keeps as many commanders as it can.",
+            Refusal::NoSuchTalent => "There is no such talent.",
+            Refusal::NothingToForget => "That commander has learnt no talents to forget.",
+            Refusal::SameCommander => "A commander can't go out beside themselves.",
             Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",

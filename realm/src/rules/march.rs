@@ -210,6 +210,7 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
     if let Some(mut commander) = led {
         commander.march = march.id;
         db.update(commander);
+        super::set_out_with(db, &march);
     }
     for ask in &wanted {
         db.insert(Squad { id: Squad::key(march.id, ask.kind, ask.tier), march: march.id, kind: ask.kind, tier: ask.tier, count: ask.count, wounded: 0 });

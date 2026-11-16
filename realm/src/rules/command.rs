@@ -1,10 +1,13 @@
 //! Commanders: the people who lead a player's armies. Each has a name, a
 //! way of war, and a level that rises with what they have seen; an army
-//! they lead is the better for it.
+//! they lead is the better for it. Each level past the first brings a
+//! point to spend on a talent. A second commander may go out beside the
+//! one who leads, adding half of their own way; and one may keep the
+//! city, adding what they bring to its defence.
 
-use super::{asking, building_of, city_of, goods, set_goods, settle, Refusal};
-use crate::catalog::{self, Building as Kind, Leading, Way, TOP_COMMAND};
-use crate::rows::{Commander, Db, March};
+use super::{asking, building_of, city_of, goods, set_goods, settle, Mastery, Refusal};
+use crate::catalog::{self, Building as Kind, Leading, Talent, Way, TOP_COMMAND, TALENT_MOST};
+use crate::rows::{Bond, Commander, Db, Keeper, March, Skill};
 use crate::store::Table;
 
 const FIRST: [&str; 24] = [
@@ -72,17 +75,51 @@ pub(super) fn leader_for(db: &impl Db, player: u64, commander: u64) -> Result<Co
     Ok(commander)
 }
 
-/// What the commander who leads a march adds to it; nothing where no one
-/// leads it.
-pub fn leading_of(db: &impl Db, march: &March) -> Leading {
-    Table::<Commander>::get(db, march.leader).and_then(|commander| Way::of(commander.way).map(|way| way.leading(commander.level))).unwrap_or_default()
+/// What a commander adds by their way of war and their talents.
+pub fn commanding(db: &impl Db, commander: &Commander) -> Leading {
+    let mut leading = Way::of(commander.way).map(|way| way.leading(commander.level)).unwrap_or_default();
+    for skill in Table::<Skill>::by(db, 0, commander.id) {
+        if let Some(talent) = Talent::of(skill.talent) {
+            leading = leading.plus(talent.leading(skill.points));
+        }
+    }
+    leading
 }
 
-/// A march's commander has seen something of war or of work: so much is
-/// added to what they have seen, and they rise a level for each measure
-/// of it, to the thirtieth.
-pub(super) fn seen_by_leader(db: &mut impl Db, march: &March, amount: u64) {
-    let Some(mut commander) = Table::<Commander>::get(db, march.leader) else { return };
+/// The commander who goes out beside another, if one is bonded to them.
+fn partner_of(db: &impl Db, commander: u64) -> Option<Commander> {
+    Table::<Bond>::get(db, commander).and_then(|bond| Table::<Commander>::get(db, bond.partner))
+}
+
+/// The commander who went out beside the one leading a march. The bond
+/// counts as the army sets out; who is out with it after that is who
+/// went, whatever the player has bonded since.
+fn beside(db: &impl Db, march: &March) -> Option<Commander> {
+    if march.leader == 0 {
+        return None;
+    }
+    Table::<Commander>::by(db, 0, march.owner).into_iter().find(|commander| commander.march == march.id && commander.id != march.leader)
+}
+
+/// What the commanders of a march add to it: the one who leads it, and
+/// half the way of war of one who went out beside them; nothing where no
+/// one leads it.
+pub fn leading_of(db: &impl Db, march: &March) -> Leading {
+    let Some(leader) = Table::<Commander>::get(db, march.leader) else { return Leading::default() };
+    let mut leading = commanding(db, &leader);
+    if let Some(partner) = beside(db, march) {
+        if let Some(way) = Way::of(partner.way) {
+            leading = leading.plus(way.leading(partner.level).halved());
+        }
+    }
+    leading
+}
+
+/// A commander has seen something of war or of work: so much is added to
+/// what they have seen, and they rise a level for each measure of it, to
+/// the thirtieth.
+fn seen_by(db: &mut impl Db, commander: u64, amount: u64) {
+    let Some(mut commander) = Table::<Commander>::get(db, commander) else { return };
     commander.seen += amount;
     while commander.level < TOP_COMMAND && commander.seen >= catalog::command_needs(commander.level) {
         commander.seen -= catalog::command_needs(commander.level);
@@ -91,10 +128,163 @@ pub(super) fn seen_by_leader(db: &mut impl Db, march: &March, amount: u64) {
     db.update(commander);
 }
 
-/// A march is over: its commander is back in the city.
+/// A march's commanders have seen something of war or of work: the one
+/// who leads it all of it, one beside them half.
+pub(super) fn seen_by_leader(db: &mut impl Db, march: &March, amount: u64) {
+    if let Some(partner) = beside(db, march) {
+        seen_by(db, partner.id, amount / 2);
+    }
+    seen_by(db, march.leader, amount);
+}
+
+/// An army sets out under a commander: one bonded to go out beside them
+/// goes too, if they are in the city.
+pub(super) fn set_out_with(db: &mut impl Db, march: &March) {
+    if let Some(mut partner) = partner_of(db, march.leader).filter(|partner| partner.march == 0) {
+        partner.march = march.id;
+        db.update(partner);
+    }
+}
+
+/// A march is over: its commanders are back in the city.
 pub(super) fn release(db: &mut impl Db, march: &March) {
     if let Some(mut commander) = Table::<Commander>::get(db, march.leader) {
         commander.march = 0;
         db.update(commander);
+    }
+    if let Some(mut partner) = beside(db, march) {
+        partner.march = 0;
+        db.update(partner);
+    }
+}
+
+/// One of a player's commanders, by number.
+fn own_commander(db: &impl Db, player: u64, commander: u64) -> Result<Commander, Refusal> {
+    Table::<Commander>::get(db, commander).filter(|commander| commander.owner == player).ok_or(Refusal::NoSuchCommander)
+}
+
+/// A player puts one of a commander's points into a talent.
+pub fn learn_talent(db: &mut impl Db, player: u64, commander: u64, talent: u8) -> Result<Skill, Refusal> {
+    asking(db, player)?;
+    let commander = own_commander(db, player, commander)?;
+    let talent = Talent::of(talent).ok_or(Refusal::NoSuchTalent)?;
+    let skills = Table::<Skill>::by(db, 0, commander.id);
+    let spent: u32 = skills.iter().map(|skill| skill.points).sum();
+    if spent >= catalog::talent_points(commander.level) {
+        return Err(Refusal::NoTalentPoints(commander.name));
+    }
+    let id = Skill::key(commander.id, talent as u8);
+    let mut skill = Table::<Skill>::get(db, id).unwrap_or(Skill { id, commander: commander.id, owner: player, talent: talent as u8, points: 0 });
+    if skill.points >= TALENT_MOST {
+        return Err(Refusal::TalentFull(commander.name));
+    }
+    skill.points += 1;
+    if skill.points == 1 {
+        db.insert(skill.clone());
+    } else {
+        db.update(skill.clone());
+    }
+    Ok(skill)
+}
+
+/// A player has a commander forget every talent, for goods: their points
+/// are theirs to spend again.
+pub fn forget_talents(db: &mut impl Db, player: u64, commander: u64) -> Result<(), Refusal> {
+    asking(db, player)?;
+    let commander = own_commander(db, player, commander)?;
+    let skills = Table::<Skill>::by(db, 0, commander.id);
+    if skills.is_empty() {
+        return Err(Refusal::NothingToForget);
+    }
+    let city = city_of(db, player)?;
+    let mut stock = settle(db, city.id)?;
+    let have = goods(&stock);
+    if !have.covers(catalog::FORGET_COST) {
+        return Err(Refusal::CannotAfford(have.short_of(catalog::FORGET_COST)));
+    }
+    set_goods(&mut stock, have.minus(catalog::FORGET_COST));
+    db.update(stock);
+    for skill in skills {
+        Table::<Skill>::delete(db, skill.id);
+    }
+    Ok(())
+}
+
+/// Whether a commander is in a bond already, leading or beside: the bond.
+fn bond_with(db: &impl Db, player: u64, commander: u64) -> Option<Bond> {
+    Table::<Bond>::by(db, 0, player).into_iter().find(|bond| bond.commander == commander || bond.partner == commander)
+}
+
+/// A player has one commander go out beside another whenever the other
+/// leads an army; with 0 for the partner, no one goes beside them.
+pub fn pair(db: &mut impl Db, player: u64, commander: u64, partner: u64) -> Result<(), Refusal> {
+    asking(db, player)?;
+    let leader = own_commander(db, player, commander)?;
+    if partner == 0 {
+        Table::<Bond>::delete(db, leader.id);
+        return Ok(());
+    }
+    let partner = own_commander(db, player, partner)?;
+    if partner.id == leader.id {
+        return Err(Refusal::SameCommander);
+    }
+    // Each commander in one bond at most: the leader's own may be replaced.
+    if let Some(bond) = bond_with(db, player, partner.id) {
+        if bond.commander != leader.id {
+            return Err(Refusal::AlreadyPaired(partner.name));
+        }
+    }
+    if bond_with(db, player, leader.id).is_some_and(|bond| bond.commander != leader.id) {
+        return Err(Refusal::AlreadyPaired(leader.name));
+    }
+    let bond = Bond { commander: leader.id, owner: player, partner: partner.id };
+    if Table::<Bond>::get(db, leader.id).is_some() {
+        db.update(bond);
+    } else {
+        db.insert(bond);
+    }
+    Ok(())
+}
+
+/// A player has one of their commanders keep their city; with 0, none.
+pub fn keep_city(db: &mut impl Db, player: u64, commander: u64) -> Result<(), Refusal> {
+    asking(db, player)?;
+    if commander == 0 {
+        Table::<Keeper>::delete(db, player);
+        return Ok(());
+    }
+    let commander = own_commander(db, player, commander)?;
+    let keeper = Keeper { player, commander: commander.id };
+    if Table::<Keeper>::get(db, player).is_some() {
+        db.update(keeper);
+    } else {
+        db.insert(keeper);
+    }
+    Ok(())
+}
+
+/// The commander keeping a player's city who is in it now.
+pub(super) fn keeper_in(db: &impl Db, player: u64) -> Option<Commander> {
+    Table::<Keeper>::get(db, player).and_then(|keeper| Table::<Commander>::get(db, keeper.commander)).filter(|commander| commander.march == 0)
+}
+
+/// What a city's defenders have beyond their numbers: what it has
+/// learnt, and what the commander keeping it brings to a fight.
+pub fn defence_of(db: &impl Db, city: u64, owner: u64) -> Mastery {
+    let mut all = super::mastery(db, city);
+    if let Some(keeper) = keeper_in(db, owner) {
+        let leading = commanding(db, &keeper);
+        for kind in 0..4 {
+            all.strikes[kind] += leading.strikes[kind];
+        }
+        all.shields += leading.shields;
+    }
+    all
+}
+
+/// The commander keeping a city has seen it defended: so much is added to what they have seen.
+pub(super) fn seen_by_keeper(db: &mut impl Db, player: u64, amount: u64) {
+    if let Some(keeper) = keeper_in(db, player) {
+        seen_by(db, keeper.id, amount);
     }
 }

@@ -1202,6 +1202,122 @@ impl Way {
     }
 }
 
+impl Leading {
+    /// Two commanders' additions together.
+    pub fn plus(self, other: Leading) -> Leading {
+        let mut strikes = self.strikes;
+        for (mine, theirs) in strikes.iter_mut().zip(other.strikes) {
+            *mine += theirs;
+        }
+        Leading {
+            strikes,
+            shields: self.shields + other.shields,
+            haste: self.haste + other.haste,
+            gathers: self.gathers + other.gathers,
+            carries: self.carries + other.carries,
+            breaches: self.breaches + other.breaches,
+        }
+    }
+
+    /// Half of each: what a commander adds who goes out beside another.
+    pub fn halved(self) -> Leading {
+        Leading {
+            strikes: self.strikes.map(|strike| strike / 2),
+            shields: self.shields / 2,
+            haste: self.haste / 2,
+            gathers: self.gathers / 2,
+            carries: self.carries / 2,
+            breaches: self.breaches / 2,
+        }
+    }
+}
+
+/// Something a commander may be trained in, with the points their levels
+/// bring.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Talent {
+    Spearmen = 1,
+    Archers = 2,
+    Riders = 3,
+    Mangonels = 4,
+    Shields = 5,
+    Haste = 6,
+    Gathering = 7,
+    Carrying = 8,
+    Breaching = 9,
+}
+
+/// The most points a commander may put into one talent.
+pub const TALENT_MOST: u32 = 10;
+
+/// What forgetting all a commander's talents costs.
+pub const FORGET_COST: Goods = Goods::of(20_000, 20_000, 20_000, 0);
+
+/// The talent points a commander has from their level: one for each past the first.
+pub fn talent_points(level: u32) -> u32 {
+    level.clamp(1, TOP_COMMAND) - 1
+}
+
+impl Talent {
+    pub const ALL: [Talent; 9] = [
+        Talent::Spearmen,
+        Talent::Archers,
+        Talent::Riders,
+        Talent::Mangonels,
+        Talent::Shields,
+        Talent::Haste,
+        Talent::Gathering,
+        Talent::Carrying,
+        Talent::Breaching,
+    ];
+
+    pub fn of(code: u8) -> Option<Talent> {
+        Talent::ALL.into_iter().find(|talent| *talent as u8 == code)
+    }
+
+    /// Hundredths each point adds: one to a fight, two to anything else.
+    pub fn each(self) -> u64 {
+        match self {
+            Talent::Spearmen | Talent::Archers | Talent::Riders | Talent::Mangonels | Talent::Shields => 1,
+            _ => 2,
+        }
+    }
+
+    /// What so many points of it add to an army.
+    pub fn leading(self, points: u32) -> Leading {
+        let amount = self.each() * points.min(TALENT_MOST) as u64;
+        let mut leading = Leading::default();
+        match self {
+            Talent::Spearmen => leading.strikes[Troops::Spearmen as usize - 1] = amount,
+            Talent::Archers => leading.strikes[Troops::Archers as usize - 1] = amount,
+            Talent::Riders => leading.strikes[Troops::Riders as usize - 1] = amount,
+            Talent::Mangonels => leading.strikes[Troops::Mangonels as usize - 1] = amount,
+            Talent::Shields => leading.shields = amount,
+            Talent::Haste => leading.haste = amount,
+            Talent::Gathering => leading.gathers = amount,
+            Talent::Carrying => leading.carries = amount,
+            Talent::Breaching => leading.breaches = amount,
+        }
+        leading
+    }
+
+    /// What a point of it does, in a player's words.
+    pub fn words(self) -> String {
+        let each = self.each();
+        match self {
+            Talent::Spearmen => format!("Spearmen they lead strike {each}% harder."),
+            Talent::Archers => format!("Archers they lead strike {each}% harder."),
+            Talent::Riders => format!("Riders they lead strike {each}% harder."),
+            Talent::Mangonels => format!("Mangonels they lead strike {each}% harder."),
+            Talent::Shields => format!("Everyone they lead is {each}% harder to bring down."),
+            Talent::Haste => format!("Their army marches {each}% faster."),
+            Talent::Gathering => format!("Their army gathers {each}% faster."),
+            Talent::Carrying => format!("Their army carries {each}% more."),
+            Talent::Breaching => format!("A Wall shelters its city {each}% less from them."),
+        }
+    }
+}
+
 /// What a commander must have seen to rise from a level to the next.
 pub fn command_needs(level: u32) -> u64 {
     100 * level.max(1) as u64 * level.max(1) as u64

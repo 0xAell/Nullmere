@@ -1,7 +1,7 @@
 //! A city under attack: another player's army at its walls, the fight,
 //! what is carried off, and the peace that follows.
 
-use super::{allied, building_of, fallen, fight_learned, goods, leading_of, led, load, mastery, seen_by_leader, keep_troop, realm, reckon, report, room_for_wounded, set_goods, settle, squads, troop, Refusal, MOST_ROUNDS};
+use super::{allied, building_of, fallen, fight_learned, goods, leading_of, led, load, seen_by_leader, keep_troop, realm, reckon, report, room_for_wounded, set_goods, settle, squads, troop, Refusal, MOST_ROUNDS};
 use crate::catalog::{self, Building as Kind, Goods, Troops, Unit};
 use crate::hex::Hex;
 use crate::rows::{City, Db, Haul, March, Place, Player, Report, Squad, Troop};
@@ -228,7 +228,7 @@ pub(super) fn stormed(db: &mut impl Db, march: &mut March) {
     let mut rolls: Vec<u64> = (0..2 * MOST_ROUNDS).map(|_| db.chance()).collect();
     // A Wall shelters its city less from an army a wallbreaker leads.
     let shelter = catalog::shelter(wall) * (100 - leading_of(db, march).breaches.min(100)) / 100;
-    let outcome = fight_learned(&army, &defenders, [led(db, march), mastery(db, city.id)], shelter, || rolls.pop().unwrap_or(0));
+    let outcome = fight_learned(&army, &defenders, [led(db, march), super::defence_of(db, city.id, city.owner)], shelter, || rolls.pop().unwrap_or(0));
 
     // The army's fallen: half carried home wounded, while there is room.
     let mut room = room_for_wounded(db, march.city);
@@ -264,6 +264,9 @@ pub(super) fn stormed(db: &mut impl Db, march: &mut March) {
     let stood: u64 = defenders.iter().map(|unit| unit.count).sum();
     let fell: u64 = outcome.defenders_lost.iter().sum();
     seen_by_leader(db, march, 2 * fell + fought / 10);
+    // Whoever kept the city has seen as much of its attackers fall.
+    let felled: u64 = outcome.attackers_lost.iter().sum();
+    super::seen_by_keeper(db, city.owner, 2 * felled);
 
     let mut taken = Goods::NONE;
     let now = db.now();

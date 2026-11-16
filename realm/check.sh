@@ -294,6 +294,17 @@ check("a player begins with one commander, in the city", [(c["level"], c["march"
 check("another is taken on from a Tavern", call(bryn, "hire"), "Raise your Tavern to level 1 first.")
 check("no one reads another's commanders", (rows(ada, "SELECT * FROM my_commanders") != captains, isinstance(rows(bryn, "SELECT * FROM commander"), str)), (True, True))
 
+# Talents, pairs and the city's keeper: points come with levels, so a new commander has none.
+captain = captains[0]
+check("a commander at level 1 has no points to spend on a talent", call(bryn, "learn_talent", captain["id"], 1), f"{captain['name']} has no points left to spend. They gain one with each level.")
+check("and a talent that is not one", call(bryn, "learn_talent", captain["id"], 99), "There is no such talent.")
+check("one with none learnt has nothing to forget", call(bryn, "forget_talents", captain["id"]), "That commander has learnt no talents to forget.")
+check("a commander goes out beside another, not beside themselves", call(bryn, "pair", captain["id"], captain["id"]), "A commander can't go out beside themselves.")
+check("another player's commander is not theirs to teach, pair or set to keep a city", (call(ada, "learn_talent", captain["id"], 1), call(ada, "pair", captain["id"], 0), call(ada, "keep_city", captain["id"])), ("You have no such commander.",) * 3)
+check("none learnt and none paired, and no one reads the tables themselves", (rows(bryn, "SELECT * FROM my_skills"), rows(bryn, "SELECT * FROM my_bonds"), isinstance(rows(bryn, "SELECT * FROM skill"), str), isinstance(rows(bryn, "SELECT * FROM bond"), str)), ([], [], True, True))
+check("a commander is set to keep the city", (call(bryn, "keep_city", captain["id"]), [k["commander"] for k in rows(bryn, "SELECT * FROM my_keeper")], rows(ada, "SELECT * FROM my_keeper")), (None, [captain["id"]], []))
+check("and stood down from it, and no one reads the table itself", (call(bryn, "keep_city", 0), rows(bryn, "SELECT * FROM my_keeper"), isinstance(rows(ada, "SELECT * FROM keeper"), str)), (None, [], True))
+
 # What an Academy studies.
 studies = rows(nobody, "SELECT * FROM study")
 check("the studies are written out for all to read", (len(studies), sorted(s["name"] for s in studies if s["level"] == 1)[:3]), (150, ["Archery", "Building", "Drill"]))
