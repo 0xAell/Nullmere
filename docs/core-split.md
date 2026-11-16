@@ -83,6 +83,20 @@ hold walled in stone). Two ways off the old rules:
   `LiveWindow`, which already turn those rows into the renderer's map and
   holds, and dresses its three holds as now. The trailer then shows the
   game as it is, not the one deleted.
+  The Swift side, mapped: `LiveWorld(snapshot:)` takes the JSON's rows
+  (`JSONValue` decodes them) with no session; `LiveWindow(world:centre:
+  radius: 26)` gives `map` (`WorldMap`), `holds(in:colours:at:)`
+  (`HoldSight`s, each city's levels from its Keep), `sites`, `barrows`,
+  `cairns` and `local(_:)`; the relief as `LiveSession.land()` makes it.
+  The trailer reads the old game through `world.state` in about 25 places
+  (Actors.swift: `houses`, `heritage(of:)` 5 each, `map`, `holds`;
+  Trailer.swift: `houses`, `heritage`, `sitesInLand`, `lairsStanding`,
+  `holySites`; the tests: `map`, `holds`, `player`). `TrailerWorld` keeps
+  `map`, `holds`, `colour(of:)` and `heritage(of:)` (nil: the rebuilt realm
+  has no heritages yet) and the sites' and lairs' places itself, and
+  `state` goes; holy sites have no rows in the rebuilt realm, so the shot
+  that shows them shows the Moonspire's seat instead. The Trailer workflow
+  renders stills to compare.
 - A snapshot of the world the old game made, written once by a Mac test
   and kept as a file: no Swift runs here to write it, so it would need a
   CI step to bring the file back, and it keeps the old game's look.
