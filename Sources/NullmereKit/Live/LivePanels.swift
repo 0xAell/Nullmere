@@ -110,6 +110,11 @@ struct LiveBuildings: View {
         ForEach(session.world.buildingLines(at: seconds)) { line in
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: LiveIcons.building(line.kind))
+                        .font(.nm(LiveType.body))
+                        .foregroundStyle(line.building == nil ? LiveEmphasis.tertiary : LiveEmphasis.secondary)
+                        .frame(width: 18)
+                        .accessibilityHidden(true)
                     Text(verbatim: line.name)
                         .font(.nm(LiveType.body, weight: .medium))
                         .foregroundStyle(LiveEmphasis.primary)
@@ -251,9 +256,16 @@ struct LiveTroops: View {
         }
         ForEach(troops) { troop in
             VStack(alignment: .leading, spacing: 3) {
-                Text(verbatim: "\(troop.name), tier \(troop.tier)")
-                    .font(.nm(LiveType.body, weight: .medium))
-                    .foregroundStyle(LiveEmphasis.primary)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: LiveIcons.troop(troop.kind))
+                        .font(.nm(LiveType.body))
+                        .foregroundStyle(LiveEmphasis.secondary)
+                        .frame(width: 18)
+                        .accessibilityHidden(true)
+                    Text(verbatim: "\(troop.name), tier \(troop.tier)")
+                        .font(.nm(LiveType.body, weight: .medium))
+                        .foregroundStyle(LiveEmphasis.primary)
+                }
                 LiveSmall(words: Self.counts(troop))
                 if troop.wounded > 0 {
                     QuietButton(title: "Heal \(LiveWords.grouped(troop.wounded))", enabled: session.asking == 0,

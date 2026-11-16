@@ -408,6 +408,15 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(card(500, 0).title, "Unknown land")
     }
 
+    /// Every kind of building has a symbol of its own.
+    func testEachBuildingHasASymbolOfItsOwn() {
+        let symbols = (1...19).map { LiveIcons.building($0) }
+        XCTAssertEqual(Set(symbols).count, 19, "nineteen kinds, nineteen symbols")
+        XCTAssertEqual(LiveIcons.building(1), "building.columns.fill", "the Keep")
+        XCTAssertEqual(LiveIcons.building(99), "building.2.fill", "a kind not known")
+        XCTAssertEqual((1...4).map { LiveIcons.troop($0) }, [7, 8, 9, 10].map { LiveIcons.building($0) }, "each soldier by the building that trains them")
+    }
+
     /// What happens is told as it comes: a work done, an army home.
     func testWhatHappensIsToldAsItComes() async throws {
         var rows = LiveWindowTests.rows()
