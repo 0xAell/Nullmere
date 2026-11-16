@@ -50,7 +50,11 @@ final class LiveRealmTests: XCTestCase {
             ada.close()
             bryn.close()
         }
-        let watched = await ada.watch()
+        // Everything Ada is pushed is noted as it comes, however briefly it
+        // stands: at the realm's pace a work may begin and end between two
+        // looks at her world.
+        let seen = Seen()
+        let watched = await ada.watch { [ada] in seen.note(ada.world) }
         let alsoWatched = await bryn.watch()
         XCTAssertTrue(watched && alsoWatched, "Each opens a subscription")
         await eventually("the subscriptions take") { ada.isLive && bryn.isLive }
@@ -117,8 +121,8 @@ final class LiveRealmTests: XCTestCase {
         let keep = try XCTUnwrap(world.building(1))
         let cost = try XCTUnwrap(world.blueprint(1, level: 2))
         try await ada.upgrade(building: keep.id)
-        await eventually("the job is pushed") { ada.world.jobs.count == 1 }
-        let job = try XCTUnwrap(ada.world.jobs.first)
+        await eventually("the job is pushed") { seen.job { $0.subject == keep.id } != nil }
+        let job = try XCTUnwrap(seen.job { $0.subject == keep.id })
         XCTAssertEqual([job.kind, Int(job.subject), job.level], [LiveJob.raise, Int(keep.id), 2])
         XCTAssertEqual(job.ends - job.started, cost.seconds)
         // Paid for: the stock as it is now told, against what it was told
@@ -174,7 +178,7 @@ final class LiveRealmTests: XCTestCase {
         XCTAssertEqual(ada.world.squads.map(\.count), [20])
         XCTAssertTrue(bryn.world.squads.isEmpty, "What it is made of is hers alone to read")
         let before = try XCTUnwrap(ada.world.stock)
-        await eventually("it works the site", within: 60) { ada.world.myMarches.first?.state == LiveMarch.working }
+        await eventually("it works the site", within: 60) { seen.states(of: march.id).contains(LiveMarch.working) }
         await eventually("it turns for home with its load", within: 60) { ada.world.myMarches.first?.state == LiveMarch.returning }
         XCTAssertEqual(ada.world.hauls.first.map { $0.goods.parts.reduce(0, +) }, 240, "What twenty spearmen carry")
         await eventually("and comes home", within: 60) { ada.world.myMarches.isEmpty && ada.world.troops.first { $0.kind == 1 }?.ready == 20 }
@@ -241,5 +245,35 @@ final class LiveRealmTests: XCTestCase {
         bryn.close()
         await eventually("Bryn is seen to be gone") { ada.world.players[him]?.online == false }
         XCTAssertNotNil(ada.world.cities.values.first { $0.owner == him })
+    }
+}
+
+/// What a player's subscription has pushed to them, noted as it comes: every
+/// work begun, as first told, and every state each of their armies was in,
+/// however briefly either stood.
+private final class Seen: @unchecked Sendable {
+    private let lock = NSLock()
+    private var jobs: [UInt64: LiveJob] = [:]
+    private var states: [UInt64: Set<Int>] = [:]
+
+    func note(_ world: LiveWorld) {
+        lock.lock()
+        defer { lock.unlock() }
+        for job in world.jobs where jobs[job.id] == nil { jobs[job.id] = job }
+        for march in world.myMarches { states[march.id, default: []].insert(march.state) }
+    }
+
+    /// The first work told that is so.
+    func job(where holds: (LiveJob) -> Bool) -> LiveJob? {
+        lock.lock()
+        defer { lock.unlock() }
+        return jobs.values.sorted { $0.id < $1.id }.first(where: holds)
+    }
+
+    /// Every state an army was seen in.
+    func states(of march: UInt64) -> Set<Int> {
+        lock.lock()
+        defer { lock.unlock() }
+        return states[march] ?? []
     }
 }
