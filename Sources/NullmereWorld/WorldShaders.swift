@@ -778,6 +778,12 @@ public enum WorldShaders {
                     }
                 }
             }
+            // A quiet grid: each hex's edge a shade darker, a pixel or so
+            // wide, close to; gone as the view draws back, and never under
+            // the water or over ground only half known.
+            float nearby = 1.0 - smoothstep(0.035, 0.09, pixel);
+            float gridLine = 1.0 - smoothstep(pixel * 0.5, pixel * 1.6, edge.x);
+            albedo *= 1.0 - 0.09 * gridLine * nearby * smoothstep(0.5, 1.0, known) * step(0.0, world.y);
         #ifndef NM_NO_LIGHT
             // Ground the keeper half knows is laid flat toward the mist and
             // turned to face the sky: the moon lit it full on, brighter than
