@@ -170,6 +170,8 @@ struct LiveTalentControls: View {
         let others = world.commanders.filter { $0.id != commander.id }
         let partner: String? = world.bonds[commander.id].flatMap { id in others.first { $0.id == id }?.name }
         LiveSmall(words: (learnt.isEmpty ? "No talents learnt" : "Talents: " + learnt.joined(separator: ", ")) + ". \(left) point\(left == 1 ? "" : "s") to spend.", dim: true)
+        // What to choose from, a menu each; then what is done at once: a
+        // panel's width holds no more than three in a row.
         HStack(spacing: 6) {
             if left > 0 {
                 Menu("Learn") {
@@ -181,9 +183,6 @@ struct LiveTalentControls: View {
                 .buttonStyle(.borderless)
                 .fixedSize()
                 .font(.nm(LiveType.small))
-            }
-            if !learnt.isEmpty {
-                QuietButton(title: "Forget", enabled: session.asking == 0, name: "Have \(commander.name) forget every talent") { Task { await session.forgetTalents(commander: commander.id) } }
             }
             if !others.isEmpty {
                 Menu(partner.map { "Beside: \($0)" } ?? "Pair") {
@@ -209,6 +208,11 @@ struct LiveTalentControls: View {
                 .buttonStyle(.borderless)
                 .fixedSize()
                 .font(.nm(LiveType.small))
+            }
+        }
+        HStack(spacing: 6) {
+            if !learnt.isEmpty {
+                QuietButton(title: "Forget", enabled: session.asking == 0, name: "Have \(commander.name) forget every talent") { Task { await session.forgetTalents(commander: commander.id) } }
             }
             if world.keeper == commander.id {
                 LiveSmall(words: "Keeps the city", dim: false)
