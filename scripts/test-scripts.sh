@@ -92,6 +92,7 @@ echo "1.5 Tests.slowest" > "$WORK/mac/test-times.txt"
 echo '{"marks.cpu.p50": 1.2}' > "$WORK/mac/perf.json"
 echo "PERF-CHECK marks.cpu.p50 within" > "$WORK/mac/perf-check.log"
 echo moving > "$WORK/mac/world-battle-motion.gif"
+echo world > "$WORK/mac/world.json.gz"
 echo phone > "$WORK/phone/companion-house.png"
 echo next > "$WORK/next/game-world.png"
 shots() { CI_SHOTS_URL="file://$WORK/shots.git" RUN="$1" SHA="$2" scripts/push-ci-shots.sh "$3" >/dev/null 2>"$WORK/shots-$1-$(basename "$3").err"; }
@@ -101,6 +102,7 @@ check "push-ci-shots.sh begins the branch with the run's screenshots" "$(on_bran
 check "and each test's time beside them" "$(on_branch 746/test-times.txt)" "1.5 Tests.slowest"
 check "and the frame times' figures and verdict" "$(on_branch 746/perf.json) $(on_branch 746/perf-check.log)" '{"marks.cpu.p50": 1.2} PERF-CHECK marks.cpu.p50 within'
 check "and its moving pictures" "$(on_branch 746/world-battle-motion.gif)" "moving"
+check "and the world the preview draws" "$(on_branch 746/world.json.gz)" "world"
 check "and the run's commit" "$(on_branch 746/COMMIT)" "abc"
 shots 746 abc "$WORK/phone" & phone_job=$!
 shots 747 def "$WORK/next" & next_run=$!

@@ -101,8 +101,11 @@ jobs:
             exit 1
           fi
 
+      # The world the browser preview draws (Tools/world3d-preview) is
+      # written too, and kept on the ci-shots branch below, so the shaders
+      # can be tried on it anywhere Chromium runs.
       - name: Test
-        run: NULLMERE_KEEP_RENDERS="$PWD/build" swift test --enable-code-coverage 2>&1 | tee build-test.log
+        run: NULLMERE_KEEP_RENDERS="$PWD/build" NULLMERE_WORLD_PREVIEW="$PWD/build/preview" swift test --enable-code-coverage 2>&1 | tee build-test.log
 
       # Each test's time, the slowest first, kept on the ci-shots branch
       # beside the screenshots (test-times.txt): what the tests' twenty-odd
@@ -253,7 +256,9 @@ jobs:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN: ${{ github.run_number }}
           SHA: ${{ github.sha }}
-        run: scripts/push-ci-shots.sh build
+        run: |
+          if [ -f build/preview/world.json ]; then gzip -9 -c build/preview/world.json > build/world.json.gz; fi
+          scripts/push-ci-shots.sh build
 
       # The score's themes and every cue, rendered by the tests, to be listened to.
       - name: Keep the sounds

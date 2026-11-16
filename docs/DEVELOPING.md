@@ -206,6 +206,15 @@ node Tools/world3d-preview/shoot.js build/world3d/world.json world.png seat   # 
 node Tools/world3d-preview/shoot.js build/world3d/world.json noon.png close day   # the hour: night (as left out), day, dusk, dawn, morning, evening, nightfall
 ```
 
+Without Swift, the world the Mac's CI wrote is on the ci-shots branch, by
+run, beside its screenshots; the preview draws it with the shaders as they
+stand in this checkout:
+
+```sh
+git fetch --depth=1 --filter=blob:none origin ci-shots
+mkdir -p build/world3d && git show FETCH_HEAD:<run>/world.json.gz | gunzip > build/world3d/world.json
+```
+
 The world keeps a day of its own (`Daylight` in `Sources/NullmereWorld/Sky.swift`):
 each hour's key light, sky, haze and cloud go to the shaders with the frame.
 The app follows the clock; a debug build draws the hour `NULLMERE_HOUR`
