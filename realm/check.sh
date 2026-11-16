@@ -281,12 +281,13 @@ check("a player has none until they open a chest", (rows(ada, "SELECT * FROM my_
 
 # Items: the hastes a chest holds, kept in a satchel until they are used.
 wares = sorted(rows(nobody, "SELECT * FROM ware"), key=lambda ware: ware["item"])
-check("the items are written out for all to read", [(ware["name"], ware["seconds"], ware["kind"]) for ware in wares], [("Five minutes' haste", 300, 1), ("An hour's haste", 3600, 1), ("Eight hours' haste", 28800, 1), ("Eight hours' peace", 28800, 2), ("Iron", 0, 3), ("Leather", 0, 3), ("Bone", 0, 3), ("Silver", 0, 3)])
+check("the items are written out for all to read", [(ware["name"], ware["seconds"], ware["kind"]) for ware in wares], [("Five minutes' haste", 300, 1), ("An hour's haste", 3600, 1), ("Eight hours' haste", 28800, 1), ("Eight hours' peace", 28800, 2), ("Iron", 0, 3), ("Leather", 0, 3), ("Bone", 0, 3), ("Silver", 0, 3), ("Tome of war", 0, 4), ("Great tome of war", 0, 4)])
 check("the day's last chest holds a peace", [chest["peaces"] for chest in sorted(chests, key=lambda chest: chest["id"])], [0, 0, 1])
 check("and every chest says what hastes it holds", all(chest["brief_hastes"] + chest["hour_hastes"] + chest["long_hastes"] > 0 for chest in chests), True)
 check("a satchel begins empty, and is its owner's alone to read", (rows(ada, "SELECT * FROM my_satchel"), isinstance(rows(ada, "SELECT * FROM satchel"), str)), ([], True))
 check("a haste a player has not got is refused", call(ada, "use_item", 1, 1), "No such work is under way in your city.")
-check("and a thing that is no item", call(ada, "use_item", 9, 1), "There is no such thing to use.")
+check("and a thing that is no item", call(ada, "use_item", 99, 1), "There is no such thing to use.")
+check("a tome is read by a commander, not used on a work", call(ada, "use_item", 9, 1), "A tome is read by one of your commanders.")
 check("a peace is kept on the city, not on a work", call(ada, "use_item", 4, 1), "That keeps your city at peace; it hastens no work.")
 check("a material is worked at the Forge, not used", call(ada, "use_item", 5, 1), "That is worked at the Forge into gear.")
 # The Forge: what it makes, for all to read; gear its owner's alone.
