@@ -223,14 +223,19 @@ public enum WorldShaders {
         // its own colour: green stands over red and blue; stone is grey.
         float growth = clamp((albedo.g - max(albedo.r, albedo.b)) * 7.0, 0.0, 1.0);
         float stone = 1.0 - clamp((most - least) * 9.0, 0.0, 1.0);
-        float country = nm_fbm2(p * 0.23 + float2(17.3, 5.1));
-        float3 lush = float3(0.80, 0.96, 0.78);
-        float3 dry = float3(1.04, 0.99, 0.76);
-        float3 reach = mix(dry, lush, smoothstep(0.3, 0.7, country));
-        // Glades: paler grass in rounds a hex or so across.
-        float glade = smoothstep(0.6, 0.8, nm_fbm2(p * 0.9 + float2(41.0, 8.0)));
-        reach = mix(reach, float3(1.05, 1.03, 0.86), glade * 0.55);
-        float3 shown = c * mix(float3(1.0), reach, growth);
+        // The country and the glades tell only on growth: worked out only
+        // where there is some.
+        float3 shown = c;
+        if (growth > 0.0) {
+            float country = nm_fbm2(p * 0.23 + float2(17.3, 5.1));
+            float3 lush = float3(0.80, 0.96, 0.78);
+            float3 dry = float3(1.04, 0.99, 0.76);
+            float3 reach = mix(dry, lush, smoothstep(0.3, 0.7, country));
+            // Glades: paler grass in rounds a hex or so across.
+            float glade = smoothstep(0.6, 0.8, nm_fbm2(p * 0.9 + float2(41.0, 8.0)));
+            reach = mix(reach, float3(1.05, 1.03, 0.86), glade * 0.55);
+            shown = c * mix(float3(1.0), reach, growth);
+        }
         // The land's colours were chosen to be read by the moon, whose
         // light is a tenth of the sun's: in full sun they stand at the top
         // of the picture, every green a pale lime. Under the sun they are
@@ -261,9 +266,12 @@ public enum WorldShaders {
             float crust = 0.9 + 0.12 * nm_fbm2(p * 2.6 + float2(31.0, 2.0));
             shown *= mix(1.0, 0.86 * crust * (1.0 - 0.22 * crack), salt);
         }
-        // Blades and grit, close to.
-        float fine = nm_noise(p * 43.0 + float2(7.0, 19.0)) - 0.5;
-        shown *= 1.0 + 0.16 * fine * (1.0 - smoothstep(0.012, 0.045, pixel));
+        // Blades and grit, close to: none looked for once they are smaller
+        // than a pixel.
+        if (pixel < 0.045) {
+            float fine = nm_noise(p * 43.0 + float2(7.0, 19.0)) - 0.5;
+            shown *= 1.0 + 0.16 * fine * (1.0 - smoothstep(0.012, 0.045, pixel));
+        }
         return mix(c, shown, day);
     }
 
