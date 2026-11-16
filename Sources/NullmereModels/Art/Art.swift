@@ -239,13 +239,19 @@ enum Art {
     /// furrows, pebbles and stepping stones. Still, but for its foliage
     /// swaying in the wind by its height above the ground.
     static func furnishing(_ kind: String, name: String) -> Model {
-        let colours = withBuildingColours([
+        var colours = withBuildingColours([
             "foliage_fir": Palette.fir, "foliage_firdark": Palette.firDark, "foliage_birchleaf": Palette.birchLeaf,
             "foliage_fern": Palette.fern, "foliage_heather": Palette.heather, "foliage_heatherdark": Palette.heatherDark,
             "foliage_heatherbloom": Palette.heatherBloom, "foliage_grass": Palette.grass, "foliage_thatch_reed": Palette.reed,
             "plain_timber_birchbark": Palette.birchBark, "plain_timber_deadwood": Palette.deadWood,
             "plain_barrowturf": Palette.grass.mix(Palette.earth, 0.3), "plain_ruinturf": Palette.grass.mix(Palette.earth, 0.4),
         ])
+        if kind == Furnishing.grass.rawValue {
+            // A meadow's tufts in its own greens, their tips yellower; the
+            // reeds by the water keep the grey grass and the reed's straw.
+            colours["foliage_grass"] = Palette.meadowBlade
+            colours["foliage_thatch_reed"] = Palette.meadowTip
+        }
         return model(furnishingsFile, tier: 1, variant: kind, name: name, order: [], scale: buildingScale, colours: colours)
     }
 

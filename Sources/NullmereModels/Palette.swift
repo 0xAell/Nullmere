@@ -69,6 +69,12 @@ enum Palette {
     static let firDark = Vec3(0.08, 0.14, 0.12)
     static let leaf = Vec3(0.16, 0.24, 0.17)
     static let grass = Vec3(0.37, 0.41, 0.31)
+    /// A meadow's tufts, greener than the grey grass by the water and
+    /// darker than the meadow under the moon: in the grey grass and the
+    /// reed's straw they stood pale as straw on the day's deep green (the
+    /// rebuilt realm's land, CI run 1057).
+    static let meadowBlade = Vec3(0.25, 0.38, 0.16)
+    static let meadowTip = Vec3(0.38, 0.45, 0.20)
     static let heather = Vec3(0.30, 0.24, 0.29)
     static let heatherDark = Vec3(0.21, 0.18, 0.21)
     static let heatherBloom = Vec3(0.46, 0.34, 0.44)

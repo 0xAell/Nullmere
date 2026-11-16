@@ -352,6 +352,19 @@ final class CatalogueTests: XCTestCase {
         XCTAssertTrue(Library.model(.furnishing(.fir)).mesh.vertices.contains { $0.material == .foliage && $0.sway > 0.5 })
     }
 
+    /// A meadow's tufts are green, their tips yellower, never the grey
+    /// grass and reed's straw that stood pale on the day's meadows; the
+    /// reeds by the water keep both.
+    func testAMeadowsTuftsAreGreen() {
+        let tuft = Library.model(.furnishing(.grass)).mesh.vertices.filter { $0.material == .foliage }.map(\.color)
+        XCTAssertFalse(tuft.isEmpty)
+        XCTAssertTrue(tuft.contains(Palette.meadowBlade) && tuft.contains(Palette.meadowTip))
+        XCTAssertTrue(tuft.allSatisfy { $0.y > $0.x && $0.y > $0.z }, "Every blade green")
+        XCTAssertFalse(tuft.contains(Palette.grass) || tuft.contains(Palette.reed))
+        let reeds = Library.model(.furnishing(.reeds)).mesh.vertices.map(\.color)
+        XCTAssertTrue(reeds.contains(Palette.grass) && reeds.contains(Palette.reed), "The reeds as they were")
+    }
+
     /// From a padded coat and a bare spear to plate, crests, the House's
     /// cloaks and shields: each tier shows more steel and more of its House.
     func testEachTierIsBetterEquipped() {
