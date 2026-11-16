@@ -247,7 +247,7 @@ final class RootRenderTests: XCTestCase {
         }
         shell.enterRealm()
         XCTAssertTrue(shell.inRealm)
-        XCTAssertEqual(asked, [GameApp.realmURL(in: Bundle.main.infoDictionary).absoluteString], "The realm the app was built to go to")
+        XCTAssertEqual(asked, [OnlineShell.realmURL(in: Bundle.main.infoDictionary).absoluteString], "The realm the app was built to go to")
         XCTAssertNotNil(shell.rebuilt)
         XCTAssertNil(shell.sound.ambience.titleLake, "Within the realm, its own score")
         try draw(NullmereOnlineView(shell: shell))
@@ -260,7 +260,12 @@ final class RootRenderTests: XCTestCase {
         XCTAssertEqual(shell.sound.ambience.titleLake, GameApp.lastLake, "The title theme again")
         // A debug run may name another realm; nothing that is no address.
         XCTAssertEqual(OnlineShell.realmAddress(info: nil, environment: ["NULLMERE_REALM": "http://127.0.0.1:3000/nullmere-ui"]), "http://127.0.0.1:3000/nullmere-ui")
-        XCTAssertEqual(OnlineShell.realmAddress(info: nil, environment: ["NULLMERE_REALM": "local"]), GameApp.maincloudURL.absoluteString)
+        XCTAssertEqual(OnlineShell.realmAddress(info: nil, environment: ["NULLMERE_REALM": "local"]), OnlineShell.maincloudURL.absoluteString)
+        // Where the app was built to go, and only an address with a database's name in it.
+        XCTAssertEqual(OnlineShell.realmURL(in: ["NullmereRealm": "https://realm.test/nullmere"]), URL(string: "https://realm.test/nullmere"))
+        XCTAssertEqual(OnlineShell.realmURL(in: ["NullmereRealm": "https://realm.test"]), OnlineShell.maincloudURL)
+        XCTAssertEqual(OnlineShell.realmURL(in: ["NullmereRealm": "realm"]), OnlineShell.maincloudURL)
+        XCTAssertEqual(OnlineShell.realmURL(in: nil), OnlineShell.maincloudURL)
         XCTAssertNil(OnlineShell.session(at: "nowhere at all"))
 
         // The launcher's Music and the realm's are one choice, either way.
@@ -293,7 +298,10 @@ final class RootRenderTests: XCTestCase {
         XCTAssertNil(PlayView.hour(keepsDay: true, environment: ["NULLMERE_HOUR": "31"]))
         XCTAssertFalse(app({ .ready }, seed: "keeps no day").keepsDay, "A client made on its own keeps no day")
         XCTAssertEqual(WorldMetalView().hour, 0)
-    }
+        // The rebuilt realm's map keeps the world's day always, but for the pictures.
+        XCTAssertNil(LiveMapView.hour(environment: [:]))
+        XCTAssertEqual(LiveMapView.hour(environment: ["NULLMERE_HOUR": "12"]), 12)
+        XCTAssertNil(LiveMapView.hour(environment: ["NULLMERE_HOUR": "31"]))
 
     /// The night the world is drawn with: as the realm's Settings keep it,
     /// dark as made where nothing is kept; for the smoke test, as

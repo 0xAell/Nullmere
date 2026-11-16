@@ -10,6 +10,18 @@ import SwiftUI
 /// day. The view only carries things across; the session decides what
 /// the window is and where the camera stands in it.
 struct LiveMapView: NSViewRepresentable {
+    /// The hour the world is drawn at: its own day, by the clock, the same
+    /// for every player (nil); or, in a debug build, the hour NULLMERE_HOUR
+    /// names, for the pictures.
+    static func hour(environment: [String: String] = ProcessInfo.processInfo.environment) -> Float? {
+        #if DEBUG
+        if let named = environment["NULLMERE_HOUR"].flatMap(Float.init), named.isFinite, (0...24).contains(named) {
+            return named
+        }
+        #endif
+        return nil
+    }
+
     let session: LiveSession
     let onFailure: () -> Void
 
@@ -50,9 +62,7 @@ struct LiveMapView: NSViewRepresentable {
         }
         view.camera = session.camera
         view.selected = session.selectedLocal
-        // The world's own day, by the clock: the same for every player
-        // (or, in a debug build, the hour NULLMERE_HOUR names).
-        view.hour = PlayView.hour(keepsDay: true)
+        view.hour = LiveMapView.hour()
         if let tiles = session.tiles() {
             view.setTiles(tiles, side: TileTexture.side(for: land.map), version: window * 100_000 + standing)
         }
