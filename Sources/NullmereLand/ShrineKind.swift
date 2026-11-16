@@ -26,16 +26,4 @@ public enum ShrineKind: String, CaseIterable, Codable, Sendable, PlainCases {
         case .heartstone: return "Heartstone"
         }
     }
-
-    /// What it gives its holders, in a line.
-    public var effect: String {
-        switch self {
-        case .moonwell: return "+8% attack to every company of its holders' side"
-        case .stillStone: return "+8% defence to every company of its holders' side"
-        case .saltAltar: return "+15% gathered at the land's sites by its holders' side"
-        case .brokenSpire: return "its stones raise every work of its holders' side for 15% less, and 15% sooner"
-        case .heartstone: return "\(FrontierState.heartPoints) points a watch for its holder's kingdom at the Frontier"
-        }
-    }
-
 }
