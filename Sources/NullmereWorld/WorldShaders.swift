@@ -248,15 +248,31 @@ public enum WorldShaders {
         return mix(earth, moss, smoothstep(0.35, 0.65, patches)) * shade;
     }
 
-    // The ground by day, over its grain: the country it lies in, and the
-    // stone of its slopes. Whole reaches of the land are lusher or drier
-    // than the rest, several hexes across, so no plain is one flat green;
-    // where the ground is bare stone and steep, it shows its beds, darker
-    // in the clefts; and the finest grain of all, blades and grit, shows
-    // close to and fades before it is smaller than a pixel. `day` is how
-    // much of this the hour shows: all of it under the sun, none of it by
-    // the moon, whose land is drawn as it always was.
-    float3 nm_ground(float3 world, float3 n, float3 albedo, float pixel, float day) {
+    // The country a point of the land lies in by day, slow enough to be
+    // worked out at the land's corners, a third of a unit apart, and
+    // carried between them: whole reaches lusher or drier than the rest,
+    // several hexes across (rgb, the reach's tint), and glades of paler
+    // grass in rounds a hex or so across (a, how much of a glade). At every
+    // pixel these were the day's dearest work (CI run 1074: the land by day
+    // took four milliseconds more than by night, the most of it this).
+    float4 nm_dayCountry(float2 p) {
+        float country = nm_fbm2(p * 0.23 + float2(17.3, 5.1));
+        float3 lush = float3(0.80, 0.96, 0.78);
+        float3 dry = float3(0.98, 0.97, 0.80);
+        float glade = smoothstep(0.6, 0.8, nm_noise(p * 0.9 + float2(41.0, 8.0)));
+        return float4(mix(dry, lush, smoothstep(0.3, 0.7, country)), glade);
+    }
+
+    // The ground by day, over its grain: the country it lies in (`country`,
+    // as nm_dayCountry gives it at the land's corners), and the stone of
+    // its slopes. Whole reaches of the land are lusher or drier than the
+    // rest, several hexes across, so no plain is one flat green; where the
+    // ground is bare stone and steep, it shows its beds, darker in the
+    // clefts; and the finest grain of all, blades and grit, shows close to
+    // and fades before it is smaller than a pixel. `day` is how much of
+    // this the hour shows: all of it under the sun, none of it by the moon,
+    // whose land is drawn as it always was.
+    float3 nm_ground(float3 world, float3 n, float3 albedo, float pixel, float day, float4 country) {
         float2 p = world.xz;
         float3 c = nm_grain(p, albedo, pixel);
         if (day <= 0.0) {
@@ -272,17 +288,13 @@ public enum WorldShaders {
         // where there is some.
         float3 shown = c;
         if (growth > 0.0) {
-            float country = nm_fbm2(p * 0.23 + float2(17.3, 5.1));
-            float3 lush = float3(0.80, 0.96, 0.78);
-            float3 dry = float3(0.98, 0.97, 0.80);
-            float3 reach = mix(dry, lush, smoothstep(0.3, 0.7, country));
             // Swards a hex or less across, some yellower and some bluer, so
-            // a meadow under the sun is never one green.
+            // a meadow under the sun is never one green: too fine to be
+            // carried between the land's corners, worked out here.
             float sward = nm_noise(p * 1.9 + float2(5.3, 27.1));
-            reach *= mix(float3(1.07, 1.03, 0.82), float3(0.86, 1.0, 0.98), smoothstep(0.3, 0.7, sward));
+            float3 reach = country.rgb * mix(float3(1.07, 1.03, 0.82), float3(0.86, 1.0, 0.98), smoothstep(0.3, 0.7, sward));
             // Glades: paler grass in rounds a hex or so across.
-            float glade = smoothstep(0.6, 0.8, nm_fbm2(p * 0.9 + float2(41.0, 8.0)));
-            reach = mix(reach, float3(1.05, 1.03, 0.86), glade * 0.55);
+            reach = mix(reach, float3(1.05, 1.03, 0.86), country.a * 0.55);
             shown = c * mix(float3(1.0), reach, growth);
         }
         // The land's colours were chosen to be read by the moon, whose
@@ -847,11 +859,16 @@ public enum WorldShaders {
         return lit;
     }
 
-    // The land at a point of it: `known` as the mesh's corner had it.
-    // `detail`: the day's relief, the sun finding the grass's tussocks; a
-    // constant where it is called, so a function that passes false holds
-    // none of it.
-    float4 nm_landShade(float3 world, float3 normal, float3 colour, float known, bool detail
+    // The land at a point of it: `knows`, what the keeper knows of it (x)
+    // and watches (y), as nm_knowledgeAround blends it between the hexes'
+    // hearts, worked out at the land's corners a third of a unit apart and
+    // carried between them: that blend is itself straight between the
+    // hearts, so carried it is the same, and each pixel was reading three
+    // hexes to make it again. `country`: the country by day, as
+    // nm_dayCountry gives it. `detail`: the day's relief, the sun finding
+    // the grass's tussocks; a constant where it is called, so a function
+    // that passes false holds none of it.
+    float4 nm_landShade(float3 world, float3 normal, float3 colour, float2 knows, float4 country, bool detail
                         NM_FRAME_ARGUMENT NM_TEXTURE_ARGUMENT NM_SHADOW_ARGUMENT NM_PALETTE_ARGUMENT NM_HEIGHTS_ARGUMENT) {
         float time = frame.eye.w;
         float radius = frame.world.x;
@@ -859,13 +876,12 @@ public enum WorldShaders {
         int2 h = nm_hexRound(nm_axial(p));
         float3 edge = nm_hexEdge(p, h);
         float pixel = max(fwidth(p.x), fwidth(p.y));
-        // What the keeper knows of the ground, blended between hexes here
-        // and not from the mesh's corners, so the edge of sight is a soft
-        // falling-off and never a terrace of lit and grey hexes.
-    #ifndef NM_NO_FOG
-        float2 knows = nm_knowledgeAround(p, radius NM_TEXTURE_PASS);
-    #else
-        float2 knows = float2(1.0, 1.0);
+        // What the keeper knows of the ground, blended between the hexes'
+        // hearts, so the edge of sight is a soft falling-off and never a
+        // terrace of lit and grey hexes.
+        float known = knows.x;
+    #ifdef NM_NO_FOG
+        knows = float2(1.0, 1.0);
     #endif
         // How much of the ground shows through the mist: none over the
         // unknown, which is never drawn under it, and the known ground's own
@@ -892,7 +908,7 @@ public enum WorldShaders {
             // Its pattern is the world's: the same wherever the window lies.
             float day = frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0);
             float3 grounded = world + float3(frame.origin.x, 0.0, frame.origin.y);
-            float3 albedo = nm_ground(grounded, n, colour, pixel, day);
+            float3 albedo = nm_ground(grounded, n, colour, pixel, day, country);
             if (detail) {
                 // Tussocks: under the sun a meadow's grass has a small relief
                 // of its own, a third of a hex or so across, that the light
@@ -1283,6 +1299,8 @@ public enum WorldShaders {
         float3 colour;
         float known;
         float watched;
+        // The country it lies in by day (nm_dayCountry).
+        float4 country;
     };
 
     vertex LandOut nm_land_vertex(uint vid [[vertex_id]],
@@ -1305,6 +1323,7 @@ public enum WorldShaders {
         out.colour = nm_linear(float3(packedColour.xyz) / 255.0);
         out.known = knowledge.x;
         out.watched = knowledge.y;
+        out.country = nm_dayCountry(p.xz + frame.origin.xy);
         return out;
     }
 
@@ -1314,7 +1333,7 @@ public enum WorldShaders {
                                      texture2d<float> heights [[texture(1)]],
                                      depth2d<float> shadows [[texture(2)]],
                                      texture2d<float, access::read> housePalette [[texture(3)]]) {
-        return nm_landShade(in.world, in.normal, in.colour, in.known, false, frame, tiles, shadows, housePalette, heights);
+        return nm_landShade(in.world, in.normal, in.colour, float2(in.known, in.watched), in.country, false, frame, tiles, shadows, housePalette, heights);
     }
 
     fragment float4 nm_land_day_fragment(LandOut in [[stage_in]],
@@ -1323,7 +1342,7 @@ public enum WorldShaders {
                                          texture2d<float> heights [[texture(1)]],
                                          depth2d<float> shadows [[texture(2)]],
                                          texture2d<float, access::read> housePalette [[texture(3)]]) {
-        return nm_landShade(in.world, in.normal, in.colour, in.known, true, frame, tiles, shadows, housePalette, heights);
+        return nm_landShade(in.world, in.normal, in.colour, float2(in.known, in.watched), in.country, true, frame, tiles, shadows, housePalette, heights);
     }
 
     // MARK: The still water
