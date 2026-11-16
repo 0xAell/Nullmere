@@ -9,6 +9,8 @@ import Foundation
 /// thousand tiles. Worked out once for each goal far marches seek, and
 /// kept with the map while its ground stays as it is.
 package final class LieOfTheLand: @unchecked Sendable {
+    package init() {}
+
     private let lock = NSLock()
     private var fields: [Int: [UInt16]] = [:]
     private var order: [Int] = []
@@ -91,11 +93,20 @@ package final class LieOfTheLand: @unchecked Sendable {
 /// stands, when it was founded and how far it reaches), and given again
 /// only to holds the same in all of it, in the same order.
 package final class Claims: @unchecked Sendable {
+    package init() {}
+
     package struct Claimant: Equatable {
         package let id: Int
         package let position: Hex
         package let founded: Int
         package let reach: Int
+
+        package init(id: Int, position: Hex, founded: Int, reach: Int) {
+            self.id = id
+            self.position = position
+            self.founded = founded
+            self.reach = reach
+        }
 
         /// Whether it claims before the hold of `id`, founded in `watch`:
         /// the older first, and of two founded alike the lower id.
@@ -231,17 +242,23 @@ package final class Claims: @unchecked Sendable {
 
 /// A map's relief, as one: its copies, and the maps a keeper is shown of it,
 /// keep the same one while their relief is its relief.
-package final class ReliefOf: Sendable {}
+package final class ReliefOf: Sendable {
+    package init() {}
+}
 
 /// A map's ground, as one, page by page (`WorldMap.page` tiles a
 /// page, as its pages go): its copies, and the maps a keeper is shown of
 /// it, keep the same one, each setting apart the pages it writes tiles of
 /// its own to.
-package final class GroundOf: Sendable {}
+package final class GroundOf: Sendable {
+    package init() {}
+}
 
 /// The nearest hex of a terrain to the hexes it was sought from: kept with
 /// the map while its ground stays as it is, the oldest let go of first.
 package final class Nearest: @unchecked Sendable {
+    package init() {}
+
     package struct Key: Hashable {
         package let terrain: Terrain
         package let from: Hex
@@ -279,6 +296,8 @@ package final class Nearest: @unchecked Sendable {
 /// time it is asked, given again every time after. A wide lake's every
 /// steward asks it at every pace of the full moon's walks on the mirror.
 package final class Deepest: @unchecked Sendable {
+    package init() {}
+
     private let lock = NSLock()
     /// Unasked, or what was found: the deepest water, or none at all.
     private var kept: DeepWater??
