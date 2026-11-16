@@ -118,7 +118,7 @@ hold walled in stone). Two ways off the old rules:
    (`6c602b2`): the realm test sets the twelve cities about the lake's
    shore, nine to eleven hexes from its middle, and TrailerWorld reads
    them in a window of 26 about the lake. Built and tested on Linux
-   (Realm rules run 80); rendered whole by the Trailer workflow's run 16
+   (Realm rules run 80) and on the Mac (CI run 1043, wholly green); rendered whole by the Trailer workflow's run 16
    (14 shots, 7,140 frames, 119 s) and published as the "trailer"
    pre-release's film and stills sheet, as that workflow does on every
    push to the trailer. **Not yet looked at by eye**: the stills sheet
