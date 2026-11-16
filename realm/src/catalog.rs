@@ -1207,6 +1207,18 @@ impl Contest {
             ],
         }
     }
+
+    /// What the first three of a round get for their places once it is
+    /// over, the first first: its greatest prize's goods three times over,
+    /// twice and once, and eight hours' hastes, three, two and one.
+    pub fn laurels(self) -> [(Goods, Vec<(Item, u64)>); 3] {
+        let greatest = self.prizes()[2].1;
+        [
+            (greatest.times(3), vec![(Item::Haste480, 3)]),
+            (greatest.times(2), vec![(Item::Haste480, 2)]),
+            (greatest, vec![(Item::Haste480, 1)]),
+        ]
+    }
 }
 
 /// The highest favour rises.

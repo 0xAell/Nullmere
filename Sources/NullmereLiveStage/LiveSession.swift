@@ -64,6 +64,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func usePeace(_ item: Int) async throws
     func openChest(_ chest: Int) async throws
     func claimPrize(contest: Int, place: Int) async throws
+    func claimPlace(contest: Int) async throws
     func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async throws
     func answerEnvoy(_ envoy: UInt64, accept: Bool) async throws
     func breakPact(_ pact: UInt64) async throws
@@ -531,6 +532,7 @@ public final class LiveSession {
     }
     public func openChest(_ chest: Int) async { await ask { try await $0.openChest(chest) } }
     public func claimPrize(contest: Int, place: Int) async { await ask { try await $0.claimPrize(contest: contest, place: place) } }
+    public func claimPlace(contest: Int) async { await ask { try await $0.claimPlace(contest: contest) } }
     public func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async { await ask { try await $0.sendEnvoy(to: alliance, terms: terms, days: days) } }
     public func answerEnvoy(_ envoy: UInt64, accept: Bool) async { await ask { try await $0.answerEnvoy(envoy, accept: accept) } }
     public func breakPact(_ pact: UInt64) async { await ask { try await $0.breakPact(pact) } }

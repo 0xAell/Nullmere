@@ -309,6 +309,10 @@ trials = sorted(trials, key=lambda trial: trial["id"])
 check("the contests and their prizes are written out for all to read", ([(trial["name"], trial["every"], trial["lasts"], trial["opens"]) for trial in trials], [prize["points"] for prize in prizes if prize["trial"] == 1]), ([("The Long Hunt", 7, 3, 0), ("The Harvest Moon", 7, 3, 2), ("The Call to Arms", 7, 3, 4)], [100, 400, 1000]))
 check("a prize not yet earned is refused", call(ada, "claim_prize", 1, 1), "That prize is for 100 points.")
 check("and one that is not there", call(ada, "claim_prize", 1, 9), "There is no such prize.")
+laurels = rows(nobody, "SELECT * FROM laurel")
+check("what the first three places give is written out for all to read", (len(laurels), sorted(laurel["long_hastes"] for laurel in laurels if laurel["trial"] == 1)), (9, [1, 2, 3]))
+check("the contests' standings are for all to read", isinstance(rows(nobody, "SELECT * FROM standing"), list), True)
+check("no place is claimed before a round is over", call(ada, "claim_place", 3), "No round of that contest is over yet.")
 check("no one reads another's tallies", isinstance(rows(ada, "SELECT * FROM tally"), str), True)
 
 # Rallies are an alliance's: one in none can neither call nor join one, and an army goes to one no other way.

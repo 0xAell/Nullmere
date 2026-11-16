@@ -604,6 +604,26 @@ final class LiveSessionTests: XCTestCase {
                                     "claim boons", "help 0"])
     }
 
+    func testThePaletteOffersWhatAPlaceInAContestGave() async throws {
+        // Ada first in the Long Hunt's first round, which runs the realm's
+        // first three days (it opened at 1,000, a day to every 86,400).
+        var rows = LiveWindowTests.rows()
+        rows["trial"] = [[n(1), .string("The Long Hunt"), .string("Points for every barrow cleared."), n(7), n(3), n(0)]]
+        rows["laurel"] = [[n(257), n(1), n(1), n(60_000), n(60_000), n(30_000), n(900), n(0), n(0), n(3), n(0)]]
+        rows["standing"] = [[n(1 << 24 | 1), n(1), n(1), n(1), n(0), n(250), n(1_500), .bool(false)],
+                            [n(2 << 24 | 1), n(1), n(2), n(1), n(0), n(90), n(1_200), .bool(false)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        let claim = LiveCommand(title: "Claim what your place in The Long Hunt gave: 1st", act: .claimPlace(contest: 1))
+        XCTAssertFalse(session.commands(at: 1_000 + 86_400).contains { $0.act == .claimPlace(contest: 1) }, "not while the round runs")
+        XCTAssertTrue(session.commands(at: 1_000 + 4 * 86_400).contains(claim), "once it is over")
+        XCTAssertFalse(session.commands(at: 1_000 + 11 * 86_400).contains { $0.act == .claimPlace(contest: 1) }, "nor once the next is")
+        line.clear()
+        await session.perform(claim)
+        XCTAssertEqual(line.asked, ["claim place in 1"])
+    }
+
     func testRalliesGatesAndWardstonesAreCalledFromTheirCards() async throws {
         var rows = LiveWindowTests.rows()
         rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]
@@ -1013,9 +1033,11 @@ final class LiveSessionTests: XCTestCase {
         await session.unequip(gear: 3)
         await session.openChest(1)
         await session.claimPrize(contest: 1, place: 2)
+        await session.claimPlace(contest: 3)
         XCTAssertEqual(line.asked, ["ask help 4", "help 0", "raise ward 3,-1", "raze ward 7", "give [10, 20, 30, 0] to learning 1",
                                     "give [1, 2, 3, 4] to the Moonspire", "talent 6 for 11", "forget talents of 11", "pair 11 with 12", "keep city 12",
-                                    "speed up 4", "use 2 on 4", "keep the peace with 4", "forge 1", "equip 3 on 11", "unequip 3", "open chest 1", "claim prize 2 of 1"])
+                                    "speed up 4", "use 2 on 4", "keep the peace with 4", "forge 1", "equip 3 on 11", "unequip 3", "open chest 1", "claim prize 2 of 1",
+                                    "claim place in 3"])
         line.clear()
         await session.sendEnvoy(to: 6, terms: LivePact.truce, days: 3)
         await session.answerEnvoy(5, accept: true)

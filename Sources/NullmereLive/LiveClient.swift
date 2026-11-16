@@ -367,4 +367,10 @@ public final class LiveClient: @unchecked Sendable {
     public func claimPrize(contest: Int, place: Int) async throws {
         try await ask("claim_prize", [.integer(UInt64(contest)), .integer(UInt64(place))])
     }
+
+    /// Claims what the player's place among the first three of a contest's
+    /// last round over gives.
+    public func claimPlace(contest: Int) async throws {
+        try await ask("claim_place", [.integer(UInt64(contest))])
+    }
 }

@@ -34,6 +34,10 @@ public struct LiveWorld: Equatable, Sendable {
     public var wares: [Int: LiveWare] = [:]
     public var trials: [Int: LiveTrial] = [:]
     public var prizes: [LivePrize] = []
+    /// Where every player stands in the contests' rounds, and what the
+    /// first three places of a round give.
+    public var standings: [LiveStanding] = []
+    public var laurels: [LiveLaurel] = []
     /// Every alliance's Moonspire this season, by the alliance; the
     /// realm's seasons, by their number.
     public var spires: [UInt64: LiveSpire] = [:]
@@ -166,6 +170,8 @@ public struct LiveWorld: Equatable, Sendable {
         wares = Dictionary(rows("ware", LiveWare.init).map { ($0.item, $0) }, uniquingKeysWith: { _, new in new })
         trials = Dictionary(rows("trial", LiveTrial.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         prizes = rows("prize", LivePrize.init).sorted { ($0.trial, $0.place) < ($1.trial, $1.place) }
+        standings = rows("standing", LiveStanding.init)
+        laurels = rows("laurel", LiveLaurel.init).sorted { ($0.trial, $0.place) < ($1.trial, $1.place) }
         spires = Dictionary(rows("spire", LiveSpire.init).map { ($0.alliance, $0) }, uniquingKeysWith: { _, new in new })
         seasons = Dictionary(rows("season", LiveSeason.init).map { ($0.number, $0) }, uniquingKeysWith: { _, new in new })
         wards = Dictionary(rows("ward", LiveWard.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })

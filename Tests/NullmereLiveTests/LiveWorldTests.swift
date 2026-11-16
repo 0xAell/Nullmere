@@ -251,6 +251,54 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertNil(LiveWorld(snapshot: [:]).step)
     }
 
+    func testAContestsStandingsAreReadAndTheFirstThreeClaimTheirPlaces() throws {
+        func standing(_ player: Double, round: Double, _ points: Double, at: Double, claimed: Bool = false) -> [JSONValue] {
+            [n(player * 16_777_216 + round * 256 + 3), n(round * 256 + 3), n(player), n(3), n(round), n(points), n(at), .bool(claimed)]
+        }
+        let named = ["Ada", "Bryn", "Cato", "Dara"].enumerated().map { index, name -> [JSONValue] in
+            [n(Double(index + 1)), n(9), .string(name), n(1_000), .bool(true), n(1_000)]
+        }
+        var snapshot: [String: [[JSONValue]]] = [
+            "me": [named[0]],
+            "player": named,
+            "trial": [[n(3), .string("The Call to Arms"), .string("Train soldiers."), n(7), n(3), n(4)]],
+            "laurel": [[n(3 * 256 + 1), n(3), n(1), n(90_000), n(45_000), n(15_000), n(900), n(0), n(0), n(3), n(0)],
+                       [n(3 * 256 + 2), n(3), n(2), n(60_000), n(30_000), n(10_000), n(600), n(0), n(0), n(2), n(0)],
+                       [n(3 * 256 + 3), n(3), n(3), n(30_000), n(15_000), n(5_000), n(300), n(0), n(0), n(1), n(0)]],
+            // Round 0: Bryn and Cato level, Bryn first; Ada third, Dara fourth. Round 1 begun: Dara alone.
+            "standing": [standing(1, round: 0, 50, at: 400), standing(2, round: 0, 80, at: 200), standing(3, round: 0, 80, at: 300),
+                         standing(4, round: 0, 20, at: 300), standing(4, round: 1, 10, at: 900)],
+        ]
+        let world = LiveWorld(snapshot: snapshot)
+        let trial = try XCTUnwrap(world.trials[3])
+        XCTAssertEqual(world.standings.count, 5)
+        XCTAssertEqual(world.standings(of: 3, round: 0).map(\.player), [2, 3, 1, 4], "the most first, and of equals who reached it first")
+        XCTAssertEqual(world.contestRanking(of: 3, round: 0, top: 3).map(\.name), ["Bryn", "Cato", "Ada"])
+        XCTAssertEqual(world.contestRanking(of: 3, round: 1).map(\.amount), [10])
+        XCTAssertTrue(world.standings(of: 1, round: 0).isEmpty, "no other contest scored")
+        XCTAssertEqual(world.laurels.map(\.place), [1, 2, 3])
+        XCTAssertEqual(world.holdings(world.laurels[2].goods, world.laurels[2].hastes), "30,000 grain, 15,000 timber, 5,000 stone and 300 moonsalt, haste")
+
+        // The rounds: the Call to Arms runs days 4 to 6 of every 7; a round is over once its days are.
+        XCTAssertEqual([0, 6, 7, 13, 14].map { world.contestRound(of: trial, day: $0) }, [0, 0, 1, 1, 2])
+        XCTAssertEqual([0, 4, 6, 7, 10, 13, 14].map { world.lastRoundOver(of: trial, day: $0) }, [nil, nil, nil, 0, 0, 0, 1])
+        let hunt = try XCTUnwrap(LiveTrial([n(1), .string("The Long Hunt"), .string("Clear barrows."), n(7), n(3), n(0)]))
+        XCTAssertEqual([2, 3, 6, 9, 10].map { world.lastRoundOver(of: hunt, day: $0) }, [nil, 0, 0, 0, 1], "the hunt's over on its round's fourth day")
+        // While round 0 runs, nothing to claim; once it is over, Ada's third place.
+        XCTAssertNil(world.laurelToClaim(of: trial, day: 5))
+        XCTAssertEqual(world.laurelToClaim(of: trial, day: 8)?.place, 3)
+        // Claimed, nothing more; Dara, fourth, has none; and once round 1 is over, round 0's is past.
+        snapshot["standing"]![0] = standing(1, round: 0, 50, at: 400, claimed: true)
+        XCTAssertNil(LiveWorld(snapshot: snapshot).laurelToClaim(of: trial, day: 8))
+        snapshot["me"] = [named[3]]
+        XCTAssertNil(LiveWorld(snapshot: snapshot).laurelToClaim(of: trial, day: 8))
+        XCTAssertEqual(LiveWorld(snapshot: snapshot).laurelToClaim(of: trial, day: 14)?.place, 1, "first, and alone, in round 1")
+        snapshot["me"] = [named[1]]
+        XCTAssertNil(LiveWorld(snapshot: snapshot).laurelToClaim(of: trial, day: 14))
+        XCTAssertEqual(LiveWorld(snapshot: snapshot).laurelToClaim(of: trial, day: 13)?.place, 1)
+        XCTAssertNil(LiveWorld(snapshot: [:]).laurelToClaim(of: trial, day: 13))
+    }
+
     func testAlliancesAndWhatIsSaidAreRead() throws {
         let world = LiveWorld(snapshot: [
             "player": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)],

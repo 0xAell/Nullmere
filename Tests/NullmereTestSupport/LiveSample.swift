@@ -186,6 +186,7 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func readTome(commander: UInt64, item: Int, count: UInt64) async throws { try take("read \(count) of \(item) to \(commander)") }
     public func openChest(_ chest: Int) async throws { try take("open chest \(chest)") }
     public func claimPrize(contest: Int, place: Int) async throws { try take("claim prize \(place) of \(contest)") }
+    public func claimPlace(contest: Int) async throws { try take("claim place in \(contest)") }
     public func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async throws { try take("envoy to \(alliance): \(terms) for \(days) days") }
     public func answerEnvoy(_ envoy: UInt64, accept: Bool) async throws { try take("\(accept ? "accept" : "turn away") envoy \(envoy)") }
     public func breakPact(_ pact: UInt64) async throws { try take("break pact \(pact)") }

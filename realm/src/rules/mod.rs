@@ -294,6 +294,11 @@ pub enum Refusal {
     /// The prize asks more points than the player has scored this round: how many it asks.
     PrizeNotEarned(u64),
     PrizeClaimed,
+    /// No round of the contest is over yet.
+    NoRoundOver,
+    /// The player was not among the first three of the contest's last round over.
+    NotPlaced,
+    PlaceClaimed,
     /// The player has none of the item they would use.
     NoneLeft,
     /// An item of peace is used on the city, not on a work.
@@ -463,6 +468,9 @@ impl fmt::Display for Refusal {
             Refusal::RallySetOut => "That rally has set out.",
             Refusal::RallyUnderWay => "An army in a rally under way can't be called home.",
             Refusal::PrizeClaimed => "You have claimed that prize this round.",
+            Refusal::NoRoundOver => "No round of that contest is over yet.",
+            Refusal::NotPlaced => "You were not among the first three when its last round ended.",
+            Refusal::PlaceClaimed => "You have claimed what your place gave.",
             Refusal::NoneLeft => "You have none of that left.",
             Refusal::NotAHaste => "That keeps your city at peace; it hastens no work.",
             Refusal::AtTheForge => "That is worked at the Forge into gear.",

@@ -164,6 +164,49 @@ public struct LiveFavour: Equatable, Sendable {
     }
 }
 
+/// Where a player stands in a contest's round, for all to read: what they
+/// scored in it, when they last scored, and whether they have claimed
+/// what their place gave once it was over.
+public struct LiveStanding: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let player: UInt64
+    public let trial: Int
+    public let round: UInt64
+    public let points: UInt64
+    /// When they last scored: the earlier first among equal points.
+    public let at: Int
+    public let claimed: Bool
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let player = cells.unsigned(2), let trial = cells.whole(3), let round = cells.unsigned(4),
+              let points = cells.unsigned(5), let at = cells.whole(6) else { return nil }
+        (self.id, self.player, self.trial, self.round, self.points, self.at) = (id, player, trial, round, points, at)
+        claimed = cells.flag(7) ?? false
+    }
+}
+
+/// What a place among the first three of a contest's round gives once it
+/// is over.
+public struct LiveLaurel: Equatable, Sendable, Identifiable {
+    /// How many of a round's first places are given one.
+    public static let places = 3
+
+    public let id: UInt64
+    public let trial: Int
+    public let place: Int
+    public let goods: LiveGoods
+    public let hastes: LiveHastes
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let trial = cells.whole(1), let place = cells.whole(2) else { return nil }
+        (self.id, self.trial, self.place) = (id, trial, place)
+        goods = LiveGoods(grain: cells.unsigned(3) ?? 0, timber: cells.unsigned(4) ?? 0, stone: cells.unsigned(5) ?? 0, moonsalt: cells.unsigned(6) ?? 0)
+        hastes = [cells.unsigned(7) ?? 0, cells.unsigned(8) ?? 0, cells.unsigned(9) ?? 0, cells.unsigned(10) ?? 0]
+    }
+}
+
 /// What the player has scored in a round of a contest, and which of its
 /// prizes they have claimed.
 public struct LiveTally: Equatable, Sendable, Identifiable {
@@ -641,6 +684,38 @@ extension LiveWorld {
         }
         let ranks = alliances.values.map { LiveRank(id: $0.id, name: "[\($0.tag)] \($0.name)", amount: power[$0.id] ?? 0) }
         return Array(ranks.sorted { ($0.amount, $1.id) > ($1.amount, $0.id) }.prefix(top))
+    }
+
+    /// The standings of a contest's round, the first first: the most
+    /// points, and among equal points who reached them first.
+    public func standings(of trial: Int, round: UInt64) -> [LiveStanding] {
+        standings.filter { $0.trial == trial && $0.round == round }.sorted { ($1.points, $0.at, $0.player) < ($0.points, $1.at, $1.player) }
+    }
+
+    /// The round of a contest a day of the realm falls in.
+    public func contestRound(of trial: LiveTrial, day: UInt64) -> UInt64 {
+        day / UInt64(max(trial.every, 1))
+    }
+
+    /// The last round of a contest over by a day: none before the first ends.
+    public func lastRoundOver(of trial: LiveTrial, day: UInt64) -> UInt64? {
+        let every = UInt64(max(trial.every, 1))
+        if Int(day % every) >= trial.opens + trial.lasts { return day / every }
+        return day / every > 0 ? day / every - 1 : nil
+    }
+
+    /// A contest round's first players, under their names, with their points.
+    public func contestRanking(of trial: Int, round: UInt64, top: Int = 10) -> [LiveRank] {
+        standings(of: trial, round: round).prefix(top).map { LiveRank(id: $0.player, name: players[$0.player]?.name ?? "Someone", amount: $0.points) }
+    }
+
+    /// The player's place among the first three of a contest's last round
+    /// over by a day, and what it gives, while they have not claimed it.
+    public func laurelToClaim(of trial: LiveTrial, day: UInt64) -> LiveLaurel? {
+        guard let me = me?.id, let round = lastRoundOver(of: trial, day: day) else { return nil }
+        let first = Array(standings(of: trial.id, round: round).prefix(LiveLaurel.places))
+        guard let index = first.firstIndex(where: { $0.player == me }), !first[index].claimed else { return nil }
+        return laurels.first { $0.trial == trial.id && $0.place == index + 1 }
     }
 
     /// Where the player stands among the realm's players by power, from 1.

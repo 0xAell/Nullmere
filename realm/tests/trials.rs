@@ -5,7 +5,7 @@
 use realm::catalog::{self, Building as Kind, Contest, Goods, Item, Troops};
 use realm::hex::Hex;
 use realm::land;
-use realm::rows::{Barrow, Building, City, March, Prize, Site, Stock, Tally, Trial, Troop};
+use realm::rows::{Barrow, Building, City, Laurel, March, Prize, Site, Standing, Stock, Tally, Trial, Troop};
 use realm::rules::{self, Asked, Refusal};
 use realm::store::{Mem, Seconds, Table};
 
@@ -193,4 +193,104 @@ fn the_weeks_contests_overlap_and_the_harvest_and_the_muster_score_their_own() {
     db.update(row);
     db.call(|db| rules::train(db, player, barracks.id, 1, 50)).unwrap();
     assert_eq!(rules::tally_of(&db, player, Contest::Arms).points, 50);
+}
+
+/// Gives a player's city a Barracks at its fifth level and goods enough
+/// to train any number, and sets so many soldiers of the first tier to
+/// training, once any it is training are done: a point each in the Call
+/// to Arms while it runs.
+fn train(db: &mut Mem, player: u64, count: u64) {
+    let city = rules::city_of(db, player).unwrap();
+    let barracks = match rules::building_of(db, city.id, Kind::Barracks) {
+        Some(barracks) => barracks,
+        None => db.insert(Building { id: 0, city: city.id, kind: Kind::Barracks as u8, level: 5 }),
+    };
+    let mut row = rules::grown(&Table::<Stock>::get(db, city.id).unwrap(), db.clock);
+    (row.grain, row.timber, row.stone) = (500_000, 500_000, 500_000);
+    db.update(row);
+    loop {
+        match db.call(|db| rules::train(db, player, barracks.id, 1, count)) {
+            Ok(_) => return,
+            Err(Refusal::AlreadyTraining(_)) => wait(db, 60),
+            Err(refusal) => panic!("{refusal}"),
+        }
+    }
+}
+
+#[test]
+fn the_first_three_of_a_round_claim_laurels_once_it_is_over() {
+    let (mut db, ada, _) = armed();
+    let [bryn, cato, dara] = ["Bryn", "Cato", "Dara"].map(|name| db.call(|db| rules::join(db, name)).unwrap().id);
+    // What each place gives, written out for clients: the contest's
+    // greatest prize's goods three times, twice and once over, and
+    // eight hours' hastes.
+    let laurels = Table::<Laurel>::all(&db);
+    assert_eq!(laurels.len(), 9, "three places a contest");
+    let arms: Vec<&Laurel> = laurels.iter().filter(|laurel| laurel.trial == Contest::Arms as u8).collect();
+    let greatest = Contest::Arms.prizes()[2].1;
+    for (index, laurel) in arms.iter().enumerate() {
+        assert_eq!(laurel.place as usize, index + 1);
+        assert_eq!(Goods::of(laurel.grain, laurel.timber, laurel.stone, laurel.moonsalt), greatest.times(3 - index as u64));
+        assert_eq!((laurel.long_hastes, laurel.hour_hastes, laurel.brief_hastes, laurel.peaces), (3 - index as u64, 0, 0, 0));
+    }
+
+    // No round is over before the first ends.
+    assert_eq!(db.call(|db| rules::claim_place(db, ada, Contest::Arms as u8)), Err(Refusal::NoRoundOver));
+    // The Call to Arms opens on the week's fifth day: four train, Bryn
+    // and Cato as many, Bryn first.
+    wait(&mut db, 4 * catalog::DAY);
+    assert!(rules::round_of(&db, Contest::Arms).1);
+    train(&mut db, ada, 30);
+    wait(&mut db, 60);
+    train(&mut db, bryn, 80);
+    wait(&mut db, 60);
+    train(&mut db, cato, 50);
+    train(&mut db, dara, 20);
+    wait(&mut db, 60);
+    train(&mut db, cato, 30);
+    train(&mut db, ada, 20);
+    let order: Vec<(u64, u64)> = rules::standings(&db, Contest::Arms, 0).iter().map(|standing| (standing.player, standing.points)).collect();
+    assert_eq!(order, [(bryn, 80), (cato, 80), (ada, 50), (dara, 20)], "the most first, and of equals who reached it first");
+    // For all to read, scored in the round it names.
+    let mine = Table::<Standing>::get(&db, Standing::key(ada, Contest::Arms as u8, 0)).unwrap();
+    assert_eq!((mine.player, mine.trial, mine.round, mine.points, mine.claimed), (ada, Contest::Arms as u8, 0, 50, false));
+    assert_eq!(mine.contest_round, Standing::of_round(Contest::Arms as u8, 0));
+    assert!(Table::<Standing>::all(&db).iter().all(|standing| standing.trial == Contest::Arms as u8), "no other contest scored");
+    // Not while the round runs.
+    assert_eq!(db.call(|db| rules::claim_place(db, bryn, Contest::Arms as u8)), Err(Refusal::NoRoundOver));
+
+    // Once it is over, each of the first three claims their place's laurel, once.
+    wait(&mut db, 3 * catalog::DAY);
+    assert_eq!(rules::round_of(&db, Contest::Arms), (1, false));
+    assert_eq!(rules::last_round_over(&db, Contest::Arms), Some(0));
+    for (place, player) in [bryn, cato, ada].into_iter().enumerate() {
+        let city = rules::city_of(&db, player).unwrap();
+        let before = stock(&db, city.id);
+        let had = rules::held(&db, player, Item::Haste480);
+        let gives = db.call(|db| rules::claim_place(db, player, Contest::Arms as u8)).unwrap();
+        assert_eq!(gives, greatest.times(3 - place as u64), "place {}", place + 1);
+        assert_eq!(stock(&db, city.id), before.plus(gives));
+        assert_eq!(rules::held(&db, player, Item::Haste480), had + 3 - place as u64);
+        assert_eq!(db.call(|db| rules::claim_place(db, player, Contest::Arms as u8)), Err(Refusal::PlaceClaimed));
+    }
+    assert_eq!(db.call(|db| rules::claim_place(db, dara, Contest::Arms as u8)), Err(Refusal::NotPlaced));
+    assert_eq!(db.call(|db| rules::claim_place(db, dara, Contest::Hunt as u8)), Err(Refusal::NotPlaced), "no one scored in the hunt");
+    assert_eq!(db.call(|db| rules::claim_place(db, dara, 9)), Err(Refusal::NoSuchPrize));
+    assert_eq!(Refusal::NotPlaced.to_string(), "You were not among the first three when its last round ended.");
+
+    // The next round's standings begin afresh; once it is over, the round
+    // before is past claiming, and what was stood two rounds back goes.
+    wait(&mut db, 4 * catalog::DAY);
+    assert_eq!(rules::round_of(&db, Contest::Arms), (1, true));
+    train(&mut db, dara, 10);
+    assert_eq!(rules::standings(&db, Contest::Arms, 1).iter().map(|standing| (standing.player, standing.points)).collect::<Vec<_>>(), [(dara, 10)]);
+    assert_eq!(rules::standings(&db, Contest::Arms, 0).len(), 4, "the last round's kept");
+    wait(&mut db, 3 * catalog::DAY);
+    assert_eq!(rules::last_round_over(&db, Contest::Arms), Some(1));
+    assert_eq!(db.call(|db| rules::claim_place(db, cato, Contest::Arms as u8)), Err(Refusal::NotPlaced));
+    db.call(|db| rules::claim_place(db, dara, Contest::Arms as u8)).unwrap();
+    wait(&mut db, 4 * catalog::DAY);
+    train(&mut db, dara, 10);
+    assert!(Table::<Standing>::get(&db, Standing::key(dara, Contest::Arms as u8, 0)).is_none(), "two rounds back");
+    assert!(Table::<Standing>::get(&db, Standing::key(dara, Contest::Arms as u8, 1)).is_some());
 }

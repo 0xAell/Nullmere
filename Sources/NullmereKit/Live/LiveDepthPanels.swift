@@ -137,6 +137,33 @@ struct LiveRealmPanel: View {
                         }
                     }
                 }
+                LiveStandings(session: session, trial: trial, day: world.today(at: seconds))
+            }
+        }
+    }
+}
+
+/// A contest's standings this round, its first three by name, and what
+/// the player's place gave when its last round ended, to be claimed.
+struct LiveStandings: View {
+    let session: LiveSession
+    let trial: LiveTrial
+    let day: UInt64
+
+    var body: some View {
+        let world = session.world
+        let first = world.contestRanking(of: trial.id, round: world.contestRound(of: trial, day: day), top: LiveLaurel.places)
+        if !first.isEmpty {
+            let named = first.enumerated().map { "\(LiveWords.ordinal($0.offset + 1)) \($0.element.name), \(LiveWords.grouped($0.element.amount))" }
+            LiveSmall(words: "This round: " + named.joined(separator: "; ") + ".", dim: true)
+        }
+        if let laurel = world.laurelToClaim(of: trial, day: day) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                LiveSmall(words: "You were \(LiveWords.ordinal(laurel.place)) when its last round ended: \(world.holdings(laurel.goods, laurel.hastes))")
+                Spacer(minLength: 0)
+                QuietButton(title: "Claim", prominent: true, enabled: session.asking == 0, name: "Claim what your place in \(trial.name) gave") {
+                    Task { await session.claimPlace(contest: trial.id) }
+                }
             }
         }
     }

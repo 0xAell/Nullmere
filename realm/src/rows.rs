@@ -1236,6 +1236,58 @@ impl Tally {
     }
 }
 
+/// Where a player stands in a contest's round, for all to read: what they
+/// scored in it, when they last scored (the earlier first among equal
+/// points), and whether they have claimed what their place gives once
+/// the round is over. Keyed by player, contest and round; found by
+/// contest and round together (`Standing::of_round`).
+#[spacetimedb::table(accessor = standing, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Standing {
+    #[primary_key]
+    pub id: u64,
+    #[index(btree)]
+    pub contest_round: u64,
+    pub player: u64,
+    pub trial: u8,
+    pub round: u64,
+    pub points: u64,
+    pub at: Seconds,
+    pub claimed: bool,
+}
+row!(Standing in standing, by id, contest_round);
+
+impl Standing {
+    pub fn key(player: u64, trial: u8, round: u64) -> u64 {
+        (player << 24) | ((round & 0xFFFF) << 8) | trial as u64
+    }
+
+    /// A contest's round, as its standings are found by.
+    pub fn of_round(trial: u8, round: u64) -> u64 {
+        (round << 8) | trial as u64
+    }
+}
+
+/// What each of the first three places of a contest's round gives, for
+/// clients to show. Keyed as a prize is, by contest and place from 1.
+#[spacetimedb::table(accessor = laurel, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Laurel {
+    #[primary_key]
+    pub id: u64,
+    pub trial: u8,
+    pub place: u8,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+    pub brief_hastes: u64,
+    pub hour_hastes: u64,
+    pub long_hastes: u64,
+    pub peaces: u64,
+}
+row!(Laurel in laurel, by id);
+
 /// An item, for clients to show: its name, what it does, the time it
 /// takes off a work or the peace it keeps as written (in a realm that
 /// runs faster, as much less as everything there takes less), and which
@@ -1548,6 +1600,8 @@ pub trait Db:
     + Table<Trial>
     + Table<Prize>
     + Table<Tally>
+    + Table<Standing>
+    + Table<Laurel>
     + Table<Rally>
     + Table<Muster>
     + Table<Plea>
@@ -1621,6 +1675,8 @@ impl<
             + Table<Trial>
             + Table<Prize>
             + Table<Tally>
+            + Table<Standing>
+            + Table<Laurel>
             + Table<Rally>
             + Table<Muster>
             + Table<Plea>

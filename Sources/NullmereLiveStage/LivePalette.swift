@@ -18,6 +18,7 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case forge(Int)
         case hire
         case claimPrize(contest: Int, place: Int)
+        case claimPlace(contest: Int)
         case promote(building: UInt64, from: Int, to: Int, count: UInt64)
         case claimBoons
         case helpAll
@@ -133,6 +134,11 @@ extension LiveSession {
             let name = world.trials[prize.trial]?.name ?? "the contest"
             all.append(LiveCommand(title: "Claim the prize of \(name) at \(prize.points) points", act: .claimPrize(contest: prize.trial, place: prize.place)))
         }
+        let day = world.today(at: seconds)
+        for trial in world.trials.values.sorted(by: { $0.id < $1.id }) {
+            guard let laurel = world.laurelToClaim(of: trial, day: day) else { continue }
+            all.append(LiveCommand(title: "Claim what your place in \(trial.name) gave: \(LiveWords.ordinal(laurel.place))", act: .claimPlace(contest: trial.id)))
+        }
         if let home = world.city?.hex {
             func nearest<T>(_ things: [T], _ hex: (T) -> LiveHex) -> T? {
                 things.min { (hex($0).distance(to: home), hex($0).packed) < (hex($1).distance(to: home), hex($1).packed) }
@@ -181,6 +187,7 @@ extension LiveSession {
         case .forge(let piece): await forge(piece: piece)
         case .hire: await hire()
         case .claimPrize(let contest, let place): await claimPrize(contest: contest, place: place)
+        case .claimPlace(let contest): await claimPlace(contest: contest)
         case .promote(let building, let from, let to, let count): await promote(building: building, from: from, to: to, count: count)
         case .claimBoons: await claimBoons()
         case .helpAll: await helpAll()
