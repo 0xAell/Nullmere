@@ -21,8 +21,14 @@
 public enum WorldShaders {
     public static let landVertex = "nm_land_vertex"
     public static let landFragment = "nm_land_fragment"
+    /// The land by day, its relief the sun finds with it: its own function,
+    /// so the night's carries none of that code (CI runs 1065 to 1069:
+    /// standing in the night's, unrun, it cost a millisecond a frame).
+    public static let landDayFragment = "nm_land_day_fragment"
     public static let waterVertex = "nm_water_vertex"
     public static let waterFragment = "nm_water_fragment"
+    /// The water by day, its small waves with it, as the land's.
+    public static let waterDayFragment = "nm_water_day_fragment"
     public static let modelVertex = "nm_model_vertex"
     public static let modelFragment = "nm_model_fragment"
     public static let shadowVertex = "nm_shadow_vertex"
@@ -31,8 +37,8 @@ public enum WorldShaders {
     public static let skyVertex = "nm_sky_vertex"
     public static let skyFragment = "nm_sky_fragment"
 
-    public static let functions = [landVertex, landFragment, waterVertex, waterFragment, modelVertex, modelFragment,
-                                   shadowVertex, moteVertex, moteFragment, skyVertex, skyFragment]
+    public static let functions = [landVertex, landFragment, landDayFragment, waterVertex, waterFragment, waterDayFragment,
+                                   modelVertex, modelFragment, shadowVertex, moteVertex, moteFragment, skyVertex, skyFragment]
 
     public static let source = #"""
     #include <metal_stdlib>
@@ -158,6 +164,22 @@ public enum WorldShaders {
         float c = nm_hash12(i + float2(0.0, 1.0));
         float d = nm_hash12(i + float2(1.0, 1.0));
         return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+    }
+
+    // The noise's slope at a point, from the same four corners one lookup
+    // reads: how much it rises a unit east and a unit south, for a relief
+    // the light finds, at a third of the cost of reading it three times.
+    float2 nm_noiseSlope(float2 p) {
+        float2 i = floor(p);
+        float2 f = fract(p);
+        float2 u = f * f * (3.0 - 2.0 * f);
+        float2 du = 6.0 * f * (1.0 - f);
+        float a = nm_hash12(i);
+        float b = nm_hash12(i + float2(1.0, 0.0));
+        float c = nm_hash12(i + float2(0.0, 1.0));
+        float d = nm_hash12(i + float2(1.0, 1.0));
+        float k = a - b - c + d;
+        return du * float2(b - a + k * u.y, c - a + k * u.x);
     }
 
     float nm_fbm(float2 p) {
@@ -800,7 +822,10 @@ public enum WorldShaders {
     }
 
     // The land at a point of it: `known` as the mesh's corner had it.
-    float4 nm_landShade(float3 world, float3 normal, float3 colour, float known
+    // `detail`: the day's relief, the sun finding the grass's tussocks; a
+    // constant where it is called, so a function that passes false holds
+    // none of it.
+    float4 nm_landShade(float3 world, float3 normal, float3 colour, float known, bool detail
                         NM_FRAME_ARGUMENT NM_TEXTURE_ARGUMENT NM_SHADOW_ARGUMENT NM_PALETTE_ARGUMENT NM_HEIGHTS_ARGUMENT) {
         float time = frame.eye.w;
         float radius = frame.world.x;
@@ -839,8 +864,24 @@ public enum WorldShaders {
             // All of it at noon, some of it at dusk and dawn (by how
             // brightly the hour's marks are lit), none of it at night.
             // Its pattern is the world's: the same wherever the window lies.
-            float3 albedo = nm_ground(world + float3(frame.origin.x, 0.0, frame.origin.y), n, colour, pixel,
-                                      frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0));
+            float day = frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0);
+            float3 grounded = world + float3(frame.origin.x, 0.0, frame.origin.y);
+            float3 albedo = nm_ground(grounded, n, colour, pixel, day);
+            if (detail) {
+                // Tussocks: under the sun a meadow's grass has a small relief
+                // of its own, a third of a hex or so across, that the light
+                // finds, so a meadow is grass and not a sheet; the heath and
+                // the sand a gentler one; salt and snow lie flat, and the
+                // lake's bed. None once a tussock is under twenty pixels or so.
+                float green = clamp((colour.g - max(colour.r, colour.b)) * 7.0, 0.0, 1.0);
+                float bare = (1.0 - green) * (1.0 - smoothstep(0.3, 0.42, min(colour.r, min(colour.g, colour.b)))) * step(0.0, world.y);
+                float tussocks = day * (green + 0.55 * bare) * (1.0 - smoothstep(0.012, 0.03, pixel));
+                if (tussocks > 0.0) {
+                    float2 slope = 0.3 * nm_noiseSlope(grounded.xz * 3.1)
+                        + 0.18 * nm_noiseSlope(grounded.xz * 8.7 + float2(13.0, 7.0));
+                    n = normalize(n - float3(slope.x, 0.0, slope.y) * 2.0 * tussocks);
+                }
+            }
         #else
             float3 albedo = colour;
         #endif
@@ -945,7 +986,9 @@ public enum WorldShaders {
 
     // The still water at a point of its face; nothing where the land
     // stands above it.
-    float4 nm_waterShade(float3 world NM_FRAME_ARGUMENT NM_TEXTURE_ARGUMENT NM_HEIGHTS_ARGUMENT) {
+    // `detail`: the day's small waves; a constant where it is called, as
+    // the land's.
+    float4 nm_waterShade(float3 world, bool detail NM_FRAME_ARGUMENT NM_TEXTURE_ARGUMENT NM_HEIGHTS_ARGUMENT) {
         float2 grid = (world.xz - frame.heights.xy) / frame.haze.w + 0.5;
         float ground = NM_HEIGHT(grid / frame.heights.zw);
         float depth = -ground;
@@ -969,10 +1012,30 @@ public enum WorldShaders {
         // deeps; as bright as the hour's sky, and nothing at all by night.
         float sunlit = (1.0 - night) * dot(frame.skyLight.rgb, float3(0.3, 0.5, 0.2)) / 0.44;
         float3 body = mix(float3(0.075, 0.30, 0.32), float3(0.016, 0.08, 0.21), smoothstep(0.04, 0.8, depth)) * sunlit;
+        // By day small waves run over it, two trains of them drifting
+        // across each other: the water a shade lighter or darker as each
+        // turns toward the sun or away, and where one turns the sun to the
+        // eye, a glint. Fewer at the Still's calm; none once smaller than
+        // a pixel.
+        float3 glints = float3(0.0);
+        if (detail) {
+            float daylit = (1.0 - night) * (1.0 - 0.8 * clamp(frame.still.x, 0.0, 1.0))
+                * (1.0 - smoothstep(0.04, 0.12, max(fwidth(world.x), fwidth(world.z))));
+            if (daylit > 0.0) {
+                float2 w = (world.xz + frame.origin.xy) * 2.3;
+                float2 slope = 0.25 * nm_noiseSlope(w + nm_drift(time, 0.06))
+                    + 0.15 * nm_noiseSlope(w * 1.9 + float2(7.0, 3.0) - nm_drift(time + 11.0, 0.05));
+                float3 wave = normalize(float3(-slope.x * 1.5 * daylit, 1.0, -slope.y * 1.5 * daylit));
+                float3 sun = normalize(frame.key.xyz);
+                body *= 1.0 + 0.9 * (dot(wave, sun) - sun.y);
+                float spark = pow(max(dot(reflect(look, wave), sun), 0.0), 400.0);
+                glints = frame.keyColour.rgb * frame.key.w * spark * 0.5 * daylit;
+            }
+        }
         float3 starlit = frame.water.rgb + body
             + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moonFace.xyz)) * night * fresnel
             + nm_daySky(mirrored NM_FRAME_PASS) * glass;
-        float3 moonlit = nm_moonlight(mirrored, frame.moonFace.xyz) * fresnel * frame.moonFace.w;
+        float3 moonlit = nm_moonlight(mirrored, frame.moonFace.xyz) * fresnel * frame.moonFace.w + glints;
         // The moon's road: on the still water's faint swell, a broken glitter
         // of its light along its bearing from the eye, narrow near the moon's
         // image and widening toward the shore the eye stands on.
@@ -1223,7 +1286,16 @@ public enum WorldShaders {
                                      texture2d<float> heights [[texture(1)]],
                                      depth2d<float> shadows [[texture(2)]],
                                      texture2d<float, access::read> housePalette [[texture(3)]]) {
-        return nm_landShade(in.world, in.normal, in.colour, in.known, frame, tiles, shadows, housePalette, heights);
+        return nm_landShade(in.world, in.normal, in.colour, in.known, false, frame, tiles, shadows, housePalette, heights);
+    }
+
+    fragment float4 nm_land_day_fragment(LandOut in [[stage_in]],
+                                         constant FrameUniforms &frame [[buffer(0)]],
+                                         texture2d<float, access::read> tiles [[texture(0)]],
+                                         texture2d<float> heights [[texture(1)]],
+                                         depth2d<float> shadows [[texture(2)]],
+                                         texture2d<float, access::read> housePalette [[texture(3)]]) {
+        return nm_landShade(in.world, in.normal, in.colour, in.known, true, frame, tiles, shadows, housePalette, heights);
     }
 
     // MARK: The still water
@@ -1246,7 +1318,14 @@ public enum WorldShaders {
                                       constant FrameUniforms &frame [[buffer(0)]],
                                       texture2d<float, access::read> tiles [[texture(0)]],
                                       texture2d<float> heights [[texture(1)]]) {
-        return nm_waterShade(in.world, frame, tiles, heights);
+        return nm_waterShade(in.world, false, frame, tiles, heights);
+    }
+
+    fragment float4 nm_water_day_fragment(WaterOut in [[stage_in]],
+                                          constant FrameUniforms &frame [[buffer(0)]],
+                                          texture2d<float, access::read> tiles [[texture(0)]],
+                                          texture2d<float> heights [[texture(1)]]) {
+        return nm_waterShade(in.world, true, frame, tiles, heights);
     }
 
     // MARK: The sky

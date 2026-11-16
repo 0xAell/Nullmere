@@ -90,9 +90,20 @@ final class WorldRenderer {
     /// What lies past the land: the dark.
     static let night = MTLClearColor(red: 0.035, green: 0.04, blue: 0.055, alpha: 1)
 
+    /// Whether a frame is drawn with the day's relief and waves: whenever
+    /// the hour sets any of its colours down by the day's curve, from dusk
+    /// to dawn's end; never by night.
+    static func drawsByDay(_ frame: FrameUniforms) -> Bool {
+        frame.groundLight.w > 0
+    }
+
     let device: any MTLDevice
     private let commandQueue: any MTLCommandQueue
     private let landPipeline: any MTLRenderPipelineState
+    /// The land and the water by day, their relief and waves with them:
+    /// pipelines of their own, so the night's frames carry none of it.
+    private let landDayPipeline: any MTLRenderPipelineState
+    private let waterDayPipeline: any MTLRenderPipelineState
     private let modelPipeline: any MTLRenderPipelineState
     private let waterPipeline: any MTLRenderPipelineState
     private let motePipeline: any MTLRenderPipelineState
@@ -146,6 +157,8 @@ final class WorldRenderer {
         }
         landPipeline = try pipeline("Nullmere land", WorldShaders.landVertex, WorldShaders.landFragment, blends: false)
         waterPipeline = try pipeline("Nullmere water", WorldShaders.waterVertex, WorldShaders.waterFragment, blends: true)
+        landDayPipeline = try pipeline("Nullmere land by day", WorldShaders.landVertex, WorldShaders.landDayFragment, blends: false)
+        waterDayPipeline = try pipeline("Nullmere water by day", WorldShaders.waterVertex, WorldShaders.waterDayFragment, blends: true)
         modelPipeline = try pipeline("Nullmere models", WorldShaders.modelVertex, WorldShaders.modelFragment, blends: false, coverage: true)
         motePipeline = try pipeline("Nullmere motes", WorldShaders.moteVertex, WorldShaders.moteFragment, blends: true, premultiplied: true)
         skyPipeline = try pipeline("Nullmere sky", WorldShaders.skyVertex, WorldShaders.skyFragment, blends: false)
@@ -347,9 +360,13 @@ final class WorldRenderer {
         // the land casts, and the water's for its depth.
         encoder.setFragmentTexture(land.heights, index: 1)
 
+        // By day, from dusk to dawn's end, the land and the water drawn with
+        // the day's relief and waves; by night without them.
+        let byDay = WorldRenderer.drawsByDay(uniforms)
+
         // The land: only its chunks in view.
         if !WorldRenderer.leftOut.contains("land") {
-            encoder.setRenderPipelineState(landPipeline)
+            encoder.setRenderPipelineState(byDay ? landDayPipeline : landPipeline)
             encoder.setVertexBuffer(land.vertices, offset: 0, index: 0)
             for run in land.regions.runs(seenBy: frame.viewProjection) {
                 encoder.drawIndexedPrimitives(type: .triangle, indexCount: run.count, indexType: .uint32, indexBuffer: land.indices,
@@ -381,7 +398,7 @@ final class WorldRenderer {
         // The still water over all, last, so what stands in the shallows
         // stands in it.
         if !WorldRenderer.leftOut.contains("water") {
-            encoder.setRenderPipelineState(waterPipeline)
+            encoder.setRenderPipelineState(byDay ? waterDayPipeline : waterPipeline)
             encoder.setDepthStencilState(glassy)
             encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         }

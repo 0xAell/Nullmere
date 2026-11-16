@@ -83,6 +83,23 @@ final class WorldPerformanceTests: XCTestCase {
         print("PERF a realm of 96 seats near on \(device.name): \(String(format: "%.2f", wider.culled)) ms drawing what is in view")
         XCTAssertLessThanOrEqual(wider.culled, culledMedian * 1.25 + 1, "A realm twice as wide costs a frame near what the narrower does")
         XCTAssertLessThan(wider.culled, 16.7, "and well inside one")
+
+        // By day, its land and water drawn with the day's relief and waves,
+        // which the night's frames above carry none of: told, to be held
+        // once it is known.
+        let widerByDay = try measureNear(seats: 96, seed: "a wider realm drawn", wholeToo: false, renderer: renderer, daylight: .day)
+        print("PERFMETRIC wider.gpu.scale28.day.p50 \(String(format: "%.3f", widerByDay.culled))")
+        print("PERF a realm of 96 seats near by day on \(device.name): \(String(format: "%.2f", widerByDay.culled)) ms drawing what is in view")
+    }
+
+    /// The land and the water are drawn with the day's relief and waves from
+    /// dusk to dawn's end, and by night by functions that hold none of it.
+    func testTheDaysReliefIsDrawnByDayAlone() {
+        XCTAssertTrue(WorldRenderer.drawsByDay(FrameUniforms(daylight: .day)))
+        XCTAssertTrue(WorldRenderer.drawsByDay(FrameUniforms(daylight: .dusk)))
+        XCTAssertTrue(WorldRenderer.drawsByDay(FrameUniforms(daylight: .dawn)))
+        XCTAssertFalse(WorldRenderer.drawsByDay(FrameUniforms(daylight: .night)))
+        XCTAssertFalse(WorldRenderer.drawsByDay(FrameUniforms()), "A frame told no hour is the night's")
     }
 
     /// Close in on a seat, its holds' keeps and works standing and the land's
@@ -138,7 +155,8 @@ final class WorldPerformanceTests: XCTestCase {
     /// The GPU's median time for a frame near a realm's seat, every hex
     /// known, drawing only the regions in view; and, `wholeToo`, drawing
     /// the whole land, as was done before.
-    private func measureNear(seats: Int, seed: String, wholeToo: Bool, renderer: WorldRenderer) throws -> (culled: Double, whole: Double?) {
+    private func measureNear(seats: Int, seed: String, wholeToo: Bool, renderer: WorldRenderer,
+                             daylight: Daylight = .night) throws -> (culled: Double, whole: Double?) {
         // As wide as the old realm made a lake for so many seats.
         let radius: Int = seats > 12 ? Int((36.0 * (Double(seats) / 12.0).squareRoot()).rounded()) : 36
         let state = TestWorld(seedText: seed, houses: seats, radius: radius)
@@ -167,7 +185,8 @@ final class WorldPerformanceTests: XCTestCase {
             var times: [Double] = []
             for frame in 0..<85 {
                 let uniforms = FrameUniforms.make(camera: camera, size: size, pixelsPerPoint: 2 * fraction, time: Float(3 + Double(frame) / 60),
-                                                  motion: 1, radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil)
+                                                  motion: 1, radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil,
+                                                  daylight: daylight)
                 if let ms = renderer.measureFrame(uniforms, scene: scene, into: target) { times.append(ms) }
             }
             let settled = Array(times.dropFirst(5)).sorted()

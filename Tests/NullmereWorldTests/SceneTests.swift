@@ -32,7 +32,7 @@ final class SceneTests: XCTestCase {
         XCTAssertEqual(instance.params, Vec4(0.4, 0.5, 2, 1))
         XCTAssertEqual(instance.flags & ModelInstance.alwaysShown, 1)
         XCTAssertTrue(WorldShaders.source.contains("struct ModelInstance"))
-        XCTAssertEqual(Set(WorldShaders.functions).count, 11)
+        XCTAssertEqual(Set(WorldShaders.functions).count, 13)
         for name in WorldShaders.functions {
             XCTAssertTrue(WorldShaders.source.contains(" \(name)("), "\(name) is in the source")
         }
@@ -58,7 +58,8 @@ final class SceneTests: XCTestCase {
         for name in lighting {
             XCTAssertFalse(metal.contains(name), "The Metal functions leave \(name) to the shared shading")
         }
-        for (function, shade) in zip(["nm_land_fragment", "nm_water_fragment", "nm_sky_fragment", "nm_model_fragment", "nm_mote_fragment"], shades) {
+        for (function, shade) in Array(zip(["nm_land_fragment", "nm_water_fragment", "nm_sky_fragment", "nm_model_fragment", "nm_mote_fragment"], shades))
+            + [("nm_land_day_fragment", "nm_landShade"), ("nm_water_day_fragment", "nm_waterShade")] {
             let body = try XCTUnwrap(metal.range(of: "fragment float4 \(function)(")).upperBound
             let end = try XCTUnwrap(metal.range(of: "\n}", range: body..<metal.endIndex)).lowerBound
             XCTAssertTrue(metal[body..<end].contains("return \(shade)("), "\(function) only hands its inputs to \(shade)")

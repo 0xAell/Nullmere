@@ -93,7 +93,7 @@ const landFragment = fragmentHeader + `
 in vec3 vWorld; in vec3 vNormal; in vec3 vColour; in float vKnown;
 out vec4 outColour;
 void main() {
-  outColour = nm_landShade(vWorld, vNormal, vColour, vKnown);
+  outColour = nm_landShade(vWorld, vNormal, vColour, vKnown, true);
 }`;
 const waterVertex = header + `
 out vec3 vWorld;
@@ -107,7 +107,7 @@ const waterFragment = fragmentHeader + `
 in vec3 vWorld;
 out vec4 outColour;
 void main() {
-  outColour = nm_waterShade(vWorld);
+  outColour = nm_waterShade(vWorld, true);
 }`;
 // One triangle over the whole view at the far plane, as the game's sky.
 const skyVertex = header + `
