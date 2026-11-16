@@ -690,11 +690,18 @@ final class LiveSessionTests: XCTestCase {
         rows["place"]?.append([n(near.packed), n(6), n(1)])
         rows["place"]?.append([n(far.packed), n(6), n(2)])
         rows["my_finds"] = [[n(UInt64(1) << 32 | 1), n(1), n(1), n(2_000)]]
+        // Her task: to find what a cairn holds, which her scouts have.
+        rows["task"] = [[n(13), n(LiveTask.found), n(1), n(0), .string("Send a scout to find what a cairn holds."), n(3_000), n(3_000), n(1_500), n(0)],
+                        [n(14), n(LiveTask.found), n(2), n(0), .string("Have your scouts find what 2 cairns hold."), n(1), n(0), n(0), n(0)]]
+        rows["my_progress"] = [[n(1), n(13)]]
         let line = StandInLine(rows: rows)
         let session = session(line)
         await session.open()
         func card(_ hex: LiveHex) -> LiveCard { session.card(for: session.selection(at: hex)) }
 
+        XCTAssertEqual(session.world.task?.words, "Send a scout to find what a cairn holds.")
+        XCTAssertTrue(session.world.task.map(session.world.isDone) ?? false, "one found: the task is done")
+        XCTAssertFalse(session.world.tasks[14].map(session.world.isDone) ?? true, "two asked of the next")
         guard case .cairn(let found) = session.selection(at: near) else { return XCTFail("the cairn is chosen") }
         XCTAssertEqual(found.level, 3)
         XCTAssertTrue(session.world.hasFound(found))

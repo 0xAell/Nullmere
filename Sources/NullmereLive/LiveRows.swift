@@ -675,6 +675,8 @@ public struct LiveTask: Equatable, Sendable, Identifiable {
     public static let cleared = 4
     public static let allied = 5
     public static let power = 6
+    /// Cairns whose hoards the player's scouts have found.
+    public static let found = 7
 
     public let step: Int
     public var id: Int { step }

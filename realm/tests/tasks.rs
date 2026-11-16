@@ -45,7 +45,7 @@ fn the_tasks_are_written_out_in_their_order_and_in_plain_words() {
     let written = Table::<Task>::all(&db);
     let tasks = catalog::tasks();
     assert_eq!(written.len(), tasks.len());
-    assert_eq!(written.len(), 22);
+    assert_eq!(written.len(), 24);
     for (index, task) in written.iter().enumerate() {
         let (goal, gives) = tasks[index];
         assert_eq!(task.step, index as u64 + 1);
@@ -58,6 +58,8 @@ fn the_tasks_are_written_out_in_their_order_and_in_plain_words() {
     assert_eq!(written[1].words, "Build a Barracks.");
     assert_eq!(Goal::Raised(Kind::Embassy, 1).words(), "Build an Embassy.");
     assert_eq!(Goal::Raised(Kind::Range, 1).words(), "Build an Archery Range.");
+    assert_eq!(Goal::Found(1).words(), "Send a scout to find what a cairn holds.");
+    assert_eq!(Goal::Found(3).words(), "Have your scouts find what 3 cairns hold.");
     assert_eq!(Goal::Raised(Kind::Farm, 2).words(), "Raise your Farm to level 2.");
     assert_eq!(Goal::Soldiers(1_500).words(), "Have 1,500 soldiers.");
     assert_eq!(Goal::Cleared(3).words(), "Clear a level 3 barrow of the Unquiet.");
@@ -127,6 +129,10 @@ fn a_task_is_claimed_once_it_is_done() {
     db.advance(START + 30, |db, timer| rules::fire(db, timer));
     db.call(|db| rules::found_alliance(db, player, "Keepers", "MERE")).unwrap();
     assert!(rules::met(&db, player, Goal::Allied));
+    // A cairn's hoard found by the player's scouts.
+    assert!(!rules::met(&db, player, Goal::Found(1)));
+    db.insert(realm::rows::Find { id: realm::rows::Find::key(player, 1), player, cairn: 1, at: START });
+    assert!(rules::met(&db, player, Goal::Found(1)) && !rules::met(&db, player, Goal::Found(2)));
     let power = rules::city_of(&db, player).unwrap().power;
     assert!(rules::met(&db, player, Goal::Power(power)) && !rules::met(&db, player, Goal::Power(power + 1)));
     // Someone with no city has done nothing.

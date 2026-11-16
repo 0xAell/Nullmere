@@ -3,7 +3,7 @@
 
 use super::{asking, building_of, city_of, goods, member_of, set_goods, settle, squads, Refusal};
 use crate::catalog::{self, Goal, Goods};
-use crate::rows::{Db, Hunt, March, Progress, Task, Troop};
+use crate::rows::{Db, Find, Hunt, March, Progress, Task, Troop};
 use crate::store::Table;
 
 /// Writes the tasks out as rows, for clients to show, as the realm opens.
@@ -43,6 +43,7 @@ pub fn met(db: &impl Db, player: u64, goal: Goal) -> bool {
         Goal::Cleared(level) => Table::<Hunt>::get(db, player).is_some_and(|hunt| hunt.cleared >= level),
         Goal::Allied => member_of(db, player).is_some(),
         Goal::Power(power) => city.power >= power,
+        Goal::Found(count) => Table::<Find>::by(db, 0, player).len() as u64 >= count,
     }
 }
 

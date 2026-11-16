@@ -883,6 +883,8 @@ pub enum Goal {
     Allied,
     /// So much power.
     Power(u64),
+    /// So many cairns whose hoards the player's scouts have found.
+    Found(u64),
 }
 
 impl Goal {
@@ -895,6 +897,7 @@ impl Goal {
             Goal::Cleared(level) => (4, level as u64, 0),
             Goal::Allied => (5, 0, 0),
             Goal::Power(power) => (6, power, 0),
+            Goal::Found(count) => (7, count, 0),
         }
     }
 
@@ -908,6 +911,8 @@ impl Goal {
             Goal::Cleared(level) => format!("Clear a level {level} barrow of the Unquiet."),
             Goal::Allied => "Join an alliance, or found one.".to_string(),
             Goal::Power(power) => format!("Reach {} power.", grouped(power)),
+            Goal::Found(1) => "Send a scout to find what a cairn holds.".to_string(),
+            Goal::Found(count) => format!("Have your scouts find what {count} cairns hold."),
         }
     }
 }
@@ -929,6 +934,8 @@ pub fn tasks() -> Vec<(Goal, Goods)> {
         (Goal::Keep(3), give(3_000, 3_000, 1_500)),
         (Goal::Raised(Building::Wall, 1), give(2_000, 2_000, 2_000)),
         (Goal::Raised(Building::Hospital, 1), give(3_000, 3_000, 1_000)),
+        (Goal::Raised(Building::ScoutCamp, 1), give(2_000, 2_000, 1_000)),
+        (Goal::Found(1), give(3_000, 3_000, 1_500)),
         (Goal::Soldiers(100), give(4_000, 4_000, 1_000)),
         (Goal::Cleared(2), give(4_000, 4_000, 2_000)),
         (Goal::Keep(4), give(6_000, 6_000, 3_000)),

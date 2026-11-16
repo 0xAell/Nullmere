@@ -272,6 +272,7 @@ public struct LiveWorld: Equatable, Sendable {
         case LiveTask.cleared: return (hunt?.cleared ?? 0) >= Int(task.amount)
         case LiveTask.allied: return myMembership != nil
         case LiveTask.power: return city.power >= task.amount
+        case LiveTask.found: return UInt64(finds.count) >= task.amount
         default: return false
         }
     }
