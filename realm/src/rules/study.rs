@@ -22,9 +22,9 @@ pub fn learnt(db: &impl Db, city: u64, topic: Topic) -> u32 {
 }
 
 /// What a topic gives a city, in hundredths: each level's share, times
-/// the levels learnt.
+/// the levels learnt in the city and by its owner's alliance.
 pub fn boost(db: &impl Db, city: u64, topic: Topic) -> u64 {
-    topic.each() * learnt(db, city, topic) as u64
+    topic.each() * (learnt(db, city, topic) + super::learnt_together(db, city, topic)) as u64
 }
 
 /// A length of time shortened by a topic's hundredths, never to nothing.

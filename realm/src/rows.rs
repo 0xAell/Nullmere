@@ -513,6 +513,8 @@ impl Report {
     pub const REINFORCED: u8 = 6;
     /// Of the player's alliance's Moonspire, and of the season's end.
     pub const SPIRE: u8 = 7;
+    /// Their alliance has learnt a topic to a new level.
+    pub const LEARNING: u8 = 8;
 }
 
 /// An alliance of players. Everyone may read it.
@@ -741,6 +743,34 @@ pub struct Spire {
     pub moonsalt: u64,
 }
 row!(Spire in spire, by alliance);
+
+/// What an alliance has learnt of a topic (`catalog::Topic`), and, when
+/// its next level is not yet paid for, what its members have given
+/// toward it; when it is, till when they study it. For everyone to read.
+/// Keyed by alliance and topic together: `Learning::key`.
+#[spacetimedb::table(accessor = learning, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Learning {
+    #[primary_key]
+    pub id: u64,
+    #[index(btree)]
+    pub alliance: u64,
+    pub topic: u8,
+    pub level: u32,
+    /// When the level being studied is learnt; 0 when none is.
+    pub rises_at: Seconds,
+    pub timer: u64,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+}
+row!(Learning in learning, by id, alliance);
+
+impl Learning {
+    pub fn key(alliance: u64, topic: u8) -> u64 {
+        (alliance << 8) | topic as u64
+    }
+}
 
 /// A wardstone: an alliance's mark on the land. Once it stands it claims
 /// every hex within `catalog::WARD_REACH` of it that an older one does
@@ -1146,6 +1176,7 @@ pub trait Db:
     + Table<Bond>
     + Table<Keeper>
     + Table<Ward>
+    + Table<Learning>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1201,6 +1232,7 @@ impl<
             + Table<Bond>
             + Table<Keeper>
             + Table<Ward>
+            + Table<Learning>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

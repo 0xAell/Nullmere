@@ -664,6 +664,24 @@ pub const WARD_SECONDS: i64 = 3_600;
 /// Hundredths faster an alliance's members gather on its own land.
 pub const WARD_GATHERING: u64 = 25;
 
+/// The highest level an alliance learns a topic to: each level gives its
+/// members what a level of it learnt in their own city does.
+pub const TOP_ALLIANCE_STUDY: u32 = 5;
+
+/// What an alliance's members give together for it to learn a topic to a
+/// level: a hundred thousand each of grain, timber and stone, times the
+/// level squared.
+pub fn alliance_study_cost(level: u32) -> Goods {
+    let each = 100_000 * level.max(1) as u64 * level.max(1) as u64;
+    Goods::of(each, each, each, 0)
+}
+
+/// How long an alliance takes to learn a topic to a level once it is paid
+/// for, at the realm's first pace: two hours times the level.
+pub fn alliance_study_seconds(level: u32) -> i64 {
+    7_200 * level.max(1) as i64
+}
+
 /// The wardstones an alliance may have: one, and one more for every five
 /// members, twenty at most.
 pub fn wards_for(members: u32) -> u32 {

@@ -15,6 +15,7 @@ mod entry;
 mod favour;
 mod help;
 mod items;
+mod learning;
 mod march;
 mod rally;
 mod siege;
@@ -34,6 +35,7 @@ pub use entry::*;
 pub use favour::*;
 pub use help::*;
 pub use items::*;
+pub use learning::*;
 pub use march::*;
 pub use rally::*;
 pub use siege::*;
@@ -55,6 +57,7 @@ pub fn fire(db: &mut impl Db, timer: &Timer) {
         TIMER_MARCH => arrive(db, timer.subject),
         TIMER_SPIRE => spire_risen(db, timer.subject),
         TIMER_SEASON => turn_season(db, timer.subject),
+        TIMER_LEARNING => learnt_together_now(db, timer.subject),
         _ => {}
     }
 }
@@ -190,6 +193,9 @@ pub enum Refusal {
     OthersLand(String),
     OffOwnLand,
     NoSuchWard,
+    LearntTogether,
+    StudiedTogether,
+    NothingNeeded,
     NoSuchTopic,
     AlreadyStudying,
     /// The Academy can't be raised while it studies.
@@ -343,6 +349,9 @@ impl fmt::Display for Refusal {
             Refusal::NoWardThere => "No wardstone can stand there: it needs clear ground.",
             Refusal::OffOwnLand => "A wardstone after the first must stand on your alliance's own land.",
             Refusal::NoSuchWard => "Your alliance has no such wardstone.",
+            Refusal::LearntTogether => "Your alliance has learnt all there is of that.",
+            Refusal::StudiedTogether => "Your alliance is studying that now. Give toward it again when it is learnt.",
+            Refusal::NothingNeeded => "Nothing more of those goods is needed for that.",
             Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",
