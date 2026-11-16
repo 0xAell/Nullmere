@@ -1,16 +1,18 @@
 //! What a player keeps in their satchel: hastes, each taking so much time
-//! off a work under way in their city when it is used. The day's chests
-//! hold them.
+//! off a work under way in their city when it is used, and peace, keeping
+//! their city from attack for a while. The day's chests and the contests'
+//! prizes hold them.
 
 use super::{asking, city_of, did, realm, Refusal, TIMER_JOB};
 use crate::catalog::{self, Deed, Item};
-use crate::rows::{Db, Job, Satchel, Ware};
+use crate::rows::{City, Db, Job, March, Muster, Rally, Satchel, Ware};
 use crate::store::Table;
 
 /// Writes the items out as rows, for clients to show, as the realm opens.
 pub fn write_wares(db: &mut impl Db) {
     for item in Item::ALL {
-        db.insert(Ware { item: item as u64, name: item.name().to_string(), words: item.words(), seconds: item.seconds() });
+        let kind = if item.is_peace() { Ware::PEACE } else { Ware::HASTE };
+        db.insert(Ware { item: item as u64, name: item.name().to_string(), words: item.words(), seconds: item.seconds(), kind });
     }
 }
 
@@ -45,6 +47,9 @@ pub fn use_item(db: &mut impl Db, player: u64, item: u8, job: u64) -> Result<Job
     asking(db, player)?;
     let city = city_of(db, player)?;
     let item = Item::of(item).ok_or(Refusal::NoSuchItem)?;
+    if item.is_peace() {
+        return Err(Refusal::NotAHaste);
+    }
     let mut job = Table::<Job>::get(db, job)
         .filter(|row| row.city == city.id && matches!(row.kind, Job::RAISE | Job::STUDY | Job::TRAIN | Job::HEAL))
         .ok_or(Refusal::NoSuchJob)?;
@@ -65,4 +70,43 @@ pub fn use_item(db: &mut impl Db, player: u64, item: u8, job: u64) -> Result<Job
     db.update(job.clone());
     did(db, player, Deed::Hasten, 1);
     Ok(job)
+}
+
+/// Whether any of a player's armies is out against a city: sent to attack
+/// one, or in a rally against one, and not yet on its way home.
+fn against_a_city(db: &impl Db, player: u64) -> bool {
+    Table::<March>::by(db, 0, player).into_iter().filter(|march| march.state != March::RETURNING).any(|march| match march.kind {
+        March::ATTACK => true,
+        March::RALLY => Table::<Muster>::get(db, march.id).and_then(|muster| Table::<Rally>::get(db, muster.rally)).is_some_and(|rally| rally.city != 0),
+        _ => false,
+    })
+}
+
+/// A player uses one of an item of peace on their city: no army may
+/// attack it for so long from now, at the realm's pace. Not while any of
+/// their armies is out against a city, and not where the city is already
+/// at peace for longer.
+pub fn keep_peace(db: &mut impl Db, player: u64, item: u8) -> Result<City, Refusal> {
+    asking(db, player)?;
+    let mut city = city_of(db, player)?;
+    let item = Item::of(item).ok_or(Refusal::NoSuchItem)?;
+    if !item.is_peace() {
+        return Err(Refusal::NotPeace);
+    }
+    let have = held(db, player, item);
+    if have == 0 {
+        return Err(Refusal::NoneLeft);
+    }
+    if against_a_city(db, player) {
+        return Err(Refusal::AttacksUnderWay);
+    }
+    let now = db.now();
+    let until = now + catalog::paced(item.seconds(), realm(db)?.pace).max(1);
+    if city.shield >= until {
+        return Err(Refusal::AtPeaceLonger(city.shield - now));
+    }
+    keep(db, player, item, have - 1);
+    city.shield = until;
+    db.update(city.clone());
+    Ok(city)
 }

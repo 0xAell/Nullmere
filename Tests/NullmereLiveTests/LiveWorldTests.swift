@@ -291,11 +291,12 @@ final class LiveWorldTests: XCTestCase {
             "alliance": [[n(4), n(1), n(2), .string("Keepers of the Mere"), .string("MERE"), n(1), n(1_000), n(2), .bool(true), .string("")]],
             "my_commanders": [[n(11), n(1), .string("Corwen"), n(1), n(6), n(0), n(0)], [n(12), n(1), .string("Halen"), n(5), n(1), n(0), n(0)]],
             "duty": [[n(2), n(5_000), n(20), .string("Gather 5,000 goods.")], [n(1), n(50), n(20), .string("Train 50 soldiers.")]],
-            "chest": [[n(1), n(20), n(5_000), n(5_000), n(0), n(0), n(2), n(0), n(0)], [n(2), n(60), n(0), n(0), n(10_000), n(50), n(0), n(1), n(0)]],
+            "chest": [[n(1), n(20), n(5_000), n(5_000), n(0), n(0), n(2), n(0), n(0)], [n(2), n(60), n(0), n(0), n(10_000), n(50), n(0), n(1), n(0), n(1)]],
             "grace": [[n(1), n(100), n(2)], [n(0), n(0), n(0)]],
         ]
         let seasons: [String: [[JSONValue]]] = [
-            "ware": [[n(1), .string("Five minutes' haste"), .string("Five minutes sooner."), n(300)]],
+            "ware": [[n(1), .string("Five minutes' haste"), .string("Five minutes sooner."), n(300)],
+                     [n(4), .string("Eight hours' peace"), .string("Keeps your city at peace for 8 hours."), n(28_800), n(2)]],
             "trial": [[n(1), .string("The Long Hunt"), .string("Clear barrows."), n(7), n(3)]],
             "prize": [[n(258), n(1), n(2), n(400), n(0), n(0), n(0), n(100), n(0), n(2), n(0)], [n(257), n(1), n(1), n(100), n(9_000), n(0), n(0), n(0), n(1), n(0), n(0)]],
             "spire": [[n(4), .string("Keepers of the Mere"), n(1), n(2), n(0), n(0), n(10_000), n(20_000), n(0), n(0)]],
@@ -307,7 +308,7 @@ final class LiveWorldTests: XCTestCase {
         let own: [String: [[JSONValue]]] = [
             "my_daily": [[n(1), n(12), n(60), n(1_200), n(0), n(1), n(0), n(1)]],
             "my_favour": [[n(1), n(140), n(1)]],
-            "my_satchel": [[n(Double(1 << 8 | 1)), n(1), n(1), n(3)], [n(Double(1 << 8 | 2)), n(1), n(2), n(0)]],
+            "my_satchel": [[n(Double(1 << 8 | 1)), n(1), n(1), n(3)], [n(Double(1 << 8 | 2)), n(1), n(2), n(0)], [n(Double(1 << 8 | 4)), n(1), n(4), n(1)]],
             "my_tallies": [[n(5), n(1), n(1), n(0), n(420), n(1)]],
             "my_skills": [[n(Double(11 << 8 | 1)), n(11), n(1), n(1), n(3)], [n(Double(11 << 8 | 6)), n(11), n(1), n(6), n(1)]],
             "my_bonds": [[n(11), n(1), n(12)]],
@@ -327,18 +328,21 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertEqual(world.duties[1].words, "Gather 5,000 goods.")
         XCTAssertEqual(world.chests.map(\.marks), [20, 60])
         XCTAssertEqual(world.chests[1].goods, LiveGoods(stone: 10_000, moonsalt: 50))
-        XCTAssertEqual(world.chests[0].hastes, [2, 0, 0])
+        XCTAssertEqual(world.chests[0].hastes, [2, 0, 0, 0], "an older row's peace is none")
+        XCTAssertEqual(world.chests[1].hastes, [0, 1, 0, 1])
+        XCTAssertEqual(world.holdings(world.chests[1].goods, world.chests[1].hastes), "10,000 stone and 50 moonsalt, haste, Eight hours' peace")
         XCTAssertEqual(world.graces.map(\.points), [0, 100])
         XCTAssertEqual(world.daily?.did(LiveDuty.gather), 1_200)
         XCTAssertEqual(world.daily?.did(LiveDuty.begin), 1)
         XCTAssertEqual([world.daily?.hasOpened(1), world.daily?.hasOpened(2)], [true, false])
         XCTAssertEqual(world.favour?.level, 1)
-        XCTAssertEqual(world.heldItems.map { $0.ware.name }, ["Five minutes' haste"], "an item none are left of is not held")
+        XCTAssertEqual(world.heldItems.map { $0.ware.name }, ["Five minutes' haste", "Eight hours' peace"], "an item none are left of is not held")
+        XCTAssertEqual(world.heldItems.map { $0.ware.isPeace }, [false, true], "a ware's kind is a haste unless the row says peace")
         XCTAssertEqual(world.heldItems.first?.count, 3)
         XCTAssertEqual(world.trials[1]?.name, "The Long Hunt")
         XCTAssertEqual((0..<7).map { world.trials[1]?.runs(on: $0) ?? false }, [true, true, true, false, false, false, false])
         XCTAssertEqual(world.prizes.map(\.place), [1, 2])
-        XCTAssertEqual(world.prizes[1].hastes, [0, 2, 0])
+        XCTAssertEqual(world.prizes[1].hastes, [0, 2, 0, 0])
         XCTAssertEqual(world.tallies.first?.points, 420)
         XCTAssertEqual([world.tallies.first?.hasClaimed(1), world.tallies.first?.hasClaimed(2)], [true, false])
 

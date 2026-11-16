@@ -8,8 +8,9 @@ import NullmereRealm
 // module's order (`LiveSchema` lists them; `LiveSchemaTests` holds the
 // lists to the module's source).
 
-/// A haste of each length a chest or a prize holds: five minutes', an
-/// hour's and eight hours', in that order.
+/// How many of each item a chest or a prize holds, by the item's number
+/// less one: five minutes' haste, an hour's, eight hours', and eight
+/// hours' peace.
 public typealias LiveHastes = [UInt64]
 
 /// One of the day's deeds, how much of it earns its marks, and how many.
@@ -42,7 +43,7 @@ public struct LiveChest: Equatable, Sendable, Identifiable {
         guard let id = cells.whole(0), let marks = cells.whole(1) else { return nil }
         (self.id, self.marks) = (id, marks)
         goods = LiveGoods(grain: cells.unsigned(2) ?? 0, timber: cells.unsigned(3) ?? 0, stone: cells.unsigned(4) ?? 0, moonsalt: cells.unsigned(5) ?? 0)
-        hastes = [cells.unsigned(6) ?? 0, cells.unsigned(7) ?? 0, cells.unsigned(8) ?? 0]
+        hastes = [cells.unsigned(6) ?? 0, cells.unsigned(7) ?? 0, cells.unsigned(8) ?? 0, cells.unsigned(9) ?? 0]
     }
 }
 
@@ -61,19 +62,26 @@ public struct LiveGrace: Equatable, Sendable, Identifiable {
     }
 }
 
-/// An item a player may hold: a haste, what it is called, and how much
-/// sooner it makes work done.
+/// An item a player may hold: a haste, used on a work under way to make
+/// it done sooner, or a peace, used on the city to keep it from attack;
+/// what it is called, and how long it takes off or keeps.
 public struct LiveWare: Equatable, Sendable, Identifiable {
+    /// Its kinds, as the module numbers them.
+    public static let haste = 1, peace = 2
+
     public let item: Int
     public let name: String
     public let words: String
     public let seconds: Int
+    public let kind: Int
     public var id: Int { item }
+    /// Whether it keeps the city at peace, rather than hastening a work.
+    public var isPeace: Bool { kind == LiveWare.peace }
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
         guard let item = cells.whole(0), let name = cells.text(1), let words = cells.text(2), let seconds = cells.whole(3) else { return nil }
-        (self.item, self.name, self.words, self.seconds) = (item, name, words, seconds)
+        (self.item, self.name, self.words, self.seconds, self.kind) = (item, name, words, seconds, cells.whole(4) ?? LiveWare.haste)
     }
 }
 
@@ -114,7 +122,7 @@ public struct LivePrize: Equatable, Sendable, Identifiable {
         guard let id = cells.unsigned(0), let trial = cells.whole(1), let place = cells.whole(2), let points = cells.unsigned(3) else { return nil }
         (self.id, self.trial, self.place, self.points) = (id, trial, place, points)
         goods = LiveGoods(grain: cells.unsigned(4) ?? 0, timber: cells.unsigned(5) ?? 0, stone: cells.unsigned(6) ?? 0, moonsalt: cells.unsigned(7) ?? 0)
-        hastes = [cells.unsigned(8) ?? 0, cells.unsigned(9) ?? 0, cells.unsigned(10) ?? 0]
+        hastes = [cells.unsigned(8) ?? 0, cells.unsigned(9) ?? 0, cells.unsigned(10) ?? 0, cells.unsigned(11) ?? 0]
     }
 }
 

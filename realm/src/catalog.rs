@@ -997,22 +997,30 @@ pub enum Item {
     Haste5 = 1,
     Haste60 = 2,
     Haste480 = 3,
+    /// Eight hours' peace for the city it is used on.
+    Peace8 = 4,
 }
 
 impl Item {
-    pub const ALL: [Item; 3] = [Item::Haste5, Item::Haste60, Item::Haste480];
+    pub const ALL: [Item; 4] = [Item::Haste5, Item::Haste60, Item::Haste480, Item::Peace8];
 
     pub fn of(code: u8) -> Option<Item> {
         Item::ALL.into_iter().find(|item| *item as u8 == code)
     }
 
-    /// The time it takes off a work, at the written pace.
+    /// The time it takes off a work, or the peace it keeps, at the
+    /// written pace.
     pub fn seconds(self) -> i64 {
         match self {
             Item::Haste5 => 300,
             Item::Haste60 => 3_600,
-            Item::Haste480 => 28_800,
+            Item::Haste480 | Item::Peace8 => 28_800,
         }
+    }
+
+    /// Whether it keeps the city at peace, rather than hastening a work.
+    pub fn is_peace(self) -> bool {
+        self == Item::Peace8
     }
 
     pub fn name(self) -> &'static str {
@@ -1020,11 +1028,15 @@ impl Item {
             Item::Haste5 => "Five minutes' haste",
             Item::Haste60 => "An hour's haste",
             Item::Haste480 => "Eight hours' haste",
+            Item::Peace8 => "Eight hours' peace",
         }
     }
 
     /// What it does, in a player's words.
     pub fn words(self) -> String {
+        if self.is_peace() {
+            return format!("Keeps your city at peace for {}: no army may attack it. Sending an army against a city ends it.", spoken(self.seconds()));
+        }
         format!("Takes {} off a work under way in your city.", spoken(self.seconds()))
     }
 }
@@ -1034,7 +1046,7 @@ pub fn chest_items(chest: u8) -> Vec<(Item, u64)> {
     match chest {
         1 => vec![(Item::Haste5, 2)],
         2 => vec![(Item::Haste5, 3), (Item::Haste60, 1)],
-        3 => vec![(Item::Haste60, 2), (Item::Haste480, 1)],
+        3 => vec![(Item::Haste60, 2), (Item::Haste480, 1), (Item::Peace8, 1)],
         _ => Vec::new(),
     }
 }
@@ -1088,23 +1100,23 @@ impl Contest {
     }
 
     /// Its prizes, least first: the points each asks, the goods and the
-    /// hastes it gives.
+    /// items it gives; the greatest a peace among them.
     pub fn prizes(self) -> Vec<(u64, Goods, Vec<(Item, u64)>)> {
         match self {
             Contest::Hunt => vec![
                 (100, Goods::of(3_000, 3_000, 1_500, 0), vec![(Item::Haste5, 2)]),
                 (400, Goods::of(8_000, 8_000, 4_000, 0), vec![(Item::Haste60, 1)]),
-                (1_000, Goods::of(20_000, 20_000, 10_000, 300), vec![(Item::Haste480, 1)]),
+                (1_000, Goods::of(20_000, 20_000, 10_000, 300), vec![(Item::Haste480, 1), (Item::Peace8, 1)]),
             ],
             Contest::Harvest => vec![
                 (200, Goods::of(0, 0, 3_000, 0), vec![(Item::Haste5, 2)]),
                 (1_000, Goods::of(0, 0, 8_000, 100), vec![(Item::Haste60, 1)]),
-                (4_000, Goods::of(10_000, 10_000, 20_000, 400), vec![(Item::Haste480, 1)]),
+                (4_000, Goods::of(10_000, 10_000, 20_000, 400), vec![(Item::Haste480, 1), (Item::Peace8, 1)]),
             ],
             Contest::Muster => vec![
                 (300, Goods::of(5_000, 2_000, 0, 0), vec![(Item::Haste5, 2)]),
                 (1_500, Goods::of(12_000, 6_000, 0, 0), vec![(Item::Haste60, 1)]),
-                (6_000, Goods::of(30_000, 15_000, 5_000, 300), vec![(Item::Haste480, 1)]),
+                (6_000, Goods::of(30_000, 15_000, 5_000, 300), vec![(Item::Haste480, 1), (Item::Peace8, 1)]),
             ],
         }
     }

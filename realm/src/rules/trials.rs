@@ -29,6 +29,7 @@ pub fn write_trials(db: &mut impl Db) {
                 brief_hastes: count(Item::Haste5),
                 hour_hastes: count(Item::Haste60),
                 long_hastes: count(Item::Haste480),
+                peaces: count(Item::Peace8),
             });
         }
     }

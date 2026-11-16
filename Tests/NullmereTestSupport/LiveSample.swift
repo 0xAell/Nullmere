@@ -172,6 +172,7 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func keepCity(commander: UInt64) async throws { try take("keep city \(commander)") }
     public func speedUp(job: UInt64) async throws { try take("speed up \(job)") }
     public func useItem(_ item: Int, on job: UInt64) async throws { try take("use \(item) on \(job)") }
+    public func usePeace(_ item: Int) async throws { try take("keep the peace with \(item)") }
     public func openChest(_ chest: Int) async throws { try take("open chest \(chest)") }
     public func claimPrize(contest: Int, place: Int) async throws { try take("claim prize \(place) of \(contest)") }
     public func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async throws { try take("envoy to \(alliance): \(terms) for \(days) days") }

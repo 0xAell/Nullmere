@@ -268,6 +268,14 @@ pub enum Refusal {
     PrizeClaimed,
     /// The player has none of the item they would use.
     NoneLeft,
+    /// An item of peace is used on the city, not on a work.
+    NotAHaste,
+    /// Only an item of peace keeps the peace.
+    NotPeace,
+    /// No peace while the player's armies are out against a city.
+    AttacksUnderWay,
+    /// The city is already at peace for longer than the item would keep it.
+    AtPeaceLonger(i64),
     /// The chest asks more marks than the player has earned today: how many it asks.
     ChestNotEarned(u32),
     ChestOpened,
@@ -315,6 +323,7 @@ impl fmt::Display for Refusal {
             Refusal::PrizeNotEarned(points) => return write!(f, "That prize is for {} points.", crate::catalog::grouped(*points)),
             Refusal::RallyTooStrong(level) => return write!(f, "A rally of yours may go against a barrow of level {level} at most."),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
+            Refusal::AtPeaceLonger(left) => return write!(f, "Your city is at peace for another {} already.", crate::catalog::spoken(*left)),
             Refusal::NoFreeMarch(1) => return write!(f, "Your one army is out. Raise your Keep to send more."),
             Refusal::NoFreeMarch(most) => return write!(f, "All {most} of your armies are out."),
             _ => {}
@@ -386,6 +395,9 @@ impl fmt::Display for Refusal {
             Refusal::RallyUnderWay => "An army in a rally under way can't be called home.",
             Refusal::PrizeClaimed => "You have claimed that prize this round.",
             Refusal::NoneLeft => "You have none of that left.",
+            Refusal::NotAHaste => "That keeps your city at peace; it hastens no work.",
+            Refusal::NotPeace => "That hastens a work; it keeps no peace.",
+            Refusal::AttacksUnderWay => "Call home your armies sent against cities first.",
             Refusal::ChestOpened => "You have opened that chest today.",
             Refusal::NoSuchTopic => "There is no such study.",
             Refusal::NoSuchCommander => "You have no such commander.",

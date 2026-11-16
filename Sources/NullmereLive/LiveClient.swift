@@ -263,6 +263,8 @@ public final class LiveClient: @unchecked Sendable {
 
     /// Uses one of the player's items on a work under way.
     public func useItem(_ item: Int, on job: UInt64) async throws { try await ask("use_item", [.integer(UInt64(item)), .integer(job)]) }
+    /// Uses one of the player's items of peace on their city.
+    public func usePeace(_ item: Int) async throws { try await ask("use_peace", [.integer(UInt64(item))]) }
 
     /// Opens a chest of the day's work, by its number.
     public func openChest(_ chest: Int) async throws { try await ask("open_chest", [.integer(UInt64(chest))]) }

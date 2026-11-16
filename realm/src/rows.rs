@@ -689,6 +689,8 @@ pub struct Chest {
     pub brief_hastes: u64,
     pub hour_hastes: u64,
     pub long_hastes: u64,
+    /// How many eight hours' peaces.
+    pub peaces: u64,
 }
 row!(Chest in chest, by id);
 
@@ -1108,6 +1110,7 @@ pub struct Prize {
     pub brief_hastes: u64,
     pub hour_hastes: u64,
     pub long_hastes: u64,
+    pub peaces: u64,
 }
 row!(Prize in prize, by id);
 
@@ -1142,9 +1145,10 @@ impl Tally {
     }
 }
 
-/// An item, for clients to show: its name, what it does, and the time it
-/// takes off a work as written (in a realm that runs faster, as much less
-/// as everything there takes less). Keyed by item.
+/// An item, for clients to show: its name, what it does, the time it
+/// takes off a work or the peace it keeps as written (in a realm that
+/// runs faster, as much less as everything there takes less), and which
+/// it is (`Ware::HASTE`, `Ware::PEACE`). Keyed by item.
 #[spacetimedb::table(accessor = ware, public)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ware {
@@ -1153,8 +1157,16 @@ pub struct Ware {
     pub name: String,
     pub words: String,
     pub seconds: Seconds,
+    pub kind: u8,
 }
 row!(Ware in ware, by item);
+
+impl Ware {
+    /// Used on a work under way in the city, to end it sooner.
+    pub const HASTE: u8 = 1;
+    /// Used on the city, to keep it at peace.
+    pub const PEACE: u8 = 2;
+}
 
 /// How many of an item a player keeps: theirs alone to read. Keyed by
 /// player and item.

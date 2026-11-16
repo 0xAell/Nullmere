@@ -2,9 +2,9 @@
 //! has, an assault on a city's walls, what is carried off, and what each
 //! side is told.
 
-use realm::catalog::{self, Building as Kind, Goods, Troops};
+use realm::catalog::{self, Building as Kind, Goods, Item, Troops};
 use realm::hex::Hex;
-use realm::rows::{Building, City, Haul, March, Report, Stock, Troop};
+use realm::rows::{Building, Chest, City, Haul, March, Prize, Report, Satchel, Stock, Troop, Ware};
 use realm::rules::{self, Asked, Refusal};
 use realm::store::{Mem, Seconds, Table};
 
@@ -94,6 +94,64 @@ fn a_new_city_is_at_peace_until_it_attacks_or_its_days_pass() {
     rules::open(&mut fast, 7, 60, 48);
     let quick = fast.call(|db| rules::join(db, "Ada")).unwrap().id;
     assert_eq!(rules::city_of(&fast, quick).unwrap().shield, START + catalog::NEW_CITY_PEACE / 60);
+}
+
+#[test]
+fn an_item_of_peace_keeps_a_city_from_attack_for_eight_hours() {
+    let (mut db, (ada, hers), (bryn, his)) = neighbours(&[(Troops::Spearmen, 1, 100)], &[(Troops::Spearmen, 1, 100)]);
+    let (to_his, peace) = (Hex::unpacked(his.hex), Item::Peace8 as u8);
+    // Written out for clients; held in the day's last chest and each contest's greatest prize.
+    let ware = Table::<Ware>::get(&db, peace as u64).unwrap();
+    assert_eq!((ware.name.as_str(), ware.kind, ware.seconds), ("Eight hours' peace", Ware::PEACE, 28_800));
+    assert_eq!(ware.words, "Keeps your city at peace for 8 hours: no army may attack it. Sending an army against a city ends it.");
+    assert_eq!(Table::<Ware>::get(&db, Item::Haste5 as u64).unwrap().kind, Ware::HASTE);
+    assert_eq!(Table::<Chest>::get(&db, 3).unwrap().peaces, 1);
+    assert_eq!(Table::<Prize>::get(&db, Prize::key(1, 3)).unwrap().peaces, 1);
+    assert_eq!(Table::<Prize>::get(&db, Prize::key(1, 1)).unwrap().peaces, 0);
+
+    // None held, the wrong item, or a city at peace for longer already: refused.
+    assert_eq!(db.call(|db| rules::keep_peace(db, bryn, peace)), Err(Refusal::NoneLeft));
+    for player in [ada, bryn] {
+        db.insert(Satchel { id: Satchel::key(player, peace), player, item: peace, count: 2 });
+        db.insert(Satchel { id: Satchel::key(player, Item::Haste5 as u8), player, item: Item::Haste5 as u8, count: 1 });
+    }
+    assert_eq!(db.call(|db| rules::keep_peace(db, bryn, Item::Haste5 as u8)), Err(Refusal::NotPeace));
+    assert_eq!(db.call(|db| rules::use_item(db, bryn, peace, 0)), Err(Refusal::NotAHaste));
+    assert_eq!(db.call(|db| rules::keep_peace(db, bryn, 99)), Err(Refusal::NoSuchItem));
+    assert_eq!(db.call(|db| rules::keep_peace(db, bryn, peace)), Err(Refusal::AtPeaceLonger(catalog::NEW_CITY_PEACE)));
+    assert_eq!(Refusal::AtPeaceLonger(catalog::NEW_CITY_PEACE).to_string(), "Your city is at peace for another 3 days already.");
+    assert_eq!(Refusal::NotPeace.to_string(), "That hastens a work; it keeps no peace.");
+    assert_eq!(Refusal::NotAHaste.to_string(), "That keeps your city at peace; it hastens no work.");
+
+    // Ada's army sets out against Bryn: while it is out she keeps no peace herself.
+    end_peace(&mut db, hers.id);
+    end_peace(&mut db, his.id);
+    let march = db.call(|db| rules::send(db, ada, to_his, March::ATTACK, &spears(100))).unwrap();
+    assert_eq!(db.call(|db| rules::keep_peace(db, ada, peace)), Err(Refusal::AttacksUnderWay));
+    assert_eq!(Refusal::AttacksUnderWay.to_string(), "Call home your armies sent against cities first.");
+
+    // Bryn keeps the peace: eight hours from now, one of his two used; her army finds a city at peace and turns home.
+    let now = db.clock;
+    let kept = db.call(|db| rules::keep_peace(db, bryn, peace)).unwrap();
+    assert_eq!(kept.shield, now + 28_800);
+    assert_eq!(Table::<City>::get(&db, his.id).unwrap().shield, now + 28_800);
+    assert_eq!(Table::<Satchel>::get(&db, Satchel::key(bryn, peace)).unwrap().count, 1);
+    assert_eq!(db.call(|db| rules::send(db, ada, to_his, March::ATTACK, &spears(1))), Err(Refusal::AtPeace(28_800)));
+    until(&mut db, march.arrives + 1);
+    let back = Table::<March>::get(&db, march.id).unwrap();
+    assert_eq!(back.state, March::RETURNING, "no assault on a city at peace");
+    // Home again, she may keep the peace too.
+    until(&mut db, back.arrives + 1);
+    assert!(db.call(|db| rules::keep_peace(db, ada, peace)).is_ok());
+
+    // A faster realm's peace is as much shorter.
+    let mut fast = Mem::new(START, 5);
+    rules::open(&mut fast, 7, 60, 48);
+    let quick = fast.call(|db| rules::join(db, "Ada")).unwrap().id;
+    let city = rules::city_of(&fast, quick).unwrap();
+    end_peace(&mut fast, city.id);
+    fast.insert(Satchel { id: Satchel::key(quick, peace), player: quick, item: peace, count: 1 });
+    assert_eq!(fast.call(|db| rules::keep_peace(db, quick, peace)).unwrap().shield, START + 28_800 / 60);
 }
 
 #[test]

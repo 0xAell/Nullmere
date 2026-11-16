@@ -65,7 +65,7 @@ struct LiveDayPanel: View {
         Caps("Your satchel", size: 10)
             .foregroundStyle(Palette.text(0.7))
         if held.isEmpty {
-            LiveSmall(words: "Nothing yet. The day's chests hold hastes.", dim: true)
+            LiveSmall(words: "Nothing yet. The day's chests hold hastes, and the last a peace.", dim: true)
         }
         let work = world.jobs.first
         ForEach(held) { ware in
@@ -74,7 +74,12 @@ struct LiveDayPanel: View {
                     .font(.nm(12))
                     .foregroundStyle(Palette.ink)
                 Spacer(minLength: 0)
-                QuietButton(title: "Use", enabled: work != nil && session.asking == 0, name: "Use \(ware.name)", why: work == nil ? "No work is under way in your city." : nil) { Task { await session.useItem(ware.item, on: work?.id ?? 0) } }
+                if ware.isPeace {
+                    // A peace is kept on the city itself, with no work to hasten.
+                    QuietButton(title: "Use", enabled: session.asking == 0, name: "Use \(ware.name)", why: nil) { Task { await session.usePeace(ware.item) } }
+                } else {
+                    QuietButton(title: "Use", enabled: work != nil && session.asking == 0, name: "Use \(ware.name)", why: work == nil ? "No work is under way in your city." : nil) { Task { await session.useItem(ware.item, on: work?.id ?? 0) } }
+                }
             }
         }
 

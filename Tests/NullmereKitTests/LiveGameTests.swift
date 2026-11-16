@@ -76,9 +76,10 @@ final class LiveGameTests: XCTestCase {
         // Moonspire, learning, a rally, help, a wardstone and a gate.
         rows["duty"] = [[n(1), n(50), n(20), .string("Train 50 soldiers.")], [n(2), n(5_000), n(20), .string("Gather 5,000 goods.")]]
         rows["chest"] = [[n(1), n(20), n(5_000), n(5_000), n(0), n(0), n(2), n(0), n(0)], [n(2), n(60), n(0), n(0), n(10_000), n(50), n(0), n(1), n(0)]]
-        rows["ware"] = [[n(1), .string("Five minutes' haste"), .string("Five minutes sooner."), n(300)], [n(2), .string("An hour's haste"), .string("An hour sooner."), n(3_600)]]
+        rows["ware"] = [[n(1), .string("Five minutes' haste"), .string("Five minutes sooner."), n(300)], [n(2), .string("An hour's haste"), .string("An hour sooner."), n(3_600)],
+                        [n(4), .string("Eight hours' peace"), .string("Keeps your city at peace for 8 hours."), n(28_800), n(2)]]
         rows["my_daily"] = [[n(1), n(0), n(60), n(1_200), n(0), n(1), n(0), n(0)]]
-        rows["my_satchel"] = [[n(1 << 8 | 1), n(1), n(1), n(3)]]
+        rows["my_satchel"] = [[n(1 << 8 | 1), n(1), n(1), n(3)], [n(1 << 8 | 4), n(1), n(4), n(1)]]
         rows["my_favour"] = [[n(1), n(140), n(1)]]
         rows["trial"] = [[n(1), .string("The Long Hunt"), .string("Points for every barrow cleared."), n(7), n(3)]]
         rows["prize"] = [[n(257), n(1), n(1), n(100), n(9_000), n(0), n(0), n(0), n(1), n(0), n(0)], [n(258), n(1), n(2), n(400), n(0), n(0), n(0), n(100), n(0), n(2), n(0)]]
