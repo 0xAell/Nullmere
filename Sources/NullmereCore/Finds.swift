@@ -9,20 +9,8 @@ import NullmereLand
 /// companies pass them and holds may be raised over them, and a hamlet or
 /// barrow under a hold's walls is gone.
 public struct Find: Codable, Equatable, Identifiable, Sendable {
-    public enum Kind: String, Codable, CaseIterable, Sendable, PlainCases {
-        /// A few homes of free folk about a well.
-        case hamlet
-        /// An old grave open to the sky.
-        case barrow
-
-        /// What one is called, unnamed.
-        public var title: String {
-            switch self {
-            case .hamlet: return "hamlet"
-            case .barrow: return "barrow"
-            }
-        }
-    }
+    /// What a find is: its kind, the land's (`FindKind`).
+    public typealias Kind = FindKind
 
     public let id: Int
     public let kind: Kind

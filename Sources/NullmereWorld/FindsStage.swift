@@ -23,7 +23,7 @@ extension WorldStage {
     static let standingStone = Library.model(.furnishing(.standingStone)).mesh.bounds
 
     /// Each hamlet and barrow drawn, and where a hamlet's hearth smokes.
-    public func finds(_ finds: [(kind: Find.Kind, hex: Hex)]) -> (batches: [ModelBatch], hearths: [Hearth]) {
+    public func finds(_ finds: [(kind: FindKind, hex: Hex)]) -> (batches: [ModelBatch], hearths: [Hearth]) {
         var placed: [(ModelKey, ModelInstance)] = []
         var hearths: [Hearth] = []
         for find in finds {

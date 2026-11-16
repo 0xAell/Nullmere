@@ -151,7 +151,10 @@ hold walled in stone). Two ways off the old rules:
    effect at its next level (it reads the House's studies and gear), a
    company's tiers (Unit's tier tables), a hold's training watches, and
    a stock as a line says it; House, Temperament and the told-alike
-   views stay in House.swift.
+   views stay in House.swift. Then the kinds the kept code draws:
+   Heritage, WildKind, ShrineKind, Lake and StoreMarks whole, but for
+   the bonuses the rules weigh and the heritages they deal; Find's kind
+   as FindKind, `Find.Kind` an alias of it while the rules stay.
 3. Test fixtures rebuilt on it, a few files at a time, each step green.
 4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
 5. NullmereCore and NullmereCoreTests deleted; coverage floors and

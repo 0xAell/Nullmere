@@ -147,7 +147,7 @@ public struct LiveWindow: Sendable {
 
     /// The old folk's cairns in the window, as the stage's found barrows:
     /// a great grassed mound, the stones of its open mouth before it.
-    public func cairns(in world: LiveWorld) -> [(kind: Find.Kind, hex: Hex)] {
+    public func cairns(in world: LiveWorld) -> [(kind: FindKind, hex: Hex)] {
         world.cairns.values.sorted { $0.id < $1.id }.compactMap { cairn in
             local(cairn.hex).map { (.barrow, $0) }
         }
