@@ -115,7 +115,7 @@ jobs:
         run: |
           spacetime publish --server http://127.0.0.1:3000 --bin-path realm/target/wasm32-unknown-unknown/release/realm.wasm --yes --delete-data nullmere-client
           spacetime call --server http://127.0.0.1:3000 nullmere-client set_pace 60
-          NULLMERE_REALM_CHECK=http://127.0.0.1:3000/nullmere-client stdbuf -oL -eL swift test --skip-build --filter NullmereLiveTests 2>&1 | tee realm-client.log
+          NULLMERE_REALM_CHECK=http://127.0.0.1:3000/nullmere-client stdbuf -oL -eL swift test --skip-build --filter NullmereLiveTests 2>&1 | tee realm-client.log || true
           total="$(grep "Executed .* tests" realm-client.log | tail -n 1)"
           echo "$total" | grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" && ! grep -q "skipped" realm-client.log || {
             echo "::error::The Swift client didn't play the realm through: $total"
@@ -124,7 +124,7 @@ jobs:
           }
           # And a window of that realm staged for the renderer: its land, its
           # cities and its armies, from the rows the server holds.
-          NULLMERE_REALM_CHECK=http://127.0.0.1:3000/nullmere-client stdbuf -oL -eL swift test --skip-build --filter NullmereLiveStageTests 2>&1 | tee realm-stage.log
+          NULLMERE_REALM_CHECK=http://127.0.0.1:3000/nullmere-client stdbuf -oL -eL swift test --skip-build --filter NullmereLiveStageTests 2>&1 | tee realm-stage.log || true
           grep -q "^LIVE a window" realm-stage.log && grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" realm-stage.log || {
             echo "::error::A window of the realm wasn't staged from its rows"
             grep -E ": error: |' failed \(" realm-stage.log | head -n 20

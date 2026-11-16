@@ -96,7 +96,7 @@ final class LiveSchemaTests: XCTestCase {
     func testTheLandsBytesAreTheRenderersTerrainCodes() throws {
         let land = try source("land.rs")
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        let terrain = try String(contentsOf: root.appendingPathComponent("Sources/NullmereCore/Terrain.swift"), encoding: .utf8)
+        let terrain = try String(contentsOf: root.appendingPathComponent("Sources/NullmereLand/Terrain.swift"), encoding: .utf8)
         let cases = terrain.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { $0.hasPrefix("case ") && !$0.contains(":") && !$0.contains(",") }.map { String($0.dropFirst(5)) }
         XCTAssertEqual(Array(cases.prefix(8)), ["still", "shallows", "strand", "saltFlat", "greyfield", "blackwood", "barrow", "spine"])
