@@ -114,7 +114,8 @@ fn later_wardstones_stand_on_the_alliances_own_land_and_none_on_anothers() {
     // Another alliance raises none on that land, but may beside it; where the two claims meet the older keeps the ground.
     let wardens = db.call(|db| rules::found_alliance(db, fen, "Wardens of the Shore", "WRD")).unwrap();
     wait(&mut db, 10);
-    assert_eq!(db.call(|db| rules::raise_ward(db, fen, first.ring(2)[0])), Err(Refusal::OthersLand("[MERE] Keepers of the Mere".into())));
+    let held = clear_at(&db, first, 2);
+    assert_eq!(db.call(|db| rules::raise_ward(db, fen, held)), Err(Refusal::OthersLand("[MERE] Keepers of the Mere".into())));
     let theirs = (5..12)
         .flat_map(|steps| first.ring(steps))
         .find(|hex| {

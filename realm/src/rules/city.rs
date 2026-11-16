@@ -18,8 +18,9 @@ pub const CITY_SPACING: u32 = 2;
 pub const NEIGHBOUR_REACH: u32 = 8;
 const LATEST_PLAYERS: u64 = 12;
 
-/// A place for a new player's city: buildable ground between the lake's
-/// shores and the mountains, clear of every other city.
+/// A place for a new player's city: buildable ground of the outer land,
+/// between the ridge and the mountains, clear of every other city. The
+/// lake country within the ridge is won through its gates.
 ///
 /// First beside the city of one of the players who joined just before, so
 /// that those who come to the realm about the same time are neighbours,
@@ -28,7 +29,7 @@ const LATEST_PLAYERS: u64 = 12;
 /// next neighbours gather there. Then hex by hex, so a place is found if
 /// one is left.
 fn settle_site(db: &mut impl Db, seed: u64, radius: u32, player: u64) -> Option<Hex> {
-    let (near, far) = (radius * 30 / 100, radius * 86 / 100);
+    let (near, far) = (land::outer_from(radius), radius * 86 / 100);
     fn fits_in(db: &impl Db, seed: u64, radius: u32, band: (u32, u32), hex: Hex) -> bool {
         let length = hex.length();
         length >= band.0 && length <= band.1 && land::ground(seed, radius, hex).is_buildable() && clear_for_city(db, hex, CITY_SPACING)

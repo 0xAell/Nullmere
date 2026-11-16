@@ -1,6 +1,9 @@
 //! The land of the world, grown from the realm's seed: a still black lake
 //! at its heart, shores and plains and woods about it, and a ring of
-//! mountains closing it in.
+//! mountains closing it in. Between the two a ridge runs all the way
+//! round, parting the lake country within from the outer land, broken
+//! only by six passes, one along each of the hex grid's three axes either
+//! side of the lake; a gate stands in each.
 //!
 //! The land is kept in the database as chunks, sixteen hexes by sixteen,
 //! one byte a hex, and every client draws it from those bytes. Nothing
@@ -96,6 +99,46 @@ fn noise(seed: u64, x: f64, y: f64, scale: f64) -> f64 {
     top * (1.0 - sy) + bottom * sy
 }
 
+/// Where the ridge between the lake country and the outer land runs, as
+/// a part of the radius.
+const RIDGE: f64 = 0.56;
+
+/// How far either side of its line the ridge reaches, as a part of the
+/// radius: never less than a hex and a half, so it is whole however small
+/// the world.
+fn ridge_reach(radius: u32) -> f64 {
+    (1.5 / radius.max(1) as f64).max(0.03)
+}
+
+/// Whether a hex lies along one of the hex grid's three axes through the
+/// lake's heart, where the passes run through the ridge.
+fn on_axis(hex: Hex) -> bool {
+    hex.q == 0 || hex.r == 0 || hex.q + hex.r == 0
+}
+
+/// How many steps from the lake's heart the gates stand.
+pub fn gate_length(radius: u32) -> u32 {
+    (radius * 56 + 50) / 100
+}
+
+/// The six gates, one in each pass through the ridge, in turn round the
+/// lake.
+pub fn gates(radius: u32) -> [Hex; 6] {
+    let l = gate_length(radius) as i32;
+    [Hex::new(l, 0), Hex::new(0, l), Hex::new(-l, l), Hex::new(-l, 0), Hex::new(0, -l), Hex::new(l, -l)]
+}
+
+/// How many steps from the lake's heart the outer land begins, past the
+/// ridge's farthest reach.
+pub fn outer_from(radius: u32) -> u32 {
+    ((RIDGE + 0.02 + ridge_reach(radius)) * radius as f64) as u32 + 2
+}
+
+/// Whether a hex is of the lake country, within the ridge.
+pub fn lakeland(radius: u32, hex: Hex) -> bool {
+    (hex.length() as f64) < (RIDGE - ridge_reach(radius) - 0.02) * radius as f64
+}
+
 /// The ground at a hex of a world of a radius, grown from a seed.
 pub fn ground(seed: u64, radius: u32, hex: Hex) -> Ground {
     let (x, y) = hex.centre();
@@ -106,6 +149,11 @@ pub fn ground(seed: u64, radius: u32, hex: Hex) -> Ground {
     let rim = 0.93 + wander * 0.05;
     if far > rim {
         return Ground::Mountain;
+    }
+    // The ridge, its edges ragged but its middle always whole: every way
+    // from the lake country out crosses it, but by a pass.
+    if (far - (RIDGE + wander * 0.02)).abs() < ridge_reach(radius) {
+        return if on_axis(hex) { Ground::Plain } else { Ground::Mountain };
     }
     if far < lake - 0.035 {
         return Ground::Deep;
@@ -172,9 +220,15 @@ const SEARCH_LIMIT: usize = 60_000;
 /// The shortest way over open ground from one hex to another, both ends
 /// among its hexes; none where there is no way, or either end is closed.
 pub fn way(seed: u64, radius: u32, from: Hex, to: Hex) -> Option<Vec<Hex>> {
+    way_by(seed, radius, from, to, |_| false)
+}
+
+/// The shortest way over open ground from one hex to another that steps
+/// on no hex `barred` says is barred to it, but the end it goes to.
+pub fn way_by(seed: u64, radius: u32, from: Hex, to: Hex, barred: impl Fn(Hex) -> bool) -> Option<Vec<Hex>> {
     use std::cmp::Reverse;
     use std::collections::{BinaryHeap, HashMap};
-    let open = |hex: Hex| hex.length() <= radius && ground(seed, radius, hex).is_open();
+    let open = |hex: Hex| hex.length() <= radius && ground(seed, radius, hex).is_open() && (hex == to || !barred(hex));
     if !open(from) || !open(to) {
         return None;
     }
@@ -248,6 +302,31 @@ mod tests {
         // Open land next to open land is one step.
         let near = west.neighbours().into_iter().find(|hex| ground(seed, radius, *hex).is_open()).unwrap();
         assert_eq!(way(seed, radius, west, near), Some(vec![west, near]));
+    }
+
+    #[test]
+    fn a_ridge_parts_the_lake_country_from_the_outer_land_but_at_its_six_passes() {
+        for (seed, radius) in [(1u64, 48u32), (42, 64), (7, 48), (2026, 96), (5, 24)] {
+            let gates = gates(radius);
+            for gate in gates {
+                assert_eq!(ground(seed, radius, gate), Ground::Plain, "a pass is open ground at its gate: {gate:?} of {radius}");
+            }
+            // Within, open ground of the lake country; without, of the outer land.
+            let open = |hex: &Hex| ground(seed, radius, *hex).is_open();
+            let within = Hex::new(0, 0).within(radius).into_iter().filter(|hex| lakeland(radius, *hex) && open(hex)).max_by_key(|hex| (hex.length(), hex.packed())).unwrap();
+            let without = Hex::new(0, 0).within(radius).into_iter().filter(|hex| hex.length() > gate_length(radius) + 4 && open(hex)).min_by_key(|hex| (hex.length(), hex.packed())).unwrap();
+            let found = way(seed, radius, within, without).expect("a way out, by a pass");
+            assert!(found.iter().any(|hex| gates.contains(hex)), "the way out goes through a gate: seed {seed}, radius {radius}");
+            assert_eq!(way_by(seed, radius, within, without, |hex| gates.contains(&hex)), None, "and with the gates shut there is none");
+            let one = found.iter().find(|hex| gates.contains(hex)).copied().unwrap();
+            assert!(way_by(seed, radius, within, without, |hex| hex != one && gates.contains(&hex)).is_some(), "one gate open is enough");
+            // Every hex at the gates' distance is ridge but the passes.
+            for hex in Hex::new(0, 0).ring(gate_length(radius)) {
+                if !gates.contains(&hex) {
+                    assert_eq!(ground(seed, radius, hex), Ground::Mountain, "{hex:?} is ridge");
+                }
+            }
+        }
     }
 
     #[test]
