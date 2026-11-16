@@ -493,20 +493,31 @@ struct LiveAlliancePanel: View {
                 }
             }
             ForEach(world.roster(of: mine.id)) { member in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(verbatim: world.players[member.player]?.name ?? "Someone")
-                        .font(.nm(LiveType.body, weight: member.player == world.me?.id ? .medium : .regular))
-                        .foregroundStyle(LiveEmphasis.primary)
-                    LiveSmall(words: member.title, dim: true)
-                    Spacer(minLength: 0)
-                    if world.isLeader, member.player != world.me?.id {
-                        QuietButton(title: member.rank == LiveMember.officer ? "Make member" : "Make officer", enabled: session.asking == 0) {
-                            Task { await session.setRank(of: member.player, to: member.rank == LiveMember.officer ? LiveMember.member : LiveMember.officer) }
-                        }
+                let ranks = world.isLeader && member.player != world.me?.id
+                let expels = world.isOfficer && member.rank < (world.myMembership?.rank ?? 0)
+                // The member's name and rank, and beneath them what may be
+                // done about them: a panel's width holds no more in a row.
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(verbatim: world.players[member.player]?.name ?? "Someone")
+                            .font(.nm(LiveType.body, weight: member.player == world.me?.id ? .medium : .regular))
+                            .foregroundStyle(LiveEmphasis.primary)
+                        LiveSmall(words: member.title, dim: true)
+                        Spacer(minLength: 0)
                     }
-                    if world.isOfficer, member.rank < (world.myMembership?.rank ?? 0) {
-                        QuietButton(title: "Put out", enabled: session.asking == 0, name: "Put \(world.players[member.player]?.name ?? "them") out of the alliance") {
-                            Task { await session.expel(member.player) }
+                    if ranks || expels {
+                        HStack(spacing: 8) {
+                            if ranks {
+                                QuietButton(title: member.rank == LiveMember.officer ? "Make member" : "Make officer", enabled: session.asking == 0,
+                                            name: "Make \(world.players[member.player]?.name ?? "them") \(member.rank == LiveMember.officer ? "a member" : "an officer")") {
+                                    Task { await session.setRank(of: member.player, to: member.rank == LiveMember.officer ? LiveMember.member : LiveMember.officer) }
+                                }
+                            }
+                            if expels {
+                                QuietButton(title: "Put out", enabled: session.asking == 0, name: "Put \(world.players[member.player]?.name ?? "them") out of the alliance") {
+                                    Task { await session.expel(member.player) }
+                                }
+                            }
                         }
                     }
                 }
