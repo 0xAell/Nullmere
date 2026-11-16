@@ -144,6 +144,26 @@ final class NullmereUITests: XCTestCase {
         XCTAssertTrue(house.waitForExistence(timeout: 60), "and the destinations beside it")
         audit("the realm")
 
+        // The map as VoiceOver walks it: what stands and moves on it, the
+        // player's own city first; choosing that chooses the city, its
+        // ring and callout about it.
+        let walked = map.buttons.allElementsBoundByIndex
+        print("UIMAP \(walked.count) elements in \(map.frame): " + walked.prefix(12).map { "\($0.label) @ \($0.frame)" }.joined(separator: " | "))
+        if walked.count < 2 {
+            found("UIWALK the realm's map holds \(walked.count) elements, not its cities and armies")
+        } else if !walked[0].label.contains("Your city") {
+            found("UIWALK the map's first element is not the player's city: \(walked[0].label)")
+        } else {
+            walked[0].click()
+            let away = window.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Put away '")).firstMatch
+            if away.waitForExistence(timeout: 10) {
+                audit("the city chosen")
+                away.click()
+            } else {
+                found("UIWALK choosing the city on the map showed nothing about it")
+            }
+        }
+
         // Each destination from the dock, and each of its parts, then closed again.
         for (place, parts) in [("House", ["Buildings", "Troops", "Studies", "Forge", "Today"]), ("Alliance", ["Alliance"]),
                                ("Realm", ["The Mere", "Rankings", "Chat"]), ("Mail", ["Reports"])] {

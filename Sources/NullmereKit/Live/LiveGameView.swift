@@ -116,9 +116,28 @@ public struct LiveGameView: View {
                 if cannotDraw {
                     LiveNotice(title: "The world can't be drawn", words: "This Mac's graphics could not draw it.", button: nil) {}
                 } else {
+                    let items = session.mapItems()
                     LiveMapView(session: session, onFailure: { cannotDraw = true })
                         .ignoresSafeArea()
+                        .accessibilityElement(children: .contain)
                         .accessibilityLabel("The realm's map")
+                        // VoiceOver's rotor goes straight to the player's armies, the cities, or the barrows.
+                        .accessibilityRotor("Your armies", entries: items.filter { $0.kind == .ownArmy }, entryID: \.id, entryLabel: \.label)
+                        .accessibilityRotor("Cities", entries: items.filter { $0.kind == .home || $0.kind == .city }, entryID: \.id, entryLabel: \.label)
+                        .accessibilityRotor("Barrows", entries: items.filter { $0.kind == .barrow }, entryID: \.id, entryLabel: \.label)
+                        // VoiceOver reads the map as what stands and moves on it, each where it
+                        // lies, so its cursor rings it on the map; choosing one chooses it there.
+                        .accessibilityChildren {
+                            GeometryReader { proxy in
+                                ForEach(items) { item in
+                                    if let point = session.viewPoint(of: item.hex, in: proxy.size) {
+                                        Button(item.label) { session.selected = item.hex }
+                                            .frame(width: 44, height: 44)
+                                            .position(point)
+                                    }
+                                }
+                            }
+                        }
                 }
                 if session.phase == .naming {
                     LiveNameCard(session: session)

@@ -408,6 +408,27 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(card(500, 0).title, "Unknown land")
     }
 
+    /// The map as VoiceOver reads it: everything in the window, the
+    /// player's own city first and their army next, each saying what it is
+    /// and where it stands in a view.
+    func testTheMapIsReadThingByThingHerCityFirst() async throws {
+        let session = session(StandInLine(rows: LiveWindowTests.rows()))
+        XCTAssertTrue(session.mapItems().isEmpty, "nothing before the realm is open")
+        await session.open()
+        let items = session.mapItems()
+        XCTAssertEqual(items.first?.kind, .home)
+        XCTAssertEqual(items.first?.hex, LiveHex(q: 10, r: -4))
+        XCTAssertEqual(items.first?.label.hasPrefix("Ada. Your city. Keep level 3"), true, items.first?.label ?? "")
+        XCTAssertEqual(items.dropFirst().first?.kind, .ownArmy, "her army out next")
+        XCTAssertTrue(items.contains { $0.kind == .city && $0.hex == LiveHex(q: 14, r: -4) }, "Bryn's city")
+        XCTAssertTrue(items.contains { $0.kind == .barrow && $0.hex == LiveHex(q: 8, r: -2) })
+        XCTAssertTrue(items.contains { $0.kind == .site && $0.hex == LiveHex(q: 12, r: -2) })
+        XCTAssertEqual(Set(items.map(\.id)).count, items.count, "each once")
+        let size = CGSize(width: 1280, height: 800)
+        XCTAssertNotNil(session.viewPoint(of: LiveHex(q: 10, r: -4), in: size))
+        XCTAssertNil(session.viewPoint(of: LiveHex(q: 500, r: 0), in: size), "beyond the window")
+    }
+
     /// The palette: everything that can be done this moment, in words to
     /// search by, and each done when chosen.
     func testThePaletteFindsWhatCanBeDoneAndDoesIt() async throws {
