@@ -141,7 +141,17 @@ hold walled in stone). Two ways off the old rules:
    `reliefOf`, `groundOf`, `apart`, `set(index:)`, `forEachIndex`, the
    encoders `ground(of:)`, `relief(of:)`, `tiles(...)`) take `package`
    access, which the package's tools (5.9) give: seen by the rules, not
-   beyond the package.
+   beyond the package. Done (`531f8c3`, with `a7b10ae`: a claimant's and
+   the caches' initialisers, which the rules call, take package access
+   too); built on Linux, the rules' and the kept modules' tests with it
+   (Realm rules run 84). Then the city and what it is made of: Resource
+   and Stock, BuildingKind, UnitKind (the kinds alone; the Unit in the
+   field stays with the rules), Wounded and Hold. What of them is the
+   rules' stays as NullmereCore extensions in LandRules.swift: a work's
+   effect at its next level (it reads the House's studies and gear), a
+   company's tiers (Unit's tier tables), a hold's training watches, and
+   a stock as a line says it; House, Temperament and the told-alike
+   views stay in House.swift.
 3. Test fixtures rebuilt on it, a few files at a time, each step green.
 4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
 5. NullmereCore and NullmereCoreTests deleted; coverage floors and

@@ -1,4 +1,3 @@
-import NullmereLand
 /// What a hold can build. Each building rises through levels; every level
 /// costs more and takes longer, and each completed level adds its effect.
 public enum BuildingKind: String, CaseIterable, Codable, Sendable, PlainCases {
@@ -105,48 +104,6 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable, PlainCases {
     public func buildWatches(toLevel level: Int) -> Int {
         precondition((1...maxLevel).contains(level), "level out of range")
         return self == .moonspire ? 3 + level * 3 : 1 + level
-    }
-
-    /// One line on what the next level does.
-    public func effect(atLevel level: Int, isSeat: Bool = false) -> String {
-        switch self {
-        case .granary, .sawpit, .quarry, .saltworks:
-            let resource = boostedResource!.title.lowercased()
-            return "+\(BuildingKind.yieldBoostPerLevel * level)% to the \(resource) this hold yields"
-        case .musterHall:
-            var gains = UnitKind.allCases.filter { $0.requiredMuster == level }.map(\.title)
-            // The first three halls open their tiers with their companies,
-            // the fourth its tier with the Mangonels, the fifth its tier alone.
-            if level > Hold.fasterTrainingAt {
-                gains.append("companies of war of tier \(BuildingKind.numeral(level)), once studied")
-            }
-            if level == Hold.fasterTrainingAt {
-                gains.append("all but Lanterns a watch sooner")
-            }
-            return gains.isEmpty ? "No new company" : "Trains " + gains.joined(separator: "; ")
-        case .walls:
-            return "Ward \(Hold.maximumWard(wallLevel: level, isSeat: isSeat)), garrison +\(Hold.garrisonBonus(wallLevel: level))% defence"
-        case .beacon:
-            let wider = Hold.territoryRadius(isSeat: isSeat, beaconLevel: level) > Hold.territoryRadius(isSeat: isSeat, beaconLevel: level - 1)
-            let warns = ["warns of marches bound here", "and tells whose and what", "and how many, and when"][min(max(level, 1), 3) - 1]
-            return "Sight \(Hold.sight(beaconLevel: level)); \(warns)" + (wider ? "; its land reaches a tile further" : "")
-        case .infirmary:
-            return "Beds for \(Hold.beds(infirmaryLevel: level)) of the House's fallen companies of war"
-        case .archive:
-            let circle = min(level, BuildingKind.deepestCircle)
-            return "Studies of the \(ordinal(circle)) circle; every study \(GameState.archivePace * level)% sooner"
-        case .moonspire:
-            return level == maxLevel ? "Ascendancy over the lake" : "Stage \(level) of \(maxLevel)"
-        case .forge:
-            let finest = GearQuality.forged(atLevel: level)?.title.lowercased() ?? "no"
-            let thrift = GameState.forgeThrift * (level - 1)
-            return "Forges \(finest) gear of the three sets" + (thrift > 0 ? ", for \(thrift)% fewer makings" : "")
-        case .wayhouse:
-            let kinds = UnitKind.allCases.filter { BuildingKind.roadLevel(for: $0) == level }.map(\.title)
-            return listed(kinds) + " of the House a step further every watch"
-        case .lodge:
-            return "Every work of the House \(GameState.lodgePace * level)% sooner"
-        }
     }
 
     /// The Wayhouse whose level sends a kind of company a step further
