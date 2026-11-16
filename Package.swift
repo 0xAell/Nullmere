@@ -46,7 +46,7 @@ var targets: [Target] = [
     // shaders' source, the data they read and how a frame's models are
     // gathered. Pure Swift, so tested on Linux too.
     .target(name: "NullmereWorld", dependencies: ["NullmereLand", "NullmereModels"]),
-    .testTarget(name: "NullmereWorldTests", dependencies: ["NullmereWorld", "NullmereModels", "NullmereLand", "NullmereCore", "NullmereTestSupport"]),
+    .testTarget(name: "NullmereWorldTests", dependencies: ["NullmereWorld", "NullmereModels", "NullmereLand", "NullmereTestSupport"]),
     // The game's sound, apart from the Mac's audio engine: the synthesiser,
     // its instruments, its hall and the score written as it plays. Pure
     // Swift, so every sound is rendered and measured on Linux too.

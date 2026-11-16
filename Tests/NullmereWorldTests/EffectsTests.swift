@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
@@ -251,15 +251,7 @@ final class EffectsTests: XCTestCase {
         XCTAssertTrue(Happenings(battles: [Happenings.Spot(at: heart, strength: 8, seed: 31)]).effects(at: 20).lights.isEmpty)
     }
 
-    func testEachArchetypesSkillFiresInItsOwnLook() {
-        // One look to each archetype, by the skill that fires in battle.
-        let looks = Archetype.allCases.map { archetype in FuryLook.of(Skill.allCases.first { $0.archetype == archetype }!) }
-        XCTAssertEqual(Set(looks), Set(FuryLook.allCases))
-        XCTAssertEqual(FuryLook.of(.holdFast), .ward)
-        XCTAssertEqual(FuryLook.of(.fellCharge), .blaze)
-        XCTAssertEqual(FuryLook.of(.harry), .volley)
-        XCTAssertEqual(FuryLook.of(.closeRanks), .ring)
-        XCTAssertEqual(FuryLook.of(.breach), .quake)
+    func testEachFuryFiresInItsOwnLook() {
         let origin = Vec3(3, 0.2, -1)
         func fired(_ look: FuryLook, at time: Float) -> (motes: [Mote], lights: [PointLight]) {
             var happenings = Happenings()
@@ -383,15 +375,9 @@ extension Happenings {
     }
 }
 
-/// The weather an omen brings, seen in the world.
+/// Each weather, seen in the world.
 final class WeatherTests: XCTestCase {
-    func testEachOmenBringsItsWeather() {
-        XCTAssertEqual(Weather.of(nil), .clear)
-        XCTAssertEqual(Weather.of(.leanWatch), .rain)
-        XCTAssertEqual(Weather.of(.risingMist), .mist)
-        XCTAssertEqual(Weather.of(.stillNight), .still)
-        XCTAssertEqual(Weather.of(.moonsaltBloom), .bloom)
-        XCTAssertEqual(Set(OmenKind.allCases.map { Weather.of($0) }).count, OmenKind.allCases.count, "Each omen its own")
+    func testEachWeatherChangesTheFrame() {
         var frame = FrameUniforms.make(camera: Camera(), size: CGSize(width: 800, height: 600), pixelsPerPoint: 2, time: 0, motion: 1,
                                        radius: 8, terrain: TerrainMesh(relief: Relief(map: WorldMap(radius: 8, fill: Tile(terrain: .greyfield)))),
                                        hovered: nil, selected: nil)
@@ -435,20 +421,5 @@ final class WeatherTests: XCTestCase {
         // The moon eaten: its light all but gone, nothing falling or drifting.
         XCTAssertTrue(Weather.eclipse.motes(around: focus, extent: 5, time: 1).isEmpty)
         XCTAssertLessThan(Weather.eclipse.moonFactor, Weather.allCases.filter { $0 != .eclipse }.map(\.moonFactor).min()!)
-    }
-}
-
-/// The look the turn-based game's commanders' skills fired in, by the
-/// commander's archetype: a warden's ward, a vanguard's blaze, an
-/// outrider's volley, a gleaner's ring, a wallbreaker's quake.
-private extension FuryLook {
-    static func of(_ skill: Skill) -> FuryLook {
-        switch skill.archetype {
-        case .warden: return .ward
-        case .vanguard: return .blaze
-        case .outrider: return .volley
-        case .gleaner: return .ring
-        case .wallbreaker: return .quake
-        }
     }
 }

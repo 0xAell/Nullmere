@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
@@ -474,7 +474,9 @@ final class StageTests: XCTestCase {
 
         // Its light: a ring on its ground, light rising, a glow over it.
         let ringLights = WorldStage.markRingLights, rising = WorldStage.markRisingLights
-        let close = stage.markLights([(hex: hexes[0], hue: WorldStage.markHue(.strike))], scale: 240, time: 3)
+        // A mark to strike, in its red.
+        let strike = Vec3(1.0, 0.22, 0.12)
+        let close = stage.markLights([(hex: hexes[0], hue: strike)], scale: 240, time: 3)
         XCTAssertEqual(close.count, ringLights + rising + 1)
         let centre = Relief.centre(of: hexes[0])
         let foot = stage.ground(atX: centre.x, z: centre.z)
@@ -488,19 +490,18 @@ final class StageTests: XCTestCase {
             XCTAssertLessThanOrEqual(mote.place.y, foot + WorldStage.markRise + 1e-4)
         }
         // All of it the mark's hue, and light only.
-        let red = WorldStage.markHue(.strike)
+        let red = strike
         for mote in close where mote.colour.x > 1e-6 {
             XCTAssertEqual(mote.colour.y / mote.colour.x, red.y / red.x, accuracy: 1e-4)
             XCTAssertEqual(mote.colour.z / mote.colour.x, red.z / red.x, accuracy: 1e-4)
             XCTAssertEqual(mote.colour.w, 0, "It hides nothing")
         }
         // The glow keeps its size on the screen as the view draws away.
-        let far = stage.markLights([(hex: hexes[0], hue: WorldStage.markHue(.strike))], scale: 5, time: 3)
+        let far = stage.markLights([(hex: hexes[0], hue: strike)], scale: 5, time: 3)
         XCTAssertEqual(try XCTUnwrap(far.last).place.w * 5, 10, accuracy: 1e-3)
         XCTAssertEqual(try XCTUnwrap(close.last).place.w, 0.32, accuracy: 1e-4, "Never smaller than its ground's heart")
-        // Each kind its own hue; the ring turns with the time.
-        XCTAssertEqual(Set(AllianceMark.Kind.allCases.map { "\(WorldStage.markHue($0))" }).count, AllianceMark.Kind.allCases.count)
-        let later = stage.markLights([(hex: hexes[0], hue: WorldStage.markHue(.strike))], scale: 240, time: 4)
+        // The ring turns with the time.
+        let later = stage.markLights([(hex: hexes[0], hue: strike)], scale: 240, time: 4)
         XCTAssertNotEqual(later.first?.place, close.first?.place)
         XCTAssertTrue(stage.markLights([], scale: 240, time: 3).isEmpty)
     }
@@ -657,24 +658,6 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.borderStones([]).isEmpty)
     }
 
-    /// A hold's House crest hangs beside its gate, facing out: its board
-    /// in the field's tincture and its charge on it in the charge's.
-    func testCrestsHangBesideTheGatesInTheirTinctures() throws {
-        let stage = stage()
-        let hold = try XCTUnwrap(Self.state.holds.first)
-        let crest = Crest(field: .blue, charge: .key, tincture: .gold)
-        let batches = stage.crestBoards([(hex: hold.position, crest: crest)])
-        let board = try XCTUnwrap(batches.first { $0.key == ModelKey.crestBoard }?.instances.first)
-        let charge = try XCTUnwrap(batches.first { $0.key == ModelKey.crestCharge(5) }?.instances.first)
-        XCTAssertEqual(board.colour, WorldStage.colour(of: .blue))
-        XCTAssertEqual(charge.colour, WorldStage.colour(of: .gold))
-        XCTAssertEqual(board.model, charge.model, "The charge on the shield")
-        let front = HoldLayout.frontAngle(of: hold.position)
-        let facing = Vec3(board.model.c2.x, 0, board.model.c2.z)
-        XCTAssertGreaterThan(facing.x * Float(cos(Double(front))) + facing.z * Float(sin(Double(front))), 0.99, "Facing out")
-        XCTAssertTrue(stage.crestBoards([]).isEmpty)
-    }
-
     /// A barge rides the still water from where it pushed off toward where
     /// it makes for, as far as the watch has gone, heading there.
     func testBargesRideTheWaterAsTheWatchGoes() throws {
@@ -826,7 +809,7 @@ final class StageTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(dark.first?.instances.first).model.c3.y, ground, accuracy: 1e-4)
         let lit = stage.lyceum(at: hex, lit: true, time: 1)
         XCTAssertEqual(Set(lit.map(\.key)), [.lyceumHall, .lyceumOrrery, .helpLight])
-        XCTAssertEqual(lit.first { $0.key == .helpLight }?.instances.count, Lyceum.questions)
+        XCTAssertEqual(lit.first { $0.key == .helpLight }?.instances.count, WorldStage.lyceumLights)
         let orrery = { (time: Float) in try XCTUnwrap(stage.lyceum(at: hex, lit: true, time: time).first { $0.key == .lyceumOrrery }?.instances.first).model }
         XCTAssertEqual(try orrery(1).c3.y, ground + LyceumHall.orreryAt.y, accuracy: 1e-4)
         XCTAssertNotEqual(try orrery(1).c0.x, try orrery(2).c0.x, accuracy: 1e-3, "it turns")
@@ -1244,7 +1227,7 @@ final class ExpeditionFieldTests: XCTestCase {
         XCTAssertEqual(count(.rallyCamp), 1, "the House's camp")
         XCTAssertEqual(field.first { $0.key == .rallyCamp }?.instances.first?.colour, colour)
         XCTAssertEqual(count(.prop(.waystoneLit)), 5, "a stone lit for each stage won")
-        XCTAssertEqual(count(.prop(.waystone)) + count(.prop(.waystoneLit)), ExpeditionStage.count, "one for every stage")
+        XCTAssertEqual(count(.prop(.waystone)) + count(.prop(.waystoneLit)), WorldStage.waystones, "one for every stage")
         let none = stage.expeditionField(from: Hex(0, 0), at: Hex(1, 0), won: 0, colour: colour, into: &frame, time: 2)
         XCTAssertTrue(none.allSatisfy { $0.key != .prop(.waystoneLit) }, "none lit before the first is won")
     }

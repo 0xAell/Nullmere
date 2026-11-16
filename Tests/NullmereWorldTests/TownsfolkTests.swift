@@ -1,5 +1,5 @@
 import Foundation
-@testable import NullmereCore
+import NullmereLand
 import NullmereModels
 @testable import NullmereWorld
 import XCTest
@@ -546,10 +546,10 @@ extension TownsfolkTests {
         var frame = SceneFrame()
         let plain = HoldSight(hold: hold, colour: Vec4(0.8, 0.2, 0.2, 1))
         func folk(_ batches: [ModelBatch], _ key: ModelKey) -> [ModelInstance] { batches.filter { $0.key == key }.flatMap(\.instances) }
-        let key = ModelKey.folk(variant: Petition.Plea.mend.folk)
+        let key = ModelKey.folk(variant: Folk.porter)
         let without = folk(stage.townsfolk([plain], time: 3, into: &frame), key).count
         var pleading = plain
-        pleading.petitioner = Petition.Plea.mend.folk
+        pleading.petitioner = Folk.porter
         let added = folk(stage.townsfolk([pleading], time: 3, into: &frame), key)
         XCTAssertEqual(added.count, without + 1)
         let (foot, heading) = stage.petitionerStand(at: hold.position)
@@ -566,7 +566,6 @@ extension TownsfolkTests {
         hold.ward = 0
         pleading.hold = hold
         XCTAssertEqual(stage.townsfolk([pleading], time: 3, into: &frame).flatMap(\.instances).count, 1)
-        XCTAssertEqual(Petition.Plea.allCases.map(\.folk), [Folk.porter, Folk.timberCarter, Folk.elder, Folk.farmhand, Folk.waterCarrier])
     }
 
     /// The envoys waiting on a keeper's answer stand mounted at the seat's
@@ -583,7 +582,7 @@ extension TownsfolkTests {
         let colours = (0..<6).map { Vec4(Float($0) / 6, 0.5, 0.3, 1) }
         var waiting = plain
         waiting.envoys = colours
-        waiting.petitioner = Petition.Plea.mend.folk
+        waiting.petitioner = Folk.porter
         let mounted = riders(stage.townsfolk([waiting], time: 3, into: &frame))
         XCTAssertEqual(mounted.count, WorldStage.envoysAtGate, "A few at most")
         XCTAssertEqual(mounted.map(\.colour), Array(colours.prefix(WorldStage.envoysAtGate)), "Each in the colour of the House that sent it")

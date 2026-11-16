@@ -203,6 +203,14 @@ hold walled in stone). Two ways off the old rules:
    Moonford's render, which turned the old game's tide to open the ford
    (the rebuilt realm has no ford), went; NullmereKitTests import the
    land alone, and the Mac's copy of the old tile texture went with it.
+   Then the world's tests of the old game's own drawing went too: the
+   hand-to-hand fronts of its fields of battle, its fields of the dead's
+   lights, its Houses' crest boards, its omens' weather, its archetypes'
+   looks and its pleas' bearers (OldGameStaging.swift with them); the
+   world's own drawing they reached is still tested with plain values (a
+   mark's red, a porter at the gate, the scholars' and waystones' counts).
+   NullmereWorldTests import the land alone. Nothing but the trailer, the
+   rules and the rules' tests names NullmereCore.
    TileTextureTests are: a tile's owner is written by the world's own
    `TileTexture.name` (the rebuilt realm's window writes its alliances'
    land with it), and the tests hold the texture's layout and its
