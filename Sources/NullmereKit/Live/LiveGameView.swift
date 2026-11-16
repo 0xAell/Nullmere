@@ -636,6 +636,13 @@ struct LiveDock: View {
 
     var body: some View {
         HStack(spacing: 2) {
+            // Allies asking help with their works: helped all at once, as a handshake.
+            let pleas = session.world.pleasToHelp.count
+            if pleas > 0 {
+                QuietButton(title: "Help \(pleas)", prominent: true, enabled: session.asking == 0, name: "Help your allies with \(pleas) \(pleas == 1 ? "work" : "works")") {
+                    Task { await session.helpAll() }
+                }
+            }
             QuietButton(title: "Find", name: "Find something to do, Command-K", action: find)
                 .keyboardShortcut("k", modifiers: .command)
             ForEach(Self.destinations, id: \.self) { place in

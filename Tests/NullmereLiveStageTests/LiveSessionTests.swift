@@ -527,6 +527,8 @@ final class LiveSessionTests: XCTestCase {
         rows["my_troops"] = [[n(7 << 16 | 2 << 8 | 1), n(7), n(2), n(1), n(40), n(0)]]
         // A gift from her alliance, waiting.
         rows["my_boons"] = [[n(51), n(1), n(2), n(4), n(800), n(800), n(800), n(90_000), n(3)]]
+        // An ally asking help with a work.
+        rows["my_pleas"] = [[n(77), n(5), n(2), .string("[MERE] Bryn"), n(1), n(1), n(5)]]
         rows["my_satchel"] = [[n(1 << 8 | 5), n(1), n(5), n(4)], [n(1 << 8 | 6), n(1), n(6), n(4)]]
         rows["pattern"] = [[n(1), .string("Iron sword"), n(1), n(1), .string("Everyone its wearer leads strikes 3% harder."), n(4), n(4), n(0), n(0), n(0), n(5_000), n(5_000),
                             n(0), n(1)],
@@ -556,6 +558,7 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertFalse(all.contains { $0.act == .forge(5) }, "the steel sword wants a Forge of the eighth level")
         XCTAssertTrue(all.contains(LiveCommand(title: "Take on another commander", act: .hire)))
         XCTAssertTrue(all.contains(LiveCommand(title: "Claim your alliance's gifts: 800 grain, 800 timber and 800 stone", act: .claimBoons)))
+        XCTAssertTrue(all.contains(LiveCommand(title: "Help your allies with 1 work", act: .helpAll)))
         XCTAssertTrue(all.contains(LiveCommand(title: "Raise 40 tier 1 Archers to tier 2", act: .promote(building: 34, from: 1, to: 2, count: 40))))
         XCTAssertTrue(all.contains(LiveCommand(title: "Claim the prize of The Long Hunt at 100 points", act: .claimPrize(contest: 1, place: 1))))
         XCTAssertFalse(all.contains { $0.act == .claimPrize(contest: 1, place: 2) }, "400 points not reached")
@@ -581,8 +584,9 @@ final class LiveSessionTests: XCTestCase {
         await session.perform(LiveCommand(title: "Claim the prize of The Long Hunt at 100 points", act: .claimPrize(contest: 1, place: 1)))
         await session.perform(LiveCommand(title: "Raise 20 tier 1 Spearmen to tier 2", act: .promote(building: 24, from: 1, to: 2, count: 20)))
         await session.perform(LiveCommand(title: "Claim your alliance's gifts", act: .claimBoons))
+        await session.perform(LiveCommand(title: "Help your allies with 1 work", act: .helpAll))
         XCTAssertEqual(line.asked, ["upgrade 22", "build 7", "learn 1", "claim task", "open chest 1", "forge 1", "hire", "claim prize 1 of 1", "promote 20 of tier 1 to 2 in 24",
-                                    "claim boons"])
+                                    "claim boons", "help 0"])
     }
 
     func testRalliesGatesAndWardstonesAreCalledFromTheirCards() async throws {

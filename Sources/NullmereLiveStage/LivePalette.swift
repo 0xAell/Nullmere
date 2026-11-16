@@ -20,6 +20,7 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case claimPrize(contest: Int, place: Int)
         case promote(building: UInt64, from: Int, to: Int, count: UInt64)
         case claimBoons
+        case helpAll
     }
 
     public let title: String
@@ -83,6 +84,10 @@ extension LiveSession {
         for line in world.forgeLines(at: seconds) where line.block == nil {
             all.append(LiveCommand(title: "Make a piece at the Forge: \(line.pattern.name)", act: .forge(line.pattern.piece)))
         }
+        let pleas = world.pleasToHelp.count
+        if pleas > 0 {
+            all.append(LiveCommand(title: "Help your allies with \(pleas) \(pleas == 1 ? "work" : "works")", act: .helpAll))
+        }
         if !world.boons.isEmpty {
             all.append(LiveCommand(title: "Claim your alliance's gifts: \(world.boonGoods.words)", act: .claimBoons))
         }
@@ -142,6 +147,7 @@ extension LiveSession {
         case .claimPrize(let contest, let place): await claimPrize(contest: contest, place: place)
         case .promote(let building, let from, let to, let count): await promote(building: building, from: from, to: to, count: count)
         case .claimBoons: await claimBoons()
+        case .helpAll: await helpAll()
         }
         return nil
     }
