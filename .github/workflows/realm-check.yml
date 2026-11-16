@@ -80,8 +80,11 @@ jobs:
           curl -sSf https://install.spacetimedb.com | sh -s -- --yes
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      # Under bash, whose pipefail lets a build that fails fail here, not
+      # as a play-through that finds nothing built.
       - name: Build the client and its tests
-        run: swift build --build-tests -Xswiftc -warnings-as-errors 2>&1 | tail -n 20
+        shell: bash
+        run: swift build --build-tests -Xswiftc -warnings-as-errors 2>&1 | tail -n 40
 
       # The realm's own check starts the server and leaves it running.
       - name: Check the realm
