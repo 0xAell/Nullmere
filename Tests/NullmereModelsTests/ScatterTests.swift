@@ -62,4 +62,34 @@ final class ScatterTests: XCTestCase {
         }
         XCTAssertEqual(Scatter.held, Formation.hexInner, "As far as its figures reach")
     }
+
+    /// Heather grows on the open grass in drifts a few hexes across, never
+    /// salted over every meadow alike: a hex in a drift has most of its
+    /// neighbours in it, a hex outside few; what grows anywhere does so
+    /// as likely everywhere.
+    func testHeatherGrowsInDrifts() {
+        let heather = Scatter.Recipe(furnishing: .heather, count: 1...3, scale: 1...1, chance: 0.95, drifts: true)
+        let grass = Scatter.Recipe(furnishing: .grass, count: 3...6, scale: 1...1)
+        var drifted = 0, total = 0, withinBeside = 0, within = 0, outsideBeside = 0, outside = 0
+        for q in Int32(-40)..<40 {
+            for r in Int32(-40)..<40 {
+                total += 1
+                XCTAssertEqual(Scatter.chance(of: grass, at: (q, r)), 1)
+                let here = Scatter.chance(of: heather, at: (q, r))
+                XCTAssertTrue(here == 0.95 || here == 0.95 / 20)
+                let beside = Hex(Int(q), Int(r)).neighbors.filter { Scatter.chance(of: heather, at: (Int32($0.q), Int32($0.r))) == 0.95 }.count
+                if here == 0.95 {
+                    drifted += 1; within += 6; withinBeside += beside
+                } else {
+                    outside += 6; outsideBeside += beside
+                }
+            }
+        }
+        let share = Double(drifted) / Double(total)
+        XCTAssertTrue((0.2...0.45).contains(share), "About a third of the open grass in drifts: \(share)")
+        XCTAssertGreaterThan(Double(withinBeside) / Double(within), 0.7, "A drift's hexes beside each other")
+        XCTAssertLessThan(Double(outsideBeside) / Double(outside), 0.2, "and few beside the rest")
+        let meadow = Scatter.recipes(Tile(terrain: .greyfield)).first { $0.furnishing == .heather }
+        XCTAssertEqual(meadow?.drifts, true, "The meadows' heather in drifts")
+    }
 }

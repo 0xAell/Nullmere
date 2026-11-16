@@ -76,7 +76,7 @@ public enum Scatter {
         let seat = Relief.seat(of: hex, origin: relief.origin)
         for (number, recipe) in recipes(tile).enumerated() {
             let roll = { (salt: Int32) in Noise.unit(seat.q &* 31 &+ Int32(number), seat.r &* 17 &+ salt, 0x5CA7) }
-            guard roll(1) < recipe.chance else { continue }
+            guard roll(1) < chance(of: recipe, at: (seat.q, seat.r)) else { continue }
             let span = recipe.count.upperBound - recipe.count.lowerBound + 1
             let count = recipe.count.lowerBound + min(Int(roll(2) * Float(span)), span - 1)
             for item in 0..<count {
@@ -120,7 +120,23 @@ public enum Scatter {
         var central = false
         /// How near to others it may stand, against both their reaches.
         var closeness: Float = 0.8
+        /// Whether it grows in drifts a few hexes across, about a third of
+        /// its ground: `chance` within one, a twentieth of it between.
+        var drifts = false
     }
+
+    /// How likely a recipe is in a hex, by the hex as the whole world
+    /// numbers it: in drifts, where a slow noise over the world's plane
+    /// stands high, its `chance`; between them a twentieth of it.
+    static func chance(of recipe: Recipe, at seat: (q: Int32, r: Int32)) -> Float {
+        guard recipe.drifts else { return recipe.chance }
+        let (q, r) = (Float(seat.q), Float(seat.r))
+        let drift = Noise.value((q + r / 2) * 0.3, r * 0.866 * 0.3, seed: 61)
+        return drift > Scatter.driftLine ? recipe.chance : recipe.chance / 20
+    }
+
+    /// Where a drift's noise begins it.
+    static let driftLine: Float = 0.62
 
     /// What a tile is furnished with: its feature's first, then its terrain's.
     static func recipes(_ tile: Tile) -> [Recipe] {
@@ -157,7 +173,9 @@ public enum Scatter {
         case .greyfield:
             list += [Recipe(furnishing: .grass, count: 3...6, scale: 0.8...1.4), Recipe(furnishing: .boulder, count: 0...1, scale: 0.6...1.0),
                      Recipe(furnishing: .standingStone, count: 1...1, scale: 0.8...1.0, chance: 0.06),
-                     Recipe(furnishing: .heather, count: 1...1, scale: 0.8...1.2, chance: 0.4),
+                     // Heather in drifts on the open grass, never salted
+                     // over every meadow alike.
+                     Recipe(furnishing: .heather, count: 1...3, scale: 0.8...1.2, chance: 0.95, drifts: true),
                      Recipe(furnishing: .birch, count: 1...1, scale: 0.8...1.1, chance: 0.06)]
         case .blackwood:
             list += [Recipe(furnishing: .fir, count: 6...9, scale: 0.8...1.35, closeness: 0.7),
