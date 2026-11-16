@@ -14,18 +14,21 @@
 //! is called and again as it sets out.
 
 use super::{
-    allied, asking, barrow_at, city_at, dispatch, fought_together, home, hunt_of, may_attack, member_of, realm, release, report, shown_name, spend_energy, squads,
-    stormed_together, travel, turn_home, warn, way_back, Asked, Refusal, TIMER_MARCH,
+    allied, asking, barrow_at, city_at, dispatch, fought_together, gate_at, home, hunt_of, may_attack, may_storm, member_of, realm, release, report, shown_name,
+    spend_energy, squads, stormed_gate, stormed_together, travel, turn_home, turned_back, warn, way_back, Asked, Refusal, TIMER_MARCH,
 };
 use crate::catalog;
 use crate::hex::{self, Hex};
-use crate::rows::{Barrow, City, Db, Haul, March, Muster, Player, Rally, Report};
+use crate::rows::{Barrow, City, Db, Gate, Haul, March, Muster, Player, Rally, Report};
 use crate::store::Table;
 
-/// What a rally goes against.
+/// What a rally goes against: a barrow, another player's city, or a gate
+/// of the ridge (a rally's row names the barrow or the city, and neither
+/// for a gate, which stands at its hex).
 pub(super) enum Aim {
     Barrow(Barrow),
     City(City),
+    Gate(Gate),
 }
 
 /// The rally a player has an army in, if they have.
@@ -49,6 +52,10 @@ fn armies(db: &impl Db, rally: &Rally) -> Vec<March> {
 pub(super) fn may_go(db: &impl Db, player: u64, to: Hex) -> Result<Aim, Refusal> {
     if city_at(db, to).is_some() {
         return may_attack(db, player, to).map(Aim::City);
+    }
+    if let Some(gate) = gate_at(db, to) {
+        may_storm(db, player, &gate)?;
+        return Ok(Aim::Gate(gate));
     }
     let barrow = barrow_at(db, to).ok_or(Refusal::NothingToFight)?;
     if barrow.fighter != 0 {
@@ -112,12 +119,16 @@ fn hold(db: &mut impl Db, mut march: March, rally: &Rally) {
 pub fn call_rally(db: &mut impl Db, player: u64, to: Hex, asked: &[Asked], leader: u64) -> Result<Rally, Refusal> {
     asking(db, player)?;
     let member = member_of(db, player).ok_or(Refusal::NotAllied)?;
-    let (barrow, city, level) = match city_at(db, to) {
-        Some(_) => {
+    let (barrow, city, level) = match (city_at(db, to), gate_at(db, to)) {
+        (Some(_), _) => {
             let city = may_attack(db, player, to)?;
             (0, city.id, city.keep)
         }
-        None => {
+        (None, Some(gate)) => {
+            may_storm(db, player, &gate)?;
+            (0, 0, 0)
+        }
+        (None, None) => {
             let barrow = barrow_at(db, to).ok_or(Refusal::NothingToFight)?;
             let reach = hunt_of(db, player).cleared + 1 + catalog::RALLY_REACH;
             if barrow.level > reach {
@@ -129,7 +140,7 @@ pub fn call_rally(db: &mut impl Db, player: u64, to: Hex, asked: &[Asked], leade
     if rally_with(db, player).is_some() {
         return Err(Refusal::AlreadyRallying);
     }
-    if Table::<Rally>::by(db, 0, member.alliance).iter().any(|rally| (barrow != 0 && rally.barrow == barrow) || (city != 0 && rally.city == city)) {
+    if Table::<Rally>::by(db, 0, member.alliance).iter().any(|rally| (barrow != 0 && rally.barrow == barrow) || (city != 0 && rally.city == city) || rally.hex == to.packed()) {
         return Err(Refusal::RallyCalled);
     }
     let march = dispatch(db, player, to, March::RALLY, asked, leader)?;
@@ -182,12 +193,12 @@ pub fn join_rally(db: &mut impl Db, player: u64, rally: u64, asked: &[Asked], le
 }
 
 /// Whether an army of a rally took energy to send: one against a barrow
-/// did, one against a city did not. Asked of the rally where there is
-/// one, and of what stands where it was going where there is not.
+/// did, one against a city or a gate did not. Asked of the rally where
+/// there is one, and of what stands where it was going where there is not.
 fn took_energy(db: &impl Db, rally: Option<&Rally>, march: &March) -> bool {
     match rally {
-        Some(rally) => rally.city == 0,
-        None => city_at(db, Hex::unpacked(march.to)).is_none(),
+        Some(rally) => rally.barrow != 0,
+        None => city_at(db, Hex::unpacked(march.to)).is_none() && gate_at(db, Hex::unpacked(march.to)).is_none(),
     }
 }
 
@@ -205,7 +216,7 @@ fn dismiss(db: &mut impl Db, march: &March, refund: bool) {
 /// A rally comes to nothing while it musters: every army stands down.
 fn disband(db: &mut impl Db, rally: &Rally) {
     for march in armies(db, rally) {
-        dismiss(db, &march, rally.city == 0);
+        dismiss(db, &march, rally.barrow != 0);
     }
     Table::<Rally>::delete(db, rally.id);
 }
@@ -248,6 +259,10 @@ pub(super) fn set_out(db: &mut impl Db, march: &March) {
             Some(city) => {
                 let words = format!("No one joined your rally against {}'s city. Your army has stood down.", named(db, city.owner));
                 told(db, rally.caller, Report::ATTACK, &rally, city.owner, words);
+            }
+            None if rally.barrow == 0 => {
+                let words = "No one joined your rally against a gate of the ridge. Your army has stood down.".to_string();
+                told(db, rally.caller, Report::GATE, &rally, 0, words);
             }
             None => {
                 let words = format!("No one joined your rally against the level {} barrow. Your army has stood down.", rally.level);
@@ -320,6 +335,13 @@ pub(super) fn reached(db: &mut impl Db, mut march: March) {
             return;
         }
         catalog::ASSAULT_SECONDS
+    } else if rally.barrow == 0 {
+        let Some(mut gate) = gate_at(db, Hex::unpacked(rally.hex)).filter(|gate| gate.fighter == 0 && gate.holder != rally.alliance) else {
+            return turned_back(db, marches, &rally);
+        };
+        gate.fighter = first.id;
+        db.update(gate);
+        catalog::ASSAULT_SECONDS
     } else {
         let Some(mut barrow) = Table::<Barrow>::get(db, rally.barrow).filter(|barrow| barrow.fighter == 0) else {
             for army in marches {
@@ -357,6 +379,8 @@ pub(super) fn ended(db: &mut impl Db, march: &March) {
     let mut marches = armies(db, &rally);
     if rally.city != 0 {
         stormed_together(db, &mut marches);
+    } else if rally.barrow == 0 {
+        stormed_gate(db, &mut marches, &rally);
     } else {
         fought_together(db, &mut marches);
     }

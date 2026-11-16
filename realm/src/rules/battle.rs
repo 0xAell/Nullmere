@@ -329,16 +329,20 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
     );
 }
 
-/// A rally's fight at its barrow is over. The armies fought as one,
-/// under the caller's commander (the first of `marches` is the caller's):
-/// each loses what fell of its own soldiers, and carries home as wounded
-/// as many of them as its own city has room to tend. If they won, the
-/// barrow is cleared, the spoils are shared by how many of each army
-/// still stand, as far as each can carry, and it counts for each player
-/// as a barrow cleared; what one may attack alone is as it was. Each
-/// player is told in a report.
-pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
-    let Some(mut barrow) = marches.first().and_then(|first| Table::<Barrow>::get(db, first.target)) else { return };
+/// What a rally's armies fighting as one came to: the fight, and army by
+/// army how many fought, were wounded and died.
+pub(super) struct Together {
+    pub outcome: Outcome,
+    pub fought: Vec<u64>,
+    pub wounded: Vec<u64>,
+    pub dead: Vec<u64>,
+}
+
+/// A rally's armies fight a foe as one, under the caller's commander (the
+/// first of `marches` is the caller's), every squad of every army the best
+/// first: each army loses what fell of its own soldiers, and carries home
+/// as wounded as many of them as its own city has room to tend.
+pub(super) fn fight_as_one(db: &mut impl Db, marches: &mut [March], foe: &[Unit], shelter: u64) -> Together {
     // Every squad of every army, the best first, each remembering whose it is.
     let mut all: Vec<(usize, Squad)> = Vec::new();
     for (index, march) in marches.iter().enumerate() {
@@ -346,9 +350,12 @@ pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
     }
     all.sort_by_key(|(index, squad)| (std::cmp::Reverse(squad.tier), squad.kind, *index));
     let army: Vec<Unit> = all.iter().filter_map(|(_, squad)| Troops::of(squad.kind).map(|kind| Unit { kind, tier: squad.tier, count: squad.count })).collect();
-    let unquiet = catalog::barrow(barrow.level);
     let mut rolls: Vec<u64> = (0..2 * MOST_ROUNDS).map(|_| db.chance()).collect();
-    let outcome = fight_learned(&army, &unquiet, [led(db, &marches[0]), Mastery::default()], 0, || rolls.pop().unwrap_or(0));
+    let learnt = match marches.first() {
+        Some(first) => led(db, first),
+        None => Mastery::default(),
+    };
+    let outcome = fight_learned(&army, foe, [learnt, Mastery::default()], shelter, || rolls.pop().unwrap_or(0));
 
     let armies = marches.len();
     let mut room: Vec<u64> = marches.iter().map(|march| room_for_wounded(db, march.city)).collect();
@@ -370,6 +377,22 @@ pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
     for (index, march) in marches.iter_mut().enumerate() {
         march.soldiers = fought[index] - wounded[index] - dead[index];
     }
+    Together { outcome, fought, wounded, dead }
+}
+
+/// A rally's fight at its barrow is over. The armies fought as one,
+/// under the caller's commander (the first of `marches` is the caller's):
+/// each loses what fell of its own soldiers, and carries home as wounded
+/// as many of them as its own city has room to tend. If they won, the
+/// barrow is cleared, the spoils are shared by how many of each army
+/// still stand, as far as each can carry, and it counts for each player
+/// as a barrow cleared; what one may attack alone is as it was. Each
+/// player is told in a report.
+pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
+    let Some(mut barrow) = marches.first().and_then(|first| Table::<Barrow>::get(db, first.target)) else { return };
+    let unquiet = catalog::barrow(barrow.level);
+    let Together { outcome, fought, wounded, dead } = fight_as_one(db, marches, &unquiet, 0);
+    let armies = marches.len();
 
     let standing: u64 = marches.iter().map(|march| march.soldiers).sum();
     let mut won = vec![Goods::of(0, 0, 0, 0); armies];

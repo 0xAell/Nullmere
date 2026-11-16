@@ -311,6 +311,9 @@ pub fn relocate(db: &mut impl Db, player: u64, to: Hex) -> Result<City, Refusal>
     if !fits {
         return Err(Refusal::NoSiteThere);
     }
+    if land::lakeland(realm.radius, to) && !super::member_of(db, player).is_some_and(|member| super::holds_gate(db, member.alliance)) {
+        return Err(Refusal::LakelandShut);
+    }
     let mut stock = settle(db, city.id)?;
     let have = goods(&stock);
     if !have.covers(catalog::RELOCATION) {

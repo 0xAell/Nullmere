@@ -9,6 +9,7 @@ mod alliance;
 mod army;
 mod battle;
 mod city;
+mod gates;
 mod command;
 mod daily;
 mod entry;
@@ -29,6 +30,7 @@ pub use alliance::*;
 pub use army::*;
 pub use battle::*;
 pub use city::*;
+pub use gates::*;
 pub use command::*;
 pub use daily::*;
 pub use entry::*;
@@ -196,6 +198,11 @@ pub enum Refusal {
     LearntTogether,
     StudiedTogether,
     NothingNeeded,
+    /// The gates may be stormed in so many seconds.
+    GatesShut(i64),
+    OwnGate,
+    GateFought,
+    LakelandShut,
     NoSuchTopic,
     AlreadyStudying,
     /// The Academy can't be raised while it studies.
@@ -262,6 +269,7 @@ impl fmt::Display for Refusal {
             Refusal::AlreadyPaired(name) => return write!(f, "{name} already goes out with another commander."),
             Refusal::WardsAll(most) => return write!(f, "Your alliance has all the wardstones it may: {most}. It may raise one more for every five members, twenty at most."),
             Refusal::OthersLand(theirs) => return write!(f, "That land is {theirs}'s."),
+            Refusal::GatesShut(left) => return write!(f, "The gates of the ridge may be stormed in {}.", crate::catalog::spoken(*left)),
             Refusal::NothingMoreToLearn(topic) => return write!(f, "You have learnt all there is of {}.", topic.name()),
             Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
             Refusal::ChestNotEarned(marks) => return write!(f, "That chest opens at {marks} marks of the day's work."),
@@ -352,6 +360,9 @@ impl fmt::Display for Refusal {
             Refusal::LearntTogether => "Your alliance has learnt all there is of that.",
             Refusal::StudiedTogether => "Your alliance is studying that now. Give toward it again when it is learnt.",
             Refusal::NothingNeeded => "Nothing more of those goods is needed for that.",
+            Refusal::OwnGate => "Your alliance holds that gate.",
+            Refusal::GateFought => "Another rally is at that gate.",
+            Refusal::LakelandShut => "Only an alliance that holds a gate of the ridge may move into the lake country.",
             Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",

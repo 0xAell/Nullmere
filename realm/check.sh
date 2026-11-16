@@ -294,6 +294,12 @@ check("nor takes one down", call(ada, "raze_ward", 1), "You are in no alliance."
 # What an alliance learns together: for all to read; given toward only by its members.
 check("what alliances have learnt is for all to read, and there is nothing yet", rows(nobody, "SELECT * FROM learning"), [])
 check("one in no alliance gives nothing toward it", call(ada, "give_to_learning", 1, 10, 10, 10), "You are in no alliance.")
+# The gates of the ridge: six, for all to read, held by the Unquiet as the realm opens; stormed only by an alliance's rally.
+gates = sorted(rows(nobody, "SELECT * FROM gate"), key=lambda gate: gate["id"])
+check("six gates stand in the ridge's passes, held by the Unquiet", [(gate["id"], gate["holder"], gate["fighter"]) for gate in gates], [(n, 0, 0) for n in range(1, 7)])
+first_gate = unpacked(gates[0]["hex"]) if gates else (0, 0)
+check("one in no alliance calls no rally against a gate", call(ada, "call_rally", first_gate[0], first_gate[1], [{"kind": 1, "tier": 1, "count": 1}], 0), "You are in no alliance.")
+check("nor is an army sent against one by an order of its own", call(ada, "send", first_gate[0], first_gate[1], 3, [{"kind": 1, "tier": 1, "count": 1}], 0), "There is no city to attack there.")
 
 # Commanders: one to begin with, more from a Tavern.
 captains = rows(bryn, "SELECT * FROM my_commanders")

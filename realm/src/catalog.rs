@@ -664,6 +664,22 @@ pub const WARD_SECONDS: i64 = 3_600;
 /// Hundredths faster an alliance's members gather on its own land.
 pub const WARD_GATHERING: u64 = 25;
 
+/// The days into each season, at the realm's pace, from which the gates
+/// of the ridge may be stormed: the lake country opens a week in.
+pub const GATES_OPEN_DAYS: i64 = 7;
+
+/// Who holds a gate of the ridge: twice the Unquiet of the strongest
+/// barrow, and whoever takes the gate holds it with as many.
+pub fn gate_garrison() -> Vec<Unit> {
+    barrow(TOP_BARROW).into_iter().map(|unit| Unit { count: unit.count * 2, ..unit }).collect()
+}
+
+/// How much a gate's walls shelter its garrison: as a Wall of the tenth
+/// level does a city's.
+pub fn gate_shelter() -> u64 {
+    shelter(10)
+}
+
 /// The highest level an alliance learns a topic to: each level gives its
 /// members what a level of it learnt in their own city does.
 pub const TOP_ALLIANCE_STUDY: u32 = 5;

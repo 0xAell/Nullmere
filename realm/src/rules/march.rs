@@ -130,7 +130,8 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
     asking(db, player)?;
     let city = city_of(db, player)?;
     let realm = realm(db)?;
-    let mut against_city = false;
+    // A rally takes energy only against a barrow, and gives up its own city's peace only against a city.
+    let (mut takes_energy, mut breaks_peace) = (kind == March::HUNT, kind == March::ATTACK);
     let target = match kind {
         March::GATHER => {
             let site = match Table::<Place>::get(db, to.packed()) {
@@ -147,11 +148,15 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
         March::SCOUT => may_scout(db, player, to, city.id)?.id,
         March::REINFORCE => may_reinforce(db, player, to)?.id,
         March::RALLY => match super::rally::may_go(db, player, to)? {
-            super::rally::Aim::Barrow(barrow) => barrow.id,
+            super::rally::Aim::Barrow(barrow) => {
+                takes_energy = true;
+                barrow.id
+            }
             super::rally::Aim::City(city) => {
-                against_city = true;
+                breaks_peace = true;
                 city.id
             }
+            super::rally::Aim::Gate(gate) => gate.id,
         },
         _ => return Err(Refusal::NoSuchOrder),
     };
@@ -183,12 +188,14 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
     }
     let led: Option<Commander> = if leader == 0 { None } else { Some(leader_for(db, player, leader)?) };
     let from = Hex::unpacked(city.hex);
-    let way = land::way(realm.seed, realm.radius, from, to).ok_or(Refusal::NoWay)?;
+    // No gate of the ridge but the player's alliance's own is passed.
+    let barred = super::gates_barred_to(db, player);
+    let way = land::way_by(realm.seed, realm.radius, from, to, |hex| barred.contains(&hex)).ok_or(Refusal::NoWay)?;
 
-    if kind == March::HUNT || (kind == March::RALLY && !against_city) {
+    if takes_energy {
         spend_energy(db, player, false);
     }
-    if kind == March::ATTACK || against_city {
+    if breaks_peace {
         break_peace(db, city.clone());
     }
     for ask in &wanted {

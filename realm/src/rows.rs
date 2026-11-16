@@ -57,6 +57,7 @@ impl Place {
     pub const SITE: u8 = 2;
     pub const BARROW: u8 = 3;
     pub const WARD: u8 = 4;
+    pub const GATE: u8 = 5;
 }
 
 /// Somewhere on the land where goods lie to be gathered, until they run
@@ -515,6 +516,8 @@ impl Report {
     pub const SPIRE: u8 = 7;
     /// Their alliance has learnt a topic to a new level.
     pub const LEARNING: u8 = 8;
+    /// A rally at a gate of the ridge, or a gate lost: `foe` is the gate.
+    pub const GATE: u8 = 9;
 }
 
 /// An alliance of players. Everyone may read it.
@@ -771,6 +774,22 @@ impl Learning {
         (alliance << 8) | topic as u64
     }
 }
+
+/// A gate in one of the ridge's passes: whose it is (the Unquiet's, 0,
+/// until an alliance takes it, and the alliance's name then), since when,
+/// and the march of the rally at it, if one is. For everyone to read.
+#[spacetimedb::table(accessor = gate, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Gate {
+    #[primary_key]
+    pub id: u64,
+    pub hex: u64,
+    pub holder: u64,
+    pub holder_name: String,
+    pub taken_at: Seconds,
+    pub fighter: u64,
+}
+row!(Gate in gate, by id);
 
 /// A wardstone: an alliance's mark on the land. Once it stands it claims
 /// every hex within `catalog::WARD_REACH` of it that an older one does
@@ -1177,6 +1196,7 @@ pub trait Db:
     + Table<Keeper>
     + Table<Ward>
     + Table<Learning>
+    + Table<Gate>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1233,6 +1253,7 @@ impl<
             + Table<Keeper>
             + Table<Ward>
             + Table<Learning>
+            + Table<Gate>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,
