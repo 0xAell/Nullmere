@@ -160,13 +160,26 @@ test('the page can neither overhear the extension\'s two scripts nor tell the on
   await page.close();
 });
 
-test('a response the page has made unchangeable is given back as a copy without its ad lists', async () => {
+test('a response the page has made unchangeable is given back as a copy without its ad lists, inside another or not', async () => {
+  const deepFreeze = 'const freeze = (key, value) => (value && typeof value === "object" ? Object.freeze(value) : value);';
   server.page(HOST, '/frozen', `<!doctype html><body><script>
+    ${deepFreeze}
     var ytInitialPlayerResponse = Object.freeze(${JSON.stringify(RESPONSE)});
-    window.report = { initial: Object.keys(ytInitialPlayerResponse).sort(), fetched: [] };
+    const carried = JSON.parse(${JSON.stringify(JSON.stringify({ playerResponse: RESPONSE, other: 1 }))}, freeze);
+    const both = JSON.parse(${JSON.stringify(JSON.stringify({ playerResponse: RESPONSE, adPlacements: [1], other: 1 }))}, freeze);
+    window.report = {
+      initial: Object.keys(ytInitialPlayerResponse).sort(),
+      inside: Object.keys(carried.playerResponse).sort(),
+      outer: Object.keys(carried).sort(),
+      bothInside: Object.keys(both.playerResponse).sort(),
+      bothOuter: Object.keys(both).sort(),
+    };
   </script></body>`);
   const { page } = await open(browser.context, server.url(HOST, '/frozen'));
-  assert.deepEqual(await page.evaluate(() => window.report.initial), KEPT);
+  const seen = await page.evaluate(() => window.report);
+  assert.deepEqual(seen.initial, KEPT);
+  assert.deepEqual([seen.inside, seen.outer], [KEPT, ['other', 'playerResponse']], 'a frozen response inside a frozen object');
+  assert.deepEqual([seen.bothInside, seen.bothOuter], [KEPT, ['other', 'playerResponse']], 'and one whose outer object has ad lists of its own');
   await page.close();
 });
 

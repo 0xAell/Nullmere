@@ -16,7 +16,7 @@
   // Everything this script will use is taken now, while it is still what
   // the browser made: the page's scripts run after this one, and may put
   // their own in place of any of it.
-  const { apply, defineProperty, deleteProperty, has, ownKeys } = Reflect;
+  const { apply, defineProperty, deleteProperty, has, ownKeys, set } = Reflect;
   const then = Function.prototype.call.bind(Promise.prototype.then);
 
   // The extension's own script in this frame (content/youtube.js) says so
@@ -58,16 +58,30 @@
     return copy;
   }
 
+  /** An object's own keys and values in a plain object of the script's own. */
+  function copyOf(value) {
+    const copy = {};
+    const keys = ownKeys(value);
+    for (let i = 0; i < keys.length; i++) copy[keys[i]] = value[keys[i]];
+    return copy;
+  }
+
   /** Takes the ad lists out of a player response, or of one carried inside another object. */
   function prune(value) {
     if (!active || value === null || typeof value !== 'object') return value;
     try {
+      let outer = value;
       const inner = value.playerResponse;
       if (inner !== null && typeof inner === 'object') {
         const pruned = without(inner);
-        if (pruned !== inner) value.playerResponse = pruned;
+        // Where the page has made the outer object unchangeable too, it is
+        // given back as a copy that carries the pruned response.
+        if (pruned !== inner && !set(value, 'playerResponse', pruned)) {
+          outer = copyOf(value);
+          outer.playerResponse = pruned;
+        }
       }
-      return without(value);
+      return without(outer);
     } catch {
       // Something that is not what a player response is: left as it came.
       return value;

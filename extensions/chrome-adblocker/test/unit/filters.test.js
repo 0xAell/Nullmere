@@ -201,6 +201,12 @@ test('a selector that would not stay inside its rule is refused', () => {
   // An address written outside quotes reads on to the next `)` whatever is between.
   assert.equal(parseLine("example.com##.b:not(url(x')'))").kind, 'unsupported');
   assert.equal(parseLine('example.com##.b:not(URL(x))').kind, 'unsupported');
+  // However its letters are written.
+  for (const escaped of ["example.com##.b:not(\\75rl(x')'))", "example.com##.b:not(\\75 rl(x))", 'example.com##.b:not(u\\rl(x))', 'example.com##.b:not(\\000055RL(x))']) {
+    assert.equal(parseLine(escaped).kind, 'unsupported', escaped);
+  }
+  // An escaped parenthesis is a letter of a name, not the start of an address.
+  assert.equal(parseLine('example.com##.url\\28 x').kind, 'cosmetic');
   assert.deepEqual(parseLine('example.com##div[style*="background: url(https://x.example/a.png)"]').selectors, ['div[style*="background: url(https://x.example/a.png)"]'], 'inside quotes it is a string like any other');
   assert.equal(isContained('.a, .b'), true);
   assert.equal(isContained(''), false);

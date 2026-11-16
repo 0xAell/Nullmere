@@ -3,6 +3,7 @@
 // same code runs in the service worker and under the unit tests.
 
 import { covers, suffixLength } from './cosmetic-lookup.js';
+import { patternMatcher } from './patterns.js';
 
 /** The site a host belongs to, as far as can be told without the suffix list: `shop.example.co.uk` is `example.co.uk`. */
 export function siteName(host) {
@@ -14,10 +15,11 @@ export function siteName(host) {
 }
 
 /**
- * The longest address a filter's expression is tried on. An expression
- * with a wildcard in it takes time that grows with the square of the
- * address's length, and the address is the page's to choose: one of a
- * megabyte would hold the worker for minutes.
+ * The most of an address a list's own regular expression is tried on.
+ * Patterns are matched in time that grows only with the address
+ * (patterns.js), but a regular expression a list writes could take far
+ * longer on an address a page builds for it; a few lists write any, and
+ * those test the start of an address.
  */
 export const LONGEST = 4096;
 
@@ -28,8 +30,11 @@ export class Popups {
     this.patterns = [];
     this.exceptions = [];
     const compiled = (entry) => {
+      const sites = { on: entry.on && new Set(entry.on), notOn: entry.notOn && new Set(entry.notOn) };
+      if (typeof entry.pattern === 'string') return { ...entry, ...sites, test: patternMatcher(entry.pattern, entry.cased) };
       try {
-        return { ...entry, expression: new RegExp(entry.re, entry.cased ? '' : 'i'), on: entry.on && new Set(entry.on), notOn: entry.notOn && new Set(entry.notOn) };
+        const expression = new RegExp(entry.re, entry.cased ? '' : 'i');
+        return { ...entry, ...sites, test: (url) => expression.test(url.length > LONGEST ? url.slice(0, LONGEST) : url) };
       } catch {
         return null;
       }
@@ -52,12 +57,8 @@ export class Popups {
       return false;
     }
     const third = siteName(host) !== siteName(opener);
-    // An address too long to try expressions on is judged by its host
-    // alone, and excepted by what its beginning shows.
-    const short = url.length <= LONGEST;
-    const tried = short ? url : url.slice(0, LONGEST);
     const applies = (entry) =>
-      (entry.third === undefined || entry.third === third) && (!entry.on || covers(entry.on, opener)) && !(entry.notOn && covers(entry.notOn, opener)) && entry.expression.test(tried);
-    return (covers(this.hosts, host) || (short && this.patterns.some(applies))) && !this.exceptions.some(applies);
+      (entry.third === undefined || entry.third === third) && (!entry.on || covers(entry.on, opener)) && !(entry.notOn && covers(entry.notOn, opener)) && entry.test(url);
+    return (covers(this.hosts, host) || this.patterns.some(applies)) && !this.exceptions.some(applies);
   }
 }

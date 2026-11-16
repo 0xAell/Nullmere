@@ -231,8 +231,9 @@ export function toRules(filters, options = {}) {
   const each = [];
   for (const filter of filters) {
     const read = byDocument(filter);
-    if (read) each.push(...read);
-    else drop('csp:domain-and-to');
+    if (!read) drop('csp:domain-and-to');
+    else if (!read.length) drop('csp:third-party-page');
+    else each.push(...read);
   }
 
   for (const filter of each) {

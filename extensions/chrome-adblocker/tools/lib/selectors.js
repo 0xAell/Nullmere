@@ -49,13 +49,51 @@ export function isContained(selector) {
       quote = c;
     } else if (c === ';') {
       return false;
-    } else if ((c === 'u' || c === 'U') && /^url\(/i.test(selector.slice(i, i + 4))) {
-      // An unquoted url( reads on to the next ) whatever is between, and a
-      // quote left over after it would then run on into the rule's block.
-      return false;
     }
   }
-  return true;
+  // An unquoted url( reads on to the next ) whatever is between, and a
+  // quote left over after it would then run on into the rule's block. It
+  // is a url( however its letters are written: escaped (`\75rl(`) as well.
+  return !/url\(/i.test(bare(selector));
+}
+
+/**
+ * What a selector says outside its quotes, its escapes read as the
+ * letters they stand for: an escaped `(` is kept apart as a letter of a
+ * name, which is what it is.
+ */
+function bare(selector) {
+  let out = '';
+  let quote = '';
+  for (let i = 0; i < selector.length; i++) {
+    const c = selector[i];
+    if (quote) {
+      if (c === '\\') i++;
+      else if (c === quote) quote = '';
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      continue;
+    }
+    if (c !== '\\') {
+      out += c;
+      continue;
+    }
+    // An escape: up to six hexadecimal digits and one space after them, or any one character.
+    const hex = /^[0-9a-f]{1,6}/i.exec(selector.slice(i + 1, i + 7));
+    let letter;
+    if (hex) {
+      letter = String.fromCodePoint(Math.min(parseInt(hex[0], 16), 0x10ffff) || 0xfffd);
+      i += hex[0].length;
+      if (/[ \t\n\r\f]/.test(selector[i + 1] ?? '')) i++;
+    } else {
+      letter = selector[i + 1] ?? '';
+      i++;
+    }
+    out += letter === '(' ? '\u0000' : letter;
+  }
+  return out;
 }
 
 /** Splits a selector list at its top-level commas. */

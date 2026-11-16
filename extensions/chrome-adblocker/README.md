@@ -72,6 +72,39 @@ The numbers are those of the lists as they stood on 15 November 2026,
 commit [`4f2a9139`](https://github.com/easylist/easylist/commit/4f2a9139d44ec4e71d82ca48f86fc2a717ba603f)
 of the EasyList authors' repository. A test holds this file to the build.
 
+## On the live web
+
+The tests above meet stand-ins: the machines Stillwater was written on
+cannot reach the web. So the *Ad blocker, on the live web* workflow
+loads it on real pages from one of GitHub's machines, each page once
+without the extension and once with it (Chromium 153, headless, six
+seconds after each page loaded). Its third run, on 16 November 2026:
+
+| Page | Requests | Kept back | Ad-sized frames showing | Letters of text | Page errors |
+|---|---|---|---|---|---|
+| The Guardian | 584 → 137 | 28 | 0 → 0 | 17,731 → 17,489 | 0 → 19 |
+| Speedtest | 3,402 → 36 | 8 | 5 → 0 | 909 → 909 | 0 → 0 |
+| BBC News | 102 → 103 | 10 | 1 → 1 | 7,996 → 7,989 | 0 → 0 |
+| The Independent | 245 → 80 | 26 | 1 → 0 | 9,730 → 8,774 | 0 → 0 |
+| IGN | 570 → 158 | 18 | 2 → 0 | 6,422 → 6,465 | 0 → 0 |
+| Wikipedia (no ads) | 45 → 45 | 2 | 0 → 0 | 67,856 → 67,856 | 0 → 0 |
+| GitHub (no ads) | 118 → 119 | 5 | 0 → 0 | 3,449 → 3,523 | 0 → 0 |
+
+*Without → with.* What a page asks for falls by as much as the ads it no
+longer loads would have asked; what Chrome kept back is the number on
+the icon, which matched on every page. The frame left on the BBC is its
+consent dialog, there either way. Everything kept back from a site's own
+hosts was a filter of EasyPrivacy's written for that address: analytics
+beacons, telemetry and cookie syncing. The Guardian's nineteen errors
+are all *Failed to fetch*, its own code finding its analytics refused,
+and its text reads the same; the Independent's thousand fewer letters
+are its ad and recommendation slots, hidden. Chromium held nothing
+against the extension.
+
+Some sites turn a headless browser away whatever it carries (Stack
+Overflow, AccuWeather, the Daily Mail and Fandom answered 403, CNN an
+empty page), and could not be judged. YouTube is one of them: see below.
+
 ## What it cannot do
 
 **Chrome applies the rules, not Stillwater.** Under Manifest V3 an
@@ -112,8 +145,10 @@ caught.
 **YouTube is the hardest, and this part is not verified against YouTube.**
 Its ads come from the same hosts as its videos, so no rule can block
 them. What Stillwater does there is tested against a stand-in page shaped
-like YouTube's where it matters (see `test/e2e/youtube.test.js`), from a
-machine that could not reach YouTube. Whether YouTube still has that shape
+like YouTube's where it matters (see `test/e2e/youtube.test.js`). Run on
+the live web, YouTube answered GitHub's machines with a refusal (429) or
+an empty player, with the extension or without, so even that check never
+saw a real watch page. Whether YouTube still has the stand-in's shape
 today is unverified. YouTube changes its player often and works against ad
 blockers; expect this part to break first, and to need the *YouTube*
 switch turned off, or `youtube.com` let through, if YouTube objects. It
@@ -139,7 +174,8 @@ every extension, this one included.
 
 **Not yet run by a person in Google Chrome.** Everything above was checked
 by automated tests in Chromium 153 (Playwright's build, headless, on
-Linux), loading the unpacked extension. It has not been installed by hand
+Linux), loading the unpacked extension, against stand-ins and on the
+live web. It has not been installed by hand
 in Google Chrome on a Mac or Windows machine, and the toolbar icon and
 badge have not been looked at on a real toolbar. The popup and options
 pictures here are the real pages, taken in that Chromium.
@@ -167,7 +203,8 @@ history of either.
 
 ```
 lists/        EasyList and EasyPrivacy at a named commit, and Stillwater's own short list
-tools/        refresh-lists.js, build.js, validate.js, package.js, make-icons.js, shots.js
+tools/        refresh-lists.js, build.js, validate.js, package.js, make-icons.js, shots.js,
+              live-check.js (real pages, from a machine that can reach the web)
   lib/        filters.js (reads the lists)   dnr.js (makes Chrome's rules)
               cosmetic.js, procedural.js, selectors.js (what to hide)
               popups.js (which pop-ups to close)   zip.js, png.js
@@ -215,6 +252,14 @@ see which requests never arrived. Nothing in them goes out to the network.
 The **Ad blocker** workflow (`.github/workflows/adblocker.yml`) runs all
 of it on every change under this folder, checks that the zip in `dist/`
 is exactly a fresh build, and keeps the zip as the run's artifact.
+
+The **Ad blocker, on the live web** workflow
+(`.github/workflows/adblocker-live.yml`), run by hand, loads the build in
+Chromium on real pages with and without the extension and reports what
+it found (`node tools/live-check.js` does the same anywhere the web can
+be reached; `LIVE_ONLY=YouTube` narrows it). It fails only if Chromium
+holds an error against the extension: the web changes too often to hold
+a page's numbers to anything.
 
 ## Licences and thanks
 

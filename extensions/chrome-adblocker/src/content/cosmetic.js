@@ -106,7 +106,7 @@
     timer = 0;
     // A page that keeps bringing new names is answered less often, down to
     // once a second; one that then stays quiet for a second is answered
-    // at once again. (This was called `wait` after the first new name, so
+    // quickly again from its next lot on. (This was called `wait` after the first new name, so
     // the quiet before that name is what is left of the time since the
     // last lot went.)
     const now = performance.now();

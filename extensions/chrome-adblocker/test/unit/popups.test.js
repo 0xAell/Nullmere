@@ -1,8 +1,38 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { LONGEST, Popups, siteName } from '../../src/shared/popups.js';
-import { parseLine } from '../../tools/lib/filters.js';
-import { buildPopups, patternSource } from '../../tools/lib/popups.js';
+import { readFileSync } from 'node:fs';
+import { patternMatcher } from '../../src/shared/patterns.js';
+import { Popups, siteName } from '../../src/shared/popups.js';
+import { parseLine, parseList } from '../../tools/lib/filters.js';
+import { buildPopups } from '../../tools/lib/popups.js';
+
+/**
+ * The plain reading of a pattern as a regular expression, kept here only
+ * to hold the matcher to: it means the same, but can be made to take
+ * seconds on an address built for it.
+ */
+function patternSource(pattern) {
+  let rest = pattern;
+  let source = '';
+  let end = '';
+  if (rest.startsWith('||')) {
+    source = '^[a-z][a-z0-9+.-]*:\\/\\/(?:[^/?#]*\\.)?';
+    rest = rest.slice(2);
+  } else if (rest.startsWith('|')) {
+    source = '^';
+    rest = rest.slice(1);
+  }
+  if (rest.endsWith('|')) {
+    end = '$';
+    rest = rest.slice(0, -1);
+  }
+  for (const c of rest) {
+    if (c === '*') source += '.*';
+    else if (c === '^') source += '(?:[^\\w.%-]|$)';
+    else source += /[\w-]/.test(c) ? c : `\\${c}`;
+  }
+  return source + end;
+}
 
 /** The pop-up data of filter lines, and the matcher over it. */
 function popups(...lines) {
@@ -10,8 +40,8 @@ function popups(...lines) {
   return { ...built, match: new Popups([built.data]) };
 }
 
-test('an Adblock Plus pattern becomes an expression for the same addresses', () => {
-  const matches = (pattern, url) => new RegExp(patternSource(pattern), 'i').test(url);
+test('an Adblock Plus pattern matches the addresses it means', () => {
+  const matches = (pattern, url) => patternMatcher(pattern)(url);
   // `||`: the host or any subdomain of it, and nothing that only ends alike.
   assert.equal(matches('||ads.example^', 'https://ads.example/x'), true);
   assert.equal(matches('||ads.example^', 'http://cdn.ads.example:8080/x'), true);
@@ -47,11 +77,11 @@ test('hosts named whole are a set; the rest keep what narrows them; exceptions a
   );
   assert.deepEqual(data.hosts, ['ads.example', 'other.example', 'pop.example']);
   assert.deepEqual(data.patterns, [
-    { re: patternSource('||third.example^'), third: true },
-    { re: patternSource('/ad.php?zone'), on: ['news.example'], notOn: ['live.news.example'] },
+    { pattern: '||third.example^', third: true },
+    { pattern: '/ad.php?zone', on: ['news.example'], notOn: ['live.news.example'] },
     { re: '^https?:\\/\\/[a-z]{8}\\.top\\/' },
   ]);
-  assert.deepEqual(data.exceptions, [{ re: patternSource('||pop.example/account/') }]);
+  assert.deepEqual(data.exceptions, [{ pattern: '||pop.example/account/' }]);
   assert.equal(count, 8, 'every filter taken is counted, written twice or not');
   assert.deepEqual([...dropped].sort(), [['popup:option', 1], ['popup:regex', 1], ['popup:too-broad', 1]]);
 });
@@ -99,17 +129,51 @@ test('a filter that would close every tab a page opens is not taken unless it sa
   assert.deepEqual([...dropped], [['popup:too-broad', 5]]);
 });
 
-test('an address too long to try expressions on is judged by its host alone, and quickly', () => {
-  const { match } = popups('||pop.example^$popup', '&sseq=*&dseq=$popup', '@@||pop.example/account/$popup');
-  const long = (host, path = '/') => `https://${host}${path}?${'&sseq='.repeat(60_000)}`;
-  assert.ok(long('other.example').length > LONGEST);
+test('an address however long is judged by every filter, and quickly', () => {
+  const { match } = popups(
+    '||pop.example^$popup',
+    '&sseq=*&dseq=$popup',
+    '||padded.example^$popup,third-party',
+    '@@||pop.example/account/$popup',
+    '@@||www.google.*/search?q=*&oq=*&aqs=chrome.*&sourceid=chrome&$popup,third-party',
+  );
+  const padding = (piece, length) => piece.repeat(Math.ceil(length / piece.length)).slice(0, length);
   const began = performance.now();
-  assert.equal(match.closes(long('other.example'), 'site.example'), false, 'no expression is tried on it');
-  assert.equal(match.closes(long('pop.example'), 'site.example'), true, 'a host the lists name whole is still closed');
-  assert.equal(match.closes(long('pop.example', '/account/'), 'site.example'), false, 'and still excepted by what its beginning shows');
-  assert.ok(performance.now() - began < 500, 'in well under a second, not minutes');
-  // The same pattern on an address of ordinary length still closes it.
-  assert.equal(match.closes('https://other.example/?a=1&sseq=2&dseq=3', 'site.example'), true);
+  // Padding an address does not take it out of a filter's reach.
+  assert.equal(match.closes(`https://padded.example/click?${padding('x', 5_000)}`, 'site.example'), true);
+  assert.equal(match.closes(`https://other.example/?${padding('&sseq=', 400_000)}&dseq=1`, 'site.example'), true);
+  assert.equal(match.closes(`https://other.example/?${padding('&sseq=', 400_000)}`, 'site.example'), false);
+  assert.equal(match.closes(`https://pop.example/account/?${padding('a', 400_000)}`, 'site.example'), false, 'an exception holds however long');
+  // An address built against an exception with four wildcards, two megabytes of it.
+  assert.equal(match.closes(`https://www.google.pop.example/search?${padding('q=&oq=&aqs=chrome.', 2_000_000)}`, 'site.example'), true);
+  assert.ok(performance.now() - began < 1_500, `in well under the seconds an expression would take: ${Math.round(performance.now() - began)} ms`);
+});
+
+test('the matcher means what the plain reading of every pop-up pattern in EasyList means', () => {
+  // Addresses made from each pattern, so most should match, and the same spoilt.
+  const list = parseList(readFileSync(new URL('../../lists/easylist.txt', import.meta.url), 'utf8'));
+  const patterns = [...new Set(list.popups.filter((filter) => !filter.regex && filter.pattern).map((filter) => filter.pattern))];
+  assert.ok(patterns.length > 2_000, 'the real list was read');
+  const ordinary = ['https://example.com/', 'http://news.example.org/story/42?a=1&b=2', 'https://cdn.example.net/ad.php?zone=7&id=3#x'];
+  let compared = 0;
+  let matched = 0;
+  for (const pattern of patterns) {
+    const made = pattern
+      .replace(/^\|\|/, 'https://sub.')
+      .replace(/^\|/, '')
+      .replace(/\|$/, '')
+      .replaceAll('*', 'x/y')
+      .replaceAll('^', '/');
+    const addresses = [made, made.replaceAll('/', 'a'), `${made}tail`, `https://other.example/?u=${made}`, ...ordinary];
+    const reading = new RegExp(patternSource(pattern), 'i');
+    const matcher = patternMatcher(pattern);
+    for (const url of addresses) {
+      assert.equal(matcher(url), reading.test(url), `${pattern} on ${url}`);
+      compared++;
+      if (reading.test(url)) matched++;
+    }
+  }
+  assert.ok(matched > patterns.length, `enough of them matched to mean something: ${matched} of ${compared}`);
 });
 
 test('lists are read together: an exception in one holds against the others', () => {

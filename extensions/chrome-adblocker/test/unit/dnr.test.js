@@ -136,6 +136,9 @@ test('csp with third-party is for frames of another site, and says nothing of a 
     { resourceTypes: ['sub_frame'], domainType: 'thirdParty', requestDomains: ['b.example'] },
     { resourceTypes: ['sub_frame'], domainType: 'thirdParty', initiatorDomains: ['a.example'] },
   ], 'no rule for a page at all');
+  // One for pages alone and of other sites has nothing left to say, and is counted as left out.
+  const nothing = rules(["||d.example^$csp=worker-src 'none',document,third-party"]);
+  assert.deepEqual([nothing.rules.length, [...nothing.dropped]], [0, [['csp:third-party-page', 1]]]);
   // Without either, a filter is one rule for both kinds of document, as before.
   assert.deepEqual(rules(["||c.example^$csp=worker-src 'none'"]).rules.map((rule) => rule.condition), [{ resourceTypes: ['main_frame', 'sub_frame'], requestDomains: ['c.example'] }]);
 });

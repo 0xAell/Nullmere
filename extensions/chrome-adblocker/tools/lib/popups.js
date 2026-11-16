@@ -5,52 +5,25 @@
 // is closed.
 //
 //   hosts        hosts every pop-up to which is closed (`||host^$popup`)
-//   patterns     [{ re, cased?, third?, on?, notOn? }] for the rest: an
-//                expression for the address, and where the filter says so,
+//   patterns     [{ pattern | re, cased?, third?, on?, notOn? }] for the
+//                rest: the filter's address pattern as it is written (or a
+//                list's own regular expression), and where it says so,
 //                whether the pop-up is of another site than its opener
 //                (`third`), and the sites whose pages it is for or not for
 //   exceptions   the same, for `@@...$popup`
 
+import { patternMatcher } from '../../src/shared/patterns.js';
 import { hostname } from './filters.js';
 
 const unique = (list) => [...new Set(list)].sort();
 
-/**
- * An Adblock Plus pattern as the source of a regular expression that
- * matches the same addresses: `||` a host or any subdomain of it, `|` an
- * end of the address, `^` a separator (anything but a letter, a digit or
- * `_ - . %`, or the address's end), `*` anything.
- */
-export function patternSource(pattern) {
-  let rest = pattern;
-  let source = '';
-  let end = '';
-  if (rest.startsWith('||')) {
-    source = '^[a-z][a-z0-9+.-]*:\\/\\/(?:[^/?#]*\\.)?';
-    rest = rest.slice(2);
-  } else if (rest.startsWith('|')) {
-    source = '^';
-    rest = rest.slice(1);
-  }
-  if (rest.endsWith('|')) {
-    end = '$';
-    rest = rest.slice(0, -1);
-  }
-  for (const c of rest) {
-    if (c === '*') source += '.*';
-    else if (c === '^') source += '(?:[^\\w.%-]|$)';
-    else source += /[\w-]/.test(c) ? c : `\\${c}`;
-  }
-  return source + end;
-}
-
-/** Addresses with nothing of an ad about them: an expression that matches them all matches anything. */
+/** Addresses with nothing of an ad about them: a filter that matches them all matches anything. */
 const ORDINARY = ['https://example.com/', 'http://news.example.org/story/42', 'https://www.shop.example/basket?item=7#top'];
 
-/** Whether an expression matches every address there is, as far as a few ordinary ones can tell. */
-function matchesAnything(source) {
-  const expression = new RegExp(source, 'i');
-  return ORDINARY.every((url) => expression.test(url));
+/** Whether an entry's address test passes every address there is, as far as a few ordinary ones can tell. */
+function matchesAnything(entry) {
+  const test = typeof entry.pattern === 'string' ? patternMatcher(entry.pattern, entry.cased) : (url) => new RegExp(entry.re, entry.cased ? '' : 'i').test(url);
+  return ORDINARY.every(test);
 }
 
 /**
@@ -86,7 +59,7 @@ export function buildPopups(filters) {
       continue;
     }
 
-    let source;
+    let address;
     if (filter.regex) {
       try {
         new RegExp(filter.pattern);
@@ -94,25 +67,25 @@ export function buildPopups(filters) {
         drop('popup:regex');
         continue;
       }
-      source = filter.pattern;
+      address = { re: filter.pattern };
     } else if (!filter.pattern) {
       // With no address at all it has to say whose pages it is for.
       if (!conditions.on) {
         drop('popup:too-broad');
         continue;
       }
-      source = '';
+      address = { pattern: '' };
     } else {
-      source = patternSource(filter.pattern);
+      address = { pattern: filter.pattern };
     }
+    const entry = { ...address, ...conditions };
+    if (filter.matchCase) entry.cased = true;
     // One that would close every tab a page opens, whatever the page, is
     // not taken on a list's word: it has to say whose pages it is for.
-    if (!filter.exception && !conditions.on && matchesAnything(source)) {
+    if (!filter.exception && !conditions.on && matchesAnything(entry)) {
       drop('popup:too-broad');
       continue;
     }
-    const entry = { re: source, ...conditions };
-    if (filter.matchCase) entry.cased = true;
     const key = JSON.stringify([filter.exception, entry]);
     count++;
     if (seen.has(key)) continue;

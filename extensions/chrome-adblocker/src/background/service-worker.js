@@ -302,9 +302,12 @@ chrome.webNavigation.onCommitted.addListener((details) => {
   if (details.frameId !== 0 || !tab) return;
   const how = details.transitionQualifiers;
   const byHand = BY_HAND.has(details.transitionType) || how.includes('from_address_bar') || how.includes('forward_back');
-  const redirected = how.includes('client_redirect') || how.includes('server_redirect');
+  // Once the tab has shown a page for a while, a move is the page's doing
+  // only where Chrome says the page made it. A server's redirect belongs
+  // to whoever began the navigation, which by then is the person.
+  const sentOnByPage = how.includes('client_redirect');
   const lingered = tab.settled && Date.now() - tab.shown > SENT_ON;
-  if (byHand || (lingered && !redirected)) {
+  if (byHand || (lingered && !sentOnByPage)) {
     // The person has taken the tab over: it is theirs from here.
     opened.delete(details.tabId);
     return;
