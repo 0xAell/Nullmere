@@ -326,7 +326,7 @@ public struct Trailer {
         let view = ViewFrustum(viewProjection: camera.viewProjection(in: Trailer.viewSize))
         var sights = world.holds.filter { view.sees($0.position, within: HoldLayout.reach + 1.5) }.map { hold in
             HoldSight(hold: hold, colour: world.colour(of: hold.owner), progress: nil, finishing: nil,
-                      heritage: world.state.heritage(of: hold.owner))
+                      heritage: world.heritage(of: hold.owner))
         }
         // The crowning: the heart's Moonspire at its fourth stage, its fifth
         // rising in its scaffold until it stands crowned.
@@ -340,11 +340,8 @@ public struct Trailer {
         }
         let (holds, hearths) = world.stage.holds(sights, time: t, into: &frame)
         let folk = world.stage.townsfolk(sights, time: t, crowds: frame.fine, into: &frame) + world.stage.traffic(world.ways, time: t, into: &frame)
-        let sites = world.stage.sites(world.state.sitesInLand.filter { !$0.isYard }.map { ($0.store, $0.position) })
-            + world.stage.shrines(world.state.holySites.map { shrine in
-                (shrine.kind, shrine.position, shrine.holder.flatMap { world.state.houses.indices.contains($0) ? world.colour(of: $0) : nil })
-            })
-        let lairs = world.stage.lairs(world.state.lairsStanding.filter { $0.gate == nil }.map { ($0.kind, $0.position) })
+        let sites = world.stage.sites(world.sites.map { ($0.store, $0.position) })
+        let lairs = world.stage.lairs(world.lairs.map { ($0.kind, $0.position) })
         var poses: [CompanyPose] = []
         var arrows: [ArrowFlight] = []
         var happenings = Happenings()

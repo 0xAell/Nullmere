@@ -78,8 +78,8 @@ public struct March: Sendable {
         heights = points.map(\.y)
         column = [(.rider, 4, 2), (.spear, 4, nil), (.spear, 3, nil), (.bow, 3, nil), (.spear, 4, 5), (.bow, 2, nil), (.mangonel, 2, nil)]
         owner = seat.owner
-        sigil = world.state.houses[seat.owner].sigil
-        heritage = world.state.heritage(of: seat.owner)
+        sigil = seat.owner
+        heritage = world.heritage(of: seat.owner)
         // The column's tail at the run's start as it is first seen, its
         // head as far on as the column is long.
         opening = min(March.spacing * Float(column.count - 1), max(run.length - March.pace * 12, 0))
@@ -191,10 +191,10 @@ public struct Battle: Sendable {
             }
         }
         self.companies = companies
-        sigils = [world.state.houses[heart.owner].sigil, world.state.houses[far.owner].sigil]
-        heritages = [world.state.heritage(of: heart.owner), world.state.heritage(of: far.owner)]
+        sigils = [heart.owner, far.owner]
+        heritages = [world.heritage(of: heart.owner), world.heritage(of: far.owner)]
         // The far side's hold nearest the field, if it is near enough to be seen burning.
-        let theirs = world.state.holds(of: far.owner).filter { $0.position.distance(to: field) <= 6 }
+        let theirs = world.holds(of: far.owner).filter { $0.position.distance(to: field) <= 6 }
         blaze = theirs.min { ($0.position.distance(to: field), $0.id) < ($1.position.distance(to: field), $1.id) }.map { world.ground($0.position) }
         horns = [3.6, 8.6, 11.8, 13.6]
     }
@@ -381,7 +381,7 @@ public struct Siege: Sendable {
         }
         let layout = HexLayout(size: 1)
         func land(_ p: Vec3) -> Bool {
-            world.state.map[layout.hex(atX: Double(p.x), y: Double(p.z))].map { $0.terrain.isPassable && !$0.terrain.isWater } ?? false
+            world.map[layout.hex(atX: Double(p.x), y: Double(p.z))].map { $0.terrain.isPassable && !$0.terrain.isWater } ?? false
         }
         // The first spot so far out before the gate, or a little further,
         // on land and clear of every work by `room`.
@@ -419,8 +419,8 @@ public struct Siege: Sendable {
                                      first: 1.6 + Double(k) * 1.0, every: 3.4))
         }
         self.companies = companies
-        sigils = [world.state.houses[heart.owner].sigil, world.state.houses[hold.owner].sigil]
-        heritages = [world.state.heritage(of: heart.owner), world.state.heritage(of: hold.owner)]
+        sigils = [heart.owner, hold.owner]
+        heritages = [world.heritage(of: heart.owner), world.heritage(of: hold.owner)]
         horns = [0.8, 6.4]
     }
 

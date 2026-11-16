@@ -29,7 +29,7 @@ final class TrailerRenderTests: XCTestCase {
         let projector = try Projector(device: device, trailer: Trailer(houses: WorldRenderer.houseColours))
         let trailer = projector.trailer
         print("TRAILER world ready in \(Int(Date().timeIntervalSince(began))) s: \(trailer.shots.count) shots, \(trailer.frameCount) frames, "
-              + "\(trailer.world.state.holds.count) holds, on \(device.name)")
+              + "\(trailer.world.holds.count) cities, on \(device.name)")
 
         // A still from the middle of each shot, and from the battle's height.
         var stills = trailer.shots.map { (name: $0.name, time: $0.start + $0.length * 0.55) }
@@ -111,13 +111,9 @@ final class Projector: @unchecked Sendable {
         let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
         world = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
         world.meshSource = { Library.model($0).mesh }
-        let state = trailer.world.state
-        try world.setLand(trailer.world.terrain, for: state.map)
-        // All of it seen, so no mist anywhere, and no House's land washed or
-        // bounded: the land as it lies, not as the game marks it.
-        try world.updateTiles(TileTexture.bytes(for: state, viewer: state.player, visible: Array(repeating: true, count: state.map.count),
-                                                owners: Array(repeating: nil, count: state.map.count)),
-                              side: TileTexture.side(for: state.map))
+        try world.setLand(trailer.world.terrain, for: trailer.world.map)
+        // All of it known, as the rebuilt realm's window gives its land.
+        try world.updateTiles(trailer.world.tiles, side: TileTexture.side(for: trailer.world.map))
         target = try world.makeTarget(width: Trailer.width, height: Trailer.height)
         lake = try LakeRenderer(device: device, library: device.makeLibrary(source: LakeShader.source, options: nil), pixelFormat: .bgra8Unorm)
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: Trailer.width, height: Trailer.height,
@@ -154,7 +150,7 @@ final class Projector: @unchecked Sendable {
             let camera = trailer.camera(of: shot, at: time)
             let scene = trailer.scene(of: shot, at: time)
             var frame = FrameUniforms.make(camera: camera, size: Trailer.viewSize, pixelsPerPoint: Trailer.pixelsPerPoint, time: Float(time),
-                                           motion: 1, radius: trailer.world.state.map.radius, terrain: trailer.world.terrain,
+                                           motion: 1, radius: trailer.world.map.radius, terrain: trailer.world.terrain,
                                            hovered: nil, selected: nil)
             frame.light(with: PointLight.strongest(scene.lights, near: camera.focus))
             frame.weather(scene.weather)

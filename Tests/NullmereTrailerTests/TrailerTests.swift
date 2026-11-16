@@ -82,9 +82,9 @@ final class TrailerTests: XCTestCase {
 
     func testItsWorldIsGrownKnownAndCrowned() throws {
         let world = TrailerTests.trailer.world
-        let state = world.state
-        XCTAssertEqual(world.holds.map(\.id), state.holds.map(\.id), "Every hold drawn")
-        XCTAssertEqual(state.holds.first { $0.id == world.seat.id }?.position, world.seat.position, "The realm left as it was")
+        // The rebuilt realm's dozen, each drawn once where it stands.
+        XCTAssertEqual(world.holds.count, 12, "Every city drawn")
+        XCTAssertEqual(Set(world.holds.map(\.position)).count, world.holds.count)
         XCTAssertEqual(world.seat.level(.moonspire), BuildingKind.moonspire.maxLevel, "The heart's Moonspire crowned")
         XCTAssertEqual(world.rising.level(.moonspire), 3, "Another rising, its crane at work")
         XCTAssertNotEqual(world.rising.owner, world.seat.owner)
@@ -92,7 +92,9 @@ final class TrailerTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(world.besieged.level(.walls), 4, "Walled in stone")
         XCTAssertFalse([world.town.id, world.shore.id].contains(world.besieged.id))
         XCTAssertEqual(world.holds.first { $0.id == world.besieged.id }, world.besieged, "Drawn as it is dressed")
-        XCTAssertGreaterThan(state.holds.count, 24, "Holds about the whole lake")
+        // About the lake: each city by its shore, a hex from its water.
+        XCTAssertTrue(world.holds.allSatisfy { hold in hold.position.neighbors.contains { world.map[$0]?.terrain.isWater == true } }, "Cities about the lake")
+        XCTAssertFalse(world.sites.isEmpty || world.lairs.isEmpty, "Sites to gather from, barrows of the Unquiet")
         XCTAssertFalse(world.furniture.isEmpty)
         XCTAssertFalse(world.ways.isEmpty, "Ways for the carts")
     }

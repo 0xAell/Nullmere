@@ -7,7 +7,7 @@
 //!     NULLMERE_TRAILER_ROWS=../Sources/NullmereTrailer/TrailerRows.json cargo test --test trailer_rows
 
 use realm::hex::Hex;
-use realm::land::chunk_of;
+use realm::land::{self, chunk_of, Ground};
 use realm::rows::{Barrow, Cairn, City, Land, Place, Player, Realm, Site};
 use realm::rules;
 use realm::store::{Mem, Seconds, Table};
@@ -15,6 +15,8 @@ use std::collections::BTreeSet;
 use std::fmt::Write;
 
 const START: Seconds = 3_000_000;
+const SEED: u64 = 7;
+const RADIUS: u32 = 48;
 /// How far about the heart of the neighbourhood the land is written.
 const REACH: u32 = 26;
 const NAMES: [&str; 12] = ["Ilsen", "Corwen", "Maud", "Tamsin", "Bryn", "Edda", "Halen", "Osric", "Wenna", "Aldo", "Sefa", "Rook"];
@@ -24,24 +26,54 @@ const KEEPS: [u32; 12] = [25, 18, 16, 14, 12, 11, 10, 9, 8, 6, 5, 3];
 
 fn neighbourhood() -> Mem {
     let mut db = Mem::new(START, 5);
-    rules::open(&mut db, 7, 1, 48);
+    rules::open(&mut db, SEED, 1, RADIUS);
     for name in NAMES {
         db.call(|db| rules::join(db, name)).unwrap();
     }
+    // Set about the lake country's shore, as the trailer's shots stand
+    // about the lake: each city moved from where joining founded it.
+    let shore = shore(&db, REACH - 6);
+    assert!(shore.len() >= NAMES.len(), "room on the shore for a dozen: {}", shore.len());
     let mut cities = Table::<City>::all(&db);
     cities.sort_by_key(|city| city.id);
-    for (city, keep) in cities.into_iter().zip(KEEPS) {
-        db.update(City { keep, ..city });
+    for ((city, keep), hex) in cities.into_iter().zip(KEEPS).zip(shore) {
+        Table::<Place>::delete(&mut db, city.hex);
+        db.insert(Place { hex: hex.packed(), kind: Place::CITY, id: city.id });
+        db.update(City { keep, hex: hex.packed(), ..city });
     }
     db
 }
 
-/// The city nearest the middle of them all, about which the land is written.
-fn heart(cities: &[City]) -> Hex {
-    let hexes: Vec<Hex> = cities.iter().map(|city| Hex::unpacked(city.hex)).collect();
-    let n = hexes.len() as i32;
-    let middle = Hex::new(hexes.iter().map(|hex| hex.q).sum::<i32>() / n, hexes.iter().map(|hex| hex.r).sum::<i32>() / n);
-    *hexes.iter().min_by_key(|hex| (hex.distance(middle), hex.q, hex.r)).unwrap()
+/// Hexes of the lake's shore within `within` of its middle, a city's room
+/// apart and spread about it: buildable ground beside its water, with
+/// nothing standing there.
+fn shore(db: &Mem, within: u32) -> Vec<Hex> {
+    let taken: BTreeSet<u64> = Table::<Place>::all(db).iter().map(|place| place.hex).collect();
+    let mut found: Vec<Hex> = Hex::new(0, 0)
+        .within(within)
+        .into_iter()
+        .filter(|hex| {
+            land::ground(SEED, RADIUS, *hex).is_buildable()
+                && hex.neighbours().iter().any(|next| matches!(land::ground(SEED, RADIUS, *next), Ground::Deep | Ground::Shallows))
+                && !taken.contains(&hex.packed())
+        })
+        .collect();
+    // Round the lake, by the angle each stands at from its middle.
+    found.sort_by(|a, b| {
+        let (ax, ay) = a.centre();
+        let (bx, by) = b.centre();
+        ay.atan2(ax).partial_cmp(&by.atan2(bx)).unwrap().then(a.q.cmp(&b.q)).then(a.r.cmp(&b.r))
+    });
+    // Every one a city's room from those before it, then a dozen of them
+    // evenly round.
+    let mut spaced: Vec<Hex> = Vec::new();
+    for hex in found {
+        if spaced.iter().all(|other| other.distance(hex) >= 5) {
+            spaced.push(hex);
+        }
+    }
+    let count = spaced.len();
+    (0..NAMES.len().min(count)).map(|index| spaced[index * count / NAMES.len().min(count)]).collect()
 }
 
 fn hex_bytes(bytes: &[u8]) -> String {
@@ -60,7 +92,7 @@ fn quoted(words: &str) -> String {
 fn rows(db: &Mem) -> String {
     let mut cities = Table::<City>::all(db);
     cities.sort_by_key(|city| city.id);
-    let heart = heart(&cities);
+    let heart = Hex::new(0, 0);
     let near = |packed: u64| Hex::unpacked(packed).distance(heart) <= REACH;
     let reach = REACH as i32;
     let chunks: BTreeSet<u64> = (-reach..=reach)
@@ -104,10 +136,11 @@ fn a_neighbourhood_for_the_trailer() {
     cities.sort_by_key(|city| city.id);
     assert_eq!(cities.len(), NAMES.len());
     assert_eq!(cities.iter().map(|city| city.keep).collect::<Vec<_>>(), KEEPS.to_vec());
-    // Arrived together, so neighbours: every city within reach of the one in their midst.
-    let heart = heart(&cities);
+    // About the lake: every city within reach of its middle.
+    let heart = Hex::new(0, 0);
     let far = cities.iter().map(|city| Hex::unpacked(city.hex).distance(heart)).max().unwrap();
-    eprintln!("TRAILER the dozen lie within {far} of the one in their midst");
+    let near = cities.iter().map(|city| Hex::unpacked(city.hex).distance(heart)).min().unwrap();
+    eprintln!("TRAILER the dozen lie from {near} to {far} of the lake's middle");
     // With room about each for its town, all within the land written.
     assert!(far + 6 <= REACH, "the dozen live close together: {far}");
     let written = rows(&db);

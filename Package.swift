@@ -48,7 +48,8 @@ var targets: [Target] = [
     // The trailer, apart from the GPU: its world, its shots and what moves
     // in them, and its score. Pure Swift, so every shot is staged and the
     // score rendered on Linux too; the Mac draws and encodes it.
-    .target(name: "NullmereTrailer", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound"]),
+    .target(name: "NullmereTrailer", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound", "NullmereLive", "NullmereLiveStage", "NullmereRealm"],
+            resources: [.copy("TrailerRows.json")]),
     .testTarget(name: "NullmereTrailerTests", dependencies: ["NullmereTrailer", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound"]),
     // SpacetimeDB in memory, and credentials kept in memory, for tests of
     // the realm across the network: the realm's and the app's.

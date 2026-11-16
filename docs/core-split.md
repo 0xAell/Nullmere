@@ -114,7 +114,11 @@ hold walled in stone). Two ways off the old rules:
 ## Order
 
 1. The trailer's world without GameState (its pictures compared before
-   and after in the Trailer workflow's stills).
+   and after in the Trailer workflow's stills). Done on 16 November,
+   **unverified** until the Trailer workflow's and the Macs' runs: the
+   realm test sets the twelve cities about the lake's shore, nine to
+   eleven hexes from its middle, and TrailerWorld reads them in a window
+   of 26 about the lake.
 2. A land module (`NullmereLand`): the whole and in-part files above,
    trimmed; kept modules import it instead of NullmereCore.
 3. Test fixtures rebuilt on it, a few files at a time, each step green.
