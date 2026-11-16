@@ -160,22 +160,6 @@ public enum WorldShaders {
         return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
     }
 
-    // The noise's slope at a point, from the same four corners one lookup
-    // reads: how much it rises a unit east and a unit south, for a relief
-    // the light finds, at a third of the cost of reading it three times.
-    float2 nm_noiseSlope(float2 p) {
-        float2 i = floor(p);
-        float2 f = fract(p);
-        float2 u = f * f * (3.0 - 2.0 * f);
-        float2 du = 6.0 * f * (1.0 - f);
-        float a = nm_hash12(i);
-        float b = nm_hash12(i + float2(1.0, 0.0));
-        float c = nm_hash12(i + float2(0.0, 1.0));
-        float d = nm_hash12(i + float2(1.0, 1.0));
-        float k = a - b - c + d;
-        return du * float2(b - a + k * u.y, c - a + k * u.x);
-    }
-
     float nm_fbm(float2 p) {
         float total = 0.0;
         float amplitude = 0.5;
@@ -204,38 +188,14 @@ public enum WorldShaders {
     // The ground's own grain: broad patches of richer and poorer earth, and
     // a fine speckle over them, darker and lighter about the land's colour
     // and never changing its mean.
-    float3 nm_grain(float2 p, float3 albedo, float pixel) {
+    float3 nm_grain(float2 p, float3 albedo) {
         // Patches the size of a hex, swinging the shade by half, were the
         // lake view's grey banks: seen low across the shore they drew out
         // into streaks of cloud (run 540 without the land's light lost
         // them). The ground's grain is now at the scale of tussocks and
         // stones, and its shade swings little.
-        // Each octave of it, and the speckle, only while it is two pixels
-        // across or more, fading in by four: finer, it is never seen but
-        // shimmers, and stands at its mean, and the wide views (CI run
-        // 1065's ninety-six seats near, a frame's worth of GPU) don't pay
-        // for it. Close to, all of it, as it always was.
-        float2 q = p * 4.2 + float2(3.7, 1.3);
-        float patches = 0.0;
-        float amplitude = 0.5;
-        float period = 1.0 / 4.2;
-        for (int octave = 0; octave < 4; octave++) {
-            float seen = clamp(period / (2.0 * pixel) - 1.0, 0.0, 1.0);
-            if (seen > 0.0) {
-                patches += amplitude * mix(0.5, nm_noise(q), seen);
-            } else {
-                patches += amplitude * 0.5;
-            }
-            q = q * 2.03 + float2(17.1, 9.2);
-            amplitude *= 0.5;
-            period /= 2.03;
-        }
-        patches /= 0.9375;
-        float speckled = clamp(1.0 / (11.0 * 2.0 * pixel) - 1.0, 0.0, 1.0);
-        float speckle = 0.5;
-        if (speckled > 0.0) {
-            speckle = mix(0.5, nm_noise(p * 11.0 + float2(11.0, 5.0)), speckled);
-        }
+        float patches = nm_fbm(p * 4.2 + float2(3.7, 1.3));
+        float speckle = nm_noise(p * 11.0 + float2(11.0, 5.0));
         float shade = 0.88 + 0.14 * patches + 0.1 * speckle;
         // The poorer patches lean a little toward earth, the richer toward moss.
         float3 earth = albedo * float3(1.06, 0.98, 0.9);
@@ -253,7 +213,7 @@ public enum WorldShaders {
     // the moon, whose land is drawn as it always was.
     float3 nm_ground(float3 world, float3 n, float3 albedo, float pixel, float day) {
         float2 p = world.xz;
-        float3 c = nm_grain(p, albedo, pixel);
+        float3 c = nm_grain(p, albedo);
         if (day <= 0.0) {
             return c;
         }
@@ -879,25 +839,8 @@ public enum WorldShaders {
             // All of it at noon, some of it at dusk and dawn (by how
             // brightly the hour's marks are lit), none of it at night.
             // Its pattern is the world's: the same wherever the window lies.
-            float day = frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0);
-            float3 grounded = world + float3(frame.origin.x, 0.0, frame.origin.y);
-            float3 albedo = nm_ground(grounded, n, colour, pixel, day);
-            // Tussocks: under the sun a meadow's grass has a small relief of
-            // its own, a third of a hex or so across, that the light finds,
-            // so a meadow is grass and not a sheet; the heath and the sand
-            // a gentler one; salt and snow lie flat, and the lake's bed.
-            // None at night, none once smaller than a few pixels.
-            float green = clamp((colour.g - max(colour.r, colour.b)) * 7.0, 0.0, 1.0);
-            float bare = (1.0 - green) * (1.0 - smoothstep(0.3, 0.42, min(colour.r, min(colour.g, colour.b)))) * step(0.0, world.y);
-            // Only while a tussock, a third of a world unit, is some twenty
-            // pixels or more: a realm's wide view near (CI run 1065: the
-            // ninety-six seats' frame past its 16.7 ms) pays nothing for it.
-            float tussocks = day * (green + 0.55 * bare) * (1.0 - smoothstep(0.009, 0.016, pixel));
-            if (tussocks > 0.0) {
-                float2 slope = 0.3 * nm_noiseSlope(grounded.xz * 3.1)
-                    + 0.18 * nm_noiseSlope(grounded.xz * 8.7 + float2(13.0, 7.0));
-                n = normalize(n - float3(slope.x, 0.0, slope.y) * 2.0 * tussocks);
-            }
+            float3 albedo = nm_ground(world + float3(frame.origin.x, 0.0, frame.origin.y), n, colour, pixel,
+                                      frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0));
         #else
             float3 albedo = colour;
         #endif
@@ -1026,28 +969,10 @@ public enum WorldShaders {
         // deeps; as bright as the hour's sky, and nothing at all by night.
         float sunlit = (1.0 - night) * dot(frame.skyLight.rgb, float3(0.3, 0.5, 0.2)) / 0.44;
         float3 body = mix(float3(0.075, 0.30, 0.32), float3(0.016, 0.08, 0.21), smoothstep(0.04, 0.8, depth)) * sunlit;
-        // By day small waves run over it, two trains of them drifting
-        // across each other: the water a shade lighter or darker as each
-        // turns toward the sun or away, and where one turns the sun to the
-        // eye, a glint. None at night, whose water is the black glass it
-        // was; fewer at the Still's calm; none once smaller than a pixel.
-        float3 glints = float3(0.0);
-        float daylit = (1.0 - night) * (1.0 - 0.8 * clamp(frame.still.x, 0.0, 1.0))
-            * (1.0 - smoothstep(0.04, 0.12, max(fwidth(world.x), fwidth(world.z))));
-        if (daylit > 0.0) {
-            float2 w = (world.xz + frame.origin.xy) * 2.3;
-            float2 slope = 0.25 * nm_noiseSlope(w + nm_drift(time, 0.06))
-                + 0.15 * nm_noiseSlope(w * 1.9 + float2(7.0, 3.0) - nm_drift(time + 11.0, 0.05));
-            float3 wave = normalize(float3(-slope.x * 1.5 * daylit, 1.0, -slope.y * 1.5 * daylit));
-            float3 sun = normalize(frame.key.xyz);
-            body *= 1.0 + 0.9 * (dot(wave, sun) - sun.y);
-            float spark = pow(max(dot(reflect(look, wave), sun), 0.0), 400.0);
-            glints = frame.keyColour.rgb * frame.key.w * spark * 0.5 * daylit;
-        }
         float3 starlit = frame.water.rgb + body
             + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moonFace.xyz)) * night * fresnel
             + nm_daySky(mirrored NM_FRAME_PASS) * glass;
-        float3 moonlit = nm_moonlight(mirrored, frame.moonFace.xyz) * fresnel * frame.moonFace.w + glints;
+        float3 moonlit = nm_moonlight(mirrored, frame.moonFace.xyz) * fresnel * frame.moonFace.w;
         // The moon's road: on the still water's faint swell, a broken glitter
         // of its light along its bearing from the eye, narrow near the moon's
         // image and widening toward the shore the eye stands on.
