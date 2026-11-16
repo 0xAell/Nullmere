@@ -37,6 +37,14 @@ public struct LiveGameView: View {
 
         /// Which of the four destinations it belongs to.
         var destination: Destination { Destination.allCases.first { $0.panels.contains(self) } ?? .house }
+
+        /// The part the palette names (`LiveSession.parts`).
+        init?(part: String) {
+            let all: [String: Panel] = ["city": .city, "troops": .troops, "studies": .studies, "day": .day, "alliance": .alliance, "realm": .realm,
+                                        "chat": .chat, "reports": .reports]
+            guard let panel = all[part] else { return nil }
+            self = panel
+        }
     }
 
     /// The four places beside the world: the player's House (their city,
@@ -70,6 +78,7 @@ public struct LiveGameView: View {
 
     private let session: LiveSession
     @State private var panel: Panel?
+    @State private var palette = false
     @State private var cannotDraw = false
 
     public init(session: LiveSession) {
@@ -103,7 +112,7 @@ public struct LiveGameView: View {
                 if session.phase == .naming {
                     LiveNameCard(session: session)
                 } else {
-                    LiveHUD(session: session, panel: $panel)
+                    LiveHUD(session: session, panel: $panel, palette: $palette)
                 }
             }
         }
@@ -244,6 +253,8 @@ struct LiveNameCard: View {
 struct LiveHUD: View {
     let session: LiveSession
     @Binding var panel: LiveGameView.Panel?
+    /// Whether the palette is open, to search for anything to do.
+    @Binding var palette: Bool
 
     /// The share of the window's height an open destination stands to.
     static let panelShare: CGFloat = 0.42
@@ -275,7 +286,7 @@ struct LiveHUD: View {
                             LiveArmies(session: session, seconds: seconds)
                                 .chrome("live-armies")
                             Spacer(minLength: 0)
-                            LiveDock(session: session, panel: $panel)
+                            LiveDock(session: session, panel: $panel, find: { palette.toggle() })
                                 .chrome("live-dock")
                         }
                         if let selection = session.selection {
@@ -290,8 +301,67 @@ struct LiveHUD: View {
                     }
                 }
                 .padding(12)
+                .overlay(alignment: .top) {
+                    if palette {
+                        LivePaletteView(session: session, seconds: seconds, open: { panel = $0 }) { palette = false }
+                            .padding(.top, 90)
+                    }
+                }
             }
         }
+    }
+}
+
+/// The palette: a line to type what the player would do in, and what
+/// can be done this moment that answers to it; Return does the first,
+/// a click any, Escape puts it away.
+struct LivePaletteView: View {
+    let session: LiveSession
+    let seconds: Double
+    let open: (LiveGameView.Panel) -> Void
+    let dismiss: () -> Void
+    @State private var search = ""
+    @FocusState private var focused: Bool
+
+    /// The most it lists at once.
+    static let most = 8
+
+    var body: some View {
+        let found = Array(session.commands(matching: search, at: seconds).prefix(Self.most))
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("What would you do?", text: $search)
+                .textFieldStyle(.plain)
+                .font(.nm(15))
+                .foregroundStyle(Palette.ink)
+                .focused($focused)
+                .onSubmit { if let first = found.first { choose(first) } }
+                .accessibilityLabel("Search for something to do")
+            ForEach(found) { command in
+                Button { choose(command) } label: {
+                    Text(verbatim: command.title)
+                        .font(.nm(12))
+                        .foregroundStyle(Palette.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            if found.isEmpty {
+                LiveSmall(words: "Nothing answers to those words.", dim: true)
+            }
+        }
+        .padding(14)
+        .frame(width: 420)
+        .panelBackground()
+        .onAppear { focused = true }
+        .onExitCommand(perform: dismiss)
+    }
+
+    /// Puts the palette away and does what was chosen, opening a part of a
+    /// destination where that is what it does.
+    private func choose(_ command: LiveCommand) {
+        dismiss()
+        Task { if let part = await session.perform(command), let panel = LiveGameView.Panel(part: part) { open(panel) } }
     }
 }
 
@@ -388,9 +458,13 @@ struct LiveDock: View {
 
     let session: LiveSession
     @Binding var panel: LiveGameView.Panel?
+    /// Opens the palette, as Command-K does.
+    var find: () -> Void = {}
 
     var body: some View {
         HStack(spacing: 2) {
+            QuietButton(title: "Find", name: "Find something to do, Command-K", action: find)
+                .keyboardShortcut("k", modifiers: .command)
             ForEach(Self.destinations, id: \.self) { place in
                 let unread = place == .mail ? session.world.unread + session.world.unreadLetters : 0
                 let open = panel?.destination == place

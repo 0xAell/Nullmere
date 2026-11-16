@@ -201,6 +201,11 @@ final class LiveGameTests: XCTestCase {
         XCTAssertEqual(LiveDock.pressed(.house, while: nil), .city)
         XCTAssertNil(LiveDock.pressed(.house, while: .studies))
         XCTAssertEqual(LiveDock.pressed(.realm, while: .studies), .realm)
+        // The palette lists what can be done, and every part it names is a part of a destination.
+        XCTAssertGreaterThan(try drawn(LivePaletteView(session: session, seconds: 2_015, open: { _ in }) {}, width: 420, height: 320, as: "live-palette.png"), 200)
+        XCTAssertEqual(LiveSession.parts.compactMap { LiveGameView.Panel(part: $0.name) },
+                       LiveGameView.Destination.allCases.flatMap(\.panels), "the palette's parts are the destinations', in order")
+        XCTAssertNil(LiveGameView.Panel(part: "nowhere"))
         // Each side panel, with something of everything in it.
         for side in [LiveGameView.Panel.city, .troops, .studies, .alliance, .day, .realm, .chat, .reports] {
             let lit = try drawn(LiveSidePanel(session: session, seconds: 2_015, panel: side) {}, width: 340, height: 700, as: "live-\(side).png")

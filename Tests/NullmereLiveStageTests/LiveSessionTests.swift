@@ -404,6 +404,60 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(card(500, 0).title, "Unknown land")
     }
 
+    /// The palette: everything that can be done this moment, in words to
+    /// search by, and each done when chosen.
+    func testThePaletteFindsWhatCanBeDoneAndDoesIt() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["my_hunt"] = [[n(1), n(1_000), n(2_000), n(1_000), n(8_000), n(1)]]
+        rows["my_stock"] = [[n(7), n(60_000), n(60_000), n(60_000), n(0), n(2_000), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(200_000)]]
+        rows["my_jobs"] = []
+        func blueprint(_ kind: Int, _ level: Int, _ name: String, opensAt: Int) -> [JSONValue] {
+            [n(kind << 32 | level), n(kind), n(level), .string(name), n(0), n(100 * level), n(0), n(0), n(10 * level), n(0), n(0), n(0), n(0),
+             n(opensAt), n(0), n(0), n(20 * level)]
+        }
+        rows["blueprint"] = [blueprint(2, 1, "Farm", opensAt: 1), blueprint(2, 3, "Farm", opensAt: 1), blueprint(7, 1, "Barracks", opensAt: 2)]
+        // A barrow of the second level no one fights at; a grain site no one works.
+        rows["barrow"]?.append([n(11), n(LiveHex(q: 6, r: 0).packed), n(2), n(0)])
+        rows["place"]?.append([n(LiveHex(q: 6, r: 0).packed), n(3), n(11)])
+        rows["site"]?.append([n(6), n(LiveHex(q: 7, r: 1).packed), n(1), n(2), n(40_000), n(0)])
+        rows["place"]?.append([n(LiveHex(q: 7, r: 1).packed), n(2), n(6)])
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+
+        let all = session.commands(at: 2_015)
+        XCTAssertEqual(all.first, LiveCommand(title: "Go to your city", act: .go(LiveHex(q: 10, r: -4))))
+        XCTAssertTrue(all.contains { $0.title.hasPrefix("Go to your army: ") }, "her army out")
+        XCTAssertEqual(all.compactMap { command -> String? in
+            if case .open(let part) = command.act { return part }
+            return nil
+        }, LiveSession.parts.map { $0.name }, "every part of every destination")
+        XCTAssertTrue(all.contains(LiveCommand(title: "Raise the Farm to level 3", act: .upgrade(22))))
+        XCTAssertTrue(all.contains(LiveCommand(title: "Build a Barracks", act: .build(7))))
+        XCTAssertTrue(all.contains(LiveCommand(title: "Go to the nearest barrow you may attack, of level 2", act: .go(LiveHex(q: 6, r: 0)))))
+        XCTAssertTrue(all.contains(LiveCommand(title: "Go to the nearest grain site, of level 2", act: .go(LiveHex(q: 7, r: 1)))))
+        XCTAssertFalse(all.contains { $0.title.contains("timber site") }, "the grove is being worked")
+        XCTAssertFalse(all.contains { $0.act == .claimTask }, "no task done to claim")
+
+        // Searched by every word, whatever its case.
+        XCTAssertEqual(session.commands(matching: "open REP", at: 2_015).map(\.title), ["Open Reports and letters"])
+        XCTAssertEqual(session.commands(matching: "  ", at: 2_015).count, all.count, "nothing searched, everything found")
+        XCTAssertTrue(session.commands(matching: "no such thing", at: 2_015).isEmpty)
+
+        // Chosen: a part to open is handed back; a place gone to and chosen; the rest asked of the realm.
+        let opened = await session.perform(LiveCommand(title: "Open Studies", act: .open("studies")))
+        XCTAssertEqual(opened, "studies")
+        await session.perform(LiveCommand(title: "Go to the nearest grain site, of level 2", act: .go(LiveHex(q: 7, r: 1))))
+        XCTAssertEqual(session.selected, LiveHex(q: 7, r: 1))
+        line.clear()
+        await session.perform(LiveCommand(title: "Raise the Farm to level 3", act: .upgrade(22)))
+        await session.perform(LiveCommand(title: "Build a Barracks", act: .build(7)))
+        await session.perform(LiveCommand(title: "Study Tillage to level 1", act: .learn(1)))
+        await session.perform(LiveCommand(title: "Claim the task", act: .claimTask))
+        await session.perform(LiveCommand(title: "Open the day's chest at 20 marks", act: .openChest(1)))
+        XCTAssertEqual(line.asked, ["upgrade 22", "build 7", "learn 1", "claim task", "open chest 1"])
+    }
+
     func testRalliesGatesAndWardstonesAreCalledFromTheirCards() async throws {
         var rows = LiveWindowTests.rows()
         rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]
