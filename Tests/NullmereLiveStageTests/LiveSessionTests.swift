@@ -801,6 +801,53 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(line.asked.last, "buy 1 of 2")
     }
 
+    /// Counsel of a commander, grounded on the realm's rows: who they are,
+    /// what they know as it begins, what they may look at, and deeds put
+    /// forward only from what can be done now.
+    func testACommandersCounselIsGroundedOnTheRealmsRows() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(3), n(4), n(200), n(0)]]
+        rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]
+        rows["my_stock"] = [[n(7), n(60_000), n(60_000), n(60_000), n(0), n(2_000), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(200_000)]]
+        // Her Farm may be raised to its third level, and a Sawmill built.
+        rows["blueprint"] = [[n(2 << 32 | 3), n(2), n(3), .string("Farm"), n(0), n(300), n(0), n(0), n(30), n(0), n(0), n(0), n(0), n(1), n(0), n(0), n(20)],
+                             [n(3 << 32 | 1), n(3), n(1), .string("Sawmill"), n(0), n(100), n(0), n(0), n(10), n(0), n(0), n(0), n(0), n(1), n(0), n(0), n(10)]]
+        let session = session(StandInLine(rows: rows))
+        await session.open()
+        XCTAssertNil(session.counsel(of: 99), "no counsel of a commander she has not")
+        let counsel = try XCTUnwrap(session.counsel(of: 11))
+        XCTAssertTrue(counsel.instructions.hasPrefix("You are Corwen, an outrider of level 4, counselling Ada,"), counsel.instructions)
+        XCTAssertTrue(counsel.instructions.contains("you counsel scouting, the cairns of the old folk, and hunting the barrows"))
+        XCTAssertTrue(counsel.instructions.contains("never invent a number, a name, a place or an event"))
+        let briefing = counsel.briefing.split(separator: "\n").map(String.init)
+        XCTAssertEqual(briefing.first, "You are Corwen, outrider of level 4, 200 of 1,600 seen toward the next. You are in the city.")
+        XCTAssertTrue(briefing.contains("Your lord's city: Keep level 3, power 1,000."))
+        XCTAssertTrue(briefing.contains { $0.hasPrefix("Armies out: ") && $0.contains("40 soldiers") }, "her army at the grove")
+        let deeds = try XCTUnwrap(briefing.last)
+        XCTAssertTrue(deeds.hasPrefix("Deeds that can be done now, in the words you put them forward by: "), deeds)
+        XCTAssertTrue(deeds.contains("Raise the Farm to level 3") && deeds.contains("Build a Sawmill"))
+        XCTAssertFalse(counsel.deeds.contains { if case .open = $0.act { return true } else { return false } }, "opening a part is no deed")
+
+        // What they may look at.
+        XCTAssertTrue(counsel.cityLook.contains("May be built or raised now: Farm, Sawmill."), counsel.cityLook)
+        XCTAssertTrue(counsel.cityLook.contains("40 soldiers stand ready"))
+        XCTAssertNotEqual(counsel.armiesLook, "No army of your lord's is out.")
+        XCTAssertEqual(counsel.allianceLook, "Your lord is in no alliance.")
+        XCTAssertEqual(counsel.realmLook, "Your lord stands 2nd in power in the realm.")
+
+        // A deed put forward: in its own words, or in words it holds; only ever one that can be done now.
+        let raise = counsel.propose("Raise the Farm to level 3.")
+        XCTAssertEqual(raise.command?.act, .upgrade(22))
+        XCTAssertEqual(raise.answer, "Put to your lord: Raise the Farm to level 3. Your lord decides.")
+        XCTAssertEqual(counsel.propose("build sawmill").command?.act, .build(3))
+        XCTAssertNil(counsel.propose("Burn the lake dry").command)
+        XCTAssertEqual(counsel.propose("Burn the lake dry").answer, "That cannot be done now. Put forward only a deed you were told can be done.")
+        XCTAssertNil(counsel.propose("").command)
+        let either = counsel.propose("a")
+        XCTAssertNil(either.command)
+        XCTAssertTrue(either.answer.hasPrefix("Say which: "), either.answer)
+    }
+
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
         let line = StandInLine(rows: LiveWindowTests.rows())
         // Seventeen seconds along its way of twenty-four: on 11, -2.
