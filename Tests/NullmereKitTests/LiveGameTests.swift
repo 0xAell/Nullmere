@@ -1,5 +1,6 @@
 import AppKit
 import LauncherCore
+import LauncherKit
 import SwiftUI
 import XCTest
 @testable import NullmereKit
@@ -345,6 +346,44 @@ final class LiveGameTests: XCTestCase {
         XCTAssertEqual(session.windowVersion, 2)
         XCTAssertEqual(map.camera, session.camera)
         map.draw(map.bounds)
+    }
+
+    /// Every button drawn in every part of every destination, and on the
+    /// card of each kind of place chosen, pressed as a player presses it:
+    /// each runs its own action, which reaches the session, and those that
+    /// ask the realm something ask it.
+    func testEveryButtonOfEveryPartIsPressed() async throws {
+        let (session, line) = await playing()
+        let askedBefore = line.asked.count
+        defer { PressableButtons.isListening = false }
+        var pressed: [String] = []
+        func pressAll<V: View>(_ view: V, as what: String) async throws {
+            PressableButtons.isListening = true
+            _ = try drawn(view, width: 1512, height: 982)
+            for title in PressableButtons.actions.keys.sorted() where PressableButtons.press(title) {
+                pressed.append("\(what): \(title)")
+            }
+            PressableButtons.isListening = false
+            // What each press set going, let run.
+            for _ in 0..<20 { await Task.yield() }
+            spin(0.05)
+        }
+        for place in LiveGameView.Destination.allCases {
+            for part in place.panels {
+                try await pressAll(LiveGameView(session: session, opening: part), as: part.title)
+            }
+        }
+        // Her city, the grove, the barrow and Bryn's city, each chosen.
+        for hex in [LiveHex(q: 10, r: -4), LiveHex(q: 12, r: -2), LiveHex(q: 8, r: -2), LiveHex(q: 14, r: -4)] {
+            session.selected = hex
+            try await pressAll(LiveGameView(session: session), as: "\(hex.q),\(hex.r)")
+        }
+        session.selected = nil
+        for _ in 0..<20 { await Task.yield() }
+        spin(0.2)
+        print("PRESSED \(pressed.count) buttons; the realm asked \(line.asked.count - askedBefore) things: \(line.asked.dropFirst(askedBefore).joined(separator: "; "))")
+        XCTAssertGreaterThan(pressed.count, 30, "\(pressed)")
+        XCTAssertGreaterThan(line.asked.count - askedBefore, 5, "The presses reached the realm: \(pressed)")
     }
 
     /// The map moves, and is drawn, as the launcher's display settings say:
