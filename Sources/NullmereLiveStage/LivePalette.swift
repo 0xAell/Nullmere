@@ -23,6 +23,8 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case helpAll
         /// Buy one of a thing from the alliance's stores.
         case buy(Int)
+        /// Have a commander read one tome of war.
+        case readTome(commander: UInt64, item: Int)
     }
 
     public let title: String
@@ -94,6 +96,11 @@ extension LiveSession {
         if !world.boons.isEmpty {
             all.append(LiveCommand(title: "Claim your alliance's gifts: \(world.boonGoods.words)", act: .claimBoons))
         }
+        for commander in world.commanders where commander.level < LiveCommander.topLevel && world.prisoners[commander.id] == nil {
+            for tome in world.heldTomes {
+                all.append(LiveCommand(title: "Have \(commander.name) read a \(tome.ware.name.lowercased())", act: .readTome(commander: commander.id, item: tome.ware.item)))
+            }
+        }
         for line in world.storeLines() where line.block == nil {
             all.append(LiveCommand(title: "Buy \(line.ware.name.lowercased()) for \(LiveWords.grouped(line.honour)) honour", act: .buy(line.ware.item)))
         }
@@ -158,6 +165,7 @@ extension LiveSession {
         case .claimBoons: await claimBoons()
         case .helpAll: await helpAll()
         case .buy(let item): await buy(item: item)
+        case .readTome(let commander, let item): await readTome(commander: commander, item: item)
         }
         return nil
     }

@@ -698,12 +698,12 @@ final class LiveSessionTests: XCTestCase {
         guard case .cairn(let found) = session.selection(at: near) else { return XCTFail("the cairn is chosen") }
         XCTAssertEqual(found.level, 3)
         XCTAssertTrue(session.world.hasFound(found))
-        XCTAssertEqual(LiveCairn.hoard(level: 3).haste, "a five minutes' haste")
-        XCTAssertEqual(found.hoardWords, "12,000 grain, 12,000 timber and 12,000 stone, and a five minutes' haste")
+        XCTAssertEqual(LiveCairn.hoard(level: 3).things, ["a five minutes' haste", "a tome of war"])
+        XCTAssertEqual(found.hoardWords, "12,000 grain, 12,000 timber and 12,000 stone, and a five minutes' haste and a tome of war")
         XCTAssertEqual(LiveCairn.hoard(level: 5).goods, LiveGoods(grain: 30_000, timber: 30_000, stone: 30_000, moonsalt: 1_000), "as the module's hoard_of")
         XCTAssertEqual(card(near), LiveCard(title: "Cairn, level 3", lines: ["Your scouts have found what it held. It stands for others to find."],
                                             buttons: [.init(title: "Send a scout", act: .explore, why: "Your scouts have found what this cairn held already.")]))
-        XCTAssertEqual(card(far), LiveCard(title: "Cairn, level 1", lines: ["The old folk laid 2,000 grain, 2,000 timber and 2,000 stone in it."],
+        XCTAssertEqual(card(far), LiveCard(title: "Cairn, level 1", lines: ["The old folk laid 2,000 grain, 2,000 timber and 2,000 stone, and a tome of war in it."],
                                            buttons: [.init(title: "Send a scout", act: .explore, why: "Raise a Scout Camp first.")]))
         XCTAssertEqual(card(far).buttons[0].icon, "binoculars")
 
@@ -734,6 +734,29 @@ final class LiveSessionTests: XCTestCase {
         let cairns = session.mapItems().filter { $0.kind == .cairn }
         XCTAssertEqual(cairns.map(\.hex), [near, far], "the nearest first")
         XCTAssertEqual(cairns.first?.label, "Cairn, level 3. Your scouts have found what it held. It stands for others to find.")
+    }
+
+    /// Tomes of war held are read by a commander: the palette offers each
+    /// tome to each commander who may still rise, and none to one held
+    /// prisoner or at the top.
+    func testTomesAreReadByCommanders() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["ware"] = [[n(9), .string("Tome of war"), .string("Read by one of your commanders."), n(0), n(4)],
+                        [n(10), .string("Great tome of war"), .string("Read by one of your commanders."), n(0), n(4)]]
+        rows["my_satchel"] = [[n(1 << 8 | 9), n(1), n(9), n(2)]]
+        rows["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(1), n(2), n(100), n(0)],
+                                 [n(12), n(1), .string("Ysolde"), n(2), n(30), n(0), n(0)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        XCTAssertEqual(session.world.heldTomes.map(\.ware.name), ["Tome of war"])
+        XCTAssertEqual(session.world.heldTomes.map(\.count), [2])
+        XCTAssertTrue(session.world.wares[9]?.isTome ?? false)
+        let reads = session.commands(at: 2_015).filter { if case .readTome = $0.act { return true } else { return false } }
+        XCTAssertEqual(reads, [LiveCommand(title: "Have Corwen read a tome of war", act: .readTome(commander: 11, item: 9))],
+                       "Ysolde, at the thirtieth level, has seen all there is")
+        await session.perform(reads[0])
+        XCTAssertEqual(line.asked.last, "read 1 of 9 to 11")
     }
 
     /// Honour buys from the alliance's stores: what each costs, why what

@@ -76,6 +76,8 @@ struct LiveDayPanel: View {
                 Spacer(minLength: 0)
                 if ware.isMaterial {
                     LiveSmall(words: "For the Forge", dim: true)
+                } else if ware.isTome {
+                    LiveSmall(words: "Read by a commander", dim: true)
                 } else if ware.isPeace {
                     // A peace is kept on the city itself, with no work to hasten.
                     QuietButton(title: "Use", enabled: session.asking == 0, name: "Use \(ware.name)", why: nil) { Task { await session.usePeace(ware.item) } }
@@ -184,6 +186,19 @@ struct LiveTalentControls: View {
                         Button(other.name) { Task { await session.pair(commander: commander.id, with: other.id) } }
                     }
                     Button("No one") { Task { await session.pair(commander: commander.id, with: 0) } }
+                }
+                .menuStyle(.button)
+                .buttonStyle(.borderless)
+                .fixedSize()
+                .font(.nm(LiveType.small))
+            }
+            // Tomes of war held: read by this commander, one at a time.
+            let tomes = world.heldTomes
+            if !tomes.isEmpty, commander.level < LiveCommander.topLevel {
+                Menu("Read") {
+                    ForEach(tomes, id: \.ware.item) { tome in
+                        Button("\(tome.ware.name) (\(tome.count) held)") { Task { await session.readTome(commander: commander.id, item: tome.ware.item) } }
+                    }
                 }
                 .menuStyle(.button)
                 .buttonStyle(.borderless)

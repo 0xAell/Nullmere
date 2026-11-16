@@ -389,6 +389,9 @@ public struct LiveWorld: Equatable, Sendable {
         return rallies.first { mine.contains($0.id) }
     }
 
+    /// The tomes of war the player holds, each with what it is.
+    public var heldTomes: [(ware: LiveWare, count: UInt64)] { heldItems.filter { $0.ware.isTome } }
+
     /// The items the player holds, each with what it is.
     public var heldItems: [(ware: LiveWare, count: UInt64)] {
         var held: [(ware: LiveWare, count: UInt64)] = []

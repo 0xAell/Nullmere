@@ -25,23 +25,24 @@ public struct LiveCairn: Equatable, Sendable, Identifiable {
 
     /// What a cairn of a level holds, as the module has it: a thousand of
     /// each of grain, timber and stone times the level and the next, five
-    /// hundred moonsalt a level past the third, and a haste from the third
-    /// level, an hour's at the top; and the haste in words.
-    public static func hoard(level: Int) -> (goods: LiveGoods, haste: String?) {
+    /// hundred moonsalt a level past the third; a tome of war, and from the
+    /// third level a haste too; at the top an hour's haste and a great
+    /// tome. The things in words.
+    public static func hoard(level: Int) -> (goods: LiveGoods, things: [String]) {
         let each = UInt64(1_000 * level * (level + 1))
         let goods = LiveGoods(grain: each, timber: each, stone: each, moonsalt: UInt64(500 * max(level - 3, 0)))
         switch level {
-        case ...2: return (goods, nil)
-        case 3, 4: return (goods, "a five minutes' haste")
-        default: return (goods, "an hour's haste")
+        case ...2: return (goods, ["a tome of war"])
+        case 3, 4: return (goods, ["a five minutes' haste", "a tome of war"])
+        default: return (goods, ["an hour's haste", "a great tome of war"])
         }
     }
 
     /// What it holds in a sentence: "12,000 grain, 12,000 timber and
-    /// 12,000 stone, and a five minutes' haste".
+    /// 12,000 stone, and a five minutes' haste and a tome of war".
     public var hoardWords: String {
-        let (goods, haste) = LiveCairn.hoard(level: level)
-        return haste.map { "\(goods.words), and \($0)" } ?? goods.words
+        let (goods, things) = LiveCairn.hoard(level: level)
+        return "\(goods.words), and \(things.joined(separator: " and "))"
     }
 }
 
