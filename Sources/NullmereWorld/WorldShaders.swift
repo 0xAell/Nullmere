@@ -844,10 +844,12 @@ public enum WorldShaders {
             float3 albedo = nm_ground(grounded, n, colour, pixel, day);
             // Tussocks: under the sun a meadow's grass has a small relief of
             // its own, a third of a hex or so across, that the light finds,
-            // so a meadow is grass and not a sheet; none at night, none on
-            // bare ground, none once smaller than a few pixels.
-            float tussocks = day * clamp((colour.g - max(colour.r, colour.b)) * 7.0, 0.0, 1.0)
-                * (1.0 - smoothstep(0.03, 0.08, pixel));
+            // so a meadow is grass and not a sheet; the heath and the sand
+            // a gentler one; salt and snow lie flat, and the lake's bed.
+            // None at night, none once smaller than a few pixels.
+            float green = clamp((colour.g - max(colour.r, colour.b)) * 7.0, 0.0, 1.0);
+            float bare = (1.0 - green) * (1.0 - smoothstep(0.3, 0.42, min(colour.r, min(colour.g, colour.b)))) * step(0.0, world.y);
+            float tussocks = day * (green + 0.55 * bare) * (1.0 - smoothstep(0.03, 0.08, pixel));
             if (tussocks > 0.0) {
                 float2 q = grounded.xz * 3.1;
                 float here = nm_noise(q);
