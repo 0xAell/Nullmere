@@ -62,6 +62,7 @@ precision highp sampler2DShadow;
 #define NM_PALETTE_ARGUMENT
 #define NM_HOUSE(slot) houses[min(int(slot), 127)].rgb
 #define NM_HEIGHTS_ARGUMENT
+#define NM_HEIGHTS_PASS
 #define NM_HEIGHT(uv) texture(heights, uv).r
 #define NM_DISCARD discard
 #define NM_ARRAY6(type, name, a, b, c, d, e, f) const type name[6] = type[6](a, b, c, d, e, f);

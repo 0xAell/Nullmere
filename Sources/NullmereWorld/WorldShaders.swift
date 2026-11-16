@@ -62,6 +62,7 @@ public enum WorldShaders {
     #define NM_PALETTE_ARGUMENT , texture2d<float, access::read> housePalette
     #define NM_HOUSE(slot) housePalette.read(uint2(slot % 64u, slot / 64u)).rgb
     #define NM_HEIGHTS_ARGUMENT , texture2d<float> heights
+    #define NM_HEIGHTS_PASS , heights
     #define NM_HEIGHT(uv) heights.sample(nm_smoothSampler, uv).r
     constexpr sampler nm_smoothSampler(filter::linear, address::clamp_to_edge);
     #define NM_DISCARD discard_fragment()
@@ -703,9 +704,35 @@ public enum WorldShaders {
     // inputs to these, so what the preview draws is what the game draws.
     // BEGIN SHADING
 
+    // How much of the key light reaches a point of the land past the land
+    // itself, 0 none to 1 all: the heights grid walked toward the light in
+    // ten lengthening strides, near enough three hexes, and wherever the
+    // land rises over the line from the point to the light, the less of
+    // it the higher, softened the further off it rises, so a ridge's
+    // shadow falls hard at its foot and blurs toward its end. Nothing when
+    // the light stands overhead or under the horizon.
+    float nm_landShadow(float3 world NM_FRAME_ARGUMENT NM_HEIGHTS_ARGUMENT) {
+        float3 toward = normalize(frame.key.xyz);
+        float across = length(toward.xz);
+        if (across < 0.05 || toward.y <= 0.0) {
+            return 1.0;
+        }
+        float2 way = toward.xz / across;
+        float rise = toward.y / across;
+        float lit = 1.0;
+        float t = 0.3;
+        for (int i = 0; i < 10; i++) {
+            float2 grid = (world.xz + way * t - frame.heights.xy) / frame.haze.w + 0.5;
+            float over = NM_HEIGHT(grid / frame.heights.zw) - (world.y + rise * t);
+            lit = min(lit, clamp(1.0 - over * 4.0 / t, 0.0, 1.0));
+            t *= 1.38;
+        }
+        return lit;
+    }
+
     // The land at a point of it: `known` as the mesh's corner had it.
     float4 nm_landShade(float3 world, float3 normal, float3 colour, float known
-                        NM_FRAME_ARGUMENT NM_TEXTURE_ARGUMENT NM_SHADOW_ARGUMENT NM_PALETTE_ARGUMENT) {
+                        NM_FRAME_ARGUMENT NM_TEXTURE_ARGUMENT NM_SHADOW_ARGUMENT NM_PALETTE_ARGUMENT NM_HEIGHTS_ARGUMENT) {
         float time = frame.eye.w;
         float radius = frame.world.x;
         float2 p = world.xz;
@@ -805,6 +832,8 @@ public enum WorldShaders {
             float3 ln = normalize(mix(n, float3(0.0, 1.0, 0.0), frame.land.x));
             // What stands on the land keeps the key light off the ground behind it.
             float moonlit = nm_moonlit(world, n, frame.shadow, frame.still NM_SHADOW_PASS);
+            // And the land itself keeps it off the ground in a ridge's lee.
+            moonlit *= nm_landShadow(world NM_FRAME_PASS NM_HEIGHTS_PASS);
             lit += nm_light(albedo, ln, frame.key.w * frame.land.y * moonlit NM_FRAME_PASS) * shown;
             for (int i = 0; i < 4; i++) {
                 lit += nm_pointLight(albedo, world, n, frame.lights[i], frame.lights[i + 4]);
@@ -1123,9 +1152,10 @@ public enum WorldShaders {
     fragment float4 nm_land_fragment(LandOut in [[stage_in]],
                                      constant FrameUniforms &frame [[buffer(0)]],
                                      texture2d<float, access::read> tiles [[texture(0)]],
+                                     texture2d<float> heights [[texture(1)]],
                                      depth2d<float> shadows [[texture(2)]],
                                      texture2d<float, access::read> housePalette [[texture(3)]]) {
-        return nm_landShade(in.world, in.normal, in.colour, in.known, frame, tiles, shadows, housePalette);
+        return nm_landShade(in.world, in.normal, in.colour, in.known, frame, tiles, shadows, housePalette, heights);
     }
 
     // MARK: The still water

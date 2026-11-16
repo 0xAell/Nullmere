@@ -343,6 +343,9 @@ final class WorldRenderer {
         encoder.setFragmentTexture(tiles, index: 0)
         encoder.setFragmentTexture(shadows, index: 2)
         encoder.setFragmentTexture(housePalette, index: 3)
+        // The land's heights, which the land's shading walks for the shadows
+        // the land casts, and the water's for its depth.
+        encoder.setFragmentTexture(land.heights, index: 1)
 
         // The land: only its chunks in view.
         if !WorldRenderer.leftOut.contains("land") {
@@ -380,7 +383,6 @@ final class WorldRenderer {
         if !WorldRenderer.leftOut.contains("water") {
             encoder.setRenderPipelineState(waterPipeline)
             encoder.setDepthStencilState(glassy)
-            encoder.setFragmentTexture(land.heights, index: 1)
             encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         }
 
