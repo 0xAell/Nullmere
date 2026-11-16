@@ -93,6 +93,14 @@ public enum LiveSelection: Equatable, Sendable {
     case land(LiveHex, ground: UInt8?)
 }
 
+/// Something that just happened in the player's realm, in a few words,
+/// and when it was told.
+public struct LiveNews: Equatable, Identifiable, Sendable {
+    public let id: Int
+    public let words: String
+    public let at: Double
+}
+
 /// A player in the realm: their line to it, the world as it stands, where
 /// they are looking, what they have chosen, and what they ask.
 ///
@@ -138,6 +146,12 @@ public final class LiveSession {
     /// The window of the world being drawn, and a number that moves each
     /// time another is taken: the land to be drawn has changed.
     public private(set) var window: LiveWindow?
+    /// What just happened, the newest last, each with when it was told: the
+    /// toasts the play view shows a while. The last `newsKept` are kept.
+    public private(set) var news: [LiveNews] = []
+    public static let newsKept = 20
+    /// How many have been told, to number the next.
+    private var told = 0
     public private(set) var windowVersion = 0
     /// A number that moves each time what stands still in the window has
     /// changed: its cities, sites and barrows.
@@ -207,10 +221,16 @@ public final class LiveSession {
         line?.close()
     }
 
-    /// Takes the realm's rows as they now stand.
+    /// Takes the realm's rows as they now stand, noting what happened since
+    /// the last.
     public func refresh() {
         guard let latest = line?.world else { return }
         guard latest != world || phase == .opening else { return }
+        for words in LiveWorld.news(from: world, to: latest, at: now) {
+            told += 1
+            news.append(LiveNews(id: told, words: words, at: now))
+        }
+        if news.count > LiveSession.newsKept { news.removeFirst(news.count - LiveSession.newsKept) }
         world = latest
         if world.realm == nil {
             phase = .opening

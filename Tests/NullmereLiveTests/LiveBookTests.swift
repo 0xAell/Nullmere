@@ -217,6 +217,25 @@ final class LiveBookTests: XCTestCase {
         XCTAssertNil(training.promotion(try XCTUnwrap(training.trainLines(at: 2_000).first), at: 2_000))
     }
 
+    func testWhatHappenedBetweenTwoMomentsIsToldAsToasts() throws {
+        let before = LiveWorld(snapshot: rows())
+        var later = rows(jobs: [])
+        // A report and a letter come, and an army sets out against her city.
+        later["my_reports"] = [[n(31), n(1), n(2_010), n(LiveReport.hunt), n(Double(LiveHex(q: 5, r: 5).packed)), .bool(true), n(0), n(3),
+                                n(20), n(2), n(0), n(12), n(12), n(0), n(0), n(0), n(0), .string("Your army cleared a level 2 barrow. Of your 20, 2 were wounded."), .bool(false)]]
+        later["player"] = [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)]]
+        later["my_letters"] = [[n(41), n(2), n(1), .string("Bryn"), .string("Well met."), n(2_011), .bool(false)]]
+        let march: [JSONValue] = [n(11), n(2), n(8), n(LiveMarch.attack), n(LiveMarch.going), n(Double(LiveHex(q: 9, r: 4).packed)),
+                                  n(Double(LiveHex(q: 3, r: 4).packed)), n(7), n(1_000), n(2_100), n(300), .string(""), n(1), n(0)]
+        later["march"] = [march]
+        let told = LiveWorld.news(from: before, to: LiveWorld(snapshot: later), at: 2_030)
+        XCTAssertEqual(told, ["The Sawmill stands at level 2.", "30 Spearmen of tier 1 are ready.",
+                              "A report: Your army cleared a level 2 barrow.", "A letter from Bryn.", "Bryn's army of 300 reaches your city in 1:10."])
+        // Nothing new, nothing told; nor before there is a city to tell of.
+        XCTAssertTrue(LiveWorld.news(from: before, to: before, at: 2_030).isEmpty)
+        XCTAssertTrue(LiveWorld.news(from: LiveWorld(snapshot: [:]), to: before, at: 2_030).isEmpty)
+    }
+
     func testArmiesMarchingOnTheCityAreToldSoonestFirst() throws {
         var snapshot = rows()
         let home = n(Double(LiveHex(q: 3, r: 4).packed)), away = n(Double(LiveHex(q: 9, r: 4).packed))

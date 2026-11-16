@@ -408,6 +408,30 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(card(500, 0).title, "Unknown land")
     }
 
+    /// What happens is told as it comes: a work done, an army home.
+    func testWhatHappensIsToldAsItComes() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["blueprint"] = [[n(2 << 32 | 1), n(2), n(1), .string("Farm"), n(0), n(100), n(0), n(0), n(10), n(0), n(0), n(0), n(0), n(1), n(0), n(0), n(20)]]
+        rows["my_jobs"] = [[n(4), n(7), n(1), n(22), n(3), n(0), n(2_000), n(2_014), n(9)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        XCTAssertTrue(session.news.isEmpty, "nothing told of the realm as first found")
+        line.change { $0["my_jobs"] = [] }
+        session.refresh()
+        XCTAssertEqual(session.news.map(\.words), ["The Farm stands at level 3."])
+        XCTAssertEqual(session.news.first?.at, 2_015)
+        for index in 0..<50 {
+            // In typed steps, as a Mac's compiler types them in time.
+            let job: [JSONValue] = [n(5 + index), n(7), n(1), n(22), n(4), n(0), n(2_000), n(2_014), n(9)]
+            let jobs: [[JSONValue]] = index % 2 == 0 ? [job] : []
+            line.change { $0["my_jobs"] = jobs }
+            session.refresh()
+        }
+        XCTAssertEqual(session.news.count, LiveSession.newsKept, "only the latest are kept")
+        XCTAssertEqual(Set(session.news.map(\.id)).count, LiveSession.newsKept, "each numbered apart")
+    }
+
     /// The map as VoiceOver reads it: everything in the window, the
     /// player's own city first and their army next, each saying what it is
     /// and where it stands in a view.

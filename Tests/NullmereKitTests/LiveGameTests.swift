@@ -213,6 +213,15 @@ final class LiveGameTests: XCTestCase {
         XCTAssertGreaterThan(try drawn(LiveArmies(session: session, seconds: 2_015), width: 400, height: 80), 60)
 
         XCTAssertGreaterThan(try drawn(LiveTaskChip(session: session), width: 420, height: 70), 60)
+        // What just happened, told a few seconds at the top: a report come.
+        let (toldOf, toldLine) = await playing()
+        let report: [JSONValue] = [n(999), n(1), n(2_014), n(LiveReport.hunt), n(Int(LiveHex(q: 8, r: -2).packed)), .bool(true), n(0), n(3),
+                                   n(20), n(2), n(0), n(12), n(12), n(0), n(0), n(0), n(0), .string("Your army cleared a level 2 barrow."), .bool(false)]
+        toldLine.change { $0["my_reports"] = ($0["my_reports"] ?? []) + [report] }
+        toldOf.refresh()
+        XCTAssertEqual(toldOf.news.last?.words, "A report: Your army cleared a level 2 barrow.")
+        XCTAssertGreaterThan(try drawn(LiveToasts(session: toldOf, seconds: 2_015), width: 600, height: 120, as: "live-toasts.png"), 100)
+        XCTAssertEqual(try drawn(LiveToasts(session: toldOf, seconds: 2_015 + LiveToasts.shown), width: 600, height: 120), 0, "and then gone")
         // An army marching on her city: told in red, with a way to look at it.
         var threatened = LiveSample.rows()
         threatened["march"]?.append([n(21), n(2), n(8), n(LiveMarch.attack), n(LiveMarch.going), n(Int(LiveHex(q: 14, r: -4).packed)),

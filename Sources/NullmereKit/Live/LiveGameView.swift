@@ -363,6 +363,11 @@ struct LiveHUD: View {
                                  leftward: LiveRing.leftward(at: place, in: proxy.size, beside: panel == nil ? nil : tallest(in: proxy.size)))
                     }
                 }
+                // What just happened, told a few seconds at the top.
+                .overlay(alignment: .top) {
+                    LiveToasts(session: session, seconds: seconds)
+                        .padding(.top, 12)
+                }
                 .overlay(alignment: .top) {
                     if palette {
                         LivePaletteView(session: session, seconds: seconds, open: { panel = $0 }, leave: leave) { palette = false }
@@ -528,6 +533,34 @@ struct LiveTaskChip: View {
             .panelBackground()
             .accessibilityElement(children: .contain)
         }
+    }
+}
+
+/// What just happened in the realm, each told for `shown` seconds at the
+/// top of the window, the newest last, three at most.
+struct LiveToasts: View {
+    let session: LiveSession
+    let seconds: Double
+
+    static let shown: Double = 6
+
+    var body: some View {
+        let fresh = session.news.filter { seconds - $0.at < LiveToasts.shown }.suffix(3)
+        VStack(spacing: 4) {
+            ForEach(fresh) { news in
+                Text(verbatim: news.words)
+                    .font(.nm(LiveType.body, weight: .medium))
+                    .foregroundStyle(LiveEmphasis.primary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .panelBackground()
+                    .transition(.opacity)
+            }
+        }
+        .frame(maxWidth: 520)
+        .animation(.easeInOut(duration: 0.3), value: fresh.map(\.id))
+        .accessibilityElement(children: .contain)
+        .chrome("live-toasts")
     }
 }
 
