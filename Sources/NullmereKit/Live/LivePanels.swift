@@ -155,7 +155,7 @@ struct LiveCommanders: View {
                         .font(.nm(11))
                         .foregroundStyle(Palette.text(0.65))
                     Spacer(minLength: 0)
-                    LiveSmall(words: commander.isFree ? "In the city" : "Out with an army", dim: true)
+                    LiveSmall(words: commander.isFree ? "In the city" : (commander.isHeld ? "Held prisoner" : "Out with an army"), dim: true)
                 }
                 LiveSmall(words: commander.wayWords)
                 LiveTalents(session: session, commander: commander)

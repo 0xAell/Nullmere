@@ -93,6 +93,13 @@ final class LiveGameTests: XCTestCase {
         rows["my_pleas"] = [[n(77), n(5), n(2), .string("[MERE] Bryn"), n(1), n(1), n(5)]]
         rows["ward"] = [[n(3), n(5), n(Int(LiveHex(q: 12, r: -6).packed)), n(1), n(1_500)]]
         rows["gate"] = [[n(1), n(Int(LiveHex(q: 22, r: 0).packed)), n(5), .string("[MERE] Keepers of the Mere"), n(1_900), n(0)]]
+        // A truce with the Wardens, their envoy waiting, a prisoner each way, and two petitions.
+        rows["pact"] = [[n(1), n(5), n(6), n(1), n(1_500), n(600_000)]]
+        rows["my_envoys"] = [[n(5), n(6), n(5), .string("[WRD] Wardens"), n(2), n(7), n(2_000)]]
+        rows["my_prisoners"] = [[n(11), n(1), n(2), .string("Corwen"), n(10_000), n(10_000), n(10_000), n(200_000), n(0)],
+                                [n(31), n(2), n(1), .string("Sela"), n(5_000), n(5_000), n(5_000), n(200_000), n(0)]]
+        rows["my_petitions"] = [[n(2), n(5), .string("[MERE] Bryn"), n(100_000), n(0), n(0), n(0), n(20_000), n(0), n(0), n(0), n(2_000)],
+                                [n(1), n(5), .string("[MERE] Ada"), n(0), n(50_000), n(0), n(0), n(0), n(0), n(0), n(0), n(2_000)]]
         return rows
     }
 

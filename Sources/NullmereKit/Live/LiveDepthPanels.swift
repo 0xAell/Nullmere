@@ -115,6 +115,27 @@ struct LiveTalents: View {
 
     var body: some View {
         let world = session.world
+        if let held = world.held(commander.id) {
+            let captor = world.shownName(of: held.captor) ?? "Someone"
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                LiveSmall(words: "Held by \(captor). Ransom: \(held.ransom.words).")
+                Spacer(minLength: 0)
+                QuietButton(title: "Ransom", prominent: true, enabled: session.asking == 0, name: "Ransom \(commander.name)") { Task { await session.ransom(commander: commander.id) } }
+            }
+        } else {
+            LiveTalentControls(session: session, commander: commander)
+        }
+    }
+}
+
+/// What a free commander may be set to: talents to learn or forget, a
+/// partner to go out beside, and the city to keep.
+struct LiveTalentControls: View {
+    let session: LiveSession
+    let commander: LiveCommander
+
+    var body: some View {
+        let world = session.world
         let lines = world.talentLines(of: commander)
         let learnt = lines.filter { $0.points > 0 }.map { "\($0.name) \($0.points)" }
         let left = world.talentPointsLeft(of: commander)
@@ -261,6 +282,112 @@ struct LiveAllianceDepth: View {
             let raised = wards.count == 1 ? "1 wardstone raised." : "\(wards.count) wardstones raised."
             let held = gates.count == 1 ? "1 gate of the ridge held" : "\(gates.count) gates of the ridge held"
             LiveSmall(words: gates.isEmpty ? "\(raised) No gate of the ridge held." : "\(raised) \(held): the lake country is open to you.")
+            LiveDiplomacy(session: session, seconds: seconds, alliance: alliance)
+            LivePetitions(session: session, seconds: seconds)
+        }
+        let captives = world.captives
+        if !captives.isEmpty {
+            Caps("Your prisoners", size: 10)
+                .foregroundStyle(Palette.text(0.7))
+        }
+        ForEach(captives) { prisoner in
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                LiveSmall(words: "\(prisoner.name), of \(world.shownName(of: prisoner.owner) ?? "another"); free in \(LiveWords.spoken(max(prisoner.freedAt - Int(seconds), 0))).")
+                Spacer(minLength: 0)
+                QuietButton(title: "Let go", enabled: session.asking == 0, name: "Let \(prisoner.name) go") { Task { await session.releasePrisoner(commander: prisoner.commander) } }
+            }
+        }
+    }
+}
+
+/// The player's alliance's pacts and envoys: those that hold, those come
+/// waiting on an answer, and for an officer a way to offer another
+/// alliance a truce or passage.
+struct LiveDiplomacy: View {
+    let session: LiveSession
+    let seconds: Double
+    let alliance: UInt64
+
+    /// How many days an offer from these screens is for.
+    static let days = 7
+
+    var body: some View {
+        let world = session.world
+        let officer = world.isOfficer
+        Caps("Pacts", size: 10)
+            .foregroundStyle(Palette.text(0.7))
+        let pacts = world.pacts(of: alliance, at: seconds)
+        if pacts.isEmpty {
+            LiveSmall(words: "No pact holds with any alliance.", dim: true)
+        }
+        ForEach(pacts) { pact in
+            let other = world.alliances[pact.other(than: alliance)].map { "[\($0.tag)] \($0.name)" } ?? "another alliance"
+            let what = pact.terms == LivePact.truce ? "A truce with \(other)" : "Passage with \(other)"
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                LiveSmall(words: "\(what), for \(LiveWords.spoken(max(pact.ends - Int(seconds), 0))) more.")
+                Spacer(minLength: 0)
+                if officer {
+                    QuietButton(title: "Break", enabled: session.asking == 0, name: "Break the pact with \(other)") { Task { await session.breakPact(pact.id) } }
+                }
+            }
+        }
+        ForEach(world.envoysWaiting(at: seconds)) { envoy in
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                LiveSmall(words: "An envoy of \(envoy.name) offers \(envoy.words).")
+                Spacer(minLength: 0)
+                if officer {
+                    QuietButton(title: "Accept", prominent: true, enabled: session.asking == 0, name: "Accept the envoy of \(envoy.name)") { Task { await session.answerEnvoy(envoy.id, accept: true) } }
+                    QuietButton(title: "Turn away", enabled: session.asking == 0, name: "Turn away the envoy of \(envoy.name)") { Task { await session.answerEnvoy(envoy.id, accept: false) } }
+                }
+            }
+        }
+        if officer {
+            let others = world.alliances.values.filter { $0.id != alliance }.sorted { $0.id < $1.id }
+            ForEach(others) { other in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    LiveSmall(words: "[\(other.tag)] \(other.name)", dim: true)
+                    Spacer(minLength: 0)
+                    QuietButton(title: "Offer a truce", enabled: session.asking == 0, name: "Offer [\(other.tag)] a truce of a week") { Task { await session.sendEnvoy(to: other.id, terms: LivePact.truce, days: LiveDiplomacy.days) } }
+                    QuietButton(title: "Offer passage", enabled: session.asking == 0, name: "Offer [\(other.tag)] passage for a week") { Task { await session.sendEnvoy(to: other.id, terms: LivePact.passage, days: LiveDiplomacy.days) } }
+                }
+            }
+        }
+    }
+}
+
+/// The petitions of the player's alliance: those standing, with a way to
+/// send what each still asks, and the player's own, to make or withdraw.
+struct LivePetitions: View {
+    let session: LiveSession
+    let seconds: Double
+
+    /// What a petition from these screens asks: fifty thousand of each of
+    /// grain, timber and stone.
+    static let asked = LiveGoods(grain: 50_000, timber: 50_000, stone: 50_000)
+
+    var body: some View {
+        let world = session.world
+        let standing = world.petitionsStanding(at: seconds)
+        let mine = standing.first { $0.asker == world.me?.id }
+        Caps("Petitions", size: 10)
+            .foregroundStyle(Palette.text(0.7))
+        ForEach(standing.filter { $0.asker != world.me?.id }) { petition in
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                LiveSmall(words: "\(petition.name) asks for \(petition.still.words).")
+                Spacer(minLength: 0)
+                QuietButton(title: "Send", enabled: session.asking == 0, name: "Send \(petition.name) what they ask", why: nil) { Task { await session.answerPetition(of: petition.asker, petition.still) } }
+            }
+        }
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            if let mine {
+                LiveSmall(words: "Yours asks for \(mine.still.words) more; a tenth of what allies send is lost on the road.", dim: true)
+                Spacer(minLength: 0)
+                QuietButton(title: "Withdraw", enabled: session.asking == 0, name: "Withdraw your petition") { Task { await session.withdrawPetition() } }
+            } else {
+                LiveSmall(words: "Ask your alliance for \(LivePetitions.asked.words).", dim: true)
+                Spacer(minLength: 0)
+                QuietButton(title: "Petition", enabled: session.asking == 0, name: "Petition your alliance") { Task { await session.petition(LivePetitions.asked) } }
+            }
         }
     }
 }
