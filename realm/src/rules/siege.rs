@@ -339,6 +339,8 @@ fn storm(db: &mut impl Db, marches: &mut [March]) {
         db.update(city.clone());
     }
     let taken = won.iter().fold(Goods::NONE, |sum, share| sum.plus(*share));
+    // Whoever kept the city, if they were in it, is taken by whoever led the storm.
+    let captive = if outcome.won { super::take_prisoner(db, city.owner, leader) } else { None };
 
     // Each side is told, in its own words.
     let report_of = |player: u64, kind: u8, won: bool, foe: u64, mine: (u64, u64, u64), theirs: (u64, u64), goods: Goods, words: String| Report {
@@ -382,6 +384,11 @@ fn storm(db: &mut impl Db, marches: &mut [March]) {
                 (false, true) => format!(" Your army is bringing home {}.", won[index]),
             };
         }
+        if index == 0 {
+            if let Some(name) = &captive {
+                words += &format!(" {name}, who kept the city, is your prisoner.");
+            }
+        }
         report(db, report_of(march.owner, Report::ATTACK, outcome.won, city.owner, (fought[index], wounded[index], dead[index]), (stood, fell), won[index], words));
     }
     let by = if rally { format!("{attacker}'s rally of {armies} armies") } else { format!("{attacker}'s army") };
@@ -398,6 +405,9 @@ fn storm(db: &mut impl Db, marches: &mut [March]) {
     to_defender += &if stood == 0 { "Your city had no defenders.".to_string() } else { fallen(stood, hurt, slain, "defender", "defenders") };
     if outcome.won {
         to_defender += &format!(" Your city is at peace for {}.", catalog::spoken(catalog::paced(catalog::BEATEN_PEACE, pace)));
+    }
+    if let Some(name) = &captive {
+        to_defender += &format!(" {name}, who kept it, was taken prisoner.");
     }
     report(db, report_of(city.owner, Report::DEFENCE, !outcome.won, leader, (stood, hurt, slain), (together, together - standing), taken, to_defender));
     reckon(db, city.id);

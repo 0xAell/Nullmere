@@ -523,6 +523,9 @@ impl Report {
     /// An envoy come or answered, or a pact made, broken or ended: `foe`
     /// is the other alliance.
     pub const PACT: u8 = 11;
+    /// A commander taken prisoner, ransomed, released or gone free: `foe`
+    /// is the other player.
+    pub const PRISONER: u8 = 12;
 }
 
 /// An alliance of players. Everyone may read it.
@@ -795,6 +798,28 @@ pub struct Gate {
     pub fighter: u64,
 }
 row!(Gate in gate, by id);
+
+/// A commander held prisoner: whose they are, who holds them, their name,
+/// the ransom asked for them, and when they go free of themselves. The two
+/// players' alone: each reads it through `my_prisoners`. Keyed by the
+/// commander.
+#[spacetimedb::table(accessor = prisoner)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Prisoner {
+    #[primary_key]
+    pub commander: u64,
+    #[index(btree)]
+    pub owner: u64,
+    #[index(btree)]
+    pub captor: u64,
+    pub name: String,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub freed_at: Seconds,
+    pub timer: u64,
+}
+row!(Prisoner in prisoner, by commander, owner, captor);
 
 /// An envoy sent by one alliance to another with the terms of a pact,
 /// waiting on an answer. The two alliances' alone to read: their members
@@ -1252,6 +1277,7 @@ pub trait Db:
     + Table<Gate>
     + Table<Envoy>
     + Table<Pact>
+    + Table<Prisoner>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1311,6 +1337,7 @@ impl<
             + Table<Gate>
             + Table<Envoy>
             + Table<Pact>
+            + Table<Prisoner>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

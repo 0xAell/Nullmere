@@ -674,6 +674,17 @@ pub fn gate_garrison() -> Vec<Unit> {
     barrow(TOP_BARROW).into_iter().map(|unit| Unit { count: unit.count * 2, ..unit }).collect()
 }
 
+/// How many days, at the realm's pace, a commander taken prisoner is held
+/// before they go free of themselves.
+pub const PRISON_DAYS: i64 = 3;
+
+/// What a commander's freedom costs: five thousand each of grain, timber
+/// and stone for each level.
+pub fn ransom(level: u32) -> Goods {
+    let each = 5_000 * level.max(1) as u64;
+    Goods::of(each, each, each, 0)
+}
+
 /// The most days an alliance's envoy may offer a pact for, and how long
 /// an envoy waits for an answer before it is gone; how long a pact goes on
 /// once broken, at the realm's pace.

@@ -10,12 +10,12 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 use crate::hex::Hex;
 use crate::rows::{
     alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
-    chest as _, daily as _, daily__view as _, duty as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _,
+    chest as _, daily as _, daily__view as _, duty as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _, prisoner as _, prisoner__view as _,
     building__view as _, city as _, city__view as _, commander as _, commander__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
     march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
     realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
     troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Bond, Building, Chest, City, Commander, Daily, Duty, Favour, Gift, Grace, Haul, Helper, Hunt, Job, Keeper, Land, Lore, March, Member, Muster, Rally,
-    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware, Ward, Learning, Gate, Envoy, Pact,
+    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware, Ward, Learning, Gate, Envoy, Pact, Prisoner,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
@@ -174,6 +174,7 @@ stored!(Learning in learning by id, alliance);
 stored!(Gate in gate by id);
 stored!(Envoy in envoy by id, sender, receiver);
 stored!(Pact in pact by id, first, second);
+stored!(Prisoner in prisoner by commander, owner, captor);
 stored!(Lore in lore by id, city);
 stored!(Study in study by id);
 stored!(Commander in commander by id, owner);
@@ -368,6 +369,18 @@ pub fn answer_envoy(ctx: &ReducerContext, envoy: u64, accept: bool) -> Result<()
 #[reducer]
 pub fn break_pact(ctx: &ReducerContext, pact: u64) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::break_pact(&mut Stdb(ctx), player, pact)))
+}
+
+/// Ransom one of the caller's commanders held prisoner.
+#[reducer]
+pub fn ransom(ctx: &ReducerContext, commander: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::ransom(&mut Stdb(ctx), player, commander)))
+}
+
+/// Let a commander the caller holds prisoner go, for nothing.
+#[reducer]
+pub fn release_prisoner(ctx: &ReducerContext, commander: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::release_prisoner(&mut Stdb(ctx), player, commander)))
 }
 
 /// Give goods from the caller's city toward their alliance's Moonspire.
@@ -646,6 +659,13 @@ fn my_bonds(ctx: &ViewContext) -> Vec<Bond> {
 #[view(accessor = my_keeper, public)]
 fn my_keeper(ctx: &ViewContext) -> Option<Keeper> {
     ctx.db.keeper().player().find(viewer(ctx)?)
+}
+
+/// The prisoners the caller holds, and the caller's commanders held.
+#[view(accessor = my_prisoners, public)]
+fn my_prisoners(ctx: &ViewContext) -> Vec<Prisoner> {
+    let Some(player) = viewer(ctx) else { return Vec::new() };
+    ctx.db.prisoner().owner().filter(player).chain(ctx.db.prisoner().captor().filter(player)).collect()
 }
 
 /// The envoys from or to the caller's alliance.

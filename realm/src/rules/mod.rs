@@ -19,6 +19,7 @@ mod items;
 mod learning;
 mod march;
 mod pacts;
+mod prisoners;
 mod rally;
 mod siege;
 mod spire;
@@ -41,6 +42,7 @@ pub use items::*;
 pub use learning::*;
 pub use march::*;
 pub use pacts::*;
+pub use prisoners::*;
 pub use rally::*;
 pub use siege::*;
 pub use spire::*;
@@ -62,6 +64,7 @@ pub fn fire(db: &mut impl Db, timer: &Timer) {
         TIMER_SPIRE => spire_risen(db, timer.subject),
         TIMER_SEASON => turn_season(db, timer.subject),
         TIMER_LEARNING => learnt_together_now(db, timer.subject),
+        TIMER_PRISON => prison_done(db, timer.subject),
         _ => {}
     }
 }
@@ -214,6 +217,7 @@ pub enum Refusal {
     NoSuchEnvoy,
     NoSuchPact,
     AtTruce,
+    NoSuchPrisoner,
     NoSuchTopic,
     AlreadyStudying,
     /// The Academy can't be raised while it studies.
@@ -382,6 +386,7 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchEnvoy => "That envoy is gone.",
             Refusal::NoSuchPact => "Your alliance has no such pact.",
             Refusal::AtTruce => "Your alliances are at truce.",
+            Refusal::NoSuchPrisoner => "There is no such prisoner of yours.",
             Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",
