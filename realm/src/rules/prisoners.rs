@@ -16,8 +16,10 @@ use crate::store::Table;
 pub const TIMER_PRISON: u8 = 6;
 
 /// Where a prisoner is, as their commander's row has it: neither in the
-/// city nor out with an army.
-pub const HELD: u64 = u64::MAX;
+/// city nor out with an army. Two to the fifty-third: no march is ever
+/// numbered so high, and a client reading numbers as doubles reads it
+/// exactly.
+pub const HELD: u64 = 1 << 53;
 
 fn name_of(db: &impl Db, player: u64) -> String {
     Table::<Player>::get(db, player).map(|row| row.name).unwrap_or_else(|| "Someone".into())
