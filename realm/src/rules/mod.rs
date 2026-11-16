@@ -113,6 +113,7 @@ pub enum Refusal {
     /// The building trains no troops.
     TrainsNothing(Building),
     NoSuchTroops,
+    OnlyHigher,
     NothingAsked,
     /// The most that may be asked for at once.
     TooMany(u64),
@@ -357,6 +358,7 @@ impl fmt::Display for Refusal {
             Refusal::NotYours => "That is not yours.",
             Refusal::BuildersBusy => "Your builders are busy. Wait for them to finish.",
             Refusal::NoSuchTroops => "There are no such troops.",
+            Refusal::OnlyHigher => "Troops are raised only to a higher tier.",
             Refusal::NothingAsked => "Ask for at least one.",
             Refusal::NoSuchOrder => "The realm knows no such order.",
             Refusal::NothingThere => "There is nothing to gather there.",

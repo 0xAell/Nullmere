@@ -84,6 +84,73 @@ pub fn train(db: &mut impl Db, player: u64, building: u64, tier: u32, count: u64
     Ok(job)
 }
 
+/// A player raises troops of a kind standing ready in their city to a
+/// higher tier, in the building that trains them: they pay what the higher
+/// tier costs beyond the lower and wait what it takes beyond, the troops
+/// out of the ranks until the timer ends, when they stand ready at the
+/// higher tier. It counts as training them, for the day's work and the
+/// Call to Arms, by the tiers they rise.
+pub fn promote(db: &mut impl Db, player: u64, building: u64, from: u32, to: u32, count: u64) -> Result<Job, Refusal> {
+    asking(db, player)?;
+    let building = Table::<Building>::get(db, building).ok_or(Refusal::NoSuchBuilding)?;
+    let city = Table::<City>::get(db, building.city).ok_or(Refusal::NoSuchBuilding)?;
+    if city.owner != player {
+        return Err(Refusal::NotYours);
+    }
+    let kind = Kind::of(building.kind).ok_or(Refusal::NoSuchBuilding)?;
+    let troops = Troops::trained_by(kind).ok_or(Refusal::TrainsNothing(kind))?;
+    if !(1..=TOP_TIER).contains(&from) || !(1..=TOP_TIER).contains(&to) {
+        return Err(Refusal::NoSuchTroops);
+    }
+    if to <= from {
+        return Err(Refusal::OnlyHigher);
+    }
+    let jobs = Table::<Job>::by(db, 0, city.id);
+    if building.level == 0 || jobs.iter().any(|job| job.kind == Job::RAISE && job.subject == building.id) {
+        return Err(Refusal::AlreadyRising(kind));
+    }
+    if jobs.iter().any(|job| job.kind == Job::TRAIN && job.subject == building.id) {
+        return Err(Refusal::AlreadyTraining(kind));
+    }
+    let (lower, higher) = (troops.soldier(from), troops.soldier(to));
+    if building.level < higher.needs_level {
+        return Err(Refusal::NeedsOther(kind, higher.needs_level));
+    }
+    if count == 0 {
+        return Err(Refusal::NothingAsked);
+    }
+    let most = catalog::batch(building.level);
+    if count > most {
+        return Err(Refusal::TooMany(most));
+    }
+    let mut ranks = troop(db, city.id, troops, from);
+    if ranks.ready < count {
+        return Err(Refusal::NotEnoughTroops(troops, from, ranks.ready));
+    }
+    let mut stock = settle(db, city.id)?;
+    let cost = higher.cost.minus(lower.cost).times(count);
+    let short = goods(&stock).short_of(cost);
+    if !short.is_none() {
+        return Err(Refusal::CannotAfford(short));
+    }
+    let left = goods(&stock).minus(cost);
+    set_goods(&mut stock, left);
+    db.update(stock);
+    ranks.ready -= count;
+    keep_troop(db, ranks);
+    // Out of the ranks until they are raised, they count for nothing.
+    super::reckon(db, city.id);
+    let now = db.now();
+    let seconds = (higher.seconds - lower.seconds) * count as i64;
+    let ends = now + favoured(db, player, sooner(db, city.id, Topic::Drill, catalog::paced(seconds, realm(db)?.pace)));
+    let mut job = db.insert(Job { id: 0, city: city.id, kind: Job::TRAIN, subject: building.id, level: to, amount: count, started: now, ends, timer: 0 });
+    job.timer = db.after(ends, TIMER_JOB, job.id);
+    db.update(job.clone());
+    did(db, player, Deed::Train, count);
+    super::scored(db, player, crate::catalog::Contest::Arms, count * (to - from) as u64);
+    Ok(job)
+}
+
 /// A batch's training is done: the troops stand ready in their city.
 pub(super) fn trained(db: &mut impl Db, job: &Job) {
     let Some(building) = Table::<Building>::get(db, job.subject) else { return };

@@ -18,6 +18,7 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case forge(Int)
         case hire
         case claimPrize(contest: Int, place: Int)
+        case promote(building: UInt64, from: Int, to: Int, count: UInt64)
     }
 
     public let title: String
@@ -37,7 +38,8 @@ extension LiveSession {
     /// out to go to; every part of every destination to open; the task to
     /// claim once it is done; each building that may be built or raised,
     /// each topic that may be studied, each of the day's chests that may
-    /// be opened, each piece the Forge may make, another commander to take
+    /// be opened, the soldiers each training building may raise a tier,
+    /// each piece the Forge may make, another commander to take
     /// on and each contest's prize reached, now; and the nearest barrow the
     /// player may attack,
     /// and the nearest site of each good no one works, to go to.
@@ -70,6 +72,12 @@ extension LiveSession {
         }
         for chest in world.chestLines(at: seconds) where chest.ready {
             all.append(LiveCommand(title: "Open the day's chest at \(chest.marks) marks", act: .openChest(chest.id)))
+        }
+        for line in world.trainLines(at: seconds) {
+            guard let raise = world.promotion(line, at: seconds), raise.count > 0 else { continue }
+            let name = line.tiers.first?.soldier.name ?? line.name
+            all.append(LiveCommand(title: "Raise \(LiveWords.grouped(raise.count)) tier \(raise.from) \(name) to tier \(raise.to)",
+                                   act: .promote(building: line.building.id, from: raise.from, to: raise.to, count: raise.count)))
         }
         for line in world.forgeLines(at: seconds) where line.block == nil {
             all.append(LiveCommand(title: "Make a piece at the Forge: \(line.pattern.name)", act: .forge(line.pattern.piece)))
@@ -128,6 +136,7 @@ extension LiveSession {
         case .forge(let piece): await forge(piece: piece)
         case .hire: await hire()
         case .claimPrize(let contest, let place): await claimPrize(contest: contest, place: place)
+        case .promote(let building, let from, let to, let count): await promote(building: building, from: from, to: to, count: count)
         }
         return nil
     }

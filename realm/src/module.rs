@@ -302,6 +302,13 @@ pub fn train(ctx: &ReducerContext, building: u64, tier: u32, count: u64) -> Resu
     said(caller(ctx).and_then(|player| rules::train(&mut Stdb(ctx), player, building, tier, count)))
 }
 
+/// Raise troops of a kind ready in the caller's city from one tier to a
+/// higher, in the building that trains them.
+#[reducer]
+pub fn promote(ctx: &ReducerContext, building: u64, from: u32, to: u32, count: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::promote(&mut Stdb(ctx), player, building, from, to, count)))
+}
+
 /// Soldiers of a kind and tier, as a client asks for them in a march.
 #[derive(SpacetimeType)]
 pub struct Soldiers {

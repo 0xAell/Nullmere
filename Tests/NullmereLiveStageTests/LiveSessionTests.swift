@@ -428,6 +428,12 @@ final class LiveSessionTests: XCTestCase {
         // A Forge and a Tavern of the first level; iron and leather enough
         // for a sword; and a contest whose first prize she has reached.
         rows["my_buildings"]?.append(contentsOf: [[n(32), n(7), n(19), n(1)], [n(33), n(7), n(16), n(1)]])
+        // A Range of the fifth level, and forty archers of the first tier ready to be raised to the second.
+        rows["my_buildings"]?.append([n(34), n(7), n(8), n(5)])
+        rows["blueprint"]?.append(blueprint(8, 1, "Range", opensAt: 2))
+        rows["soldier"] = [[n(2 << 8 | 1), n(2), n(1), .string("Archers"), n(110), n(90), n(95), n(60), n(10), n(1), n(40), n(70), n(0), n(0), n(8_000), n(8), n(1)],
+                           [n(2 << 8 | 2), n(2), n(2), .string("Archers"), n(148), n(121), n(128), n(60), n(12), n(2), n(80), n(140), n(0), n(0), n(16_000), n(8), n(5)]]
+        rows["my_troops"] = [[n(7 << 16 | 2 << 8 | 1), n(7), n(2), n(1), n(40), n(0)]]
         rows["my_satchel"] = [[n(1 << 8 | 5), n(1), n(5), n(4)], [n(1 << 8 | 6), n(1), n(6), n(4)]]
         rows["pattern"] = [[n(1), .string("Iron sword"), n(1), n(1), .string("Everyone its wearer leads strikes 3% harder."), n(4), n(4), n(0), n(0), n(0), n(5_000), n(5_000),
                             n(0), n(1)],
@@ -456,6 +462,7 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertTrue(all.contains(LiveCommand(title: "Make a piece at the Forge: Iron sword", act: .forge(1))))
         XCTAssertFalse(all.contains { $0.act == .forge(5) }, "the steel sword wants a Forge of the eighth level")
         XCTAssertTrue(all.contains(LiveCommand(title: "Take on another commander", act: .hire)))
+        XCTAssertTrue(all.contains(LiveCommand(title: "Raise 40 tier 1 Archers to tier 2", act: .promote(building: 34, from: 1, to: 2, count: 40))))
         XCTAssertTrue(all.contains(LiveCommand(title: "Claim the prize of The Long Hunt at 100 points", act: .claimPrize(contest: 1, place: 1))))
         XCTAssertFalse(all.contains { $0.act == .claimPrize(contest: 1, place: 2) }, "400 points not reached")
 
@@ -478,7 +485,8 @@ final class LiveSessionTests: XCTestCase {
         await session.perform(LiveCommand(title: "Make a piece at the Forge: Iron sword", act: .forge(1)))
         await session.perform(LiveCommand(title: "Take on another commander", act: .hire))
         await session.perform(LiveCommand(title: "Claim the prize of The Long Hunt at 100 points", act: .claimPrize(contest: 1, place: 1)))
-        XCTAssertEqual(line.asked, ["upgrade 22", "build 7", "learn 1", "claim task", "open chest 1", "forge 1", "hire", "claim prize 1 of 1"])
+        await session.perform(LiveCommand(title: "Raise 20 tier 1 Spearmen to tier 2", act: .promote(building: 24, from: 1, to: 2, count: 20)))
+        XCTAssertEqual(line.asked, ["upgrade 22", "build 7", "learn 1", "claim task", "open chest 1", "forge 1", "hire", "claim prize 1 of 1", "promote 20 of tier 1 to 2 in 24"])
     }
 
     func testRalliesGatesAndWardstonesAreCalledFromTheirCards() async throws {

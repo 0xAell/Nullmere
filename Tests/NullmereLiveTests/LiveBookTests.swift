@@ -191,6 +191,27 @@ final class LiveBookTests: XCTestCase {
         XCTAssertEqual(rising.trainLines(at: 2_000).first?.tiers[0].block, .rising("Barracks"))
     }
 
+    func testSoldiersReadyAreOfferedARaiseToTheHighestTierTrained() throws {
+        var snapshot = rows(jobs: [])
+        snapshot["my_buildings"] = snapshot["my_buildings"]?.map { $0[0] == n(24) ? [n(24), n(7), n(7), n(5)] : $0 }
+        let world = LiveWorld(snapshot: snapshot)
+        let line = try XCTUnwrap(world.trainLines(at: 2_000).first)
+        // Forty spearmen of the first tier ready; the second costs fifty grain and fifty timber more each; 1,000 timber pays for twenty.
+        XCTAssertEqual(world.promotion(line, at: 2_000), LivePromotion(from: 1, to: 2, count: 20, each: LiveGoods(grain: 50, timber: 50), block: nil))
+        var poor = snapshot
+        poor["my_stock"] = rows(timber: 20, jobs: [])["my_stock"]
+        let none = try XCTUnwrap(LiveWorld(snapshot: poor).promotion(line, at: 2_000))
+        XCTAssertEqual([String(none.count)], ["0"])
+        XCTAssertEqual(none.block, .short(LiveGoods(timber: 30)))
+        // A Barracks of the first level trains nothing higher than what stands ready; one training raises nothing.
+        let low = LiveWorld(snapshot: rows(jobs: []))
+        XCTAssertNil(low.promotion(try XCTUnwrap(low.trainLines(at: 2_000).first), at: 2_000))
+        var busy = snapshot
+        busy["my_jobs"] = [[n(5), n(7), n(2), n(24), n(1), n(30), n(2_000), n(2_240), n(10)]]
+        let training = LiveWorld(snapshot: busy)
+        XCTAssertNil(training.promotion(try XCTUnwrap(training.trainLines(at: 2_000).first), at: 2_000))
+    }
+
     func testTheAcademysTopicsAreListedWithWhatEachAsks() throws {
         func study(_ topic: Int, _ level: Int, _ name: String, _ words: String, each: Int, grain: Int, needs: Int) -> [JSONValue] {
             [n(topic << 32 | level), n(topic), n(level), .string(name), .string(words), n(each), n(grain), n(grain / 2), n(0), n(0), n(120 * level * level), n(needs)]

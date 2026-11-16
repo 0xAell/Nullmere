@@ -126,6 +126,7 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func build(_ kind: Int) async throws { try take("build \(kind)") }
     public func upgrade(building: UInt64) async throws { try take("upgrade \(building)") }
     public func train(building: UInt64, tier: Int, count: UInt64) async throws { try take("train \(count) of tier \(tier) in \(building)") }
+    public func promote(building: UInt64, from: Int, to: Int, count: UInt64) async throws { try take("promote \(count) of tier \(from) to \(to) in \(building)") }
     public func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {
         try take("gather at \(hex.q), \(hex.r) with \(listed(soldiers))\(leader == 0 ? "" : " under \(leader)")")
     }

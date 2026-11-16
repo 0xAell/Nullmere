@@ -185,6 +185,8 @@ check("one batch at a time", call(bryn, "train", barracks["id"], 1, 5), "Your Ba
 until("and stand ready", lambda: [(t["kind"], t["tier"], t["ready"]) for t in rows(bryn, "SELECT * FROM my_troops")] == [(1, 1, 20)])
 check("only their owner counts them", rows(ada, "SELECT * FROM my_troops"), [])
 check("the troop table itself is closed to clients", isinstance(rows(bryn, "SELECT * FROM troop"), str), True)
+check("troops are raised only upward", call(bryn, "promote", barracks["id"], 1, 1, 5), "Troops are raised only to a higher tier.")
+check("nor past what the Barracks trains", call(bryn, "promote", barracks["id"], 1, 2, 5), "Raise your Barracks to level 5 first.")
 
 # A march: out along a way, gathering, and home with the goods.
 def unpacked(packed):

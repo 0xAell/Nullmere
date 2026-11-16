@@ -16,6 +16,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func build(_ kind: Int) async throws
     func upgrade(building: UInt64) async throws
     func train(building: UInt64, tier: Int, count: UInt64) async throws
+    func promote(building: UInt64, from: Int, to: Int, count: UInt64) async throws
     func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
     func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
     func attack(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
@@ -408,6 +409,9 @@ public final class LiveSession {
     public func build(_ kind: Int) async { await ask { try await $0.build(kind) } }
     public func upgrade(building: UInt64) async { await ask { try await $0.upgrade(building: building) } }
     public func train(building: UInt64, tier: Int, count: UInt64) async { await ask { try await $0.train(building: building, tier: tier, count: count) } }
+    public func promote(building: UInt64, from: Int, to: Int, count: UInt64) async {
+        await ask { try await $0.promote(building: building, from: from, to: to, count: count) }
+    }
     public func heal(kind: Int, tier: Int, count: UInt64) async { await ask { try await $0.heal(kind: kind, tier: tier, count: count) } }
     public func recall(march: UInt64) async { await ask { try await $0.recall(march: march) } }
     public func read(report: UInt64) async { await ask { try await $0.read(report: report) } }

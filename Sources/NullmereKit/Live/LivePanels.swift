@@ -291,6 +291,22 @@ struct LiveTroops: View {
                             }
                         }
                     }
+                    if let raise = world.promotion(line, at: seconds) {
+                        let name = line.tiers.first?.soldier.name ?? line.name
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                LiveSmall(words: "Raise tier \(raise.from) to tier \(raise.to): \(raise.each.words) each")
+                                if let block = raise.block {
+                                    LiveSmall(words: block.words, dim: true)
+                                }
+                            }
+                            Spacer(minLength: 0)
+                            QuietButton(title: raise.count > 0 ? "Raise \(LiveWords.grouped(raise.count))" : "Raise", enabled: raise.count > 0 && session.asking == 0,
+                                        name: "Raise \(LiveWords.grouped(raise.count)) tier \(raise.from) \(name) to tier \(raise.to)", why: raise.block?.words) {
+                                Task { await session.promote(building: line.building.id, from: raise.from, to: raise.to, count: raise.count) }
+                            }
+                        }
+                    }
                 }
             }
             .padding(.top, 6)

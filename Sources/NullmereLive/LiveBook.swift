@@ -138,6 +138,17 @@ public struct LiveTroopLine: Equatable, Identifiable, Sendable {
     public let out: UInt64
 }
 
+/// Soldiers ready in the city that a training building could raise to a
+/// higher tier: so many, what each costs beyond what the lower tier did,
+/// and why none can be raised now, where none can.
+public struct LivePromotion: Equatable, Sendable {
+    public let from: Int
+    public let to: Int
+    public let count: UInt64
+    public let each: LiveGoods
+    public let block: LiveBlock?
+}
+
 /// What one of the city's training buildings can train.
 public struct LiveTrainLine: Equatable, Identifiable, Sendable {
     public struct Tier: Equatable, Sendable {
@@ -274,6 +285,23 @@ extension LiveWorld {
         let have = stock?.goods(at: seconds) ?? LiveGoods()
         let each: [UInt64] = zip(have.parts, soldier.cost.parts).filter { $0.1 > 0 }.map { $0.0 / $0.1 }
         return min(line.most, each.min() ?? line.most)
+    }
+
+    /// What a training building could raise to a higher tier now: the
+    /// soldiers of the lowest tier that stand ready below the highest it
+    /// trains, raised to that highest, as many as a batch holds, stand
+    /// ready and the stock pays for. Nil where it trains nothing higher
+    /// than all that stand ready, or is busy.
+    public func promotion(_ line: LiveTrainLine, at seconds: Double) -> LivePromotion? {
+        let rising = line.building.level == 0 || jobs.contains { $0.kind == LiveJob.raise && $0.subject == line.building.id }
+        guard line.job == nil, !rising, let top = line.tiers.last(where: { $0.soldier.needsLevel <= line.building.level }) else { return nil }
+        let lowest = troops.filter { $0.kind == line.kind && $0.tier < top.tier && $0.ready > 0 }.min { $0.tier < $1.tier }
+        guard let from = lowest, let lower = soldier(line.kind, tier: from.tier) else { return nil }
+        let each = lower.cost.short(of: top.soldier.cost)
+        let have = stock?.goods(at: seconds) ?? LiveGoods()
+        let afford: [UInt64] = zip(have.parts, each.parts).filter { $0.1 > 0 }.map { $0.0 / $0.1 }
+        let count = min(line.most, from.ready, afford.min() ?? line.most)
+        return LivePromotion(from: from.tier, to: top.tier, count: count, each: each, block: count > 0 ? nil : .short(have.short(of: each)))
     }
 
     /// The player's armies out of the city, and what each is doing.

@@ -192,3 +192,43 @@ fn a_speedup_hastens_a_batch_of_troops_training() {
     wait(&mut db, 1);
     assert_eq!(Table::<Troop>::by(&db, 0, city.id).iter().map(|row| row.ready).sum::<u64>(), 40);
 }
+
+#[test]
+fn troops_ready_are_raised_to_a_higher_tier_for_what_it_costs_beyond() {
+    let (mut db, ada, city) = grown(10);
+    let barracks = rules::building_of(&db, city.id, Kind::Barracks).unwrap();
+    db.call(|db| rules::train(db, ada, barracks.id, 1, 100)).unwrap();
+    wait(&mut db, 100 * 8);
+
+    // Refused: none of a tier she lacks, not downward, not past what the Barracks trains, not more than stand ready.
+    assert_eq!(db.call(|db| rules::promote(db, ada, barracks.id, 2, 3, 10)), Err(Refusal::NotEnoughTroops(Troops::Spearmen, 2, 0)));
+    let refusal = db.call(|db| rules::promote(db, ada, barracks.id, 1, 1, 10)).unwrap_err();
+    assert_eq!((refusal.clone(), refusal.to_string()), (Refusal::OnlyHigher, "Troops are raised only to a higher tier.".to_string()));
+    assert_eq!(db.call(|db| rules::promote(db, ada, barracks.id, 1, 4, 10)), Err(Refusal::NeedsOther(Kind::Barracks, 17)));
+    assert_eq!(db.call(|db| rules::promote(db, ada, barracks.id, 1, 6, 10)), Err(Refusal::NoSuchTroops));
+    assert_eq!(db.call(|db| rules::promote(db, ada, barracks.id, 1, 3, 101)), Err(Refusal::NotEnoughTroops(Troops::Spearmen, 1, 100)));
+    assert_eq!(db.call(|db| rules::promote(db, ada, barracks.id, 1, 3, 0)), Err(Refusal::NothingAsked));
+
+    // Raised: paid the third tier's cost beyond the first's, waited its time beyond, out of the ranks meanwhile.
+    let before = goods(&db, city.id);
+    let power = rules::city_of(&db, ada).unwrap().power;
+    let job = db.call(|db| rules::promote(db, ada, barracks.id, 1, 3, 40)).unwrap();
+    let (first, third) = (Troops::Spearmen.soldier(1), Troops::Spearmen.soldier(3));
+    assert_eq!(before.minus(goods(&db, city.id)), third.cost.minus(first.cost).times(40));
+    assert_eq!((job.kind, job.level, job.amount, job.ends - job.started), (Job::TRAIN, 3, 40, 40 * (30 - 8)));
+    assert_eq!(rules::troop(&db, city.id, Troops::Spearmen, 1).ready, 60);
+    assert_eq!(rules::troop(&db, city.id, Troops::Spearmen, 3).ready, 0);
+    assert_eq!(rules::city_of(&db, ada).unwrap().power, power - 40, "out of the ranks, they count for nothing");
+    assert_eq!(db.call(|db| rules::promote(db, ada, barracks.id, 1, 2, 10)), Err(Refusal::AlreadyTraining(Kind::Barracks)));
+    assert_eq!(db.call(|db| rules::train(db, ada, barracks.id, 1, 10)), Err(Refusal::AlreadyTraining(Kind::Barracks)));
+
+    // Done: they stand ready at the third tier, and the city is the stronger for it.
+    wait(&mut db, 40 * 22);
+    assert_eq!(rules::troop(&db, city.id, Troops::Spearmen, 3).ready, 40);
+    assert_eq!(rules::troop(&db, city.id, Troops::Spearmen, 1).ready, 60);
+    assert_eq!(rules::city_of(&db, ada).unwrap().power, power + 40 * (3 - 1));
+
+    // Only in her own city, and only troops ready: not those out on the road.
+    let bryn = db.call(|db| rules::join(db, "Bryn")).unwrap().id;
+    assert_eq!(db.call(|db| rules::promote(db, bryn, barracks.id, 1, 2, 10)), Err(Refusal::NotYours));
+}

@@ -116,6 +116,12 @@ public final class LiveClient: @unchecked Sendable {
         try await ask("train", [.integer(building), .integer(UInt64(tier)), .integer(count)])
     }
 
+    /// Raises soldiers of a kind ready in the player's city from one tier to
+    /// a higher, in the building that trains them.
+    public func promote(building: UInt64, from: Int, to: Int, count: UInt64) async throws {
+        try await ask("promote", [.integer(building), .integer(UInt64(from)), .integer(UInt64(to)), .integer(count)])
+    }
+
     /// Sends soldiers from the player's city to gather at a hex, under one
     /// of the player's commanders (by their number) or under none.
     public func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
