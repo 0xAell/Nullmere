@@ -89,26 +89,35 @@ final class WorldPerformanceTests: XCTestCase {
         let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
         renderer.meshSource = { Library.model($0).mesh }
-        let wide = try measureNear(seats: 48, seed: "a wide realm drawn", wholeToo: true, renderer: renderer)
-        let culledMedian = wide.culled, wholeMedian = try XCTUnwrap(wide.whole)
+        let wide = try measureNear(seats: 48, seed: "a wide realm drawn", renderer: renderer,
+                                   [Drawn(name: "culled"), Drawn(name: "whole", whole: true)])
+        let culledMedian = try XCTUnwrap(wide["culled"]), wholeMedian = try XCTUnwrap(wide["whole"])
         print("PERFMETRIC wide.gpu.scale28.p50 \(String(format: "%.3f", culledMedian))")
         print("PERFMETRIC wide.gpu.scale28.whole.p50 \(String(format: "%.3f", wholeMedian))")
         print("PERF a realm of 48 seats near on \(device.name): \(String(format: "%.2f", culledMedian)) ms drawing what is in view, "
               + "\(String(format: "%.2f", wholeMedian)) ms drawing the whole land")
         XCTAssertLessThanOrEqual(culledMedian, wholeMedian * 1.1 + 0.5, "Drawing what is in view costs no more than drawing it all")
 
-        let wider = try measureNear(seats: 96, seed: "a wider realm drawn", wholeToo: false, renderer: renderer)
-        print("PERFMETRIC wider.gpu.scale28.p50 \(String(format: "%.3f", wider.culled))")
-        print("PERF a realm of 96 seats near on \(device.name): \(String(format: "%.2f", wider.culled)) ms drawing what is in view")
-        XCTAssertLessThanOrEqual(wider.culled, culledMedian * 1.25 + 1, "A realm twice as wide costs a frame near what the narrower does")
-        XCTAssertLessThan(wider.culled, 16.7, "and well inside one")
-
-        // By day, its land and water drawn with the day's relief and waves,
-        // which the night's frames above carry none of: told, to be held
-        // once it is known.
-        let widerByDay = try measureNear(seats: 96, seed: "a wider realm drawn", wholeToo: false, renderer: renderer, daylight: .day)
-        print("PERFMETRIC wider.gpu.scale28.day.p50 \(String(format: "%.3f", widerByDay.culled))")
-        print("PERF a realm of 96 seats near by day on \(device.name): \(String(format: "%.2f", widerByDay.culled)) ms drawing what is in view")
+        // By day too, the land and water drawn with the day's relief and
+        // waves, which the night's frames carry none of; and, to tell where
+        // the day's cost lies, by day without them, and by night and by day
+        // without the land's furniture. Told, to be held once known.
+        let wider = try measureNear(seats: 96, seed: "a wider realm drawn", renderer: renderer, [
+            Drawn(name: "night"), Drawn(name: "day", daylight: .day),
+            Drawn(name: "day.plain", daylight: .day, detail: false),
+            Drawn(name: "bare", furnished: false), Drawn(name: "day.bare", daylight: .day, furnished: false),
+        ])
+        let widerMedian = try XCTUnwrap(wider["night"])
+        print("PERFMETRIC wider.gpu.scale28.p50 \(String(format: "%.3f", widerMedian))")
+        for name in ["day", "day.plain", "bare", "day.bare"] {
+            let median = try XCTUnwrap(wider[name])
+            print("PERFMETRIC wider.gpu.scale28.\(name).p50 \(String(format: "%.3f", median))")
+        }
+        let byDay = try XCTUnwrap(wider["day"])
+        print("PERF a realm of 96 seats near on \(device.name): \(String(format: "%.2f", widerMedian)) ms drawing what is in view, "
+              + "\(String(format: "%.2f", byDay)) ms by day")
+        XCTAssertLessThanOrEqual(widerMedian, culledMedian * 1.25 + 1, "A realm twice as wide costs a frame near what the narrower does")
+        XCTAssertLessThan(widerMedian, 16.7, "and well inside one")
     }
 
     /// The land and the water are drawn with the day's relief and waves from
@@ -171,11 +180,20 @@ final class WorldPerformanceTests: XCTestCase {
         XCTAssertLessThan(shadowed, 1000.0 / 60 * 0.85, "The frame with its shadows fits a 60 Hz frame with room to spare")
     }
 
-    /// The GPU's median time for a frame near a realm's seat, every hex
-    /// known, drawing only the regions in view; and, `wholeToo`, drawing
-    /// the whole land, as was done before.
-    private func measureNear(seats: Int, seed: String, wholeToo: Bool, renderer: WorldRenderer,
-                             daylight: Daylight = .night) throws -> (culled: Double, whole: Double?) {
+    /// One way of drawing a realm near: by night or by day, the day's
+    /// relief and waves with it or not, only the regions in view or the
+    /// whole land, its furniture or none.
+    private struct Drawn {
+        var name: String
+        var daylight: Daylight = .night
+        var detail = true
+        var whole = false
+        var furnished = true
+    }
+
+    /// The median GPU time of each way of drawing a realm of so many seats
+    /// near its first seat, at scale 28, over eighty settled frames.
+    private func measureNear(seats: Int, seed: String, renderer: WorldRenderer, _ ways: [Drawn]) throws -> [String: Double] {
         // As wide as the old realm made a lake for so many seats.
         let radius: Int = seats > 12 ? Int((36.0 * (Double(seats) / 12.0).squareRoot()).rounded()) : 36
         let state = TestWorld(seedText: seed, houses: seats, radius: radius)
@@ -199,18 +217,20 @@ final class WorldPerformanceTests: XCTestCase {
         camera.focus(on: seat)
         let size = CGSize(width: Double(Self.width) / 2, height: Double(Self.height) / 2)
         var medians: [String: Double] = [:]
-        let scenes: [(String, SceneFrame)] = wholeToo ? [("culled", culled), ("whole", whole)] : [("culled", culled)]
-        for (name, scene) in scenes {
+        defer { renderer.drawsTheDaysDetail = true }
+        for way in ways {
+            let scene = way.furnished ? (way.whole ? whole : culled) : SceneFrame()
+            renderer.drawsTheDaysDetail = way.detail
             var times: [Double] = []
             for frame in 0..<85 {
                 let uniforms = FrameUniforms.make(camera: camera, size: size, pixelsPerPoint: 2 * fraction, time: Float(3 + Double(frame) / 60),
                                                   motion: 1, radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil,
-                                                  daylight: daylight)
+                                                  daylight: way.daylight)
                 if let ms = renderer.measureFrame(uniforms, scene: scene, into: target) { times.append(ms) }
             }
             let settled = Array(times.dropFirst(5)).sorted()
-            medians[name] = settled[settled.count / 2]
+            medians[way.name] = settled[settled.count / 2]
         }
-        return (try XCTUnwrap(medians["culled"]), medians["whole"])
+        return medians
     }
 }

@@ -320,11 +320,14 @@ public enum WorldShaders {
             float crust = 0.84 + 0.2 * nm_fbm2(p * 2.6 + float2(31.0, 2.0));
             shown *= mix(float3(1.0), float3(0.72, 0.7, 0.66) * crust * (1.0 - 0.35 * crack), salt);
         }
-        // Blades and grit, close to: none looked for once they are smaller
-        // than a pixel.
-        if (pixel < 0.045) {
+        // Blades and grit, close to: as the grain's octaves, only while
+        // they are two pixels across or more, fading in by four. They were
+        // drawn whole down to a pixel and a third (scale 28's, two pixels a
+        // point), where they never read as blades but shimmered.
+        float bladed = clamp(1.0 / (43.0 * 2.0 * pixel) - 1.0, 0.0, 1.0);
+        if (bladed > 0.0) {
             float fine = nm_noise(p * 43.0 + float2(7.0, 19.0)) - 0.5;
-            shown *= 1.0 + 0.16 * fine * (1.0 - smoothstep(0.012, 0.045, pixel));
+            shown *= 1.0 + 0.16 * fine * bladed;
         }
         return mix(c, shown, day);
     }

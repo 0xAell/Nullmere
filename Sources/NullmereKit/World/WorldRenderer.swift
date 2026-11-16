@@ -97,6 +97,10 @@ final class WorldRenderer {
         frame.groundLight.w > 0
     }
 
+    /// Whether the day's relief and waves are drawn by day at all; the
+    /// frame-time tests draw a day without them to tell what they cost.
+    var drawsTheDaysDetail = true
+
     let device: any MTLDevice
     private let commandQueue: any MTLCommandQueue
     private let landPipeline: any MTLRenderPipelineState
@@ -362,7 +366,7 @@ final class WorldRenderer {
 
         // By day, from dusk to dawn's end, the land and the water drawn with
         // the day's relief and waves; by night without them.
-        let byDay = WorldRenderer.drawsByDay(uniforms)
+        let byDay = drawsTheDaysDetail && WorldRenderer.drawsByDay(uniforms)
 
         // The land: only its chunks in view.
         if !WorldRenderer.leftOut.contains("land") {
