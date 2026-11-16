@@ -33,13 +33,20 @@ struct LiveDayPanel: View {
                     Spacer(minLength: 0)
                     LiveSmall(words: deed.isDone ? "Done: \(deed.marks) marks" : "\(LiveWords.grouped(deed.done)) of \(LiveWords.grouped(deed.asks))", dim: !deed.isDone)
                 }
-                ProgressView(value: deed.progress)
-                    .progressViewStyle(.linear)
-                    .tint(Palette.glow)
+                // A bar of shapes, not AppKit's: its own control stayed a
+                // child the row did not own, combined, hidden or ignored
+                // (CI runs 1026, 1032 and 1039's audit).
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Palette.line(0.25))
+                        Capsule().fill(Palette.glow).frame(width: proxy.size.width * min(max(deed.progress, 0), 1))
+                    }
+                }
+                .frame(height: 4)
             }
-            // One element, said whole: a row combining its children left
-            // them children it did not own (CI runs 1026 and 1032's audit).
+            // One element, said whole, as words.
             .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isStaticText)
             .accessibilityLabel(deed.isDone ? "\(deed.words) Done: \(deed.marks) marks" : "\(deed.words) \(LiveWords.grouped(deed.done)) of \(LiveWords.grouped(deed.asks))")
             .accessibilityValue(deed.isDone ? "Done" : "\(Int((deed.progress * 100).rounded())) percent")
         }
