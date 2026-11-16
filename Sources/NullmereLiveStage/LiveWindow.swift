@@ -58,8 +58,44 @@ public struct LiveWindow: Sendable {
 
     /// The cities in the window as the stage's holds: each a seat, its
     /// works standing by its Keep's level; the player's own by what
-    /// truly stands in it, and whatever it has rising.
+    /// truly stands in it, and whatever it has rising, with the envoys
+    /// come to their alliance waiting at its gate and a petitioner while
+    /// an ally's petition waits on them. Then the gates of the ridge, each
+    /// a walled hold in its holder's colour, or the Unquiet's dark; and
+    /// the wardstones, each a beacon in its alliance's colour.
     public func holds(in world: LiveWorld, colours: [Vec4], at seconds: Double) -> [HoldSight] {
+        cityHolds(in: world, colours: colours, at: seconds) + markHolds(in: world, colours: colours, at: seconds)
+    }
+
+    /// The colour of what no alliance holds: the Unquiet's.
+    static let unquiet = Vec4(0.16, 0.15, 0.17, 1)
+
+    /// Where the gates' and wardstones' holds are numbered from, past any
+    /// city's number.
+    static let marks = 1 << 40
+
+    private func markHolds(in world: LiveWorld, colours: [Vec4], at seconds: Double) -> [HoldSight] {
+        let gates = world.gates.values.sorted { $0.id < $1.id }.compactMap { gate -> HoldSight? in
+            guard let hex = local(gate.hex) else { return nil }
+            let owner = gate.holder == 0 ? 0 : LiveWindow.allianceSigil(of: gate.holder)
+            var hold = Hold(id: LiveWindow.marks + Int(gate.id), name: "Gate of the ridge", owner: owner, position: hex, isSeat: false, foundedWatch: 0)
+            hold.levels[.walls] = 5
+            hold.ward = Hold.maximumWard(wallLevel: 5, isSeat: false)
+            return HoldSight(hold: hold, colour: gate.holder == 0 ? LiveWindow.unquiet : WorldStage.colour(colours, sigil: owner))
+        }
+        let wards = world.wards.values.sorted { $0.id < $1.id }.compactMap { ward -> HoldSight? in
+            guard let hex = local(ward.hex) else { return nil }
+            let owner = LiveWindow.allianceSigil(of: ward.alliance)
+            var hold = Hold(id: LiveWindow.marks * 2 + Int(ward.id), name: "Wardstone", owner: owner, position: hex, isSeat: false, foundedWatch: 0)
+            hold.levels[.beacon] = 1
+            // Raised but not yet standing: its beacon still rising.
+            let rising = ward.stands(at: seconds) ? nil : Float(0.5)
+            return HoldSight(hold: hold, colour: WorldStage.colour(colours, sigil: owner), progress: rising)
+        }
+        return gates + wards
+    }
+
+    private func cityHolds(in world: LiveWorld, colours: [Vec4], at seconds: Double) -> [HoldSight] {
         world.cities.values.sorted { $0.id < $1.id }.compactMap { city -> HoldSight? in
             guard let hex = local(city.hex) else { return nil }
             var hold = Hold(id: Int(city.id), name: city.name, owner: LiveWindow.sigil(of: city.owner), position: hex, isSeat: true,
@@ -77,7 +113,13 @@ public struct LiveWindow: Sendable {
                 if level > 0 { hold.levels[kind] = LiveWindow.shown(level) }
             }
             hold.ward = Hold.maximumWard(wallLevel: hold.level(.walls), isSeat: true)
-            return HoldSight(hold: hold, colour: WorldStage.colour(colours, sigil: LiveWindow.sigil(of: city.owner)))
+            var sight = HoldSight(hold: hold, colour: WorldStage.colour(colours, sigil: LiveWindow.sigil(of: city.owner)))
+            if own {
+                sight.envoys = world.envoysWaiting(at: seconds).map { WorldStage.colour(colours, sigil: LiveWindow.allianceSigil(of: $0.sender)) }
+                let waiting = world.petitionsStanding(at: seconds).contains { $0.asker != world.me?.id }
+                sight.petitioner = waiting ? 0 : nil
+            }
+            return sight
         }
     }
 

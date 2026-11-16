@@ -172,6 +172,44 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(TileTexture.terrain(tiles[((0 + 12) * side + 2 + 12) * 4]), Terrain.greyfield.code)
     }
 
+    func testGatesAndWardstonesStandAsHoldsAndEnvoysWaitAtTheGate() {
+        var rows = LiveWindowTests.rows()
+        func n(_ value: Double) -> JSONValue { .number(value) }
+        rows["ward"] = [[n(3), n(5), n(Double(LiveHex(q: 12, r: -4).packed)), n(1), n(1_500)], [n(4), n(6), n(Double(LiveHex(q: 2, r: -4).packed)), n(2), n(9_000)]]
+        rows["gate"] = [[n(1), n(Double(LiveHex(q: 8, r: -6).packed)), n(5), .string("[MERE] Keepers"), n(1_000), n(0)],
+                        [n(2), n(Double(LiveHex(q: 6, r: -8).packed)), n(0), .string(""), n(0), n(0)]]
+        rows["member"] = [[n(1), n(5), n(5), n(1_000)], [n(2), n(5), n(1), n(1_000)]]
+        rows["my_envoys"] = [[n(5), n(6), n(5), .string("[WRD] Wardens"), n(1), n(3), n(1_900)]]
+        rows["my_petitions"] = [[n(2), n(5), .string("[MERE] Bryn"), n(1_000), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(1_800)]]
+        let world = LiveWorld(snapshot: rows)
+        let window = LiveWindow(world: world, centre: LiveHex(q: 10, r: -4), radius: 12)
+        let colours = LiveSession.colours
+        let holds = window.holds(in: world, colours: colours, at: 2_000)
+        XCTAssertEqual(holds.map(\.hold.name), ["Ada", "Bryn", "Gate of the ridge", "Gate of the ridge", "Wardstone", "Wardstone"])
+        // The gates: walled, not seats, in the holder's colour or the Unquiet's dark.
+        let (held, unheld) = (holds[2], holds[3])
+        XCTAssertEqual(held.hold.position, Hex(-2, -2))
+        XCTAssertFalse(held.hold.isSeat)
+        XCTAssertEqual(held.hold.level(.walls), 5)
+        XCTAssertEqual(held.colour, WorldStage.colour(colours, sigil: LiveWindow.allianceSigil(of: 5)))
+        XCTAssertEqual(unheld.colour, LiveWindow.unquiet)
+        // The wardstones: a beacon in the alliance's colour, the one not yet standing still rising.
+        XCTAssertEqual(holds[4].hold.level(.beacon), 1)
+        XCTAssertEqual(holds[4].colour, WorldStage.colour(colours, sigil: LiveWindow.allianceSigil(of: 5)))
+        XCTAssertNil(holds[4].progress)
+        XCTAssertEqual(holds[5].progress, 0.5)
+        XCTAssertEqual(Set(holds.map(\.hold.id)).count, holds.count, "every hold its own number")
+        // At the player's own city, the Wardens' envoy waits in their colour, and a petitioner with Bryn's plea.
+        XCTAssertEqual(holds[0].envoys, [WorldStage.colour(colours, sigil: LiveWindow.allianceSigil(of: 6))])
+        XCTAssertEqual(holds[0].petitioner, 0)
+        XCTAssertEqual(holds[1].envoys, [], "not at another's")
+        XCTAssertNil(holds[1].petitioner)
+        // Later, the envoy gone unanswered and the petition's day done: no one waits.
+        let later = window.holds(in: world, colours: colours, at: 100_000)
+        XCTAssertEqual(later[0].envoys, [])
+        XCTAssertNil(later[0].petitioner)
+    }
+
     func testAWindowIsStagedForTheRenderer() async throws {
         var world = world()
         var centre = LiveHex(q: 10, r: -4)
