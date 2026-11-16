@@ -77,9 +77,16 @@ final class LiveGameTests: XCTestCase {
         rows["duty"] = [[n(1), n(50), n(20), .string("Train 50 soldiers.")], [n(2), n(5_000), n(20), .string("Gather 5,000 goods.")]]
         rows["chest"] = [[n(1), n(20), n(5_000), n(5_000), n(0), n(0), n(2), n(0), n(0)], [n(2), n(60), n(0), n(0), n(10_000), n(50), n(0), n(1), n(0)]]
         rows["ware"] = [[n(1), .string("Five minutes' haste"), .string("Five minutes sooner."), n(300)], [n(2), .string("An hour's haste"), .string("An hour sooner."), n(3_600)],
-                        [n(4), .string("Eight hours' peace"), .string("Keeps your city at peace for 8 hours."), n(28_800), n(2)]]
+                        [n(4), .string("Eight hours' peace"), .string("Keeps your city at peace for 8 hours."), n(28_800), n(2)],
+                        [n(5), .string("Iron"), .string("Worked at the Forge into gear."), n(0), n(3)]]
         rows["my_daily"] = [[n(1), n(0), n(60), n(1_200), n(0), n(1), n(0), n(0)]]
-        rows["my_satchel"] = [[n(1 << 8 | 1), n(1), n(1), n(3)], [n(1 << 8 | 4), n(1), n(4), n(1)]]
+        rows["my_satchel"] = [[n(1 << 8 | 1), n(1), n(1), n(3)], [n(1 << 8 | 4), n(1), n(4), n(1)], [n(1 << 8 | 5), n(1), n(5), n(6)]]
+        // The Forge: two pieces it makes, a piece worn and one spare.
+        rows["pattern"] = [[n(1), .string("Iron sword"), n(1), n(1), .string("Everyone its wearer leads strikes 3% harder."), n(4), n(4), n(0), n(0), n(0), n(5_000), n(5_000),
+                            n(0), n(1)],
+                           [n(10), .string("Leather boots"), n(4), n(1), .string("Its wearer's army marches 4% faster."), n(4), n(4), n(0), n(0), n(0), n(5_000), n(5_000),
+                            n(0), n(1)]]
+        rows["my_gear"] = [[n(1), n(1), n(1), n(11)], [n(2), n(1), n(10), n(0)]]
         rows["my_favour"] = [[n(1), n(140), n(1)]]
         rows["trial"] = [[n(1), .string("The Long Hunt"), .string("Points for every barrow cleared."), n(7), n(3)]]
         rows["prize"] = [[n(257), n(1), n(1), n(100), n(9_000), n(0), n(0), n(0), n(1), n(0), n(0)], [n(258), n(1), n(2), n(400), n(0), n(0), n(0), n(100), n(0), n(2), n(0)]]
@@ -198,7 +205,7 @@ final class LiveGameTests: XCTestCase {
         XCTAssertGreaterThan(try drawn(LiveDock(session: session, panel: binding), width: 640, height: 50), 100)
         // Four destinations: the House of four parts, the alliance, the realm of two, the mail.
         XCTAssertEqual(LiveDock.destinations.map(\.title), ["House", "Alliance", "Realm", "Mail"])
-        XCTAssertEqual(LiveGameView.Destination.house.panels, [.city, .troops, .studies, .day])
+        XCTAssertEqual(LiveGameView.Destination.house.panels, [.city, .troops, .studies, .forge, .day])
         XCTAssertEqual(LiveGameView.Destination.realm.panels, [.realm, .chat])
         XCTAssertEqual([LiveGameView.Panel.day, LiveGameView.Panel.chat, LiveGameView.Panel.reports].map(\.destination), [.house, .realm, .mail])
         // Pressed, a destination opens at its first part, and closes again from any of its parts.
@@ -211,13 +218,13 @@ final class LiveGameTests: XCTestCase {
                        LiveGameView.Destination.allCases.flatMap(\.panels), "the palette's parts are the destinations', in order")
         XCTAssertNil(LiveGameView.Panel(part: "nowhere"))
         // Each side panel, with something of everything in it.
-        for side in [LiveGameView.Panel.city, .troops, .studies, .alliance, .day, .realm, .chat, .reports] {
+        for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .realm, .chat, .reports] {
             let lit = try drawn(LiveSidePanel(session: session, seconds: 2_015, panel: side) {}, width: 340, height: 700, as: "live-\(side).png")
             XCTAssertGreaterThan(lit, 800, "\(side)")
         }
         // And with nothing in them: no soldiers yet, no reports yet.
         let (empty, _) = await playing(LiveSample.rows())
-        for side in [LiveGameView.Panel.troops, .studies, .alliance, .day, .realm, .chat, .reports] {
+        for side in [LiveGameView.Panel.troops, .studies, .forge, .alliance, .day, .realm, .chat, .reports] {
             XCTAssertGreaterThan(try drawn(LiveSidePanel(session: empty, seconds: 2_015, panel: side) {}, width: 340, height: 700), 150, "\(side)")
         }
         XCTAssertEqual(try drawn(LiveTaskChip(session: empty), width: 420, height: 70), 0, "No task set, nothing shown")

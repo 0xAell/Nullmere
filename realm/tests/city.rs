@@ -41,7 +41,7 @@ fn the_realm_opens_with_its_land_and_its_catalogue() {
     assert_eq!(chunks.len(), land::chunks(42, 48).len());
     assert!(chunks.iter().all(|chunk| chunk.ground.len() == 256));
     let blueprints = Table::<Blueprint>::all(&db);
-    assert_eq!(blueprints.len(), 18 * 25);
+    assert_eq!(blueprints.len(), 19 * 25);
     let keep2 = Table::<Blueprint>::get(&db, Blueprint::key(Kind::Keep as u8, 2)).unwrap();
     assert_eq!((keep2.name.as_str(), keep2.timber, keep2.stone, keep2.seconds, keep2.opens_at), ("Keep", 620, 310, 8, 1));
     let keep4 = Table::<Blueprint>::get(&db, Blueprint::key(Kind::Keep as u8, 4)).unwrap();
@@ -370,7 +370,7 @@ fn the_realms_pace_can_be_set_afresh() {
     let slow = db.call(|db| rules::upgrade(db, ada, keep.id)).unwrap();
     db.call(|db| rules::repace(db, 60)).unwrap();
     assert_eq!(rules::realm(&db).unwrap().pace, 60);
-    assert_eq!(Table::<Blueprint>::all(&db).len(), 18 * 25, "written out afresh, none twice");
+    assert_eq!(Table::<Blueprint>::all(&db).len(), 19 * 25, "written out afresh, none twice");
     assert_eq!(Table::<Blueprint>::get(&db, Blueprint::key(Kind::Keep as u8, 5)).unwrap().seconds, 10);
     assert_eq!(Table::<realm::rows::Soldier>::all(&db).len(), 20);
     assert_eq!(stock(&db, city.id).grain_hourly, 1_300 * 60, "every city's rates reckoned again");

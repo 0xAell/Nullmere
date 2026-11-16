@@ -85,6 +85,8 @@ public enum LiveBlock: Equatable, Sendable {
     case commandersFull
     /// A study opens once another is learnt to a level.
     case studyFirst(String, Int)
+    /// Too few of the materials a piece of gear takes, in words.
+    case materials(String)
 
     /// As the realm says it.
     public var words: String {
@@ -101,6 +103,7 @@ public enum LiveBlock: Equatable, Sendable {
         case .learntAll(let name): return "You have learnt all there is of \(name)."
         case .commandersFull: return "Your city keeps as many commanders as it can."
         case .studyFirst(let name, let level): return "Learn \(name) to level \(level) first."
+        case .materials(let words): return "You need \(words) more."
         }
     }
 }

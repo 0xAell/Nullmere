@@ -15,6 +15,7 @@ mod daily;
 mod entry;
 mod favour;
 mod help;
+mod forge;
 mod items;
 mod letters;
 mod learning;
@@ -41,6 +42,7 @@ pub use daily::*;
 pub use entry::*;
 pub use favour::*;
 pub use help::*;
+pub use forge::*;
 pub use items::*;
 pub use letters::*;
 pub use learning::*;
@@ -270,6 +272,15 @@ pub enum Refusal {
     NoneLeft,
     /// An item of peace is used on the city, not on a work.
     NotAHaste,
+    /// A material is worked at the Forge, not used.
+    AtTheForge,
+    /// No such piece of gear is made, or is the player's.
+    NoSuchPiece,
+    NoSuchGear,
+    /// Too few of the materials a piece takes.
+    ShortOfMaterials(String),
+    /// A commander held prisoner is given no gear.
+    HeldPrisoner(String),
     /// Only an item of peace keeps the peace.
     NotPeace,
     /// No peace while the player's armies are out against a city.
@@ -324,6 +335,8 @@ impl fmt::Display for Refusal {
             Refusal::RallyTooStrong(level) => return write!(f, "A rally of yours may go against a barrow of level {level} at most."),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
             Refusal::AtPeaceLonger(left) => return write!(f, "Your city is at peace for another {} already.", crate::catalog::spoken(*left)),
+            Refusal::ShortOfMaterials(words) => return write!(f, "You need {words} more."),
+            Refusal::HeldPrisoner(name) => return write!(f, "{name} is held prisoner."),
             Refusal::NoFreeMarch(1) => return write!(f, "Your one army is out. Raise your Keep to send more."),
             Refusal::NoFreeMarch(most) => return write!(f, "All {most} of your armies are out."),
             _ => {}
@@ -396,6 +409,9 @@ impl fmt::Display for Refusal {
             Refusal::PrizeClaimed => "You have claimed that prize this round.",
             Refusal::NoneLeft => "You have none of that left.",
             Refusal::NotAHaste => "That keeps your city at peace; it hastens no work.",
+            Refusal::AtTheForge => "That is worked at the Forge into gear.",
+            Refusal::NoSuchPiece => "The Forge makes no such thing.",
+            Refusal::NoSuchGear => "You have no such gear.",
             Refusal::NotPeace => "That hastens a work; it keeps no peace.",
             Refusal::AttacksUnderWay => "Call home your armies sent against cities first.",
             Refusal::ChestOpened => "You have opened that chest today.",

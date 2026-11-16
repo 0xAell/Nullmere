@@ -132,13 +132,15 @@ pub enum Building {
     Tavern = 16,
     Market = 17,
     ScoutCamp = 18,
+    /// Where gear is made for commanders, from what the barrows yield.
+    Forge = 19,
 }
 
 /// The highest level anything reaches.
 pub const TOP_LEVEL: u32 = 25;
 
 impl Building {
-    pub const ALL: [Building; 18] = [
+    pub const ALL: [Building; 19] = [
         Building::Keep,
         Building::Farm,
         Building::Sawmill,
@@ -157,6 +159,7 @@ impl Building {
         Building::Tavern,
         Building::Market,
         Building::ScoutCamp,
+        Building::Forge,
     ];
 
     pub fn of(code: u8) -> Option<Building> {
@@ -183,6 +186,7 @@ impl Building {
             Building::Tavern => "Tavern",
             Building::Market => "Market",
             Building::ScoutCamp => "Scout Camp",
+            Building::Forge => "Forge",
         }
     }
 
@@ -193,7 +197,7 @@ impl Building {
             Building::Quarry | Building::Storehouse | Building::Barracks => 2,
             Building::Wall | Building::Hospital | Building::ScoutCamp => 3,
             Building::Range | Building::Tavern => 4,
-            Building::Academy | Building::Embassy => 5,
+            Building::Academy | Building::Embassy | Building::Forge => 5,
             Building::Stable => 6,
             Building::Saltworks => 7,
             Building::Market | Building::Watchtower => 8,
@@ -223,6 +227,7 @@ impl Building {
             Building::Tavern => [300, 300, 0],
             Building::Market => [300, 400, 100],
             Building::ScoutCamp => [100, 150, 0],
+            Building::Forge => [0, 300, 400],
         }
     }
 
@@ -238,6 +243,7 @@ impl Building {
             Building::Wall | Building::Academy => 600,
             Building::Tavern | Building::Market => 300,
             Building::ScoutCamp => 250,
+            Building::Forge => 400,
         }
     }
 
@@ -493,7 +499,7 @@ mod tests {
 
     #[test]
     fn every_building_grows_dearer_and_slower_level_by_level() {
-        assert_eq!(Building::ALL.len(), 18);
+        assert_eq!(Building::ALL.len(), 19);
         for (index, building) in Building::ALL.into_iter().enumerate() {
             assert_eq!(building as u8 as usize, index + 1);
             assert_eq!(Building::of(building as u8), Some(building));
@@ -510,7 +516,7 @@ mod tests {
             assert!(cost(building, 11).moonsalt > 0);
         }
         assert_eq!(Building::of(0), None);
-        assert_eq!(Building::of(19), None);
+        assert_eq!(Building::of(20), None);
         assert_eq!(cost(Building::Keep, 2), Goods::of(0, 620, 310, 0));
         assert_eq!(seconds(Building::Keep, 2), 8);
         assert_eq!(seconds(Building::Keep, 25), 5_184_000, "two months, as written");
@@ -999,10 +1005,18 @@ pub enum Item {
     Haste480 = 3,
     /// Eight hours' peace for the city it is used on.
     Peace8 = 4,
+    /// What the barrows yield, worked at the Forge into gear.
+    Iron = 5,
+    Leather = 6,
+    Bone = 7,
+    Silver = 8,
 }
 
 impl Item {
-    pub const ALL: [Item; 4] = [Item::Haste5, Item::Haste60, Item::Haste480, Item::Peace8];
+    pub const ALL: [Item; 8] = [Item::Haste5, Item::Haste60, Item::Haste480, Item::Peace8, Item::Iron, Item::Leather, Item::Bone, Item::Silver];
+
+    /// The materials, in the order a piece's cost names them.
+    pub const MATERIALS: [Item; 4] = [Item::Iron, Item::Leather, Item::Bone, Item::Silver];
 
     pub fn of(code: u8) -> Option<Item> {
         Item::ALL.into_iter().find(|item| *item as u8 == code)
@@ -1015,7 +1029,13 @@ impl Item {
             Item::Haste5 => 300,
             Item::Haste60 => 3_600,
             Item::Haste480 | Item::Peace8 => 28_800,
+            Item::Iron | Item::Leather | Item::Bone | Item::Silver => 0,
         }
+    }
+
+    /// Whether it is a material, worked at the Forge rather than used.
+    pub fn is_material(self) -> bool {
+        Item::MATERIALS.contains(&self)
     }
 
     /// Whether it keeps the city at peace, rather than hastening a work.
@@ -1029,6 +1049,10 @@ impl Item {
             Item::Haste60 => "An hour's haste",
             Item::Haste480 => "Eight hours' haste",
             Item::Peace8 => "Eight hours' peace",
+            Item::Iron => "Iron",
+            Item::Leather => "Leather",
+            Item::Bone => "Bone",
+            Item::Silver => "Silver",
         }
     }
 
@@ -1036,6 +1060,9 @@ impl Item {
     pub fn words(self) -> String {
         if self.is_peace() {
             return format!("Keeps your city at peace for {}: no army may attack it. Sending an army against a city ends it.", spoken(self.seconds()));
+        }
+        if self.is_material() {
+            return "Worked at the Forge into gear for your commanders. The barrows of the Unquiet yield it.".to_string();
         }
         format!("Takes {} off a work under way in your city.", spoken(self.seconds()))
     }
@@ -1548,4 +1575,142 @@ pub fn commanders(tavern: u32) -> u32 {
 pub fn hire_cost(have: u32) -> Goods {
     let n = have.max(1) as u64;
     Goods::of(2_000 * n * n, 2_000 * n * n, 1_000 * n * n, if n >= 2 { 50 * n } else { 0 })
+}
+
+/// Where a commander wears a piece of gear: one piece in each.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Slot {
+    Weapon = 1,
+    Helm = 2,
+    Armour = 3,
+    Boots = 4,
+}
+
+/// A piece of gear the Forge makes: four kinds, a weapon, a helm, armour
+/// and boots, each in three grades.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Piece {
+    IronSword = 1,
+    SteelSword = 2,
+    SilverSword = 3,
+    LeatherCap = 4,
+    IronHelm = 5,
+    SilverHelm = 6,
+    LeatherCoat = 7,
+    MailCoat = 8,
+    SilverMail = 9,
+    LeatherBoots = 10,
+    RidingBoots = 11,
+    SilverGreaves = 12,
+}
+
+impl Piece {
+    pub const ALL: [Piece; 12] = [
+        Piece::IronSword,
+        Piece::SteelSword,
+        Piece::SilverSword,
+        Piece::LeatherCap,
+        Piece::IronHelm,
+        Piece::SilverHelm,
+        Piece::LeatherCoat,
+        Piece::MailCoat,
+        Piece::SilverMail,
+        Piece::LeatherBoots,
+        Piece::RidingBoots,
+        Piece::SilverGreaves,
+    ];
+
+    pub fn of(code: u8) -> Option<Piece> {
+        Piece::ALL.into_iter().find(|piece| *piece as u8 == code)
+    }
+
+    /// Where it is worn: three grades to each slot, in order.
+    pub fn slot(self) -> Slot {
+        match (self as u8 - 1) / 3 {
+            0 => Slot::Weapon,
+            1 => Slot::Helm,
+            2 => Slot::Armour,
+            _ => Slot::Boots,
+        }
+    }
+
+    /// Its grade, 1 to 3.
+    pub fn grade(self) -> u64 {
+        (self as u64 - 1) % 3 + 1
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Piece::IronSword => "Iron sword",
+            Piece::SteelSword => "Steel sword",
+            Piece::SilverSword => "Silver sword",
+            Piece::LeatherCap => "Leather cap",
+            Piece::IronHelm => "Iron helm",
+            Piece::SilverHelm => "Silver helm",
+            Piece::LeatherCoat => "Leather coat",
+            Piece::MailCoat => "Mail coat",
+            Piece::SilverMail => "Silver mail",
+            Piece::LeatherBoots => "Leather boots",
+            Piece::RidingBoots => "Riding boots",
+            Piece::SilverGreaves => "Silver greaves",
+        }
+    }
+
+    /// What it adds to the army its wearer leads: a weapon has every kind
+    /// strike harder, a helm and armour have everyone harder to bring
+    /// down, boots have the army march faster; more for each grade.
+    pub fn leading(self) -> Leading {
+        let grade = self.grade();
+        let mut leading = Leading::default();
+        match self.slot() {
+            Slot::Weapon => leading.strikes = [3 * grade; 4],
+            Slot::Helm => leading.shields = 2 * grade,
+            Slot::Armour => leading.shields = 3 * grade,
+            Slot::Boots => leading.haste = 4 * grade,
+        }
+        leading
+    }
+
+    /// What it does, in a player's words.
+    pub fn words(self) -> String {
+        let grade = self.grade();
+        match self.slot() {
+            Slot::Weapon => format!("Everyone its wearer leads strikes {}% harder.", 3 * grade),
+            Slot::Helm => format!("Everyone its wearer leads is {}% harder to bring down.", 2 * grade),
+            Slot::Armour => format!("Everyone its wearer leads is {}% harder to bring down.", 3 * grade),
+            Slot::Boots => format!("Its wearer's army marches {}% faster.", 4 * grade),
+        }
+    }
+
+    /// What it takes to make: so many of each material, iron, leather,
+    /// bone and silver, and goods.
+    pub fn cost(self) -> ([u64; 4], Goods) {
+        match self.grade() {
+            1 => ([4, 4, 0, 0], Goods::of(0, 5_000, 5_000, 0)),
+            2 => ([10, 6, 4, 0], Goods::of(0, 20_000, 20_000, 200)),
+            _ => ([20, 10, 10, 6], Goods::of(0, 60_000, 60_000, 1_000)),
+        }
+    }
+
+    /// The Forge level it is made at.
+    pub fn forge_level(self) -> u32 {
+        match self.grade() {
+            1 => 1,
+            2 => 8,
+            _ => 16,
+        }
+    }
+}
+
+/// What clearing a barrow of a level yields of materials: one for each
+/// level, iron, leather and bone by chance, and from the tenth level one
+/// in four of them silver.
+pub fn spoils_of(level: u32, mut chance: impl FnMut() -> u64) -> [u64; 4] {
+    let mut yielded = [0u64; 4];
+    for _ in 0..level {
+        let roll = chance();
+        let kind = if level >= 10 && roll % 4 == 0 { 3 } else { (roll / 4 % 3) as usize };
+        yielded[kind] += 1;
+    }
+    yielded
 }

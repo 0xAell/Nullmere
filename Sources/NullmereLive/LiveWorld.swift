@@ -100,6 +100,9 @@ public struct LiveWorld: Equatable, Sendable {
     public var petitions: [UInt64: LivePetition] = [:]
     /// The letters the player has written and been written, the latest first.
     public var letters: [LiveLetter] = []
+    /// What the Forge makes, by piece; and the player's gear.
+    public var patterns: [Int: LivePattern] = [:]
+    public var gear: [LiveGear] = []
 
     public init() {}
 
@@ -183,6 +186,8 @@ public struct LiveWorld: Equatable, Sendable {
         prisoners = Dictionary(rows("my_prisoners", LivePrisoner.init).map { ($0.commander, $0) }, uniquingKeysWith: { _, new in new })
         petitions = Dictionary(rows("my_petitions", LivePetition.init).map { ($0.asker, $0) }, uniquingKeysWith: { _, new in new })
         letters = rows("my_letters", LiveLetter.init).sorted { $0.id > $1.id }
+        patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
+        gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
     }
 
     private static func key(_ kind: Int, _ level: Int) -> UInt64 { UInt64(kind) << 32 | UInt64(level) }

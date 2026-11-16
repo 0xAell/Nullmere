@@ -11,7 +11,13 @@ use crate::store::Table;
 /// Writes the items out as rows, for clients to show, as the realm opens.
 pub fn write_wares(db: &mut impl Db) {
     for item in Item::ALL {
-        let kind = if item.is_peace() { Ware::PEACE } else { Ware::HASTE };
+        let kind = if item.is_peace() {
+            Ware::PEACE
+        } else if item.is_material() {
+            Ware::MATERIAL
+        } else {
+            Ware::HASTE
+        };
         db.insert(Ware { item: item as u64, name: item.name().to_string(), words: item.words(), seconds: item.seconds(), kind });
     }
 }
@@ -35,8 +41,14 @@ fn keep(db: &mut impl Db, player: u64, item: Item, count: u64) {
     }
 }
 
+/// So many of an item are taken from a player who has them.
+pub(super) fn take(db: &mut impl Db, player: u64, item: Item, count: u64) {
+    let have = held(db, player, item);
+    keep(db, player, item, have.saturating_sub(count));
+}
+
 /// A player is given so many of an item.
-pub(super) fn give(db: &mut impl Db, player: u64, item: Item, count: u64) {
+pub fn give(db: &mut impl Db, player: u64, item: Item, count: u64) {
     let have = held(db, player, item);
     keep(db, player, item, have.saturating_add(count));
 }
@@ -49,6 +61,9 @@ pub fn use_item(db: &mut impl Db, player: u64, item: u8, job: u64) -> Result<Job
     let item = Item::of(item).ok_or(Refusal::NoSuchItem)?;
     if item.is_peace() {
         return Err(Refusal::NotAHaste);
+    }
+    if item.is_material() {
+        return Err(Refusal::AtTheForge);
     }
     let mut job = Table::<Job>::get(db, job)
         .filter(|row| row.city == city.id && matches!(row.kind, Job::RAISE | Job::STUDY | Job::TRAIN | Job::HEAL))
@@ -90,6 +105,9 @@ pub fn keep_peace(db: &mut impl Db, player: u64, item: u8) -> Result<City, Refus
     asking(db, player)?;
     let mut city = city_of(db, player)?;
     let item = Item::of(item).ok_or(Refusal::NoSuchItem)?;
+    if item.is_material() {
+        return Err(Refusal::AtTheForge);
+    }
     if !item.is_peace() {
         return Err(Refusal::NotPeace);
     }

@@ -51,6 +51,9 @@ public protocol LiveLine: AnyObject, Sendable {
     func speedUp(job: UInt64) async throws
     func useItem(_ item: Int, on job: UInt64) async throws
     func moveCity(to hex: LiveHex) async throws
+    func forge(piece: Int) async throws
+    func equip(gear: UInt64, on commander: UInt64) async throws
+    func unequip(gear: UInt64) async throws
     func usePeace(_ item: Int) async throws
     func openChest(_ chest: Int) async throws
     func claimPrize(contest: Int, place: Int) async throws
@@ -439,6 +442,9 @@ public final class LiveSession {
     public func speedUp(job: UInt64) async { await ask { try await $0.speedUp(job: job) } }
     public func useItem(_ item: Int, on job: UInt64) async { await ask { try await $0.useItem(item, on: job) } }
     public func usePeace(_ item: Int) async { await ask { try await $0.usePeace(item) } }
+    public func forge(piece: Int) async { await ask { try await $0.forge(piece: piece) } }
+    public func equip(gear: UInt64, on commander: UInt64) async { await ask { try await $0.equip(gear: gear, on: commander) } }
+    public func unequip(gear: UInt64) async { await ask { try await $0.unequip(gear: gear) } }
     public func openChest(_ chest: Int) async { await ask { try await $0.openChest(chest) } }
     public func claimPrize(contest: Int, place: Int) async { await ask { try await $0.claimPrize(contest: contest, place: place) } }
     public func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async { await ask { try await $0.sendEnvoy(to: alliance, terms: terms, days: days) } }

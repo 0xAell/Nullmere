@@ -23,6 +23,7 @@ public struct LiveGameView: View {
         case reports
         case day
         case realm
+        case forge
 
         var title: String {
             switch self {
@@ -34,6 +35,7 @@ public struct LiveGameView: View {
             case .reports: return "Reports"
             case .day: return "Today"
             case .realm: return "The Mere"
+            case .forge: return "Forge"
             }
         }
 
@@ -42,8 +44,8 @@ public struct LiveGameView: View {
 
         /// The part the palette names (`LiveSession.parts`).
         init?(part: String) {
-            let all: [String: Panel] = ["city": .city, "troops": .troops, "studies": .studies, "day": .day, "alliance": .alliance, "realm": .realm,
-                                        "chat": .chat, "reports": .reports]
+            let all: [String: Panel] = ["city": .city, "troops": .troops, "studies": .studies, "forge": .forge, "day": .day, "alliance": .alliance,
+                                        "realm": .realm, "chat": .chat, "reports": .reports]
             guard let panel = all[part] else { return nil }
             self = panel
         }
@@ -70,7 +72,7 @@ public struct LiveGameView: View {
         /// What it holds, the first opened when it is.
         var panels: [Panel] {
             switch self {
-            case .house: return [.city, .troops, .studies, .day]
+            case .house: return [.city, .troops, .studies, .forge, .day]
             case .alliance: return [.alliance]
             case .realm: return [.realm, .chat]
             case .mail: return [.reports]

@@ -443,6 +443,60 @@ final class LiveWorldTests: XCTestCase {
         }
     }
 
+    /// The Forge: what each piece takes and why it can't be made now, the
+    /// materials held, and who wears what.
+    func testTheForgeSaysWhatEachPieceTakesAndWhoWearsWhat() throws {
+        func pattern(_ piece: Double, _ name: String, slot: Double, grade: Double, takes: [Double], timber: Double, level: Double) -> [JSONValue] {
+            var row: [JSONValue] = [n(piece), .string(name), n(slot), n(grade), .string("Everyone its wearer leads strikes harder.")]
+            row.append(contentsOf: takes.map { n($0) })
+            row.append(contentsOf: [n(0), n(timber), n(timber), n(0), n(level)])
+            return row
+        }
+        var snapshot: [String: [[JSONValue]]] = [
+            "me": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)]],
+            "my_city": [[n(7), n(1), n(Double(LiveHex(q: 0, r: 0).packed)), .string("Ada"), n(8), n(1_000), n(1_000), n(1)]],
+            "my_stock": [[n(7), n(60_000), n(60_000), n(60_000), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(200_000)]],
+            "my_satchel": [[n(Double(1 << 8 | 5)), n(1), n(5), n(6)], [n(Double(1 << 8 | 6)), n(1), n(6), n(2)]],
+            "my_gear": [[n(1), n(1), n(1), n(11)], [n(2), n(1), n(10), n(0)]],
+        ]
+        snapshot["pattern"] = [pattern(2, "Steel sword", slot: 1, grade: 2, takes: [10, 6, 4, 0], timber: 20_000, level: 8),
+                               pattern(1, "Iron sword", slot: 1, grade: 1, takes: [4, 4, 0, 0], timber: 5_000, level: 1),
+                               pattern(10, "Leather boots", slot: 4, grade: 1, takes: [4, 4, 0, 0], timber: 5_000, level: 1)]
+        var world = LiveWorld(snapshot: snapshot)
+        XCTAssertEqual(world.patterns[1]?.takes, [4, 4, 0, 0])
+        XCTAssertEqual(world.patterns[2]?.cost, LiveGoods(timber: 20_000, stone: 20_000))
+        XCTAssertEqual(world.materials, [6, 2, 0, 0])
+        XCTAssertEqual(LiveWorld.materialWords([3, 0, 1, 0]), "3 iron and 1 bone")
+        XCTAssertEqual(LiveWorld.materialWords([1, 2, 3, 4]), "1 iron, 2 leather, 3 bone and 4 silver")
+        XCTAssertEqual(LiveWorld.materialWords([0, 0, 0, 0]), "nothing")
+
+        // No Forge yet: each piece says so.
+        var lines = world.forgeLines(at: 1_000)
+        XCTAssertEqual(lines.map(\.pattern.name), ["Iron sword", "Steel sword", "Leather boots"], "weapons first, each place's grades in order")
+        XCTAssertEqual(lines[0].takes, "4 iron, 4 leather, 5,000 timber and 5,000 stone")
+        XCTAssertEqual(lines.map(\.block), [.needsOther("Forge", 1), .needsOther("Forge", 8), .needsOther("Forge", 1)])
+        // With one: too few materials, said in the realm's words.
+        snapshot["my_buildings"] = [[n(30), n(7), n(19), n(1)]]
+        world = LiveWorld(snapshot: snapshot)
+        lines = world.forgeLines(at: 1_000)
+        XCTAssertEqual(lines[0].block, .materials("2 leather"))
+        XCTAssertEqual(LiveBlock.materials("2 leather").words, "You need 2 leather more.")
+        XCTAssertEqual(lines[1].block, .needsOther("Forge", 8))
+        snapshot["my_satchel"]?.append([n(Double(1 << 8 | 6)), n(1), n(6), n(4)])
+        XCTAssertNil(LiveWorld(snapshot: snapshot).forgeLines(at: 1_000)[0].block, "four leather now, and goods enough")
+
+        // Who wears what, and what is spare.
+        XCTAssertEqual(world.wornGear(of: 11).map(\.piece), [1])
+        XCTAssertEqual(world.spareGear.map(\.piece), [10])
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        if let rules = try? String(contentsOf: root.appendingPathComponent("realm/src/rules/mod.rs"), encoding: .utf8),
+           let catalog = try? String(contentsOf: root.appendingPathComponent("realm/src/catalog.rs"), encoding: .utf8) {
+            XCTAssertTrue(rules.contains("\"You need {words} more.\""), "a shortfall worded as the realm words it")
+            XCTAssertTrue(catalog.contains("Forge = \(LiveWorld.forge),"))
+            XCTAssertTrue(catalog.contains("Iron = 5,") && catalog.contains("Silver = 8,"), "the materials are the items the client names")
+        }
+    }
+
     func testTitlesTheLordAndLettersAreRead() throws {
         var snapshot: [String: [[JSONValue]]] = [
             "me": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)]],

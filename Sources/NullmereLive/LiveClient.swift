@@ -266,6 +266,15 @@ public final class LiveClient: @unchecked Sendable {
 
     /// Uses one of the player's items on a work under way.
     public func useItem(_ item: Int, on job: UInt64) async throws { try await ask("use_item", [.integer(UInt64(item)), .integer(job)]) }
+    /// Has a piece of gear made at the player's Forge.
+    public func forge(piece: Int) async throws { try await ask("forge", [.integer(UInt64(piece))]) }
+
+    /// Has one of the player's commanders wear a piece of their gear.
+    public func equip(gear: UInt64, on commander: UInt64) async throws { try await ask("equip", [.integer(gear), .integer(commander)]) }
+
+    /// Takes a piece of the player's gear off whoever wears it.
+    public func unequip(gear: UInt64) async throws { try await ask("unequip", [.integer(gear)]) }
+
     /// Uses one of the player's items of peace on their city.
     public func usePeace(_ item: Int) async throws { try await ask("use_peace", [.integer(UInt64(item))]) }
 

@@ -62,7 +62,19 @@ fn hand(db: &mut Mem, player: u64, item: Item, count: u64) {
 fn the_items_are_written_out_and_the_chests_say_what_they_hold() {
     let db = realm();
     let wares = Table::<Ware>::all(&db);
-    assert_eq!(wares.iter().map(|ware| (ware.item, ware.seconds, ware.kind)).collect::<Vec<_>>(), vec![(1, 300, Ware::HASTE), (2, 3_600, Ware::HASTE), (3, 28_800, Ware::HASTE), (4, 28_800, Ware::PEACE)]);
+    assert_eq!(
+        wares.iter().map(|ware| (ware.item, ware.seconds, ware.kind)).collect::<Vec<_>>(),
+        vec![
+            (1, 300, Ware::HASTE),
+            (2, 3_600, Ware::HASTE),
+            (3, 28_800, Ware::HASTE),
+            (4, 28_800, Ware::PEACE),
+            (5, 0, Ware::MATERIAL),
+            (6, 0, Ware::MATERIAL),
+            (7, 0, Ware::MATERIAL),
+            (8, 0, Ware::MATERIAL)
+        ]
+    );
     assert_eq!(wares[0].name, "Five minutes' haste");
     assert_eq!(wares[1].words, "Takes 1 hour off a work under way in your city.");
     for chest in Table::<Chest>::all(&db) {

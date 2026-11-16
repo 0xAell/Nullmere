@@ -160,3 +160,61 @@ extension LiveWorld {
         return pleas.filter { $0.asker != me.id && !helped.contains($0.job) && $0.helped < $0.most }
     }
 }
+
+/// One piece the Forge makes, as the player's city stands now: what it
+/// takes, in words, and why it can't be made now; nil where it can.
+public struct LiveForgeLine: Equatable, Identifiable, Sendable {
+    public let pattern: LivePattern
+    public var id: Int { pattern.piece }
+    public let takes: String
+    public let block: LiveBlock?
+}
+
+extension LiveWorld {
+    /// The Forge, as the module's catalogue numbers buildings.
+    public static let forge = 19
+    /// The materials' names, in the order patterns name them.
+    public static let materialNames = ["iron", "leather", "bone", "silver"]
+
+    /// How many of each material the player holds, in that order.
+    public var materials: [UInt64] { LivePattern.materials.map { satchel[$0] ?? 0 } }
+
+    /// So many of each material in words, as the realm says them: "4 iron
+    /// and 2 leather".
+    public static func materialWords(_ counts: [UInt64]) -> String {
+        let named = zip(counts, materialNames).filter { $0.0 > 0 }.map { "\($0.0) \($0.1)" }
+        guard let last = named.last else { return "nothing" }
+        return named.count == 1 ? last : named.dropLast().joined(separator: ", ") + " and " + last
+    }
+
+    /// Every piece the Forge makes, weapons first and each place's grades
+    /// in order, with what it takes and why it can't be made now.
+    public func forgeLines(at seconds: Double) -> [LiveForgeLine] {
+        let level = building(LiveWorld.forge)?.level ?? 0
+        let have = stock?.goods(at: seconds) ?? LiveGoods()
+        let held = materials
+        return patterns.values.sorted { ($0.slot, $0.grade) < ($1.slot, $1.grade) }.map { pattern -> LiveForgeLine in
+            let short = zip(pattern.takes, held).map { need, have in need > have ? need - have : 0 }
+            var block: LiveBlock?
+            if level < pattern.forgeLevel {
+                block = .needsOther("Forge", pattern.forgeLevel)
+            } else if short.contains(where: { $0 > 0 }) {
+                block = .materials(LiveWorld.materialWords(short))
+            } else if !have.covers(pattern.cost) {
+                block = .short(have.short(of: pattern.cost))
+            }
+            // In typed steps: as one expression a compiler may not type it in time.
+            let worked: [String] = zip(pattern.takes, LiveWorld.materialNames).filter { $0.0 > 0 }.map { "\($0.0) \($0.1)" }
+            let paid: [String] = zip(pattern.cost.parts, LiveWords.goods).filter { $0.0 > 0 }.map { "\(LiveWords.grouped($0.0)) \($0.1)" }
+            let parts = worked + paid
+            let takes = parts.count > 1 ? parts.dropLast().joined(separator: ", ") + " and " + (parts.last ?? "") : (parts.first ?? "nothing")
+            return LiveForgeLine(pattern: pattern, takes: takes, block: block)
+        }
+    }
+
+    /// The gear a commander wears.
+    public func wornGear(of commander: UInt64) -> [LiveGear] { gear.filter { $0.commander == commander } }
+
+    /// The gear no one wears.
+    public var spareGear: [LiveGear] { gear.filter { $0.commander == 0 } }
+}

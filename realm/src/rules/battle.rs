@@ -280,6 +280,7 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
     march.soldiers = fought - outcome.attackers_lost.iter().sum::<u64>();
 
     let mut won = Goods::of(0, 0, 0, 0);
+    let mut found = [0u64; 4];
     if outcome.won {
         // As much of the spoils as those still standing can carry, each
         // good by its share.
@@ -298,6 +299,8 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
         keep_hunt(db, hunt);
         did(db, march.owner, Deed::Clear, 1);
         scored(db, march.owner, Contest::Hunt, 10 * barrow.level as u64);
+        // And what it yields for the Forge.
+        found = super::yielded(db, march.owner, barrow.level, barrow.id);
     } else {
         // The Unquiet who fell rise again: the barrow stands as it stood.
         barrow.fighter = 0;
@@ -308,7 +311,10 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
     let fell: u64 = outcome.defenders_lost.iter().sum();
     // Whoever led them has seen as much as fell before them.
     seen_by_leader(db, march, fell * (1 + (barrow.level as u64 - 1) / 5));
-    let words = told(barrow.level, outcome.won, fought, wounded, dead, stood - fell, won);
+    let mut words = told(barrow.level, outcome.won, fought, wounded, dead, stood - fell, won);
+    if found.iter().any(|count| *count > 0) {
+        words.push_str(&format!(" It found {} for the Forge.", super::materials_words(found)));
+    }
     report(
         db,
         Report {

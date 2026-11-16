@@ -74,7 +74,9 @@ struct LiveDayPanel: View {
                     .font(.nm(LiveType.body))
                     .foregroundStyle(LiveEmphasis.primary)
                 Spacer(minLength: 0)
-                if ware.isPeace {
+                if ware.isMaterial {
+                    LiveSmall(words: "For the Forge", dim: true)
+                } else if ware.isPeace {
                     // A peace is kept on the city itself, with no work to hasten.
                     QuietButton(title: "Use", enabled: session.asking == 0, name: "Use \(ware.name)", why: nil) { Task { await session.usePeace(ware.item) } }
                 } else {
@@ -521,5 +523,62 @@ struct LiveLetters: View {
         let words = self.words
         self.words = ""
         Task { await session.sendAllianceLetter(words) }
+    }
+}
+
+/// The Forge: the materials held, each piece it makes with what it takes
+/// and a way to make it, and the player's gear, each piece with who wears
+/// it and ways to give it to a commander or take it off.
+struct LiveForgePanel: View {
+    let session: LiveSession
+    let seconds: Double
+
+    var body: some View {
+        let world = session.world
+        LiveSmall(words: "Held: \(LiveWorld.materialWords(world.materials)). The barrows of the Unquiet yield more.")
+        ForEach(world.forgeLines(at: seconds)) { line in
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: line.pattern.name)
+                        .font(.nm(LiveType.body, weight: .medium))
+                        .foregroundStyle(LiveEmphasis.primary)
+                    Spacer(minLength: 0)
+                    QuietButton(title: "Make", enabled: line.block == nil && session.asking == 0, name: "Make: \(line.pattern.name)", why: line.block?.words) { Task { await session.forge(piece: line.pattern.piece) } }
+                }
+                LiveSmall(words: line.pattern.words)
+                LiveSmall(words: "Takes \(line.takes).", dim: true)
+                if let why = line.block {
+                    LiveSmall(words: why.words, dim: true)
+                }
+            }
+        }
+        Caps("Your gear", size: LiveType.small)
+            .foregroundStyle(LiveEmphasis.secondary)
+        if world.gear.isEmpty {
+            LiveSmall(words: "None made yet.", dim: true)
+        }
+        ForEach(world.gear) { piece in
+            let name = world.patterns[piece.piece]?.name ?? "Gear"
+            let wearer = world.commanders.first { $0.id == piece.commander }
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: name)
+                        .font(.nm(LiveType.body))
+                        .foregroundStyle(LiveEmphasis.primary)
+                    Spacer(minLength: 0)
+                    if wearer != nil {
+                        QuietButton(title: "Take off", enabled: session.asking == 0, name: "Take off the \(name)") { Task { await session.unequip(gear: piece.id) } }
+                    }
+                }
+                LiveSmall(words: wearer.map { "Worn by \($0.name)." } ?? "Worn by no one.", dim: wearer == nil)
+                if wearer == nil {
+                    HStack(spacing: 2) {
+                        ForEach(world.commanders) { commander in
+                            QuietButton(title: commander.name, enabled: session.asking == 0, name: "Give the \(name) to \(commander.name)") { Task { await session.equip(gear: piece.id, on: commander.id) } }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

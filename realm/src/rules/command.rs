@@ -75,9 +75,10 @@ pub(super) fn leader_for(db: &impl Db, player: u64, commander: u64) -> Result<Co
     Ok(commander)
 }
 
-/// What a commander adds by their way of war and their talents.
+/// What a commander adds by their way of war, their talents and the gear
+/// they wear.
 pub fn commanding(db: &impl Db, commander: &Commander) -> Leading {
-    let mut leading = Way::of(commander.way).map(|way| way.leading(commander.level)).unwrap_or_default();
+    let mut leading = Way::of(commander.way).map(|way| way.leading(commander.level)).unwrap_or_default().plus(super::worn(db, commander.id));
     for skill in Table::<Skill>::by(db, 0, commander.id) {
         if let Some(talent) = Talent::of(skill.talent) {
             leading = leading.plus(talent.leading(skill.points));

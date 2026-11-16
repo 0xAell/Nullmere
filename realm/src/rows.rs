@@ -828,6 +828,47 @@ pub struct Letter {
 }
 row!(Letter in letter, auto, by id, sender, receiver);
 
+/// A piece of gear a player owns, and the commander wearing it: its
+/// owner's alone to read. Keyed by number.
+#[spacetimedb::table(accessor = gear)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Gear {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub owner: u64,
+    pub piece: u8,
+    /// The commander wearing it; 0 for none.
+    #[index(btree)]
+    pub commander: u64,
+}
+row!(Gear in gear, auto, by id, owner, commander);
+
+/// What the Forge makes, for clients to show: each piece's name, where
+/// it is worn and its grade, what it does, what it takes to make, and the
+/// Forge level it is made at. Keyed by piece.
+#[spacetimedb::table(accessor = pattern, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Pattern {
+    #[primary_key]
+    pub piece: u64,
+    pub name: String,
+    pub slot: u8,
+    pub grade: u8,
+    pub words: String,
+    pub iron: u64,
+    pub leather: u64,
+    pub bone: u64,
+    pub silver: u64,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+    pub forge_level: u32,
+}
+row!(Pattern in pattern, by piece);
+
 /// A title of the Mere and who holds it, bestowed by the Lord of the Mere,
 /// the leader of the alliance that last won a season. For everyone to
 /// read. Keyed by the title (`catalog::Title`).
@@ -1166,6 +1207,8 @@ impl Ware {
     pub const HASTE: u8 = 1;
     /// Used on the city, to keep it at peace.
     pub const PEACE: u8 = 2;
+    /// Worked at the Forge into gear.
+    pub const MATERIAL: u8 = 3;
 }
 
 /// How many of an item a player keeps: theirs alone to read. Keyed by
@@ -1364,6 +1407,8 @@ pub trait Db:
     + Table<Petition>
     + Table<Title>
     + Table<Letter>
+    + Table<Gear>
+    + Table<Pattern>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1427,6 +1472,8 @@ impl<
             + Table<Petition>
             + Table<Title>
             + Table<Letter>
+            + Table<Gear>
+            + Table<Pattern>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

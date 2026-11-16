@@ -67,7 +67,7 @@ public struct LiveGrace: Equatable, Sendable, Identifiable {
 /// what it is called, and how long it takes off or keeps.
 public struct LiveWare: Equatable, Sendable, Identifiable {
     /// Its kinds, as the module numbers them.
-    public static let haste = 1, peace = 2
+    public static let haste = 1, peace = 2, material = 3
 
     public let item: Int
     public let name: String
@@ -77,6 +77,8 @@ public struct LiveWare: Equatable, Sendable, Identifiable {
     public var id: Int { item }
     /// Whether it keeps the city at peace, rather than hastening a work.
     public var isPeace: Bool { kind == LiveWare.peace }
+    /// Whether it is worked at the Forge, rather than used.
+    public var isMaterial: Bool { kind == LiveWare.material }
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
@@ -544,5 +546,48 @@ public struct LiveLetter: Equatable, Sendable, Identifiable {
         guard let id = cells.unsigned(0), let sender = cells.unsigned(1), let receiver = cells.unsigned(2), let name = cells.text(3),
               let words = cells.text(4), let at = cells.whole(5), let read = cells.flag(6) else { return nil }
         (self.id, self.sender, self.receiver, self.name, self.words, self.at, self.read) = (id, sender, receiver, name, words, at, read)
+    }
+}
+
+/// A piece the Forge makes: where it is worn and its grade, what it does,
+/// what it takes to make (so much iron, leather, bone and silver, and
+/// goods), and the Forge level it is made at.
+public struct LivePattern: Equatable, Sendable, Identifiable {
+    /// Where gear is worn, as the module numbers the places.
+    public static let places = [1: "Weapon", 2: "Helm", 3: "Armour", 4: "Boots"]
+    /// The materials, as the module numbers them among its items.
+    public static let materials = [5, 6, 7, 8]
+
+    public let piece: Int
+    public var id: Int { piece }
+    public let name: String
+    public let slot: Int
+    public let grade: Int
+    public let words: String
+    /// So many of each material, in the order `materials` names them.
+    public let takes: [UInt64]
+    public let cost: LiveGoods
+    public let forgeLevel: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let piece = cells.whole(0), let name = cells.text(1), let slot = cells.whole(2), let grade = cells.whole(3), let words = cells.text(4),
+              let forgeLevel = cells.whole(13) else { return nil }
+        (self.piece, self.name, self.slot, self.grade, self.words, self.forgeLevel) = (piece, name, slot, grade, words, forgeLevel)
+        takes = (5...8).map { cells.unsigned($0) ?? 0 }
+        cost = LiveGoods(grain: cells.unsigned(9) ?? 0, timber: cells.unsigned(10) ?? 0, stone: cells.unsigned(11) ?? 0, moonsalt: cells.unsigned(12) ?? 0)
+    }
+}
+
+/// A piece of the player's gear, and the commander wearing it; 0 for none.
+public struct LiveGear: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let piece: Int
+    public let commander: UInt64
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let piece = cells.whole(2), let commander = cells.unsigned(3) else { return nil }
+        (self.id, self.piece, self.commander) = (id, piece, commander)
     }
 }

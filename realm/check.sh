@@ -117,7 +117,7 @@ check("only the realm keeps its timers", fired is not None, True)
 radius = realm[0]["radius"]
 land = rows(nobody, "SELECT * FROM land")
 check("the land is kept in chunks of 256 hexes", (len(land) > 100, all(len(chunk["ground"]) in (256, 512) for chunk in land)), (True, True))
-check("the catalogue is written out, 18 buildings by 25 levels", len(rows(nobody, "SELECT id FROM blueprint")), 450)
+check("the catalogue is written out, 19 buildings by 25 levels", len(rows(nobody, "SELECT id FROM blueprint")), 475)
 
 # A city: founded on joining, its owner's to read whole, everyone's to see.
 city = rows(ada, "SELECT * FROM my_city")
@@ -260,13 +260,19 @@ check("a player has none until they open a chest", (rows(ada, "SELECT * FROM my_
 
 # Items: the hastes a chest holds, kept in a satchel until they are used.
 wares = sorted(rows(nobody, "SELECT * FROM ware"), key=lambda ware: ware["item"])
-check("the items are written out for all to read", [(ware["name"], ware["seconds"], ware["kind"]) for ware in wares], [("Five minutes' haste", 300, 1), ("An hour's haste", 3600, 1), ("Eight hours' haste", 28800, 1), ("Eight hours' peace", 28800, 2)])
+check("the items are written out for all to read", [(ware["name"], ware["seconds"], ware["kind"]) for ware in wares], [("Five minutes' haste", 300, 1), ("An hour's haste", 3600, 1), ("Eight hours' haste", 28800, 1), ("Eight hours' peace", 28800, 2), ("Iron", 0, 3), ("Leather", 0, 3), ("Bone", 0, 3), ("Silver", 0, 3)])
 check("the day's last chest holds a peace", [chest["peaces"] for chest in sorted(chests, key=lambda chest: chest["id"])], [0, 0, 1])
 check("and every chest says what hastes it holds", all(chest["brief_hastes"] + chest["hour_hastes"] + chest["long_hastes"] > 0 for chest in chests), True)
 check("a satchel begins empty, and is its owner's alone to read", (rows(ada, "SELECT * FROM my_satchel"), isinstance(rows(ada, "SELECT * FROM satchel"), str)), ([], True))
 check("a haste a player has not got is refused", call(ada, "use_item", 1, 1), "No such work is under way in your city.")
 check("and a thing that is no item", call(ada, "use_item", 9, 1), "There is no such thing to use.")
 check("a peace is kept on the city, not on a work", call(ada, "use_item", 4, 1), "That keeps your city at peace; it hastens no work.")
+check("a material is worked at the Forge, not used", call(ada, "use_item", 5, 1), "That is worked at the Forge into gear.")
+# The Forge: what it makes, for all to read; gear its owner's alone.
+patterns = rows(nobody, "SELECT * FROM pattern")
+check("what the Forge makes is written out for all to read", (len(patterns), sorted(p["name"] for p in patterns if p["grade"] == 1)), (12, ["Iron sword", "Leather boots", "Leather cap", "Leather coat"]))
+check("nothing is made without a Forge", call(ada, "forge", 1), "Raise your Forge to level 1 first.")
+check("gear is its owner's alone to read", (rows(ada, "SELECT * FROM my_gear"), isinstance(rows(ada, "SELECT * FROM gear"), str)), ([], True))
 check("and one a player has not got is refused", call(ada, "use_peace", 4), "You have none of that left.")
 
 # The realm's contests: the Long Hunt, running as the realm opens.
@@ -392,7 +398,9 @@ check("its player is told how it went", [(r["won"], r["foe"], r["fought"], r["st
 # and this commander is still at level 1. The way is chosen by the realm's seed, so it is read.
 carries = 5 + 1 if captains[0]["way"] == 6 else 0
 carried = min(800, (70 - told[0]["wounded"]) * 12 * (100 + carries) // 100 // 2)
-check("in plain words", told[0]["words"], f"Your army cleared a level 1 barrow of the Unquiet. Of your 70 soldiers, {told[0]['wounded']} {'was' if told[0]['wounded'] == 1 else 'were'} wounded. It is bringing home {carried} grain and {carried} timber.")
+told_words = f"Your army cleared a level 1 barrow of the Unquiet. Of your 70 soldiers, {told[0]['wounded']} {'was' if told[0]['wounded'] == 1 else 'were'} wounded. It is bringing home {carried} grain and {carried} timber. It found 1 "
+check("in plain words, with what it found for the Forge", (told[0]["words"].startswith(told_words), told[0]["words"].endswith(" for the Forge.")), (True, True))
+check("which is in its player's satchel", sum(s["count"] for s in rows(bryn, "SELECT * FROM my_satchel") if 5 <= s["item"] <= 8), 1)
 check("and it carries the spoils", [(h["grain"], h["timber"]) for h in rows(bryn, "SELECT * FROM my_hauls")], [(carried, carried)])
 check("and no one else is", rows(ada, "SELECT * FROM my_reports"), [])
 check("the report table itself is closed to clients", isinstance(rows(bryn, "SELECT * FROM report"), str), True)

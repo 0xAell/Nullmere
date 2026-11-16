@@ -49,6 +49,7 @@ struct LiveSidePanel: View {
                         LiveReports(session: session, seconds: seconds)
                     case .day: LiveDayPanel(session: session, seconds: seconds)
                     case .realm: LiveRealmPanel(session: session, seconds: seconds)
+                    case .forge: LiveForgePanel(session: session, seconds: seconds)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

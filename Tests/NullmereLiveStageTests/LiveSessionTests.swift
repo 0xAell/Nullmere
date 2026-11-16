@@ -641,11 +641,14 @@ final class LiveSessionTests: XCTestCase {
         await session.speedUp(job: 4)
         await session.useItem(2, on: 4)
         await session.usePeace(4)
+        await session.forge(piece: 1)
+        await session.equip(gear: 3, on: 11)
+        await session.unequip(gear: 3)
         await session.openChest(1)
         await session.claimPrize(contest: 1, place: 2)
         XCTAssertEqual(line.asked, ["ask help 4", "help 0", "raise ward 3,-1", "raze ward 7", "give [10, 20, 30, 0] to learning 1",
                                     "give [1, 2, 3, 4] to the Moonspire", "talent 6 for 11", "forget talents of 11", "pair 11 with 12", "keep city 12",
-                                    "speed up 4", "use 2 on 4", "keep the peace with 4", "open chest 1", "claim prize 2 of 1"])
+                                    "speed up 4", "use 2 on 4", "keep the peace with 4", "forge 1", "equip 3 on 11", "unequip 3", "open chest 1", "claim prize 2 of 1"])
         line.clear()
         await session.sendEnvoy(to: 6, terms: LivePact.truce, days: 3)
         await session.answerEnvoy(5, accept: true)

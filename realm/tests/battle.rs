@@ -241,11 +241,15 @@ fn an_army_clears_a_barrow_and_brings_home_its_spoils() {
     assert!((1..=8).contains(&report.wounded), "{} wounded", report.wounded);
     assert!((1..=4).contains(&report.rounds), "{} rounds", report.rounds);
     assert_eq!((report.grain, report.timber, report.stone, report.moonsalt), (800, 800, 0, 0));
+    // A level 1 barrow yields one material for the Forge, put in the satchel and told of.
+    let found = realm::catalog::Item::MATERIALS.map(|item| rules::held(&db, player, item));
+    assert_eq!(found.iter().sum::<u64>(), 1, "{found:?}");
     assert_eq!(
         report.words,
         format!(
-            "Your army cleared a level 1 barrow of the Unquiet. Of your 200 soldiers, {} wounded. It is bringing home 800 grain and 800 timber.",
-            if report.wounded == 1 { "1 was".to_string() } else { format!("{} were", report.wounded) }
+            "Your army cleared a level 1 barrow of the Unquiet. Of your 200 soldiers, {} wounded. It is bringing home 800 grain and 800 timber. It found {} for the Forge.",
+            if report.wounded == 1 { "1 was".to_string() } else { format!("{} were", report.wounded) },
+            rules::materials_words(found)
         )
     );
 
