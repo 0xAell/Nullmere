@@ -33,11 +33,15 @@ struct LiveDayPanel: View {
                     Spacer(minLength: 0)
                     LiveSmall(words: deed.isDone ? "Done: \(deed.marks) marks" : "\(LiveWords.grouped(deed.done)) of \(LiveWords.grouped(deed.asks))", dim: !deed.isDone)
                 }
+                // Its bar is said as the row's value: a bar of AppKit's own
+                // inside a combined row is a child the row doesn't own.
                 ProgressView(value: deed.progress)
                     .progressViewStyle(.linear)
                     .tint(Palette.glow)
+                    .accessibilityHidden(true)
             }
             .accessibilityElement(children: .combine)
+            .accessibilityValue(deed.isDone ? "Done" : "\(Int((deed.progress * 100).rounded())) percent")
         }
 
         if !world.chests.isEmpty {
