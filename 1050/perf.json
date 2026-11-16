@@ -1,0 +1,28 @@
+{
+  "metrics": {
+    "calibration.cpu": 671.446,
+    "lake.gpu.p50": 9.147,
+    "lake.gpu.p95": 9.362,
+    "live.stage.cpu.p50": 12.334,
+    "live.stage.cpu.p95": 13.849,
+    "near.gpu.scale60.p50": 8.481,
+    "near.gpu.scale60.plain.p50": 8.549,
+    "pan.frame.p50": 9.889,
+    "pan.frame.p95": 10.478,
+    "pan.gpu.p50": 9.434,
+    "pan.gpu.p95": 9.762,
+    "realm.watch.twelve-a": 78.701,
+    "realm.watch.twelve-b": 72.005,
+    "realm.watch.twelve-c": 72.58,
+    "wide.gpu.scale28.p50": 14.676,
+    "wide.gpu.scale28.whole.p50": 24.689,
+    "wider.gpu.scale28.p50": 16.327,
+    "world.gpu.scale12.p50": 8.25,
+    "world.gpu.scale12.p95": 8.752,
+    "world.gpu.scale28.p50": 10.027,
+    "world.gpu.scale28.p95": 10.257,
+    "world.gpu.scale60.p50": 6.272,
+    "world.gpu.scale60.p95": 8.628
+  },
+  "runner": "GitHub Actions macos-26 arm64 (Apple Paravirtual device), debug build"
+}
