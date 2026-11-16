@@ -987,10 +987,31 @@ public enum WorldShaders {
         // deeps; as bright as the hour's sky, and nothing at all by night.
         float sunlit = (1.0 - night) * dot(frame.skyLight.rgb, float3(0.3, 0.5, 0.2)) / 0.44;
         float3 body = mix(float3(0.075, 0.30, 0.32), float3(0.016, 0.08, 0.21), smoothstep(0.04, 0.8, depth)) * sunlit;
+        // By day small waves run over it, two trains of them drifting
+        // across each other: the water a shade lighter or darker as each
+        // turns toward the sun or away, and where one turns the sun to the
+        // eye, a glint. None at night, whose water is the black glass it
+        // was; fewer at the Still's calm; none once smaller than a pixel.
+        float3 glints = float3(0.0);
+        float daylit = (1.0 - night) * (1.0 - 0.8 * clamp(frame.still.x, 0.0, 1.0))
+            * (1.0 - smoothstep(0.04, 0.12, max(fwidth(world.x), fwidth(world.z))));
+        if (daylit > 0.0) {
+            float2 w = (world.xz + frame.origin.xy) * 2.3;
+            float2 a = w + nm_drift(time, 0.06);
+            float2 b = w * 1.9 + float2(7.0, 3.0) - nm_drift(time + 11.0, 0.05);
+            float ha = nm_noise(a), hb = nm_noise(b);
+            float2 slope = float2(nm_noise(a + float2(0.25, 0.0)) - ha, nm_noise(a + float2(0.0, 0.25)) - ha)
+                + 0.6 * float2(nm_noise(b + float2(0.25, 0.0)) - hb, nm_noise(b + float2(0.0, 0.25)) - hb);
+            float3 wave = normalize(float3(-slope.x * 1.5 * daylit, 1.0, -slope.y * 1.5 * daylit));
+            float3 sun = normalize(frame.key.xyz);
+            body *= 1.0 + 0.9 * (dot(wave, sun) - sun.y);
+            float spark = pow(max(dot(reflect(look, wave), sun), 0.0), 400.0);
+            glints = frame.keyColour.rgb * frame.key.w * spark * 0.5 * daylit;
+        }
         float3 starlit = frame.water.rgb + body
             + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moonFace.xyz)) * night * fresnel
             + nm_daySky(mirrored NM_FRAME_PASS) * glass;
-        float3 moonlit = nm_moonlight(mirrored, frame.moonFace.xyz) * fresnel * frame.moonFace.w;
+        float3 moonlit = nm_moonlight(mirrored, frame.moonFace.xyz) * fresnel * frame.moonFace.w + glints;
         // The moon's road: on the still water's faint swell, a broken glitter
         // of its light along its bearing from the eye, narrow near the moon's
         // image and widening toward the shore the eye stands on.
