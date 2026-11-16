@@ -94,17 +94,26 @@ final class LiveStagingTimeTests: XCTestCase {
         }
         XCTAssertGreaterThanOrEqual(keeps.reduce(0) { $0 + $1.instances.count }, crowd.cities, "every city standing")
 
+        // As the map asks for it: only what a laptop's window shows, about
+        // her city at the opening's scale.
+        let size = CGSize(width: 1512, height: 982)
+        let whole = session.frame(time: 0.5).instanceCount
+        let seen = session.frame(time: 0.5, size: size).instanceCount
+        XCTAssertLessThanOrEqual(seen, whole)
+        XCTAssertGreaterThan(seen, first.fixed.reduce(0) { $0 + $1.instances.count }, "What the view shows is staged")
+        let narrow = session.frame(time: 0.5, size: CGSize(width: 320, height: 200)).instanceCount
+        XCTAssertLessThan(narrow, seen, "and what a narrow view can't show is left out")
         var times: [Double] = []
         var models = 0
         for index in 1...180 {
             let started = Date()
-            let frame = session.frame(time: Double(index) / 60)
+            let frame = session.frame(time: Double(index) / 60, size: size)
             times.append(Date().timeIntervalSince(started) * 1_000)
             models = frame.instanceCount
         }
         times.sort()
         let p50 = times[times.count / 2], p95 = times[times.count * 95 / 100]
-        print("PERF staging the rebuilt realm's frame: \(models) models, \(crowd.cities + 2) cities and \(crowd.armies + 3) armies in the window, "
+        print("PERF staging the rebuilt realm's frame: \(models) of \(whole) models in view, \(crowd.cities + 2) cities and \(crowd.armies + 3) armies in the window, "
             + "p50 \(String(format: "%.2f", p50)) ms, p95 \(String(format: "%.2f", p95)) ms")
         print("PERFMETRIC live.stage.cpu.p50 \(String(format: "%.3f", p50))")
         print("PERFMETRIC live.stage.cpu.p95 \(String(format: "%.3f", p95))")

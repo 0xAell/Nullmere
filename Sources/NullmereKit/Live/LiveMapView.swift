@@ -46,7 +46,7 @@ struct LiveMapView: NSViewRepresentable {
         view.onCameraChange = { [weak session] camera in session?.moved(camera) }
         view.cursor = { _ in .pointingHand }
         // What stands and moves in the window, posed afresh for every frame.
-        view.scene = { [weak session] time, _ in session?.frame(time: time) ?? SceneFrame() }
+        view.scene = { [weak session] time, size in session?.frame(time: time, size: size) ?? SceneFrame() }
         update(view, context.coordinator)
         return view
     }

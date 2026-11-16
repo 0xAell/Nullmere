@@ -357,10 +357,20 @@ public final class LiveSession {
     /// renderer: its cities and their works, the sites, the Unquiet's
     /// barrows and the old folk's cairns, the armies where they are, and
     /// the land's own furniture.
-    public func frame(time: Double) -> SceneFrame {
+    /// How far from a city's heart, and from an army's, what is staged for
+    /// it reaches: what lies further out of the view is left out of a frame.
+    public static let holdReach: Float = HoldLayout.reach + 1.5
+    public static let companyReach: Float = 2
+
+    /// The frame to draw at a moment: given the view's size, only what the
+    /// camera can see of it is staged, as a crowded window's cities, each
+    /// with its town, are too many to stage whole every frame.
+    public func frame(time: Double, size: CGSize? = nil) -> SceneFrame {
         var frame = SceneFrame()
         guard let window, let land = land(), let stage = staged?.stage else { return frame }
         let seconds = now
+        let view = size.flatMap { $0.width > 0 && $0.height > 0 ? ViewFrustum(viewProjection: camera.viewProjection(in: $0)) : nil }
+        func seen(_ hex: Hex, within reach: Float) -> Bool { view?.sees(hex, within: reach) ?? true }
         let sights = window.holds(in: world, colours: LiveSession.colours, at: seconds)
         let sites = window.sites(in: world), barrows = window.barrows(in: world), cairns = window.cairns(in: world)
         if fixed.isEmpty {
@@ -368,9 +378,10 @@ public final class LiveSession {
         }
         frame.fixed = fixed
         frame.fixedVersion = windowVersion * 100_000 + standingVersion
-        let (holds, _) = stage.holds(sights, time: Float(time), into: &frame)
-        let poses = window.companies(in: world, relief: land.relief, at: seconds)
-        frame.batches = holds + stage.sites(sites) + stage.lairs(barrows).batches + stage.finds(cairns).batches
+        let (holds, _) = stage.holds(sights.filter { seen($0.hold.position, within: Self.holdReach) }, time: Float(time), into: &frame)
+        let poses = window.companies(in: world, relief: land.relief, at: seconds).filter { seen($0.hex, within: Self.companyReach) }
+        frame.batches = holds + stage.sites(sites.filter { seen($0.hex, within: 1) }) + stage.lairs(barrows.filter { seen($0.hex, within: 1) }).batches
+            + stage.finds(cairns.filter { seen($0.hex, within: 1) }).batches
             + stage.companies(poses, houses: LiveSession.colours, into: &frame)
         return frame
     }
