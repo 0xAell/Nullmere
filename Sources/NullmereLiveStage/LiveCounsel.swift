@@ -48,13 +48,17 @@ public struct LiveCounsel: Sendable {
         """
     }
 
-    /// What the commander knows as counsel begins: themself, the city, its
-    /// armies, what threatens it and stands idle, the task in hand, and the
-    /// deeds that can be done now.
+    /// What the commander knows as counsel begins: themself, the city and
+    /// its works under way, its armies, what threatens it and stands idle,
+    /// the task in hand, and the deeds that can be done now.
     public var briefing: String {
         var lines = [yourselfSaid]
         if let city = world.city {
             lines.append("Your lord's city: Keep level \(city.keep), power \(LiveWords.grouped(city.power)).")
+        }
+        let works = world.works(at: seconds)
+        if !works.isEmpty {
+            lines.append("Works under way: " + works.map { "\($0.words), \(LiveWords.spoken(Int($0.job.left(at: seconds).rounded(.up)))) left" }.joined(separator: "; ") + ".")
         }
         lines += world.threats(at: seconds).map(\.words)
         let out = world.marchLines()

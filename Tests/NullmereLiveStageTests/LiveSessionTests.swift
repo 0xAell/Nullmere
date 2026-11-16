@@ -876,6 +876,11 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(line.asked.last, "speed up 4")
         await session.perform(LiveCommand(title: "Use", act: .useHaste(item: 1, job: 4)))
         XCTAssertEqual(line.asked.last, "use 1 on 4")
+        // A commander's counsel knows the work, and how long it has to run.
+        line.change { $0["my_commanders"] = [[self.n(11), self.n(1), .string("Corwen"), self.n(5), self.n(2), self.n(0), self.n(0)]] }
+        session.refresh()
+        let briefing = try XCTUnwrap(session.counsel(of: 11)).briefing
+        XCTAssertTrue(briefing.contains("Works under way: the Farm to level 3, 1 minute 25 seconds left."), briefing)
     }
 
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
