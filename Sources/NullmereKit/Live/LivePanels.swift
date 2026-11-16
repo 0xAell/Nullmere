@@ -6,6 +6,9 @@ import SwiftUI
 /// The side of the window, given over to the city's buildings, its
 /// troops, or the reports, for as long as the player wants it.
 struct LiveSidePanel: View {
+    /// How wide an open destination stands.
+    static let width: CGFloat = 300
+
     let session: LiveSession
     let seconds: Double
     let panel: LiveGameView.Panel
@@ -57,7 +60,7 @@ struct LiveSidePanel: View {
             }
         }
         .padding(14)
-        .frame(width: 300)
+        .frame(width: LiveSidePanel.width)
         .frame(maxHeight: tallest, alignment: .top)
         .panelBackground()
     }

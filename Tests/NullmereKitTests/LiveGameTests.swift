@@ -181,15 +181,18 @@ final class LiveGameTests: XCTestCase {
         // world left clear between them.
         var panel: LiveGameView.Panel?
         let binding = Binding(get: { panel }, set: { panel = $0 })
-        let bare = try drawn(LiveHUD(session: session, panel: binding), width: 1280, height: 800)
+        let bare = try drawn(LiveHUD(session: session, panel: binding, palette: .constant(false)), width: 1280, height: 800)
         XCTAssertGreaterThan(bare, 400, "The city's name, its goods, the army out")
         XCTAssertLessThan(bare, 1280 * 800 / 4, "and most of the window left to the world")
 
         // Something chosen: its card at the foot. And what the realm said.
         session.selected = LiveHex(q: 12, r: -2)
         session.said = "Another army is gathering there."
-        let chosen = try drawn(LiveHUD(session: session, panel: binding), width: 1280, height: 800, as: "live-hud.png")
+        let chosen = try drawn(LiveHUD(session: session, panel: binding, palette: .constant(false)), width: 1280, height: 800, as: "live-hud.png")
         XCTAssertGreaterThan(chosen, bare + 200, "The grove's card and the realm's words")
+        // The palette open over it, as Command-K opens it.
+        let finding = try drawn(LiveHUD(session: session, panel: binding, palette: .constant(true)), width: 1280, height: 800, as: "live-hud-palette.png")
+        XCTAssertGreaterThan(finding, chosen, "The palette over the world")
         for hex in [LiveHex(q: 10, r: -4), LiveHex(q: 14, r: -4), LiveHex(q: 8, r: -2), LiveHex(q: 5, r: 5)] {
             let card = session.card(for: session.selection(at: hex))
             XCTAssertGreaterThan(try drawn(LiveCardView(session: session, card: card, panel: binding), width: 640, height: 120), 40, card.title)
@@ -198,6 +201,13 @@ final class LiveGameTests: XCTestCase {
         let home = session.card(for: session.selection(at: LiveHex(q: 10, r: -4)))
         XCTAssertGreaterThan(try drawn(LiveRing(session: session, card: home, at: CGPoint(x: 160, y: 160), panel: binding), width: 640, height: 320,
                                        as: "live-ring.png"), 300)
+        // The callout keeps clear of an open destination: to the ring's left where, to its right, the destination would cover it.
+        let window = CGSize(width: 1024, height: 700)
+        XCTAssertFalse(LiveRing.leftward(at: CGPoint(x: 500, y: 200), in: window, beside: nil), "Nothing open: to the right")
+        XCTAssertTrue(LiveRing.leftward(at: CGPoint(x: 500, y: 200), in: window, beside: 294))
+        XCTAssertFalse(LiveRing.leftward(at: CGPoint(x: 500, y: 600), in: window, beside: 294), "Beneath the destination, room to the right")
+        XCTAssertFalse(LiveRing.leftward(at: CGPoint(x: 100, y: 200), in: window, beside: 294), "Far enough left to clear it")
+        XCTAssertGreaterThan(try drawn(LiveRing(session: session, card: home, at: CGPoint(x: 480, y: 160), panel: binding, leftward: true), width: 640, height: 320), 300)
         XCTAssertGreaterThan(try drawn(LiveSaid(words: "Clear a level 3 barrow first.") {}, width: 600, height: 60), 60)
         XCTAssertGreaterThan(try drawn(LiveArmies(session: session, seconds: 2_015), width: 400, height: 80), 60)
 

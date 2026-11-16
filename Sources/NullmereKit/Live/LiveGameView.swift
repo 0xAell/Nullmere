@@ -263,53 +263,62 @@ struct LiveHUD: View {
     /// The share of the window's height an open destination stands to.
     static let panelShare: CGFloat = 0.42
 
+    /// The height an open destination stands to in a window of a size.
+    private func tallest(in size: CGSize) -> CGFloat {
+        max(size.height * LiveHUD.panelShare, ChromeBudget.leastHeight)
+    }
+
     var body: some View {
         // Counted afresh each second: goods grow and timers run down
         // between the realm's own words.
         GeometryReader { proxy in
             TimelineView(.periodic(from: .now, by: 1)) { _ in
                 let seconds = session.now
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(spacing: 10) {
-                        HStack(alignment: .top, spacing: 12) {
-                            LiveTopBar(session: session, seconds: seconds)
-                                .chrome("live-bar")
-                            Spacer(minLength: 0)
-                        }
-                        HStack(alignment: .top, spacing: 12) {
-                            LiveTaskChip(session: session)
-                                .chrome("live-task")
-                            Spacer(minLength: 0)
-                        }
-                        if let said = session.said {
-                            LiveSaid(words: said) { session.said = nil }
-                                .chrome("live-said")
-                        }
+                VStack(spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        LiveTopBar(session: session, seconds: seconds)
+                            .chrome("live-bar")
                         Spacer(minLength: 0)
-                        HStack(alignment: .bottom, spacing: 12) {
-                            LiveArmies(session: session, seconds: seconds)
-                                .chrome("live-armies")
-                            Spacer(minLength: 0)
-                            LiveDock(session: session, panel: $panel, find: { palette.toggle() })
-                                .chrome("live-dock")
-                        }
-                        // What is chosen, where it can't be shown beside it on the map.
-                        if let selection = session.selection, LiveRing.place(of: session, in: proxy.size) == nil {
-                            LiveCardView(session: session, card: session.card(for: selection), panel: $panel)
-                                .chrome("live-card")
-                        }
                     }
+                    HStack(alignment: .top, spacing: 12) {
+                        LiveTaskChip(session: session)
+                            .chrome("live-task")
+                        Spacer(minLength: 0)
+                    }
+                    if let said = session.said {
+                        LiveSaid(words: said) { session.said = nil }
+                            .chrome("live-said")
+                    }
+                    Spacer(minLength: 0)
+                    HStack(alignment: .bottom, spacing: 12) {
+                        LiveArmies(session: session, seconds: seconds)
+                            .chrome("live-armies")
+                        Spacer(minLength: 0)
+                        LiveDock(session: session, panel: $panel, find: { palette.toggle() })
+                            .chrome("live-dock")
+                    }
+                    // What is chosen, where it can't be shown beside it on the map.
+                    if let selection = session.selection, LiveRing.place(of: session, in: proxy.size) == nil {
+                        LiveCardView(session: session, card: session.card(for: selection), panel: $panel)
+                            .chrome("live-card")
+                    }
+                }
+                // An open destination stands over the world at the top right,
+                // so the dock and the armies keep their places at the foot.
+                .overlay(alignment: .topTrailing) {
                     if let panel {
                         LiveSidePanel(session: session, seconds: seconds, panel: panel, close: { self.panel = nil }, choose: { self.panel = $0 },
-                                      tallest: max(proxy.size.height * LiveHUD.panelShare, ChromeBudget.leastHeight))
+                                      tallest: tallest(in: proxy.size))
                             .chrome("live-panel")
                     }
                 }
                 .padding(12)
                 .overlay {
-                    // What is chosen, shown about it on the map: its ring and its callout.
+                    // What is chosen, shown about it on the map: its ring and its callout,
+                    // the callout to the ring's left where an open destination would cover it.
                     if let selection = session.selection, let place = LiveRing.place(of: session, in: proxy.size) {
-                        LiveRing(session: session, card: session.card(for: selection), at: place, panel: $panel)
+                        LiveRing(session: session, card: session.card(for: selection), at: place, panel: $panel,
+                                 leftward: LiveRing.leftward(at: place, in: proxy.size, beside: panel == nil ? nil : tallest(in: proxy.size)))
                     }
                 }
                 .overlay(alignment: .top) {
@@ -561,11 +570,27 @@ struct LiveRing: View {
     let card: LiveCard
     let at: CGPoint
     @Binding var panel: LiveGameView.Panel?
+    /// Whether the callout stands to the ring's left rather than its right.
+    var leftward = false
 
     /// How far the ring's symbols stand from the heart of what is chosen,
     /// and how large each is.
     static let radius: CGFloat = 58
     static let side: CGFloat = 34
+    /// How wide the callout is, and how far its middle stands from the
+    /// heart of what is chosen.
+    static let calloutWidth: CGFloat = 280
+    static let calloutReach: CGFloat = radius + side / 2 + calloutWidth / 2 + 12
+
+    /// Whether the callout goes to the ring's left: where, to its right, it
+    /// would lie under a destination open at the top right of a view of a
+    /// size, standing `panel` tall; never where none is open.
+    static func leftward(at point: CGPoint, in size: CGSize, beside panel: CGFloat?) -> Bool {
+        guard let panel else { return false }
+        let right = point.x + calloutReach + calloutWidth / 2
+        let beneath = point.y - 60 > panel + 24
+        return !beneath && right > size.width - LiveSidePanel.width - 24
+    }
 
     /// Where what is chosen stands in a view of a size: the heart of its
     /// hex, at the height of the land there, kept clear of the view's
@@ -589,9 +614,9 @@ struct LiveRing: View {
             symbol("xmark", name: "Put away \(card.title)", enabled: true, why: nil) { session.selected = nil }
                 .position(spot(count - 1, of: count))
             callout
-                .frame(width: 280, alignment: .leading)
+                .frame(width: LiveRing.calloutWidth, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
-                .position(x: at.x + LiveRing.radius + LiveRing.side / 2 + 152, y: at.y)
+                .position(x: at.x + (leftward ? -LiveRing.calloutReach : LiveRing.calloutReach), y: at.y)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

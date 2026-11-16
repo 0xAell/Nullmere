@@ -193,7 +193,10 @@ final class LiveBookTests: XCTestCase {
 
     func testSoldiersReadyAreOfferedARaiseToTheHighestTierTrained() throws {
         var snapshot = rows(jobs: [])
-        snapshot["my_buildings"] = snapshot["my_buildings"]?.map { $0[0] == n(24) ? [n(24), n(7), n(7), n(5)] : $0 }
+        // The Barracks at the fifth level; in typed steps, as a Mac's compiler types them in time.
+        let raised: [JSONValue] = [n(24), n(7), n(7), n(5)]
+        let built: [[JSONValue]] = (snapshot["my_buildings"] ?? []).map { row in row.first == raised.first ? raised : row }
+        snapshot["my_buildings"] = built
         let world = LiveWorld(snapshot: snapshot)
         let line = try XCTUnwrap(world.trainLines(at: 2_000).first)
         // Forty spearmen of the first tier ready; the second costs fifty grain and fifty timber more each; 1,000 timber pays for twenty.
