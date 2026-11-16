@@ -1038,11 +1038,9 @@ public final class GameApp {
 
     /// The lake the keeper's realm last lay on, whose title theme plays
     /// over the launcher; the Nullmere before any.
-    public static var lastLake: Lake {
-        UserDefaults.standard.string(forKey: lakeKey).flatMap(Lake.init(rawValue:)) ?? .round
-    }
+    public static var lastLake: Lake { RealmSound.lastLake }
 
-    static let lakeKey = "lake.last"
+    static let lakeKey = RealmSound.lakeKey
 
     /// Keeps the lake a realm tells of as the one it last lay on.
     static func remember(lakeOf status: RealmStatus) {

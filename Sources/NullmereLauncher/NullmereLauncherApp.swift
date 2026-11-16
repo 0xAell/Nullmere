@@ -93,15 +93,10 @@ final class OnlineAppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
-    /// Orders still on their way to the realm get a moment to arrive, and
-    /// the sound fades out rather than stopping dead.
+    /// The sound fades out rather than stopping dead.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let app = GameApp.current else { return .terminateNow }
-        let fade = app.ambience.fadeForQuitting()
-        if app.ordersWaiting > 0 {
-            app.sendWaiting(within: 3) { NSApp.reply(toApplicationShouldTerminate: true) }
-            return .terminateLater
-        }
+        guard let sound = RealmSound.current else { return .terminateNow }
+        let fade = sound.ambience.fadeForQuitting()
         guard fade > 0 else { return .terminateNow }
         DispatchQueue.main.asyncAfter(deadline: .now() + fade) { NSApp.reply(toApplicationShouldTerminate: true) }
         return .terminateLater

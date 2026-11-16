@@ -231,13 +231,13 @@ final class RootRenderTests: XCTestCase {
             terminate: {}
         )
         let launcher = LauncherModel(defaults: defaults, environment: environment)
-        let shell = OnlineShell(launcher: launcher, app: app({ .ready }, seed: "one window"))
+        let shell = OnlineShell(launcher: launcher, sound: RealmSound(sound: false))
         // Past its opening, which rises from black.
         launcher.refreshReadiness()
         launcher.completeIntro()
         try draw(NullmereOnlineView(shell: shell))
         shell.playTitle()
-        XCTAssertEqual(shell.app.ambience.titleLake, GameApp.lastLake, "Over the launcher, the last lake's title theme")
+        XCTAssertEqual(shell.sound.ambience.titleLake, GameApp.lastLake, "Over the launcher, the last lake's title theme")
         shell.showSettings()
         // Play opens the realm at its address, in place of the launcher.
         var asked: [String] = []
@@ -249,7 +249,7 @@ final class RootRenderTests: XCTestCase {
         XCTAssertTrue(shell.inRealm)
         XCTAssertEqual(asked, [GameApp.realmURL(in: Bundle.main.infoDictionary).absoluteString], "The realm the app was built to go to")
         XCTAssertNotNil(shell.rebuilt)
-        XCTAssertNil(shell.app.ambience.titleLake, "Within the realm, its own score")
+        XCTAssertNil(shell.sound.ambience.titleLake, "Within the realm, its own score")
         try draw(NullmereOnlineView(shell: shell))
         // Settings… waits for the launcher: nothing opens over the realm.
         shell.showSettings()
@@ -257,7 +257,7 @@ final class RootRenderTests: XCTestCase {
         XCTAssertEqual(shell.launcher.screen, .title, "Back at the launcher's menu")
         XCTAssertFalse(shell.inRealm)
         XCTAssertNil(shell.rebuilt, "Left, the realm is no longer watched")
-        XCTAssertEqual(shell.app.ambience.titleLake, GameApp.lastLake, "The title theme again")
+        XCTAssertEqual(shell.sound.ambience.titleLake, GameApp.lastLake, "The title theme again")
         // A debug run may name another realm; nothing that is no address.
         XCTAssertEqual(OnlineShell.realmAddress(info: nil, environment: ["NULLMERE_REALM": "http://127.0.0.1:3000/nullmere-ui"]), "http://127.0.0.1:3000/nullmere-ui")
         XCTAssertEqual(OnlineShell.realmAddress(info: nil, environment: ["NULLMERE_REALM": "local"]), GameApp.maincloudURL.absoluteString)
@@ -266,10 +266,10 @@ final class RootRenderTests: XCTestCase {
         // The launcher's Music and the realm's are one choice, either way.
         let music = UserDefaults.standard.object(forKey: "music.enabled")
         defer { music == nil ? UserDefaults.standard.removeObject(forKey: "music.enabled") : UserDefaults.standard.set(music, forKey: "music.enabled") }
-        shell.app.isMusicOn = true
+        shell.sound.isMusicOn = true
         launcher.setDisplay(.music, to: 0)
-        XCTAssertFalse(shell.app.isMusicOn, "Turned off in the launcher, off in the realm")
-        shell.app.isMusicOn = true
+        XCTAssertFalse(shell.sound.isMusicOn, "Turned off in the launcher, off in the realm")
+        shell.sound.isMusicOn = true
         XCTAssertTrue(launcher.displaySettings.music, "Turned on in the realm, on in the launcher")
     }
 

@@ -13,7 +13,9 @@ public final class OnlineShell {
     public private(set) var inRealm = false
 
     public let launcher: LauncherModel
-    public let app: GameApp
+    /// The window's sound: the title theme over the launcher, the realm's
+    /// score within it.
+    public let sound: RealmSound
     /// The player's session in the realm, played in the window in place of
     /// the launcher: opened by Play, or at once where a debug run was told
     /// of a realm to open on.
@@ -23,25 +25,22 @@ public final class OnlineShell {
     var opening: @MainActor (String) -> LiveSession? = { OnlineShell.session(at: $0) }
 
     public convenience init() {
-        self.init(launcher: LauncherModel(), app: GameApp(opensAtOnce: false))
+        self.init(launcher: LauncherModel(), sound: RealmSound())
         #if DEBUG
         rebuilt = OnlineShell.session(in: ProcessInfo.processInfo.environment)
         #endif
-        // The app as a keeper opens it: its world keeps its own day.
-        app.keepsDay = true
         // The last run, if it stopped on a fault: the launcher opens on its
         // page.
         launcher.open(on: RunLedger.shared.atLaunch)
     }
 
-    public init(launcher: LauncherModel, app: GameApp) {
+    public init(launcher: LauncherModel, sound: RealmSound) {
         self.launcher = launcher
-        self.app = app
+        self.sound = sound
         launcher.enterRealm = { [weak self] in self?.enterRealm() }
-        app.onLeave = { [weak self] in self?.leaveRealm() }
-        app.display = launcher
+        sound.display = launcher
         // The launcher's Music and the realm's are one choice.
-        launcher.onMusicChanged = { [weak app] on in app?.isMusicOn = on }
+        launcher.onMusicChanged = { [weak sound] on in sound?.isMusicOn = on }
     }
 
     /// A session in the realm an environment names with
@@ -84,11 +83,10 @@ public final class OnlineShell {
         })
     }
 
-    /// Over the launcher, the title theme of the lake the keeper's realm
+    /// Over the launcher, the title theme of the lake the player's realm
     /// last lay on, with the night about it.
     func playTitle() {
-        app.ambience.titleLake = GameApp.lastLake
-        app.ambience.start()
+        sound.playTitle()
     }
 
     /// Play: into the realm, in place of the launcher.
@@ -96,8 +94,7 @@ public final class OnlineShell {
         inRealm = true
         RunLedger.shared.note(.door)
         // The realm's own score from here on.
-        app.ambience.titleLake = nil
-        app.ambience.start()
+        sound.playRealm()
         if rebuilt == nil {
             rebuilt = opening(OnlineShell.realmAddress(info: Bundle.main.infoDictionary, environment: ProcessInfo.processInfo.environment))
         }
@@ -163,12 +160,12 @@ public struct RealmCommands: Commands {
                 .disabled(shell.rebuilt == nil)
         }
         CommandMenu("Realm") {
-            Toggle("Sound", isOn: Binding(get: { shell.app.isSoundOn }, set: { shell.app.isSoundOn = $0 }))
+            Toggle("Sound", isOn: Binding(get: { shell.sound.isSoundOn }, set: { shell.sound.isSoundOn = $0 }))
                 .keyboardShortcut("m", modifiers: [.command, .shift])
                 .disabled(!shell.inRealm)
-            Toggle("Music", isOn: Binding(get: { shell.app.isMusicOn }, set: { shell.app.isMusicOn = $0 }))
+            Toggle("Music", isOn: Binding(get: { shell.sound.isMusicOn }, set: { shell.sound.isMusicOn = $0 }))
                 .keyboardShortcut("u", modifiers: [.command, .shift])
-                .disabled(!shell.inRealm || !shell.app.isSoundOn)
+                .disabled(!shell.inRealm || !shell.sound.isSoundOn)
         }
     }
 }
