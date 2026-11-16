@@ -1,0 +1,24 @@
+PERF-CHECK this runner runs the plain work at 547.9 ms against 353.0: CPU figures allowed x1.55
+PERF-CHECK calibration.cpu 547.87 ms (baseline 353.00) CALIBRATION
+PERF-CHECK lake.gpu.p50 9.01 ms (baseline 8.30, allowed 16.70) OK
+PERF-CHECK lake.gpu.p95 9.40 ms (baseline 8.30, allowed 16.70) OK
+PERF-CHECK live.stage.cpu.p50 12.29 ms NEW (no baseline yet)
+PERF-CHECK live.stage.cpu.p95 22.14 ms NEW (no baseline yet)
+PERF-CHECK near.gpu.scale60.p50 8.04 ms (baseline 8.28, allowed 16.70) OK
+PERF-CHECK near.gpu.scale60.plain.p50 8.03 ms (baseline 8.66, allowed 16.70) OK
+PERF-CHECK pan.frame.p50 10.13 ms (baseline 8.96, allowed 16.70) OK
+PERF-CHECK pan.frame.p95 10.72 ms (baseline 9.39, allowed 16.70) OK
+PERF-CHECK pan.gpu.p50 9.37 ms (baseline 8.56, allowed 16.70) OK
+PERF-CHECK pan.gpu.p95 9.85 ms (baseline 8.87, allowed 16.70) OK
+PERF-CHECK realm.watch.twelve-a 66.95 ms (baseline 121.00, allowed 281.70) OK
+PERF-CHECK realm.watch.twelve-b 68.79 ms (baseline 121.00, allowed 281.70) OK
+PERF-CHECK realm.watch.twelve-c 64.20 ms (baseline 126.00, allowed 293.34) OK
+PERF-CHECK wide.gpu.scale28.p50 14.58 ms (baseline 12.44, allowed 16.70) OK
+PERF-CHECK wide.gpu.scale28.whole.p50 24.74 ms (baseline 23.23, allowed 54.08) OK
+PERF-CHECK wider.gpu.scale28.p50 16.36 ms (baseline 14.37, allowed 16.70) OK
+PERF-CHECK world.gpu.scale12.p50 8.03 ms (baseline 6.19, allowed 14.41) OK
+PERF-CHECK world.gpu.scale12.p95 8.97 ms (baseline 6.62, allowed 15.41) OK
+PERF-CHECK world.gpu.scale28.p50 9.79 ms (baseline 8.61, allowed 16.70) OK
+PERF-CHECK world.gpu.scale28.p95 10.10 ms (baseline 8.95, allowed 16.70) OK
+PERF-CHECK world.gpu.scale60.p50 5.42 ms (baseline 5.70, allowed 13.27) OK
+PERF-CHECK world.gpu.scale60.p95 5.69 ms (baseline 7.37, allowed 16.70) OK
