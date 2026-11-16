@@ -36,6 +36,16 @@ public enum TileTexture {
         Int(bytes[offset + 3]) | Int(bytes[offset] >> 4) << 8
     }
 
+    /// Names whose territory a tile is in its four bytes at `offset`: a
+    /// sigil plus one, as `owner` reads it, over the fourth byte and the
+    /// first's high half, the terrain's code left under it; one past
+    /// `mostOwner` named as `mostOwner`, never as another's.
+    public static func name(_ owner: Int, in bytes: inout [UInt8], at offset: Int) {
+        let named = min(max(owner, 0), mostOwner)
+        bytes[offset + 3] = UInt8(truncatingIfNeeded: named)
+        bytes[offset] = bytes[offset] & 0x0F | UInt8(truncatingIfNeeded: named >> 8) << 4
+    }
+
     public static func side(for map: WorldMap) -> Int {
         2 * map.radius + 1
     }

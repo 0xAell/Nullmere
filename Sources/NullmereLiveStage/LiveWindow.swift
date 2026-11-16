@@ -171,9 +171,7 @@ public struct LiveWindow: Sendable {
             let local = map.hexes[index]
             let hex = LiveHex(q: local.q + centre.q, r: local.r + centre.r)
             guard let alliance = world.landOf(hex, at: seconds) else { continue }
-            let owner = min(LiveWindow.allianceSigil(of: alliance) + 1, TileTexture.mostOwner)
-            bytes[offset + 3] = UInt8(truncatingIfNeeded: owner)
-            bytes[offset] |= UInt8(truncatingIfNeeded: owner >> 8) << 4
+            TileTexture.name(LiveWindow.allianceSigil(of: alliance) + 1, in: &bytes, at: offset)
         }
         return bytes
     }

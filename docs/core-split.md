@@ -192,9 +192,12 @@ hold walled in stone). Two ways off the old rules:
    weather, fields of the dead, a plea's bearer, hand-to-hand fronts and
    a GameState's tile texture, and the tests of them in StageTests,
    EffectsTests, CorpseLightsTests, TownsfolkTests and FrontPressTests),
-   which go with the rules at step 5, and the two that play the old game
-   to draw it (TileTextureTests, WorldPreviewTests), to be rebuilt on the
-   test world.
+   which go with the rules at step 5, and WorldPreviewTests, which plays
+   the old game to draw it, to be rebuilt on the test world.
+   TileTextureTests are: a tile's owner is written by the world's own
+   `TileTexture.name` (the rebuilt realm's window writes its alliances'
+   land with it), and the tests hold the texture's layout and its
+   owners' naming on a test world.
 4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
    Done on 16 November: the old game's voices (Voices.swift,
    VoiceCheck.swift and their three test files), its counsel

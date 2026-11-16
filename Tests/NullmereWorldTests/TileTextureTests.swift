@@ -1,32 +1,22 @@
-@testable import NullmereCore
+import NullmereLand
+import NullmereTestSupport
 @testable import NullmereWorld
 import XCTest
 
 final class TileTextureTests: XCTestCase {
     func testEachTileLandsAtItsAxialTexel() throws {
-        let state = GameState(settings: GameSettings(seedText: "tile texture", houseCount: 3, radius: 14, keepers: 1))
-        let side = TileTexture.side(for: state.map)
-        let bytes = TileTexture.bytes(for: state, viewer: state.player)
+        let world = TestWorld(seedText: "tile texture", houses: 3, radius: 14)
+        let side = TileTexture.side(for: world.map)
+        let ground = TileTexture.Ground(map: world.map)
+        let bytes = ground.bytes
         XCTAssertEqual(side, 29)
         XCTAssertEqual(bytes.count, side * side * 4)
-        let visible = state.visibility(for: state.player)
-        for (index, hex) in state.map.hexes.enumerated() {
+        for (index, hex) in world.map.hexes.enumerated() {
             let offset = ((hex.r + 14) * side + (hex.q + 14)) * 4
-            XCTAssertEqual(Int(TileTexture.terrain(bytes[offset])), Terrain.allCases.firstIndex(of: state.map[index].terrain))
-            if visible[index] {
-                XCTAssertEqual(TileTexture.seen(bytes[offset + 1]), 2)
-            }
-        }
-        let seat = try XCTUnwrap(state.seat(of: state.player))
-        let offset = ((seat.position.r + 14) * side + (seat.position.q + 14)) * 4
-        XCTAssertEqual(TileTexture.owner(bytes, at: offset), state.houses[state.player].sigil + 1, "the seat is in its House's colour")
-        XCTAssertEqual(bytes[offset + 1] & TileTexture.holdFlag, TileTexture.holdFlag, "the seat is lit")
-        XCTAssertEqual(TileTexture.seen(bytes[offset + 1]), 2, "the seat watched, its flag apart")
-        let explored = state.houses[state.player].explored
-        for hold in state.holds where hold.owner != state.player {
-            let index = try XCTUnwrap(state.map.index(of: hold.position))
-            let o = ((hold.position.r + 14) * side + (hold.position.q + 14)) * 4
-            XCTAssertEqual(bytes[o + 1] & TileTexture.holdFlag != 0, explored[index], "only known holds are lit")
+            XCTAssertEqual(ground.offsets[index], offset)
+            XCTAssertEqual(Int(TileTexture.terrain(bytes[offset])), Terrain.allCases.firstIndex(of: world.map[index].terrain))
+            XCTAssertEqual(TileTexture.seen(bytes[offset + 1]), 0, "Nothing known of it until the stage says so")
+            XCTAssertEqual(TileTexture.owner(bytes, at: offset), 0, "Nobody's")
         }
     }
 
@@ -40,13 +30,18 @@ final class TileTextureTests: XCTestCase {
         XCTAssertEqual(TileTexture.seen(2 * TileTexture.seenStep | TileTexture.holdFlag | 5), 2)
         XCTAssertGreaterThanOrEqual(TileTexture.mostOwner, WorldGenerator.mostHouses, "A tile can name every House a lake seats")
         XCTAssertLessThan(Terrain.allCases.count, 16, "The terrain's code in the first byte's low half, under the owner's")
-        let state = GameState(settings: GameSettings(seedText: "every colour", houseCount: 48, radius: 72))
-        let bytes = TileTexture.bytes(for: state, viewer: 0, visible: [Bool](repeating: true, count: state.map.count))
-        let side = TileTexture.side(for: state.map)
+        let world = TestWorld(seedText: "every colour", houses: 48, radius: 72)
+        let ground = TileTexture.Ground(map: world.map)
+        var bytes = ground.bytes
+        for hold in world.holds {
+            let index = try XCTUnwrap(world.map.index(of: hold.position))
+            TileTexture.name(hold.owner + 1, in: &bytes, at: ground.offsets[index])
+        }
         var owners: Set<Int> = []
-        for hold in state.holds where hold.isSeat {
-            let offset = ((hold.position.r + 72) * side + (hold.position.q + 72)) * 4
-            XCTAssertEqual(TileTexture.owner(bytes, at: offset), state.houses[hold.owner].sigil + 1)
+        for hold in world.holds where hold.isSeat {
+            let index = try XCTUnwrap(world.map.index(of: hold.position))
+            let offset = ground.offsets[index]
+            XCTAssertEqual(TileTexture.owner(bytes, at: offset), hold.owner + 1)
             owners.insert(TileTexture.owner(bytes, at: offset))
         }
         XCTAssertEqual(owners.count, 48, "Forty-eight seats, forty-eight colours")
@@ -58,22 +53,18 @@ final class TileTextureTests: XCTestCase {
     /// 255, the terrain's code under it as it was; a sigil no tile can
     /// name, none the realm seats, names no other House's instead.
     func testATileNamesAHouseOfARealmOfAThousand() throws {
-        var state = GameState(settings: GameSettings(seedText: "a thousand", houseCount: 3, radius: 14, keepers: 1))
-        let seat = try XCTUnwrap(state.seat(of: state.player))
-        let side = TileTexture.side(for: state.map)
-        let offset = ((seat.position.r + 14) * side + (seat.position.q + 14)) * 4
-        let terrain = try XCTUnwrap(state.map[seat.position]).terrain.code
+        let world = TestWorld(seedText: "a thousand", houses: 3, radius: 14)
+        let seat = world.holds[0].position
+        let ground = TileTexture.Ground(map: world.map)
+        let index = try XCTUnwrap(world.map.index(of: seat))
+        let offset = ground.offsets[index]
+        let terrain = try XCTUnwrap(world.map[seat]).terrain.code
+        var bytes = ground.bytes
         for (sigil, named) in [(1_000, 1_001), (255, 256), (1_023, 1_024), (TileTexture.mostOwner - 1, TileTexture.mostOwner),
-                               (5_000, TileTexture.mostOwner)] {
-            state.houses[state.player].sigil = sigil
-            let bytes = TileTexture.bytes(for: state, viewer: state.player)
+                               (5_000, TileTexture.mostOwner), (0, 1)] {
+            TileTexture.name(sigil + 1, in: &bytes, at: offset)
             XCTAssertEqual(TileTexture.owner(bytes, at: offset), named, "Sigil \(sigil)")
             XCTAssertEqual(TileTexture.terrain(bytes[offset]), terrain, "The terrain as it was, under sigil \(sigil)")
         }
     }
 }
-
-private extension GameState {
-    var playerHouse: House { houses[player] }
-}
-
