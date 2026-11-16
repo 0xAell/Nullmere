@@ -151,6 +151,34 @@ final class LiveGameTests: XCTestCase {
         return (1 - ChromeLedger.covered(of: size), ChromeLedger.frames.keys.sorted())
     }
 
+    /// What a side panel holds, unscrolled, as `LiveSidePanel` lays it
+    /// in its scrolling list.
+    @ViewBuilder
+    private func whole(_ panel: LiveGameView.Panel, of session: LiveSession, at seconds: Double = 2_015) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            switch panel {
+            case .city: LiveBuildings(session: session, seconds: seconds)
+            case .troops:
+                LiveCommanders(session: session, seconds: seconds)
+                LiveTroops(session: session, seconds: seconds)
+            case .studies: LiveStudies(session: session, seconds: seconds)
+            case .alliance:
+                LiveAlliancePanel(session: session)
+                LiveAllianceDepth(session: session, seconds: seconds)
+            case .chat: LiveChatPanel(session: session)
+            case .reports:
+                LiveLetters(session: session, seconds: seconds)
+                LiveReports(session: session, seconds: seconds)
+            case .day: LiveDayPanel(session: session, seconds: seconds)
+            case .realm: LiveRealmPanel(session: session, seconds: seconds)
+            case .forge: LiveForgePanel(session: session, seconds: seconds)
+            case .rankings: LiveRankingsPanel(session: session)
+            }
+        }
+        .padding(14)
+        .background(NullmereKit.Palette.panel)
+    }
+
     /// The world is the screen in the rebuilt realm too: whatever is open,
     /// the interface keeps to the edges and leaves the world its share.
     func testTheWorldKeepsMostOfTheScreenWhateverIsOpen() async throws {
@@ -264,6 +292,12 @@ final class LiveGameTests: XCTestCase {
         let (empty, _) = await playing(LiveSample.rows())
         for side in [LiveGameView.Panel.troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
             XCTAssertGreaterThan(try drawn(LiveSidePanel(session: empty, seconds: 2_015, panel: side) {}, width: 340, height: 700), 150, "\(side)")
+        }
+        // And each panel's whole content, as long as it runs, with no
+        // scrolling to leave what lies below a panel's fold unbuilt.
+        for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
+            XCTAssertGreaterThan(try drawn(whole(side, of: session).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800,
+                                 "\(side), whole")
         }
         XCTAssertEqual(try drawn(LiveTaskChip(session: empty), width: 420, height: 70), 0, "No task set, nothing shown")
         XCTAssertEqual(LiveTroops.counts(LiveTroopLine(kind: 1, tier: 1, name: "Spearmen", ready: 1_040, wounded: 6, out: 20)), "1,040 ready, 6 wounded, 20 out")
