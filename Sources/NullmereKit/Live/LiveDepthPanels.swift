@@ -243,7 +243,7 @@ struct LiveAllianceDepth: View {
         if !stores.isEmpty {
             Caps("The alliance's stores", size: LiveType.small)
                 .foregroundStyle(LiveEmphasis.secondary)
-            LiveSmall(words: "Your honour: \(LiveWords.grouped(world.honourHeld)). Each help to an ally earns \(LiveHonour.aHelp), up to \(LiveWords.grouped(LiveHonour.fromHelpADay)) a day; giving toward what the alliance learns earns one for every thousand goods.", dim: true)
+            LiveSmall(words: "Your honour: \(LiveWords.grouped(world.honourHeld)). Each help to an ally earns \(LiveHonour.aHelp), up to \(LiveWords.grouped(LiveHonour.fromHelpADay)) a day; giving toward what the alliance learns, one for every thousand goods; a rally that clears a barrow, \(LiveHonour.aRallyLevel) for each of its levels.", dim: true)
             ForEach(stores) { line in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     LiveSmall(words: "\(line.ware.name): \(LiveWords.grouped(line.honour)) honour")

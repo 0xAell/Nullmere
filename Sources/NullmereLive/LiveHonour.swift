@@ -15,6 +15,8 @@ public struct LiveHonour: Equatable, Sendable {
     public static let fromHelpADay: UInt64 = 1_000
     /// The most of one thing bought at once.
     public static let mostBought: UInt64 = 100
+    /// Honour for each level of a barrow a rally clears.
+    public static let aRallyLevel: UInt64 = 10
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
