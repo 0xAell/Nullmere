@@ -302,6 +302,7 @@ final class RootRenderTests: XCTestCase {
         XCTAssertNil(LiveMapView.hour(environment: [:]))
         XCTAssertEqual(LiveMapView.hour(environment: ["NULLMERE_HOUR": "12"]), 12)
         XCTAssertNil(LiveMapView.hour(environment: ["NULLMERE_HOUR": "31"]))
+    }
 
     /// The night the world is drawn with: as the realm's Settings keep it,
     /// dark as made where nothing is kept; for the smoke test, as
