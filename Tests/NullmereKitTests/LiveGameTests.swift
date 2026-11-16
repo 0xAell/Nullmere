@@ -95,6 +95,12 @@ final class LiveGameTests: XCTestCase {
         rows["trial"] = [[n(1), .string("The Long Hunt"), .string("Points for every barrow cleared."), n(7), n(3)]]
         rows["prize"] = [[n(257), n(1), n(1), n(100), n(9_000), n(0), n(0), n(0), n(1), n(0), n(0)], [n(258), n(1), n(2), n(400), n(0), n(0), n(0), n(100), n(0), n(2), n(0)]]
         rows["my_tallies"] = [[n(5), n(1), n(1), n(0), n(120), n(0)]]
+        // The hunt's first round: Ada first, Bryn second; and what the first
+        // three places give once it is over.
+        rows["standing"] = [[n(1 << 24 | 1), n(1), n(1), n(1), n(0), n(120), n(1_500), .bool(false)],
+                            [n(2 << 24 | 1), n(1), n(2), n(1), n(0), n(90), n(1_800), .bool(false)]]
+        rows["laurel"] = [[n(257), n(1), n(1), n(60_000), n(60_000), n(30_000), n(900), n(0), n(0), n(3), n(0)],
+                          [n(258), n(1), n(2), n(40_000), n(40_000), n(20_000), n(600), n(0), n(0), n(2), n(0)]]
         rows["my_skills"] = [[n(12 << 8 | 6), n(12), n(1), n(6), n(2)]]
         rows["my_bonds"] = [[n(12), n(1), n(11)]]
         rows["my_keeper"] = [[n(1), n(11)]]
@@ -299,6 +305,12 @@ final class LiveGameTests: XCTestCase {
             XCTAssertGreaterThan(try drawn(whole(side, of: session).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800,
                                  "\(side), whole")
         }
+        // The realm's contests once the hunt's first round is over: Ada's
+        // first place, its laurel to claim.
+        let over = 1_000 + 4 * 86_400.0
+        XCTAssertNotNil(session.world.trials[1].flatMap { session.world.laurelToClaim(of: $0, day: session.world.today(at: over)) })
+        XCTAssertGreaterThan(try drawn(whole(.realm, of: session, at: over).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800,
+                             "the realm, a laurel to claim")
         XCTAssertEqual(try drawn(LiveTaskChip(session: empty), width: 420, height: 70), 0, "No task set, nothing shown")
         XCTAssertEqual(LiveTroops.counts(LiveTroopLine(kind: 1, tier: 1, name: "Spearmen", ready: 1_040, wounded: 6, out: 20)), "1,040 ready, 6 wounded, 20 out")
         XCTAssertEqual(LiveTroops.counts(LiveTroopLine(kind: 1, tier: 1, name: "Spearmen", ready: 0, wounded: 0, out: 0)), "0 ready")
