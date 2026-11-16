@@ -68,9 +68,10 @@ only, so tested on Linux too).
   and the watchfire burning where the phone lit it. Then
   the phone takes counsel of a commander through its own on-device model,
   as the Mac's check does (unverified where the simulator's Mac can't run
-  the model). CI builds the companion and runs both apps together on
-  every push, in a Mac job of its own beside the one that tests and
-  bundles the Mac app, and keeps the companion's screens with the Mac's.
+  the model). The companion pairs only with the turn-based game, which
+  Play no longer opens, so CI no longer builds it or runs the two apps
+  together (16 November); it is to be rebuilt on the rebuilt realm's
+  client (docs/rework-plan.md, 3.5), and these steps tell it as it was.
   It also builds the companion for an iPhone itself
   (`scripts/build-companion.sh --device`: arm64, the iOS SDK) into
   build/companion-device/, bundled but unsigned. For a keeper's own
@@ -121,10 +122,10 @@ make smoke                 # build the app, open the launcher, check it starts a
 make smoke-menu            # open a debug build of the launcher with the model ready, Apple Intelligence off and the model downloading; type into it, photograph every screen
 make smoke-game            # open a debug build, press Play, enter a realm hosted on the Mac as a keeper, take screenshots
 scripts/ui-test.sh         # through Xcode's UI testing: every screen put to its accessibility audit, the map walked as VoiceOver walks it
-scripts/check-voices.sh    # the voices, spoken by this Mac's on-device model through the debug app, every line held to their rules
+scripts/check-voices.sh    # the turn-based game's voices, spoken by this Mac's on-device model through the debug app (CI no longer runs it)
 ```
 
-CI runs all of these on a macOS 26 runner for every pull request and every
+CI runs all of these but the voices on a macOS 26 runner for every pull request and every
 push to `main` or a working branch that touches the code, and keeps the
 screenshots of the launcher, the realm's front door, the world and the
 phone, two seconds of the great battle and of the seat's town in motion as
@@ -457,7 +458,10 @@ NULLMERE_REBUILT_REALM=http://127.0.0.1:3000/nullmere-rebuilt swift run Nullmere
 `realm/people.py` plays a number of players into a realm, each under an
 identity of their own, so there is a neighbourhood to look at.
 `scripts/smoke-test-rebuilt.sh` does both on a Mac and takes pictures
-(`build/rebuilt-*.png`); CI runs it after the old realm's own smoke test.
+(`build/rebuilt-*.png`); CI runs it on the Mac, pressing the launcher's
+Play into a realm served on the runner. The turn-based realm's own CI job,
+which tested and played the old module on Linux, retired on 16 November
+as the old game is deleted (docs/rework-plan.md, 3.4).
 
 ## Layout
 
