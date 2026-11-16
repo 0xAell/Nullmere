@@ -536,15 +536,21 @@ struct LiveLetters: View {
         let others = world.players.values.filter { $0.id != world.me?.id }.sorted { $0.id < $1.id }
         let addressee = to.flatMap { id in others.first { $0.id == id } }
         HStack(spacing: 8) {
-            Menu(addressee.map { "To \($0.name)" } ?? "Write to…") {
-                ForEach(others) { player in
-                    Button(player.name) { to = player.id }
+            // Whom to write to, once anyone else has joined.
+            if others.isEmpty {
+                LiveSmall(words: "No one else has joined to write to.", dim: true)
+            } else {
+                Menu(addressee.map { "To \($0.name)" } ?? "Write to…") {
+                    ForEach(others) { player in
+                        Button(player.name) { to = player.id }
+                    }
                 }
+                .menuStyle(.button)
+                .buttonStyle(.borderless)
+                .fixedSize()
+                .font(.nm(LiveType.small))
+                .accessibilityLabel(addressee.map { "Writing to \($0.name): choose another" } ?? "Choose whom to write to")
             }
-            .menuStyle(.button)
-            .buttonStyle(.borderless)
-            .fixedSize()
-            .font(.nm(LiveType.small))
             LiveField(prompt: "A letter", text: $words, width: nil, submit: send)
         }
         HStack(spacing: 8) {

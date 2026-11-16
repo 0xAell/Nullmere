@@ -130,8 +130,11 @@ public struct LiveGameView: View {
                         // lies, so its cursor rings it on the map; choosing one chooses it there.
                         .accessibilityChildren {
                             GeometryReader { proxy in
+                                // Only what stands within the view: what lies past its
+                                // edges is reached by moving the map, as anyone does.
+                                let shown = CGRect(origin: .zero, size: proxy.size).insetBy(dx: 22, dy: 22)
                                 ForEach(items) { item in
-                                    if let point = session.viewPoint(of: item.hex, in: proxy.size) {
+                                    if let point = session.viewPoint(of: item.hex, in: proxy.size), shown.contains(point) {
                                         Button(item.label) { session.selected = item.hex }
                                             .frame(width: 44, height: 44)
                                             .position(point)
@@ -523,6 +526,7 @@ struct LiveTopBar: View {
                     }
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("\(LiveWords.grouped(goods[index])) \(LiveWords.goods[index])")
+                    .accessibilityAddTraits(.isStaticText)
                 }
             }
             if let hunt = session.world.hunt {

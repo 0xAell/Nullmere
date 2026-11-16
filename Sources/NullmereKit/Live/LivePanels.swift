@@ -35,6 +35,8 @@ struct LiveSidePanel: View {
                         QuietButton(title: part.title, prominent: part == panel, name: "\(part.title), in \(panel.destination.title)") { choose(part) }
                     }
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("The parts of \(panel.destination.title)")
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {

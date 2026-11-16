@@ -44,6 +44,7 @@ struct LiveMiniMap: View {
             .accessibilityElement()
             .accessibilityLabel("The whole realm, small")
             .accessibilityHint("Click anywhere on it to look there.")
+            .accessibilityAddTraits(.isImage)
         }
     }
 

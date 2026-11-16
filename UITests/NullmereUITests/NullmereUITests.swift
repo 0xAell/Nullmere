@@ -286,7 +286,11 @@ final class NullmereUITests: XCTestCase {
         if !judged {
             print("UIAUDIT-NOTE \(screen): its contrast ran out of time; every text on it measured from the screen instead")
         }
-        let scrolling = app.scrollViews.allElementsBoundByIndex.map(\.frame)
+        // Each scrolling panel, and where the texts within it lie, shown or
+        // scrolled out of its view.
+        let scrolling = app.scrollViews.allElementsBoundByIndex.map { view in
+            Scrolling(frame: view.frame, texts: view.staticTexts.allElementsBoundByIndex.map(\.frame))
+        }
         for text in judged ? faint : app.staticTexts.allElementsBoundByIndex {
             measure(text, on: screen, flagged: judged, scrolling: scrolling)
         }
@@ -304,6 +308,16 @@ final class NullmereUITests: XCTestCase {
     /// The texts the audit last found faint, to be measured.
     private var faint: [XCUIElement] = []
 
+    /// A scrolling panel: where it lies, and where every text within it
+    /// lies, those scrolled out of its view as well.
+    private struct Scrolling {
+        let frame: CGRect
+        let texts: [CGRect]
+
+        /// Whether a text lies within this panel, or over it.
+        func holds(_ text: CGRect) -> Bool { frame.intersects(text) || texts.contains(text) }
+    }
+
     /// Where a modal sheet lies over the window, while one is up: what lies
     /// outside it is the window behind, which the Mac dims and holds out of
     /// reach until the sheet is put away.
@@ -318,10 +332,19 @@ final class NullmereUITests: XCTestCase {
     /// can't be measured where it lies in the window. A text a scrolling
     /// panel shows only in part, cut by its edge or under the fade at its
     /// foot that says more lies below, is judged once scrolled into view.
-    private func measure(_ text: XCUIElement, on screen: String, flagged: Bool, scrolling: [CGRect]) {
+    private func measure(_ text: XCUIElement, on screen: String, flagged: Bool, scrolling: [Scrolling]) {
         let words = Self.words(of: text)
         guard text.exists, !words.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         let frame = text.frame
+        // Within a scrolling panel but not wholly in its view (scrolled out
+        // of it, cut by its edge, or under the fade at its foot that says
+        // more lies below): judged once scrolled into view, wherever it
+        // lies meanwhile, over the map beyond the panel or past the window.
+        if let panel = scrolling.first(where: { $0.holds(frame) }),
+           !panel.frame.divided(atDistance: Self.scrollFade, from: .maxYEdge).remainder.contains(frame) {
+            print("UIAUDIT-NOTE \(screen): '\(words.prefix(40))' shown only in part by its scrolling panel, judged when scrolled into view")
+            return
+        }
         // Scrolled out of the window, or hidden behind its edge: what isn't
         // shown isn't judged, unless the audit judged it.
         guard window.frame.contains(frame), frame.width >= 4, frame.height >= 4 else {
@@ -333,11 +356,6 @@ final class NullmereUITests: XCTestCase {
         // of it.
         if let sheet, !sheet.contains(frame) {
             print("UIAUDIT-NOTE \(screen): '\(words.prefix(40))' lies behind the sheet, inactive until it is put away")
-            return
-        }
-        if let panel = scrolling.first(where: { $0.intersects(frame) }),
-           !panel.divided(atDistance: Self.scrollFade, from: .maxYEdge).remainder.contains(frame) {
-            print("UIAUDIT-NOTE \(screen): '\(words.prefix(40))' shown only in part by its scrolling panel, judged when scrolled into view")
             return
         }
         let verdict = flagged ? "the audit called it faint" : "measured, the audit out of time"
