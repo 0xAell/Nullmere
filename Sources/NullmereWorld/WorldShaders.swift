@@ -839,8 +839,24 @@ public enum WorldShaders {
             // All of it at noon, some of it at dusk and dawn (by how
             // brightly the hour's marks are lit), none of it at night.
             // Its pattern is the world's: the same wherever the window lies.
-            float3 albedo = nm_ground(world + float3(frame.origin.x, 0.0, frame.origin.y), n, colour, pixel,
-                                      frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0));
+            float day = frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0);
+            float3 grounded = world + float3(frame.origin.x, 0.0, frame.origin.y);
+            float3 albedo = nm_ground(grounded, n, colour, pixel, day);
+            // Tussocks: under the sun a meadow's grass has a small relief of
+            // its own, a third of a hex or so across, that the light finds,
+            // so a meadow is grass and not a sheet; none at night, none on
+            // bare ground, none once smaller than a few pixels.
+            float tussocks = day * clamp((colour.g - max(colour.r, colour.b)) * 7.0, 0.0, 1.0)
+                * (1.0 - smoothstep(0.03, 0.08, pixel));
+            if (tussocks > 0.0) {
+                float2 q = grounded.xz * 3.1;
+                float here = nm_noise(q);
+                float2 slope = float2(nm_noise(q + float2(0.3, 0.0)) - here, nm_noise(q + float2(0.0, 0.3)) - here);
+                float2 r = grounded.xz * 8.7 + float2(13.0, 7.0);
+                float fine = nm_noise(r);
+                slope += 0.6 * float2(nm_noise(r + float2(0.3, 0.0)) - fine, nm_noise(r + float2(0.0, 0.3)) - fine);
+                n = normalize(n - float3(slope.x, 0.0, slope.y) * 2.0 * tussocks);
+            }
         #else
             float3 albedo = colour;
         #endif
