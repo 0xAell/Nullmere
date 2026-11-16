@@ -115,6 +115,9 @@ public struct LiveCounsel: Sendable {
 
     // MARK: What the commander may look at
 
+    /// The commander themself, as they are told it.
+    public var yourselfLook: String { yourselfSaid }
+
     /// The city: its buildings that may be raised now and its works under way.
     public var cityLook: String {
         guard let city = world.city else { return "Your lord has no city." }

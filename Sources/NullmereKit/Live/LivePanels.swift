@@ -159,6 +159,8 @@ struct LiveBuildings: View {
 struct LiveCommanders: View {
     let session: LiveSession
     let seconds: Double
+    /// Counsel being taken of one of them, if any.
+    @State private var counsel: LiveCounselSession?
 
     var body: some View {
         let world = session.world
@@ -173,6 +175,17 @@ struct LiveCommanders: View {
                         .foregroundStyle(LiveEmphasis.tertiary)
                     Spacer(minLength: 0)
                     LiveSmall(words: commander.isFree ? "In the city" : (commander.isHeld ? "Held prisoner" : "Out with an army"), dim: true)
+                    let open = counsel?.commander == commander.id
+                    QuietButton(title: open ? "Close" : "Counsel", name: open ? "Close counsel with \(commander.name)" : "Take counsel of \(commander.name)") {
+                        if open {
+                            counsel = nil
+                        } else if let grounded = session.counsel(of: commander.id) {
+                            counsel = LiveCounselSession(counsel: grounded)
+                        }
+                    }
+                }
+                if let counsel, counsel.commander == commander.id {
+                    LiveCounselView(counsel: counsel, session: session)
                 }
                 LiveSmall(words: commander.wayWords)
                 // What they wear from the Forge, if anything.
@@ -196,6 +209,60 @@ struct LiveCommanders: View {
         Rectangle()
             .fill(Palette.line(0.12))
             .frame(height: 1)
+    }
+}
+
+/// Counsel with a commander: what was asked and answered, the looks they
+/// took, each deed they put forward with a way to do it, and a place to
+/// ask.
+struct LiveCounselView: View {
+    let counsel: LiveCounselSession
+    let session: LiveSession
+    @State private var asked = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(counsel.lines) { line in
+                switch line.kind {
+                case .lord:
+                    LiveSmall(words: "You: \(line.text)", dim: true)
+                case .commander:
+                    Text(verbatim: "\(counsel.name): \(line.text)")
+                        .font(.nm(LiveType.body))
+                        .foregroundStyle(LiveEmphasis.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                case .look:
+                    LiveSmall(words: line.text, dim: true)
+                case .deed:
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        LiveSmall(words: "Put to you: \(line.text)")
+                        Spacer(minLength: 0)
+                        if let command = line.command {
+                            QuietButton(title: "Do it", prominent: true, enabled: session.asking == 0, name: "Do it: \(line.text)") {
+                                Task { await session.perform(command) }
+                            }
+                        }
+                    }
+                case .trouble:
+                    LiveSmall(words: line.text)
+                }
+            }
+            if counsel.answering {
+                LiveSmall(words: "\(counsel.name) is thinking.", dim: true)
+            }
+            LiveField(prompt: "Ask \(counsel.name)", text: $asked) {
+                // Asked of the realm as it stands now.
+                if let grounded = session.counsel(of: counsel.commander) {
+                    counsel.renew(grounded)
+                }
+                counsel.ask(asked)
+                asked = ""
+            }
+        }
+        .padding(8)
+        .panelBackground()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Counsel with \(counsel.name)")
     }
 }
 

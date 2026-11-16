@@ -346,6 +346,61 @@ final class LiveGameTests: XCTestCase {
         map.draw(map.bounds)
     }
 
+    /// Counsel with a commander: a stand-in speaking for the model, the
+    /// model missing on this Mac said plainly, and the bench's looks and
+    /// deeds put forward only where they can be done.
+    func testACommanderIsTakenCounselOf() async throws {
+        var counselled = rows()
+        counselled["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(3), n(4), n(200), n(0)]]
+        let (advised, _) = await playing(counselled)
+        let grounded = try XCTUnwrap(advised.counsel(of: 11))
+        let talk = LiveCounselSession(counsel: grounded, speaker: { asked in "Look to the barrows, my lord. You asked: \(asked)" })
+        talk.ask("What now?")
+        for _ in 0..<100 where talk.answering {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(talk.lines.map(\.kind), [.lord, .commander])
+        XCTAssertEqual(talk.lines.last?.text, "Look to the barrows, my lord. You asked: What now?")
+        XCTAssertGreaterThan(try drawn(LiveCounselView(counsel: talk, session: advised), width: 320, height: 200, as: "live-counsel.png"), 100)
+
+        // A number nothing told them is asked after once, and the answer
+        // taken again; one that still stands is shown as not told; one the
+        // player said is theirs to hear again.
+        let corrected = LiveCounselSession(counsel: grounded, speaker: { asked in
+            asked.hasPrefix("You named 7319,") ? "Raise the Farm, my lord." : "Raise the Farm for 7,319 timber, my lord."
+        })
+        let stubborn = LiveCounselSession(counsel: grounded, speaker: { _ in "Raise the Farm for 7,319 timber, my lord." })
+        let echoing = LiveCounselSession(counsel: grounded, speaker: { _ in "Then 7,319 timber it is, my lord." })
+        corrected.ask("What now?")
+        stubborn.ask("What now?")
+        echoing.ask("I have 7319 timber.")
+        for _ in 0..<100 where corrected.answering || stubborn.answering || echoing.answering {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(corrected.lines.map(\.kind), [.lord, .commander])
+        XCTAssertEqual(corrected.lines.last?.text, "Raise the Farm, my lord.")
+        XCTAssertEqual(stubborn.lines.map(\.kind), [.lord, .commander, .trouble])
+        XCTAssertEqual(stubborn.lines.last?.text, "Corwen was not told 7319 and did not see it. Weigh it before acting on it.")
+        XCTAssertEqual(echoing.lines.map(\.kind), [.lord, .commander])
+        XCTAssertEqual(LiveCounselSession.recall(["7319", "40"]), "You named 7319, 40, which you were not told and did not see. Say it again, naming only numbers you were told or saw, or none.")
+
+        let silent = LiveCounselSession(counsel: grounded, availability: { .unavailable(.deviceNotEligible) })
+        silent.ask("Anything?")
+        XCTAssertEqual(silent.lines.map(\.kind), [.trouble], "no model here: said so, and nothing asked")
+        XCTAssertFalse(silent.answering)
+
+        let bench = LiveCounselBench(grounded)
+        let city = await bench.look(at: "the city")
+        XCTAssertEqual(city, grounded.cityLook)
+        let yourself = await bench.look(at: "yourself")
+        XCTAssertEqual(yourself, grounded.yourselfLook)
+        let none = await bench.propose("Burn the lake dry")
+        XCTAssertEqual(none, "That cannot be done now. Put forward only a deed you were told can be done.")
+        let taken = await bench.taken()
+        XCTAssertEqual(taken.looks, ["the city", "themself"])
+        XCTAssertTrue(taken.deeds.isEmpty)
+    }
+
     func testADebugRunIsShownIntoTheRebuiltRealm() async throws {
         // Named by the environment, or not at all.
         XCTAssertNil(OnlineShell.session(in: [:]))

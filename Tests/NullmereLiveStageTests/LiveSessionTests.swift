@@ -824,6 +824,7 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertTrue(counsel.instructions.contains("never invent a number, a name, a place or an event"))
         let briefing = counsel.briefing.split(separator: "\n").map(String.init)
         XCTAssertEqual(briefing.first, "You are Corwen, outrider of level 4, 200 of 1,600 seen toward the next. You are in the city.")
+        XCTAssertEqual(counsel.yourselfLook, briefing.first, "a look at themself tells them as the briefing did")
         XCTAssertTrue(briefing.contains("Your lord's city: Keep level 3, power 1,000."))
         XCTAssertTrue(briefing.contains { $0.hasPrefix("Armies out: ") && $0.contains("40 soldiers") }, "her army at the grove")
         let deeds = try XCTUnwrap(briefing.last)
