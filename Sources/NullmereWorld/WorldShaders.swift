@@ -118,6 +118,7 @@ public enum WorldShaders {
         float4 water;       // deep water's colour
         float4 land;        // how far the land's slopes are stood upright; the key light the land takes; its hearths' glow
         float4 glow;        // how brightly a lit window shows; how much it flickers
+        float4 origin;      // where the drawn land's heart lies in the world it is a window on (x, z)
     };
     NM_FRAME_UNIFORM
 
@@ -741,7 +742,9 @@ public enum WorldShaders {
         #ifndef NM_NO_GRAIN
             // All of it at noon, some of it at dusk and dawn (by how
             // brightly the hour's marks are lit), none of it at night.
-            float3 albedo = nm_ground(world, n, colour, pixel, frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0));
+            // Its pattern is the world's: the same wherever the window lies.
+            float3 albedo = nm_ground(world + float3(frame.origin.x, 0.0, frame.origin.y), n, colour, pixel,
+                                      frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0));
         #else
             float3 albedo = colour;
         #endif
@@ -884,7 +887,7 @@ public enum WorldShaders {
         // deepest calm the moon lies on the water as in a mirror.
         float calm = clamp(frame.still.x, 0.0, 1.0);
         float road = exp(-across * across / ((0.00001 + 0.0002 * (1.0 - near)) * (1.0 - 0.6 * calm)));
-        float swell = nm_fbm(world.xz * float2(9.0, 2.2) + nm_drift(time, 0.03 * (1.0 - calm)));
+        float swell = nm_fbm((world.xz + frame.origin.xy) * float2(9.0, 2.2) + nm_drift(time, 0.03 * (1.0 - calm)));
         float glint = mix(smoothstep(0.66, 0.86, swell), 0.75, calm);
         moonlit += frame.keyColour.rgb * road * glint * 0.09 * fresnel * (frame.key.w / 1.5);
         // And the lights by the water lie on it as the moon does: a
@@ -917,7 +920,7 @@ public enum WorldShaders {
                 float east = NM_HEIGHT((grid + float2(1.0, 0.0)) / frame.heights.zw);
                 float south = NM_HEIGHT((grid + float2(0.0, 1.0)) / frame.heights.zw);
                 float fall = length(float2(east - ground, south - ground)) / frame.haze.w;
-                froth = nm_wash(world.xz, nm_offshore(depth, fall), time, calm);
+                froth = nm_wash(world.xz + frame.origin.xy, nm_offshore(depth, fall), time, calm);
             }
         }
     #endif

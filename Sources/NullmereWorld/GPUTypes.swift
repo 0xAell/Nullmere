@@ -64,6 +64,11 @@ public struct FrameUniforms: Equatable, Sendable {
     public var land: Vec4 = .zero
     /// How brightly a lit window shows, and how much it flickers.
     public var glow: Vec4 = .zero
+    /// Where the drawn land's heart lies on the flat map of the world it is
+    /// a window on (x, z): the ground's grain and country and the water's
+    /// swell and froth are that world's, so they stay put as the window
+    /// moves. Nothing for a whole map.
+    public var origin: Vec4 = .zero
 
     public static let lightSlots = 4
 
@@ -128,7 +133,7 @@ public struct FrameUniforms: Equatable, Sendable {
         a.viewProjection == b.viewProjection && a.eye == b.eye && a.key == b.key && a.viewport == b.viewport
             && a.world == b.world && a.highlight == b.highlight && a.extent == b.extent && a.haze == b.haze
             && a.heights == b.heights && a.lightValues == b.lightValues && a.still == b.still
-            && a.hourValues == b.hourValues
+            && a.hourValues == b.hourValues && a.origin == b.origin
     }
 }
 

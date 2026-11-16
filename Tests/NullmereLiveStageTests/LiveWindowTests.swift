@@ -49,6 +49,64 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(LiveWindow.terrains.map(\.code), Array(0...7), "the module's grounds by the renderer's own numbers")
     }
 
+    /// The land's grain and its trees are the world's, not the window's:
+    /// a hex seen in two windows rises the same and is furnished the same
+    /// in both, so nothing shifts when the window is taken afresh.
+    func testTheLandAndItsTreesStayPutAsTheWindowMoves() {
+        let world = world()
+        let west = LiveWindow(world: world, centre: LiveHex(q: 10, r: -4), radius: 12)
+        let east = LiveWindow(world: world, centre: LiveHex(q: 14, r: -5), radius: 12)
+        let westRelief = Relief(map: west.map, origin: Hex(10, -4)), eastRelief = Relief(map: east.map, origin: Hex(14, -5))
+        let apart = Relief.centre(of: Hex(4, -1))
+        var differed = false, furnished = 0
+        for there in Hex(12, -4).spiral(5) {
+            let thereLive = LiveHex(q: there.q, r: there.r)
+            guard let a = west.local(thereLive), let b = east.local(thereLive) else { return XCTFail("\(there) lies in both windows") }
+            XCTAssertEqual(westRelief.height(of: a), eastRelief.height(of: b), accuracy: 1e-4, "\(there) rises the same in both")
+            // Off the heart too: the same point of the world.
+            let point = Relief.centre(of: a)
+            XCTAssertEqual(westRelief.height(atX: point.x + 0.31, z: point.z - 0.4),
+                           eastRelief.height(atX: point.x + 0.31 - apart.x, z: point.z - 0.4 - apart.z), accuracy: 1e-4)
+            let one = Scatter.pieces(in: a, map: west.map, relief: westRelief)
+            let other = Scatter.pieces(in: b, map: east.map, relief: eastRelief)
+            XCTAssertEqual(one.map(\.key), other.map(\.key), "\(there) is furnished the same in both")
+            for (p, q) in zip(one, other) {
+                XCTAssertEqual(p.transform.c3.x - apart.x, q.transform.c3.x, accuracy: 1e-3)
+                XCTAssertEqual(p.transform.c3.y, q.transform.c3.y, accuracy: 1e-3)
+                XCTAssertEqual(p.transform.c3.z - apart.z, q.transform.c3.z, accuracy: 1e-3)
+            }
+            furnished += one.count
+            // Grown from each window's own numbers, as they once were, they differ.
+            if abs(Relief(map: west.map).height(of: a) - Relief(map: east.map).height(of: b)) > 1e-3 { differed = true }
+        }
+        XCTAssertGreaterThan(furnished, 20, "the ground there is furnished")
+        XCTAssertTrue(differed, "the check would see a shift")
+
+        // The land's colours, too: a window two rows south and one hex
+        // west lies three units south, ten of the mesh's rows, and every
+        // point the two share is coloured the same.
+        let south = LiveWindow(world: world, centre: LiveHex(q: 9, r: -2), radius: 12)
+        let near = TerrainMesh(relief: westRelief), far = TerrainMesh(relief: Relief(map: south.map, origin: Hex(9, -2)))
+        XCTAssertEqual(near.columns, far.columns)
+        for row in stride(from: near.rows / 2 - 20, to: near.rows / 2 + 20, by: 7) {
+            for column in stride(from: near.columns / 2 - 20, to: near.columns / 2 + 20, by: 5) {
+                let a = near.mesh.vertices[row * near.columns + column], b = far.mesh.vertices[(row - 10) * far.columns + column]
+                XCTAssertEqual(a.position.x, b.position.x, accuracy: 1e-4)
+                XCTAssertEqual(a.position.z - 3, b.position.z, accuracy: 1e-4)
+                XCTAssertEqual(a.position.y, b.position.y, accuracy: 1e-3)
+                XCTAssertEqual(a.color.x, b.color.x, accuracy: 1e-3)
+                XCTAssertEqual(a.color.y, b.color.y, accuracy: 1e-3)
+            }
+        }
+        // And the shaders are told where the window lies, so the ground's
+        // pattern and the water's swell are the world's as well.
+        let uniforms = FrameUniforms.make(camera: Camera(), size: CGSize(width: 100, height: 100), pixelsPerPoint: 1, time: 0, motion: 0,
+                                          radius: 12, terrain: near, hovered: nil, selected: nil)
+        let heart = LiveHex(q: 10, r: -4).centre
+        XCTAssertEqual(uniforms.origin.x, Float(heart.x), accuracy: 1e-4)
+        XCTAssertEqual(uniforms.origin.y, Float(heart.y), accuracy: 1e-4)
+    }
+
     func testCitiesStandAsHoldsAndArmiesAsCompaniesWhereTheyAre() throws {
         let world = world()
         let window = LiveWindow(world: world, centre: LiveHex(q: 10, r: -4), radius: 12)
@@ -284,6 +342,7 @@ final class LiveWindowTests: XCTestCase {
             var entry: [String: Any] = [
                 "name": name, "viewProjection": m(night.viewProjection), "eye": v(night.eye), "viewport": v(night.viewport),
                 "world": v(night.world), "highlight": v(night.highlight), "extent": v(night.extent), "heights": v(night.heights),
+                "origin": v(night.origin),
                 "houses": Array(HousePalette.texels(colours).prefix(128 * 4)), "lights": night.lightValues.flatMap(v),
                 "tiles": Data(tileBytes).base64EncodedString(),
                 "scene": ["batches": (frame.fixed + frame.batches).map { ["key": $0.key.description, "instances": bytes($0.instances), "count": $0.instances.count] },

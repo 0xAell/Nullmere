@@ -299,7 +299,7 @@ public final class LiveSession {
     public func land() -> (map: WorldMap, relief: Relief, terrain: TerrainMesh)? {
         guard let window else { return nil }
         if staged == nil {
-            let relief = Relief(map: window.map)
+            let relief = Relief(map: window.map, origin: Hex(window.centre.q, window.centre.r))
             staged = (WorldStage(map: window.map, relief: relief), relief, TerrainMesh(relief: relief))
         }
         return staged.map { (window.map, $0.relief, $0.terrain) }

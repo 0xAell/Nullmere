@@ -71,8 +71,11 @@ public enum Scatter {
         let layout = HexLayout(size: 1)
         var placed: [(x: Float, z: Float, radius: Float)] = []
         var pieces: [Piece] = []
+        // Rolled by the hex as the whole world numbers it, so a window's
+        // trees and stones are the world's and stay put as it moves.
+        let seat = Relief.seat(of: hex, origin: relief.origin)
         for (number, recipe) in recipes(tile).enumerated() {
-            let roll = { (salt: Int32) in Noise.unit(Int32(hex.q) &* 31 &+ Int32(number), Int32(hex.r) &* 17 &+ salt, 0x5CA7) }
+            let roll = { (salt: Int32) in Noise.unit(seat.q &* 31 &+ Int32(number), seat.r &* 17 &+ salt, 0x5CA7) }
             guard roll(1) < recipe.chance else { continue }
             let span = recipe.count.upperBound - recipe.count.lowerBound + 1
             let count = recipe.count.lowerBound + min(Int(roll(2) * Float(span)), span - 1)

@@ -80,6 +80,7 @@ extension FrameUniforms {
             heights: Vec4(terrain.originX, terrain.originZ, Float(terrain.columns), Float(terrain.rows)),
             daylight: daylight)
         frame.cast(MoonShadow.matrix(camera: camera, size: size, moon: daylight.key))
+        frame.origin = Vec4(terrain.shift.x, terrain.shift.z, 0, 0)
         return frame
     }
 

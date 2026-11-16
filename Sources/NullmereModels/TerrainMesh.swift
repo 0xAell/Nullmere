@@ -19,6 +19,10 @@ public struct TerrainMesh: Sendable {
     /// them, and a hundred thousand vertices are not to be counted each time.
     public let low: Vec3
     public let high: Vec3
+    /// Where the land's heart lies on the flat map of the world it is a
+    /// window on (`Relief.shift`): its colours' mottling and wandering
+    /// borders are that world's, and the shaders' ground and water follow.
+    public let shift: (x: Float, z: Float)
 
     /// The colour each terrain shows in plain white light, in sRGB: the
     /// land's own colours, as the day shows them. The night dims and blues
@@ -66,6 +70,7 @@ public struct TerrainMesh: Sendable {
         let columns = Int((2 * halfWidth / spacing).rounded(.up)) + 1
         let rows = Int((2 * halfDepth / spacing).rounded(.up)) + 1
         let originX = -halfWidth, originZ = -halfDepth
+        let (sx, sz) = relief.shift
 
         var heights = [Float](repeating: 0, count: columns * rows)
         var colours = [Vec3](repeating: .zero, count: columns * rows)
@@ -82,8 +87,10 @@ public struct TerrainMesh: Sendable {
                 // The point is first carried a little way by a slow noise, so
                 // where one ground gives way to the next wanders as country
                 // does and never follows a hex's outline.
-                let wx = x + TerrainMesh.wander * (2 * Noise.value(x * 0.8, z * 0.8, seed: 31) - 1)
-                let wz = z + TerrainMesh.wander * (2 * Noise.value(x * 0.8, z * 0.8, seed: 32) - 1)
+                // In the world's own numbers, so a window's borders are the world's.
+                let (ex, ez) = (x + sx, z + sz)
+                let wx = x + TerrainMesh.wander * (2 * Noise.value(ex * 0.8, ez * 0.8, seed: 31) - 1)
+                let wz = z + TerrainMesh.wander * (2 * Noise.value(ex * 0.8, ez * 0.8, seed: 32) - 1)
                 let t = Relief.triangle(x: wx, z: wz)
                 let wa = Relief.raise(t.wa, 2), wb = Relief.raise(t.wb, 2), wc = Relief.raise(t.wc, 2)
                 let total = max(wa + wb + wc, 1e-12)
@@ -92,11 +99,11 @@ public struct TerrainMesh: Sendable {
                 let strongest = wa >= wb && wa >= wc ? ta : (wb >= wc ? tb : tc)
                 if height > TerrainMesh.frostLine {
                     // In drifts, the rock showing through between them.
-                    let drift = 0.45 + 0.55 * Noise.value(x * 1.7, z * 1.7, seed: 23)
+                    let drift = 0.45 + 0.55 * Noise.value(ex * 1.7, ez * 1.7, seed: 23)
                     colour = colour.mix(TerrainMesh.frost, min((height - TerrainMesh.frostLine) / 1.1, 1) * drift)
                 }
                 // A little mottling, so no field is one flat colour.
-                colour *= 0.82 + 0.2 * Noise.value(x * 2.3, z * 2.3, seed: 21) + 0.16 * Noise.value(x * 0.45, z * 0.45, seed: 22)
+                colour *= 0.82 + 0.2 * Noise.value(ex * 2.3, ez * 2.3, seed: 21) + 0.16 * Noise.value(ex * 0.45, ez * 0.45, seed: 22)
                 colours[index] = colour
                 grounds[index] = strongest.code
             }
@@ -143,6 +150,7 @@ public struct TerrainMesh: Sendable {
         self.originX = originX
         self.originZ = originZ
         self.spacing = spacing
+        self.shift = relief.shift
     }
 
     /// The land of a map, made once and kept: every view of the same map

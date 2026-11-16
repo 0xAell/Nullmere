@@ -330,12 +330,15 @@ public final class WorldStage: @unchecked Sendable {
             // way to a company never changes which others are kept.
             let open = openByHex[hex] ?? [], kept = furnitureByHex[hex] ?? []
             let ash = burnt.contains(hex)
+            // Thinned and swaying by the hex as the whole world numbers it,
+            // so a window's furniture is the world's wherever it is taken.
+            let seat = Relief.seat(of: hex, origin: relief.origin)
             for (index, piece) in open.enumerated()
             where (share >= 1 || WorldStage.isLandmark(piece.key)
-                || Noise.unit(Int32(truncatingIfNeeded: hex.q), Int32(truncatingIfNeeded: hex.r), UInt32(41 + index)) < share)
+                || Noise.unit(seat.q, seat.r, UInt32(41 + index)) < share)
                 && (kept.count == open.count || kept.contains(piece)) {
                 guard let key = ash ? WorldStage.burnt(piece.key) : piece.key else { continue }
-                placed.append((key, ModelInstance(model: piece.transform, phase: WorldStage.phase(of: piece.hex, salt: 3),
+                placed.append((key, ModelInstance(model: piece.transform, phase: WorldStage.phase(of: Hex(Int(seat.q), Int(seat.r)), salt: 3),
                                                   hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)))))
             }
         }

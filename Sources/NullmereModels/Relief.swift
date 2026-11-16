@@ -9,14 +9,23 @@ public struct Relief: Sendable {
     public let radius: Int
     let map: WorldMap
     private let heights: [Float]
+    /// Where the map's heart lies in a larger world it is a window on: the
+    /// grain of the land is that world's, so the same hex rises the same
+    /// whichever window it is seen in. The heart of a whole map is (0, 0).
+    public let origin: Hex
+    /// The origin's heart on the larger world's flat map: what is added to
+    /// a point of the map to find it in that world.
+    public let shift: (x: Float, z: Float)
 
     /// The still lake's face.
     public static let waterline: Float = 0
     /// Distance between the hearts of neighbouring hexes.
     public static let hexSpacing: Float = Float(3).squareRoot()
 
-    public init(map: WorldMap) {
+    public init(map: WorldMap, origin: Hex = Hex(0, 0)) {
         self.map = map
+        self.origin = origin
+        shift = Relief.centre(of: origin)
         radius = map.radius
         heights = (0..<map.count).map { index in
             let tile = map[index]
@@ -83,6 +92,12 @@ public struct Relief: Sendable {
         (Relief.hexSpacing * (Float(hex.q) + Float(hex.r) / 2), 1.5 * Float(hex.r))
     }
 
+    /// A hex of the map as the larger world numbers it, for whatever is
+    /// rolled by hex: the same hex rolls the same in every window.
+    public static func seat(of hex: Hex, origin: Hex) -> (q: Int32, r: Int32) {
+        (Int32(truncatingIfNeeded: hex.q &+ origin.q), Int32(truncatingIfNeeded: hex.r &+ origin.r))
+    }
+
     /// The terrain of a hex, the Spine beyond the map.
     public func terrain(of hex: Hex) -> Terrain {
         map[hex]?.terrain ?? .spine
@@ -94,7 +109,8 @@ public struct Relief: Sendable {
         if let index = map.index(of: hex) { return heights[index] }
         let distance = (abs(hex.q) + abs(hex.r) + abs(hex.q + hex.r)) / 2
         let beyond = Float(distance - radius)
-        return Relief.baseHeight(.spine) + 0.2 + min(beyond, 8) * 0.3 + 0.3 * Noise.unit(Int32(hex.q), Int32(hex.r), 19)
+        let seat = Relief.seat(of: hex, origin: origin)
+        return Relief.baseHeight(.spine) + 0.2 + min(beyond, 8) * 0.3 + 0.3 * Noise.unit(seat.q, seat.r, 19)
     }
 
     /// The three hexes whose hearts surround a point, with how near the
@@ -136,7 +152,7 @@ public struct Relief: Sendable {
         // A hex too far from the point to matter adds nothing, and its grain
         // isn't worked out.
         func share(_ hex: Hex, _ weight: Float) -> Float {
-            weight > 1e-4 ? weight * (heartHeight(hex) + Relief.grain(terrain(of: hex), x, z)) : 0
+            weight > 1e-4 ? weight * (heartHeight(hex) + Relief.grain(terrain(of: hex), x + shift.x, z + shift.z)) : 0
         }
         return share(t.a, wa / total) + share(t.b, wb / total) + share(t.c, wc / total)
     }

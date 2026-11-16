@@ -67,6 +67,10 @@ final class DaylightTests: XCTestCase {
                      "moonFace", "water", "land", "glow"] {
             XCTAssertTrue(WorldShaders.source.contains("    float4 \(name);"), "\(name) is the shaders' too")
         }
+        // Last, where a window's land lies in the world it is a window on.
+        XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.origin), 464 + 14 * 16)
+        XCTAssertTrue(WorldShaders.source.contains("    float4 origin;"), "the origin is the shaders' too")
+        XCTAssertEqual(plain.origin, .zero, "a whole map is its own world")
     }
 
     /// Each hour's light is a light to see by: the key light up in the sky,

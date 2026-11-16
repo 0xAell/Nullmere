@@ -265,8 +265,9 @@ function uniforms(p) {
   set('frame.shadow', matrix, new Float32Array(frame.shadow || [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]));
   set('frame.still', gl.uniform4fv, new Float32Array(frame.still || [0, 0, 0, 0]));
   for (const name of ['eye', 'key', 'viewport', 'world', 'highlight', 'extent', 'haze', 'heights', 'keyColour', 'skyLight', 'groundLight',
-                      'fillColour', 'hazeColour', 'mistColour', 'mist', 'zenith', 'horizon', 'sun', 'moonFace', 'water', 'land', 'glow']) {
-    set('frame.' + name, gl.uniform4fv, new Float32Array(frame[name]));
+                      'fillColour', 'hazeColour', 'mistColour', 'mist', 'zenith', 'horizon', 'sun', 'moonFace', 'water', 'land', 'glow',
+                      'origin']) {
+    set('frame.' + name, gl.uniform4fv, new Float32Array(frame[name] || [0, 0, 0, 0]));
   }
   set('frame.lights[0]', gl.uniform4fv, new Float32Array(frame.lights || new Array(32).fill(0)));
   set('houses', gl.uniform4fv, new Float32Array(frame.houses));
