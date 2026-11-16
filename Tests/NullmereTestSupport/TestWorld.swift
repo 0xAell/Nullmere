@@ -58,20 +58,29 @@ public struct TestWorld: Sendable {
 
 extension TestWorld {
     /// The tile texture as a keeper knows this world: the tiles `known`
-    /// watched, each hold on them lit and its land named its House's (an
-    /// owner's sigil its index here).
-    public func tiles(known: (Hex) -> Bool = { _ in true }) -> [UInt8] {
+    /// known, of them those `watched` watched (all of them unless said),
+    /// each hold on them lit and its land named its House's (an owner's
+    /// sigil its index here).
+    public func tiles(known: (Hex) -> Bool = { _ in true }, watched: ((Hex) -> Bool)? = nil) -> [UInt8] {
         let ground = TileTexture.Ground(map: map)
         var bytes = ground.bytes
         for (index, hex) in map.hexes.enumerated() where known(hex) {
             let offset = ground.offsets[index]
-            bytes[offset + 1] |= 2 * TileTexture.seenStep
+            let seen: UInt8 = (watched?(hex) ?? true) ? 2 : 1
+            bytes[offset + 1] |= seen * TileTexture.seenStep
             if let hold = holds.first(where: { $0.position == hex }) {
                 bytes[offset + 1] |= TileTexture.holdFlag
                 TileTexture.name(hold.owner + 1, in: &bytes, at: offset)
             }
         }
         return bytes
+    }
+
+    /// Whether a hex is within `reach` of the first House's seat or of its
+    /// companies: what its keeper watches, as the game's sight had it.
+    public func watchedByTheFirst(_ hex: Hex, reach: Int = 3) -> Bool {
+        holds.contains { $0.owner == 0 && $0.position.distance(to: hex) <= reach }
+            || companies.contains { $0.owner == 0 && $0.position.distance(to: hex) <= reach }
     }
 }
 

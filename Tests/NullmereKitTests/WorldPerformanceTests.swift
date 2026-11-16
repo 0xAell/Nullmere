@@ -17,11 +17,12 @@ final class WorldPerformanceTests: XCTestCase {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
-        // A world well known about the keeper's seat, as some watches in.
+        // A world known whole, as a keeper's is well under way, what
+        // their seat and companies see watched.
         let state = TestWorld(seedText: "measured water")
         let seat = state.holds[0].position
         try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
-        try renderer.updateTiles(state.tiles { $0.distance(to: seat) <= 10 }, side: TileTexture.side(for: state.map))
+        try renderer.updateTiles(state.tiles(watched: { state.watchedByTheFirst($0) }), side: TileTexture.side(for: state.map))
         let terrain = try XCTUnwrap(renderer.land).terrain
 
         var results: [String] = []
@@ -95,7 +96,7 @@ final class WorldPerformanceTests: XCTestCase {
         renderer.meshSource = { Library.model($0).mesh }
         let state = TestWorld(seedText: "moonlit and measured")
         try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
-        try renderer.updateTiles(state.tiles(), side: TileTexture.side(for: state.map))
+        try renderer.updateTiles(state.tiles(watched: { state.watchedByTheFirst($0) }), side: TileTexture.side(for: state.map))
         let terrain = try XCTUnwrap(renderer.land).terrain
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         var scene = SceneFrame()
@@ -142,7 +143,7 @@ final class WorldPerformanceTests: XCTestCase {
         let radius: Int = seats > 12 ? Int((36.0 * (Double(seats) / 12.0).squareRoot()).rounded()) : 36
         let state = TestWorld(seedText: seed, houses: seats, radius: radius)
         try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
-        try renderer.updateTiles(state.tiles(), side: TileTexture.side(for: state.map))
+        try renderer.updateTiles(state.tiles(watched: { state.watchedByTheFirst($0) }), side: TileTexture.side(for: state.map))
         let terrain = try XCTUnwrap(renderer.land).terrain
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         var culled = SceneFrame()

@@ -44,9 +44,11 @@ final class WorldRenderTests: XCTestCase {
         init() {
             let state = TestWorld(seedText: "drawn in the round", houses: 12, radius: 24)
             let seat = state.holds[0].position
-            opening = state.tiles { $0.distance(to: seat) <= 5 }
+            opening = state.tiles(known: { $0.distance(to: seat) <= 5 }, watched: { state.watchedByTheFirst($0) })
             openingKnown = state.map.hexes.map { $0.distance(to: seat) <= 5 }
-            whole = state.tiles()
+            // The whole lake known, as its keeper knows it some ages on:
+            // only what their seat and companies see watched.
+            whole = state.tiles(watched: { state.watchedByTheFirst($0) })
             self.state = state
             terrain = TerrainMesh.shared(for: state.map)
             relief = Relief(map: state.map)

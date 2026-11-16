@@ -149,8 +149,8 @@ final class WorldPreviewTests: XCTestCase {
         let seat = world.holds[0].position
         // The country about the seat known, as its keeper first knows it,
         // and then the whole lake.
-        let opening = world.tiles { $0.distance(to: seat) <= 5 }
-        let whole = world.tiles()
+        let opening = world.tiles(known: { $0.distance(to: seat) <= 5 }, watched: { world.watchedByTheFirst($0) })
+        let whole = world.tiles(watched: { world.watchedByTheFirst($0) })
         let terrain = TerrainMesh(relief: Relief(map: world.map), spacing: 0.3)
         // The seat walled, with works for its townsfolk to go about.
         world.holds[0].levels = [.walls: 2, .granary: 2, .sawpit: 1, .quarry: 1, .saltworks: 1, .beacon: 1]

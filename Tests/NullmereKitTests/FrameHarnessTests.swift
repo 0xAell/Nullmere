@@ -15,12 +15,12 @@ final class FrameHarnessTests: XCTestCase {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
-        // A world well known about the seat, as a keeper's is some
-        // watches in.
+        // A world known whole, as a keeper's is well under way, what
+        // their seat and companies see watched.
         let state = TestWorld(seedText: "panning frames")
         let seat = state.holds[0].position
         try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
-        try renderer.updateTiles(state.tiles { $0.distance(to: seat) <= 10 }, side: TileTexture.side(for: state.map))
+        try renderer.updateTiles(state.tiles(watched: { state.watchedByTheFirst($0) }), side: TileTexture.side(for: state.map))
         let terrain = try XCTUnwrap(renderer.land).terrain
         let start = HexLayout(size: 1).center(of: seat)
         let scale = 28.0
