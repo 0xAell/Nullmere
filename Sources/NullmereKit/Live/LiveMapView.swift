@@ -1,4 +1,5 @@
 import AppKit
+import LauncherCore
 import NullmereCore
 import NullmereLiveStage
 import NullmereModels
@@ -23,6 +24,12 @@ struct LiveMapView: NSViewRepresentable {
     }
 
     let session: LiveSession
+    /// How much the world moves, as the launcher's Motion and the system's
+    /// Reduce Motion say; the frame rate it is held under; the share of
+    /// the screen's pixels it is drawn at: the launcher's display settings.
+    var motion: ResolvedMotion = .full
+    var frameRate: FrameRateCap = .sixty
+    var quality: RenderQuality = .native
     let onFailure: () -> Void
 
     /// Which window's land the view was last given.
@@ -52,6 +59,9 @@ struct LiveMapView: NSViewRepresentable {
         // Read here, so the view is brought up to date when either moves.
         let window = session.windowVersion
         let standing = session.standingVersion
+        view.motion = motion
+        view.frameRateCap = frameRate
+        view.quality = quality
         guard let land = session.land() else { return }
         view.radius = land.map.radius
         view.relief = land.relief

@@ -1,4 +1,5 @@
 import Foundation
+import LauncherCore
 import NullmereCore
 import NullmereLive
 import NullmereLiveStage
@@ -84,20 +85,26 @@ public struct LiveGameView: View {
     }
 
     private let session: LiveSession
+    /// The launcher's display settings: how much the map moves, its frame
+    /// rate and the share of the screen's pixels it is drawn at.
+    private let display: LauncherSettings
     /// Back to the launcher, where there is one to go back to.
     private let leave: (() -> Void)?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var panel: Panel?
     @State private var palette = false
     @State private var cannotDraw = false
 
-    public init(session: LiveSession, leave: (() -> Void)? = nil) {
+    public init(session: LiveSession, display: LauncherSettings = LauncherSettings(defaults: .standard), leave: (() -> Void)? = nil) {
         self.session = session
+        self.display = display
         self.leave = leave
     }
 
     /// The same, opened at one part of a destination.
-    init(session: LiveSession, opening: Panel?, leave: (() -> Void)? = nil) {
+    init(session: LiveSession, opening: Panel?, display: LauncherSettings = LauncherSettings(defaults: .standard), leave: (() -> Void)? = nil) {
         self.session = session
+        self.display = display
         self.leave = leave
         _panel = State(initialValue: opening)
     }
@@ -117,7 +124,8 @@ public struct LiveGameView: View {
                     LiveNotice(title: "The world can't be drawn", words: "This Mac's graphics could not draw it.", button: nil) {}
                 } else {
                     let items = session.mapItems()
-                    LiveMapView(session: session, onFailure: { cannotDraw = true })
+                    LiveMapView(session: session, motion: display.motion.resolved(systemReducesMotion: reduceMotion), frameRate: display.frameRate,
+                                quality: display.quality, onFailure: { cannotDraw = true })
                         .ignoresSafeArea()
                         .accessibilityElement(children: .contain)
                         .accessibilityLabel("The realm's map")

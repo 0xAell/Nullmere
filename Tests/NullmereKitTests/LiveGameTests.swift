@@ -1,4 +1,5 @@
 import AppKit
+import LauncherCore
 import SwiftUI
 import XCTest
 @testable import NullmereKit
@@ -344,6 +345,34 @@ final class LiveGameTests: XCTestCase {
         XCTAssertEqual(session.windowVersion, 2)
         XCTAssertEqual(map.camera, session.camera)
         map.draw(map.bounds)
+    }
+
+    /// The map moves, and is drawn, as the launcher's display settings say:
+    /// its Motion, its frame rate and its resolution.
+    func testTheRealmsMapKeepsTheLaunchersDisplaySettings() async throws {
+        guard WorldMetalView.systemDevice != nil else { throw XCTSkip("No Metal device available") }
+        let (session, _) = await playing()
+        let suite = "live-display-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var display = LauncherSettings(defaults: defaults)
+        display.motion = .still
+        display.frameRate = .thirty
+        display.quality = .efficient
+        let size = NSSize(width: 800, height: 500)
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let host = NSHostingView(rootView: LiveGameView(session: session, display: display).frame(width: size.width, height: size.height))
+        window.contentView = host
+        window.orderFrontRegardless()
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        spin(1)
+
+        let map = try XCTUnwrap(find(WorldMetalView.self, in: host), "The Metal view is in the window")
+        XCTAssertEqual(map.motion, .still, "Still, as the launcher's Motion says")
+        XCTAssertEqual(map.frameRateCap, .thirty)
+        XCTAssertEqual(map.quality, .efficient)
     }
 
     /// Counsel with a commander: a stand-in speaking for the model, the

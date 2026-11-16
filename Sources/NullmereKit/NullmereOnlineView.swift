@@ -145,7 +145,7 @@ public struct NullmereOnlineView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let rebuilt = shell.rebuilt {
-                LiveGameView(session: rebuilt) { shell.leaveRealm() }
+                LiveGameView(session: rebuilt, display: shell.launcher.displaySettings) { shell.leaveRealm() }
                     .transition(.opacity)
             } else {
                 LauncherRootView(model: shell.launcher)
