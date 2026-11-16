@@ -33,14 +33,14 @@ struct LiveDayPanel: View {
                     Spacer(minLength: 0)
                     LiveSmall(words: deed.isDone ? "Done: \(deed.marks) marks" : "\(LiveWords.grouped(deed.done)) of \(LiveWords.grouped(deed.asks))", dim: !deed.isDone)
                 }
-                // Its bar is said as the row's value: a bar of AppKit's own
-                // inside a combined row is a child the row doesn't own.
                 ProgressView(value: deed.progress)
                     .progressViewStyle(.linear)
                     .tint(Palette.glow)
-                    .accessibilityHidden(true)
             }
-            .accessibilityElement(children: .combine)
+            // One element, said whole: a row combining its children left
+            // them children it did not own (CI runs 1026 and 1032's audit).
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(deed.isDone ? "\(deed.words) Done: \(deed.marks) marks" : "\(deed.words) \(LiveWords.grouped(deed.done)) of \(LiveWords.grouped(deed.asks))")
             .accessibilityValue(deed.isDone ? "Done" : "\(Int((deed.progress * 100).rounded())) percent")
         }
 
