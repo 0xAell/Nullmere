@@ -80,6 +80,7 @@ final class SingleInstanceTests: XCTestCase {
 
     /// The copy under test is the only one running: it carries on, with no
     /// other to hand over to.
+    @MainActor
     func testTheOnlyCopyRunningCarriesOn() {
         XCTAssertFalse(SingleInstance.handOver())
     }
