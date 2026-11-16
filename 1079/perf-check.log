@@ -1,0 +1,26 @@
+PERF-CHECK this runner runs the plain work at 440.7 ms against 353.0: CPU figures allowed x1.25
+PERF-CHECK calibration.cpu 440.68 ms (baseline 353.00) CALIBRATION
+PERF-CHECK lake.gpu.p50 8.94 ms (baseline 8.30, allowed 15.54) OK
+PERF-CHECK lake.gpu.p95 9.28 ms (baseline 8.30, allowed 15.54) OK
+PERF-CHECK live.stage.cpu.p50 9.89 ms (baseline 7.00, allowed 13.11) OK
+PERF-CHECK live.stage.cpu.p95 10.17 ms (baseline 9.00, allowed 19.66) OK
+PERF-CHECK near.gpu.scale60.p50 8.14 ms (baseline 8.28, allowed 15.51) OK
+PERF-CHECK near.gpu.scale60.plain.p50 7.61 ms (baseline 8.66, allowed 16.22) OK
+PERF-CHECK pan.frame.p50 8.53 ms (baseline 8.96, allowed 16.70) OK
+PERF-CHECK pan.frame.p95 8.88 ms (baseline 9.39, allowed 16.70) OK
+PERF-CHECK pan.gpu.p50 8.22 ms (baseline 8.56, allowed 16.03) OK
+PERF-CHECK pan.gpu.p95 8.53 ms (baseline 8.87, allowed 16.61) OK
+PERF-CHECK wide.gpu.scale28.p50 12.67 ms (baseline 12.44, allowed 16.70) OK
+PERF-CHECK wide.gpu.scale28.whole.p50 22.91 ms (baseline 23.23, allowed 43.50) OK
+PERF-CHECK wider.gpu.scale28.bare.p50 9.95 ms NEW (no baseline yet)
+PERF-CHECK wider.gpu.scale28.day.bare.p50 12.56 ms NEW (no baseline yet)
+PERF-CHECK wider.gpu.scale28.day.p50 16.55 ms NEW (no baseline yet)
+PERF-CHECK wider.gpu.scale28.day.plain.p50 15.98 ms NEW (no baseline yet)
+PERF-CHECK wider.gpu.scale28.p50 14.08 ms (baseline 14.37, allowed 16.70) OK
+PERF-CHECK world.gpu.scale12.p50 6.20 ms (baseline 6.19, allowed 11.59) OK
+PERF-CHECK world.gpu.scale12.p95 6.41 ms (baseline 6.62, allowed 12.40) OK
+PERF-CHECK world.gpu.scale28.day.p50 10.69 ms NEW (no baseline yet)
+PERF-CHECK world.gpu.scale28.p50 8.54 ms (baseline 8.61, allowed 16.12) OK
+PERF-CHECK world.gpu.scale28.p95 8.87 ms (baseline 8.95, allowed 16.70) OK
+PERF-CHECK world.gpu.scale60.p50 4.83 ms (baseline 5.70, allowed 10.67) OK
+PERF-CHECK world.gpu.scale60.p95 5.50 ms (baseline 7.37, allowed 13.80) OK
