@@ -155,6 +155,14 @@ hold walled in stone). Two ways off the old rules:
    Heritage, WildKind, ShrineKind, Lake and StoreMarks whole, but for
    the bonuses the rules weigh and the heritages they deal; Find's kind
    as FindKind, `Find.Kind` an alias of it while the rules stay.
+   With that, NullmereModels and NullmereSound need nothing of the
+   rules' (the models named a commander's `Skill` only for `FuryLook.of`,
+   which only a test called, and which moved to that test): both depend
+   on NullmereLand alone, and NullmereLiveStage imports the land, not the
+   rules. Their tests still build worlds from GameState (step 3). The
+   trailer can do the same (it names Heritage and WildKind alone), left
+   until its sources change for another reason: a change there renders
+   the film again on the Mac.
 3. Test fixtures rebuilt on it, a few files at a time, each step green.
 4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
 5. NullmereCore and NullmereCoreTests deleted; coverage floors and

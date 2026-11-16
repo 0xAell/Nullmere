@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 
 /// What an alliance raises on its land for its stores: a storehouse, and a
 /// yard for each store, each with the alliance's colour about it, made in

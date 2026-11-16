@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 
 /// What a model shows.
 public enum ModelKey: Hashable, Sendable, CustomStringConvertible {

@@ -437,3 +437,18 @@ final class WeatherTests: XCTestCase {
         XCTAssertLessThan(Weather.eclipse.moonFactor, Weather.allCases.filter { $0 != .eclipse }.map(\.moonFactor).min()!)
     }
 }
+
+/// The look the turn-based game's commanders' skills fired in, by the
+/// commander's archetype: a warden's ward, a vanguard's blaze, an
+/// outrider's volley, a gleaner's ring, a wallbreaker's quake.
+private extension FuryLook {
+    static func of(_ skill: Skill) -> FuryLook {
+        switch skill.archetype {
+        case .warden: return .ward
+        case .vanguard: return .blaze
+        case .outrider: return .volley
+        case .gleaner: return .ring
+        case .wallbreaker: return .quake
+        }
+    }
+}

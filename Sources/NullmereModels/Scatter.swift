@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 
 /// The land's furniture over the whole map, by each hex's terrain and
 /// feature: firs in the blackwood, crags on the Spine, mounds and stones on

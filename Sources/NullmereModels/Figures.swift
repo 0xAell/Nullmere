@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 
 /// The figures companies are drawn as, by kind and tier, and what walks
 /// out of the far country.

@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 
 /// The land as one mesh: a grid of points over the map and the Spine round
 /// it, each raised to the relief's height and coloured by the ground there,

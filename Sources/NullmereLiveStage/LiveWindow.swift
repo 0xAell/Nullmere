@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 import NullmereLive
 import NullmereModels
 import NullmereWorld

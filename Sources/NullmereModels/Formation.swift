@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 
 /// How a company is drawn in its hex: how many figures it shows by its
 /// health and its muster, and where each stands. Offsets are from the hex's heart in the

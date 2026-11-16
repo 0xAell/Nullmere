@@ -1,21 +1,8 @@
-import NullmereCore
-
-/// How a commander's skill looks as it fires, by the commander's
-/// archetype: a ward of pale light for a warden's, fire thrown out for a
-/// vanguard's, shafts of light falling for an outrider's, a ring of gold
-/// for a gleaner's, the ground breaking for a wallbreaker's.
+/// How a commander's skill looks as it fires: a ward of pale light, fire
+/// thrown out, shafts of light falling, a ring of gold, or the ground
+/// breaking.
 public enum FuryLook: String, CaseIterable, Sendable {
     case ward, blaze, volley, ring, quake
-
-    public static func of(_ skill: Skill) -> FuryLook {
-        switch skill.archetype {
-        case .warden: return .ward
-        case .vanguard: return .blaze
-        case .outrider: return .volley
-        case .gleaner: return .ring
-        case .wallbreaker: return .quake
-        }
-    }
 
     /// The light it gives the ground about it, at its brightest.
     public var glow: Vec3 {

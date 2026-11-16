@@ -33,14 +33,14 @@ var targets: [Target] = [
     // The rebuilt realm as the renderer takes it: a window of its land as
     // a map, its cities as holds and its armies as companies, each where
     // it is at a moment. Pure Swift, so tested on Linux.
-    .target(name: "NullmereLiveStage", dependencies: ["NullmereLive", "NullmereRealm", "NullmereWorld", "NullmereModels", "NullmereCore"]),
+    .target(name: "NullmereLiveStage", dependencies: ["NullmereLive", "NullmereRealm", "NullmereWorld", "NullmereModels", "NullmereLand"]),
     .testTarget(name: "NullmereLiveStageTests", dependencies: ["NullmereLiveStage", "NullmereLive", "NullmereWorld", "NullmereModels", "NullmereCore", "NullmereRealm",
                                                            "NullmereTestSupport"]),
     .testTarget(name: "NullmereCoreTests", dependencies: ["NullmereCore"]),
     // The world's shapes: the land's relief and mesh, and every model in
     // it, built from solids in code, with the rigs that move them. Pure
     // Swift, so every shape is built and tested on Linux too.
-    .target(name: "NullmereModels", dependencies: ["NullmereCore"]),
+    .target(name: "NullmereModels", dependencies: ["NullmereLand"]),
     .testTarget(name: "NullmereModelsTests", dependencies: ["NullmereModels", "NullmereCore"]),
     // The world as the GPU draws it, apart from the GPU: the camera, the
     // shaders' source, the data they read and how a frame's models are
@@ -50,7 +50,7 @@ var targets: [Target] = [
     // The game's sound, apart from the Mac's audio engine: the synthesiser,
     // its instruments, its hall and the score written as it plays. Pure
     // Swift, so every sound is rendered and measured on Linux too.
-    .target(name: "NullmereSound", dependencies: ["NullmereCore"]),
+    .target(name: "NullmereSound", dependencies: ["NullmereLand"]),
     .testTarget(name: "NullmereSoundTests", dependencies: ["NullmereSound", "NullmereCore"]),
     // The trailer, apart from the GPU: its world, its shots and what moves
     // in them, and its score. Pure Swift, so every shot is staged and the

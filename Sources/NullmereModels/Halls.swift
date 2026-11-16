@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 
 /// An alliance's hall: a great timbered hall on a platform of dressed
 /// stone, its roof in the alliance's colour with carved horns at its
