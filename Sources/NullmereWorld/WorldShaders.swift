@@ -1148,6 +1148,12 @@ public enum WorldShaders {
         for (int i = 0; i < 4; i++) {
             lit += nm_pointLight(albedo, world, n, frame.lights[i], frame.lights[i + 4]);
         }
+        // By day what stands on the land is seated in it: the foot of its
+        // walls, trunks and legs a little darker where the ground and the
+        // air about it keep the sky off, fading out a few hundredths up;
+        // what lies flat, a field's furrows, a lane, keeps its light.
+        float foot = 1.0 - 0.45 * (1.0 - smoothstep(0.0, 0.15, localY)) * (1.0 - abs(normalize(localNormal).y));
+        lit *= mix(1.0, foot, frame.groundLight.a);
         float facing = 1.0 - max(dot(n, toEye), 0.0);
         // The key light behind outlines what stands against it.
         float behind = max(dot(-toEye, frame.key.xyz), 0.0);
