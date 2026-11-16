@@ -80,12 +80,9 @@ open "build/Nullmere Online.app"
 ```
 
 The public realm on SpacetimeDB's maincloud is not raised yet, so for now a
-realm of your own is the way in. `scripts/build-companion.sh` builds Nullmere
-Companion for the iOS Simulator, and with `--device` for an iPhone itself,
-unsigned; signed by a developer team in Xcode it is meant to run on an
-iPhone with iOS 26, which has not yet been tried on one.
+realm of your own is the way in.
 [DEVELOPING.md](docs/DEVELOPING.md) covers
-Xcode, the tests, releases, the companion and the previews;
+Xcode, the tests, releases and the previews;
 [REALM.md](docs/REALM.md) raising a realm on a SpacetimeDB server.
 
 ## Where it stands

@@ -42,46 +42,11 @@ on the Mac that built it. To sign with a Developer ID instead, set
 secure timestamp, ready to notarize. `VERSION` sets the marketing version
 (default `0.3.0`).
 
-### Nullmere Companion, the keeper's iPhone app
+### The phone
 
-The companion is built from the same package: its screens in
-`Sources/NullmereCompanion` (SwiftUI), over `Sources/NullmereCompanionCore`
-(the link, the session and what the phone lists of a House, Foundation
-only, so tested on Linux too).
-
-- **For the iOS Simulator:** `scripts/build-companion.sh` builds it with
-  `swift build --triple arm64-apple-ios26.0-simulator`, bundles
-  `build/companion/Nullmere Companion.app` with its Info.plist (the
-  `nullmere` link scheme its QR codes open, and local networking for a
-  realm raised on the Mac), compiles the Mac app's Liquid Glass icon
-  (`Packaging/AppIcon.icon`) for the phone, puts its entitlements in the
-  binary as Xcode does for a simulator build, and signs it to run there. Then
-  `xcrun simctl install booted "build/companion/Nullmere Companion.app"`.
-- **On the keeper's iPhone:** open `Package.swift` in Xcode, choose the
-  **NullmereCompanion** scheme and the phone, and set an Apple developer
-  team to sign it. A phone needs iOS 26.
-- **Both apps at once:** `scripts/smoke-test-companion.sh`, with the
-  turn-based realm raised on this Mac (by `scripts/raise-realm.sh local`,
-  deleted with the steward on 16 November),
-  enters it with a debug build of the Mac app, which offers a link, and
-  runs the companion in a simulator, which takes it, gives orders (a
-  company dug in, and a watch on, the blackwood set alight where it
-  stands, a company's torches doused, a watchfire lit from its chart), is
-  set aside and comes in again; the Mac must see the phone's orders, the
-  fire burning where the phone set it, the company it doused marching dark
-  and the watchfire burning where the phone lit it. Then
-  the phone takes counsel of a commander through its own on-device model,
-  as the Mac's check does (unverified where the simulator's Mac can't run
-  the model). The companion pairs only with the turn-based game, which
-  Play no longer opens, so CI no longer builds it or runs the two apps
-  together (16 November); it is to be rebuilt on the rebuilt realm's
-  client (docs/rework-plan.md, 3.5), and these steps tell it as it was.
-  It also builds the companion for an iPhone itself
-  (`scripts/build-companion.sh --device`: arm64, the iOS SDK) into
-  build/companion-device/, bundled but unsigned. For a keeper's own
-  iPhone it is signed with an Apple developer team in Xcode: open
-  Package.swift, choose the NullmereCompanion scheme and the device, and
-  set the team.
+Nullmere Companion, the keeper's iPhone app, paired only with the
+turn-based game; it was deleted with that game on 16 November, and is to
+be rebuilt on the rebuilt realm's client (docs/rework-plan.md, 3.5).
 
 ## Releasing
 
@@ -183,15 +148,6 @@ builds also take:
 | `NULLMERE_IDENTITY_FILE` | Keep the player's identity in this file instead of the keychain |
 | `NULLMERE_TEXT` | `larger`: show the larger type without remembering it |
 | `NULLMERE_COUNSEL_REPORT` | Take counsel of a commander through this Mac's own model, held to counsel's rules, write the report to this file and quit (scripts/check-counsel.sh) |
-
-The companion's debug builds take `NULLMERE_COMPANION_LINK` (a link as the
-Mac's QR code carries it: taken at once, then an order given, the phone set
-aside and back, and a report written to its Documents),
-`NULLMERE_COMPANION_TAB` (`house`, `army`, `alliance`, or `counsel` for
-counsel with the House's first free commander) and `NULLMERE_COUNSEL_REPORT`
-(counsel taken through the phone's own model as the Mac's check takes it,
-its report written to Documents/counsel-report.txt), passed to the
-simulator as `SIMCTL_CHILD_` variables.
 
 Release builds ignore them all and always require the model.
 
@@ -481,9 +437,7 @@ Sources/
   NullmereTrailer/    The trailer apart from the GPU: its world, its shots and what moves in them, and its score. Pure Swift
   NullmereKit/        The window's realm: its screens over the rebuilt realm (Live/), the Metal world, the audio engine
   NullmereCounsel/    Counsel of a House's commanders through Apple's on-device model (Foundation Models), and its check on a real Mac
-  NullmereCompanionCore/ The keeper's phone apart from its screens: the link, the session, what it lists of a House. Foundation only
-  NullmereCompanion/  Nullmere Companion, the keeper's iPhone app (SwiftUI); built for iOS by scripts/build-companion.sh
-Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereCounselTests, NullmereCompanionCoreTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a SpacetimeDB in memory)
+Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereCounselTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a SpacetimeDB in memory)
 realm/                The rebuilt realm: its rules (Rust) inside one SpacetimeDB module, tested by realm/check.sh
 news/                 news.json, the launcher's news feed
 perf/                 CI's performance baseline; scripts/measure-mac.sh adds figures from real Macs in perf/mac/

@@ -201,11 +201,8 @@ Mac is the one that counts.
   about with the counsel's tools, an order put forward that the realm would
   take, what was said remembered, and an answer stopped as it begins, each
   held to counsel's rules; then the frame, GPU and turn figures CI holds to
-  `perf/baseline.json` are taken here and set beside CI's; then Nullmere
-  Companion, built for the iOS Simulator and run in one, takes counsel and
-  has the House's clerk read a keeper's own words into the order book
-  through the phone's model, which in a simulator is this Mac's. When all
-  pass, all are committed to `perf/mac/`.
+  `perf/baseline.json` are taken here and set beside CI's. When all pass,
+  all are committed to `perf/mac/`.
 
   ```sh
   scripts/check-on-mac.sh
@@ -217,17 +214,13 @@ Mac is the one that counts.
     The voices (Apple Intelligence) passed
     Counsel (Apple Intelligence) passed
     The figures (Apple silicon)  passed
-    The phone (its Mac's model)  passed
   ```
 
   and it says `Committed. Put it on record: git push`. Counsel reading
   `unverified (the model isn't ready)` means this Mac's model wasn't ready
   to be asked: turn Apple Intelligence on, let its model download, and run
-  it again; the phone reading `unverified (the model gave no answer)` means
-  the same of the simulator's (it needs an iPhone simulator: Xcode,
-  Settings, Components). Each part can be run alone: `scripts/check-voices.sh`,
-  `scripts/check-counsel.sh`, `scripts/measure-mac.sh`,
-  `scripts/check-phone-counsel.sh`.
+  it again. Each part can be run alone: `scripts/check-voices.sh`,
+  `scripts/check-counsel.sh`, `scripts/measure-mac.sh`.
 
 - [ ] **Changes things.** Put them on record:
 
