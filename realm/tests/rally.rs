@@ -449,6 +449,10 @@ fn a_rally_against_a_city_musters_marches_and_storms_it_together() {
     assert_eq!((defence[0].foe, defence[0].stood), (ada, 5_000));
     assert!(defence[0].words.starts_with("Ada's rally of 2 armies took your city by storm and carried off "), "{}", defence[0].words);
     assert!(defence[0].words.ends_with(" Your city is at peace for 4 hours."), "{}", defence[0].words);
+    // The kill points shared by how many each army brought: three fifths
+    // and two fifths of the five hundred defenders struck down.
+    assert_eq!((rules::fame_of(&db, ada).kills, rules::fame_of(&db, bryn).kills), (300, 200));
+    assert_eq!(rules::fame_of(&db, cole).felled, 5_000 - home.iter().map(|march| march.soldiers).sum::<u64>());
 }
 
 #[test]

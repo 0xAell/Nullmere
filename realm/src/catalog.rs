@@ -360,6 +360,12 @@ pub enum Troops {
 /// The highest tier of troops.
 pub const TOP_TIER: u32 = 5;
 
+/// What a soldier struck down in a battle between cities is worth to the
+/// one who struck them down, by tier: the realm's kill points.
+pub fn kill_points(tier: u32) -> u64 {
+    [1, 2, 4, 10, 20][tier.clamp(1, TOP_TIER) as usize - 1]
+}
+
 /// What one soldier of a kind and tier is and costs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Soldier {

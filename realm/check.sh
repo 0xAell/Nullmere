@@ -234,6 +234,7 @@ adas = unpacked(rows(ada, "SELECT * FROM my_city")[0]["hex"])
 refused = call(bryn, "send", adas[0], adas[1], 3, [{"kind": 1, "tier": 1, "count": 1}], 0)
 check("an army sent against a new city is refused", (refused or "").startswith("That city is at peace for another "), True)
 check("and against one's own", call(bryn, "send", home[0], home[1], 3, [{"kind": 1, "tier": 1, "count": 1}], 0), "That is your own city.")
+check("the realm's fame is for all to read, and no one has any before a city is fought", rows(nobody, "SELECT * FROM fame"), [])
 
 # A player's first tasks: the first is to raise the Keep, which Ada has done.
 tasks = rows(nobody, "SELECT * FROM task")

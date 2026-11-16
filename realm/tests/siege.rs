@@ -4,7 +4,7 @@
 
 use realm::catalog::{self, Building as Kind, Goods, Item, Troops};
 use realm::hex::Hex;
-use realm::rows::{Building, Chest, City, Haul, March, Prize, Report, Satchel, Stock, Troop, Ware};
+use realm::rows::{Building, Chest, City, Fame, Haul, March, Prize, Report, Satchel, Stock, Troop, Ware};
 use realm::rules::{self, Asked, Refusal};
 use realm::store::{Mem, Seconds, Table};
 
@@ -207,6 +207,13 @@ fn an_army_takes_a_city_by_storm_and_carries_off_what_it_can() {
     );
     let garrison = rules::troop(&db, his.id, Troops::Spearmen, 1);
     assert_eq!((garrison.ready, garrison.wounded), (0, 50));
+    // Each is the more famous for it: a point for each first-tier soldier
+    // struck down, wounded or slain, and their own dead counted.
+    let (hers_now, his_now) = (rules::fame_of(&db, ada), rules::fame_of(&db, bryn));
+    assert_eq!((hers_now.kills, hers_now.felled, hers_now.dead), (100, 100, told.dead));
+    assert_eq!((his_now.kills, his_now.felled, his_now.dead), (lost, lost, 50));
+    assert_eq!(Table::<Fame>::all(&db).len(), 2, "no fame for those who fought no city");
+    assert_eq!((catalog::kill_points(1), catalog::kill_points(3), catalog::kill_points(5), catalog::kill_points(9)), (1, 4, 20, 20));
     let after = stock(&db, his.id);
     assert_eq!(before.minus(after), carried, "what she carries is what he lost");
     let beaten = Table::<City>::get(&db, his.id).unwrap();

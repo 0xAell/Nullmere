@@ -1275,6 +1275,23 @@ pub struct Favour {
 }
 row!(Favour in favour, by player);
 
+/// What a player has struck down of other players' soldiers in battles
+/// between cities, and lost of their own: for all to read, the realm's
+/// rankings. Keyed by player; there is no row until they have fought one.
+#[spacetimedb::table(accessor = fame, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Fame {
+    #[primary_key]
+    pub player: u64,
+    /// Kill points: each soldier struck down, wounded or slain, by its tier.
+    pub kills: u64,
+    /// How many soldiers they struck down.
+    pub felled: u64,
+    /// How many of their own soldiers died.
+    pub dead: u64,
+}
+row!(Fame in fame, by player);
+
 /// What a city has learnt of a topic: its owner's alone to read. Keyed
 /// by city and topic.
 #[spacetimedb::table(accessor = lore)]
@@ -1383,6 +1400,7 @@ pub trait Db:
     + Table<Daily>
     + Table<Grace>
     + Table<Favour>
+    + Table<Fame>
     + Table<Ware>
     + Table<Satchel>
     + Table<Trial>
@@ -1448,6 +1466,7 @@ impl<
             + Table<Daily>
             + Table<Grace>
             + Table<Favour>
+            + Table<Fame>
             + Table<Ware>
             + Table<Satchel>
             + Table<Trial>

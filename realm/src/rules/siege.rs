@@ -299,6 +299,15 @@ fn storm(db: &mut impl Db, marches: &mut [March]) {
     }
     let stood: u64 = defenders.iter().map(|unit| unit.count).sum();
     let fell: u64 = outcome.defenders_lost.iter().sum();
+    // Fame: each side's kill points for what it struck down, wounded or
+    // slain, by tier; a rally's shared by how many each army brought.
+    let struck = super::kill_points(defenders.iter().zip(&outcome.defenders_lost).map(|(unit, lost)| (unit.tier, *lost)));
+    for (index, march) in marches.iter().enumerate() {
+        let part = |all: u64| (all as u128 * fought[index] as u128 / together.max(1) as u128) as u64;
+        super::add_fame(db, march.owner, part(struck), part(fell), dead[index]);
+    }
+    let suffered = super::kill_points(own.iter().zip(&outcome.attackers_lost).map(|((_, squad), lost)| (squad.tier, *lost)));
+    super::add_fame(db, city.owner, suffered, together - standing, slain);
     seen_by_leader(db, &marches[0], 2 * fell + together / 10);
     // Whoever kept the city has seen as much of its attackers fall.
     super::seen_by_keeper(db, city.owner, 2 * (together - standing));
