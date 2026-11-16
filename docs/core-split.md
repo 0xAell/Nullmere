@@ -130,7 +130,18 @@ hold walled in stone). Two ways off the old rules:
    the three whole files that are the land's own (Hex, PlainCases,
    Varint, their members the rules used made public), NullmereCore
    depending on it and passing it on (`@_exported`), so nothing else
-   changes yet; the in-part files follow a few at a time.
+   changes yet; the in-part files follow a few at a time. Green on
+   Linux (Realm rules run 81). Next, WorldMap, Terrain and LieOfTheLand:
+   their old-rule members stay behind as NullmereCore extensions
+   (`Tile.yield`, `Terrain.yield`, `Feature.yield` on Stock; `unexplored`
+   on GameState.unknown; `known(by:from:)` on Explored), `RealmState.mapPage`
+   becomes a constant of the land's (`WorldMap.page`, the rules' taken
+   from it), and the twenty-odd members the rules reach that are internal
+   now (`steps`, `neighbours`, `lie`, `claims`, `nearest`, `deep`,
+   `reliefOf`, `groundOf`, `apart`, `set(index:)`, `forEachIndex`, the
+   encoders `ground(of:)`, `relief(of:)`, `tiles(...)`) take `package`
+   access, which the package's tools (5.9) give: seen by the rules, not
+   beyond the package.
 3. Test fixtures rebuilt on it, a few files at a time, each step green.
 4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
 5. NullmereCore and NullmereCoreTests deleted; coverage floors and
