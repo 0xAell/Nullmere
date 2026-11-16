@@ -499,10 +499,12 @@ pub fn recall(db: &mut impl Db, player: u64, march: u64) -> Result<March, Refusa
     Table::<March>::get(db, march.id).ok_or(Refusal::NoSuchMarch)
 }
 
-/// Whether a hex is clear for a new city: nothing on it, and no other
-/// city within the spacing cities keep.
+/// Whether a hex is clear for a new city: nothing on it or beside it, so
+/// no barrow, site or stone stands in its town, and no other city within
+/// the spacing cities keep. (A site or barrow spawned later keeps clear
+/// of a city by its own rule.)
 pub(super) fn clear_for_city(db: &impl Db, hex: Hex, spacing: u32) -> bool {
-    Table::<Place>::get(db, hex.packed()).is_none()
+    hex.within(1).iter().all(|near| Table::<Place>::get(db, near.packed()).is_none())
         && hex.within(spacing).iter().all(|near| Table::<Place>::get(db, near.packed()).is_none_or(|place| place.kind != Place::CITY))
 }
 

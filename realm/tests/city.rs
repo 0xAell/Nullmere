@@ -112,6 +112,13 @@ fn those_who_join_about_the_same_time_are_neighbours() {
     // Sixty cities make one country, not a scattering over the world.
     let widest = cities.iter().flat_map(|a| cities.iter().map(|b| a.distance(*b))).max().unwrap();
     assert!(widest < 70, "the sixty lie {widest} hexes across");
+    // None settled against a barrow, a site or anything else on the land:
+    // nothing stands in a city's town.
+    for (index, city) in cities.iter().enumerate() {
+        for near in city.ring(1) {
+            assert!(Table::<Place>::get(&db, near.packed()).is_none(), "city {index} has something beside it at {}, {}", near.q, near.r);
+        }
+    }
 
     // Where the country about the latest has no room left, the next is
     // begun elsewhere: a small world fills to its last places all the same.
@@ -127,7 +134,8 @@ fn those_who_join_about_the_same_time_are_neighbours() {
     assert!(count >= 12, "a world sixteen hexes out has room for a dozen cities: {count}");
     for hex in Hex::new(0, 0).within(16) {
         let length = hex.length();
-        let bare = Table::<Place>::get(&small, hex.packed()).is_none();
+        // Room: the hex and those beside it bare.
+        let bare = hex.within(1).iter().all(|near| Table::<Place>::get(&small, near.packed()).is_none());
         if bare && length >= land::outer_from(16) && length <= 16 * 86 / 100 && land::ground(42, 16, hex).is_buildable() {
             assert!(all.iter().any(|city| Hex::unpacked(city.hex).distance(hex) <= rules::CITY_SPACING), "room was left at {}, {}", hex.q, hex.r);
         }
