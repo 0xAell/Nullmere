@@ -147,6 +147,31 @@ final class LiveWindowTests: XCTestCase {
     /// The window staged as the app stages a world, with its land's
     /// furniture: written out for the browser preview where a folder is
     /// named, from the rows above or, where a realm is named, from it.
+    func testAnAlliancesLandIsTintedInItsColour() {
+        var rows = LiveWindowTests.rows()
+        // A wardstone of the fifth alliance two hexes east of Ada's city, standing since 1,500; another raised but not yet standing.
+        rows["ward"] = [[.number(3), .number(5), .number(Double(LiveHex(q: 12, r: -4).packed)), .number(1), .number(1_500)],
+                        [.number(4), .number(6), .number(Double(LiveHex(q: 2, r: -4).packed)), .number(2), .number(9_000)]]
+        let world = LiveWorld(snapshot: rows)
+        let window = LiveWindow(world: world, centre: LiveHex(q: 10, r: -4), radius: 12)
+        let side = TileTexture.side(for: window.map)
+        func owner(_ tiles: [UInt8], _ hex: Hex) -> Int { TileTexture.owner(tiles, at: ((hex.r + 12) * side + hex.q + 12) * 4) }
+        let tiles = window.tiles(holds: [], in: world, at: 2_000)
+        XCTAssertEqual(LiveWindow.allianceSigil(of: 5), 517)
+        XCTAssertEqual(owner(tiles, Hex(2, 0)), 518, "the wardstone's own hex")
+        XCTAssertEqual(owner(tiles, Hex(5, 0)), 518, "three steps from it")
+        XCTAssertEqual(owner(tiles, Hex(6, 0)), 0, "four steps from it")
+        XCTAssertEqual(owner(tiles, Hex(-8, 0)), 0, "a wardstone not yet standing claims nothing")
+        XCTAssertEqual(owner(window.tiles(holds: [], in: world, at: 1_000), Hex(2, 0)), 0, "nor did this one before it stood")
+        XCTAssertEqual(owner(window.tiles(holds: []), Hex(2, 0)), 0, "with no world given, no one's land")
+        // Its colour in the renderer's palette is the one its things are drawn in.
+        XCTAssertEqual(LiveSession.palette.count, 1_024)
+        XCTAssertEqual(LiveSession.palette[LiveWindow.allianceSigil(of: 5)], WorldStage.colour(LiveSession.colours, sigil: 517))
+        XCTAssertEqual(LiveSession.palette[LiveWindow.sigil(of: 2)], WorldStage.colour(LiveSession.colours, sigil: 2))
+        // The terrain beneath keeps its code.
+        XCTAssertEqual(TileTexture.terrain(tiles[((0 + 12) * side + 2 + 12) * 4]), Terrain.greyfield.code)
+    }
+
     func testAWindowIsStagedForTheRenderer() async throws {
         var world = world()
         var centre = LiveHex(q: 10, r: -4)

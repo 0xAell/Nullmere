@@ -43,7 +43,7 @@ struct LiveMapView: NSViewRepresentable {
         guard let land = session.land() else { return }
         view.radius = land.map.radius
         view.relief = land.relief
-        view.houseColours = LiveSession.colours
+        view.houseColours = LiveSession.palette
         if kept.land != window {
             view.setLand(land.terrain, for: land.map)
             kept.land = window

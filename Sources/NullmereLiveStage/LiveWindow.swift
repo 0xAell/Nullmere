@@ -105,18 +105,33 @@ public struct LiveWindow: Sendable {
 
     /// The window's tiles as the world's shader takes them: every hex
     /// known and watched, since the realm keeps nothing of its land from
-    /// anyone; a hold where a city stands; and no one's territory, which
-    /// in the realm is an alliance's to hold and not a city's.
-    public func tiles(holds: [HoldSight]) -> [UInt8] {
+    /// anyone; a hold where a city stands; and, where a world is given,
+    /// the land its alliances' wardstones claim at a moment, each tinted in
+    /// its alliance's colour (`allianceSigil`). A city holds no land of its
+    /// own in the realm.
+    public func tiles(holds: [HoldSight], in world: LiveWorld? = nil, at seconds: Double = 0) -> [UInt8] {
         let ground = TileTexture.Ground(map: map)
         var bytes = ground.bytes
         let stood = Set(holds.compactMap { map.index(of: $0.hold.position) })
+        let claiming = world.map { world in world.wards.values.filter { $0.stands(at: seconds) } } ?? []
         for (index, offset) in ground.offsets.enumerated() {
             bytes[offset + 1] |= 2 * TileTexture.seenStep
             if stood.contains(index) { bytes[offset + 1] |= TileTexture.holdFlag }
+            guard !claiming.isEmpty, let world else { continue }
+            let local = map.hexes[index]
+            let hex = LiveHex(q: local.q + centre.q, r: local.r + centre.r)
+            guard let alliance = world.landOf(hex, at: seconds) else { continue }
+            let owner = min(LiveWindow.allianceSigil(of: alliance) + 1, TileTexture.mostOwner)
+            bytes[offset + 3] = UInt8(truncatingIfNeeded: owner)
+            bytes[offset] |= UInt8(truncatingIfNeeded: owner >> 8) << 4
         }
         return bytes
     }
+
+    /// Which colour an alliance's land is tinted in: its own, apart from
+    /// its members' (players' run from the first, alliances' from the
+    /// five hundred and twelfth).
+    public static func allianceSigil(of alliance: UInt64) -> Int { 512 + Int(alliance % 512) }
 
     /// A building's level, 1 to 25, as one of the five the stage's works
     /// are drawn at.

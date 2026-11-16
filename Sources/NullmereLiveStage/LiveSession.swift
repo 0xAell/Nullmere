@@ -150,6 +150,12 @@ public final class LiveSession {
         return Vec4(part(0), part(-2.094), part(2.094), 1)
     }
 
+    /// The colours as the renderer's palette takes them, by sigil: the
+    /// twenty-four over and over, so a player's land and an alliance's
+    /// (`LiveWindow.allianceSigil`) each find the colour its things are
+    /// drawn in.
+    public static let palette: [Vec4] = (0..<1_024).map { colours[$0 % colours.count] }
+
     /// A session over a line already open.
     public convenience init(line: any LiveLine, clock: @escaping @Sendable () -> Double = { Date().timeIntervalSince1970 }) {
         self.init(opening: { line }, clock: clock)
@@ -296,7 +302,8 @@ public final class LiveSession {
     /// The window's tiles as the world's shader takes them.
     public func tiles() -> [UInt8]? {
         guard let window else { return nil }
-        return window.tiles(holds: window.holds(in: world, colours: LiveSession.colours, at: now))
+        let seconds = now
+        return window.tiles(holds: window.holds(in: world, colours: LiveSession.colours, at: seconds), in: world, at: seconds)
     }
 
     /// What stands and moves in the window at a moment, staged for the
