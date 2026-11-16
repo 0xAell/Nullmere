@@ -1,5 +1,4 @@
 import Foundation
-import NullmereLand
 
 /// Builds a world: a basin walled by the Spine, with the black lake of the
 /// Nullmere at its heart, a ring of shore and farmland around it, forest and
@@ -51,7 +50,7 @@ public struct WorldGenerator: Sendable {
 
     /// How far a point lies from open water, for the lake's shape: under
     /// 0.48 is the lake, under 0.26 its deep heart.
-    func lakeDistance(x: Double, y: Double, d: Double) -> Double {
+    package func lakeDistance(x: Double, y: Double, d: Double) -> Double {
         switch lake {
         case .round:
             return d

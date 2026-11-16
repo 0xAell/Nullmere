@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-import NullmereCore
+import NullmereLand
 @testable import NullmereSound
 
 /// Sixteen-bit stereo PCM, as a WAVE file holds it.

@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-import NullmereCore
+import NullmereLand
 @testable import NullmereSound
 
 /// The score alone, as the synthesiser plays it: which instrument sings

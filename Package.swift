@@ -34,7 +34,7 @@ var targets: [Target] = [
     // a map, its cities as holds and its armies as companies, each where
     // it is at a moment. Pure Swift, so tested on Linux.
     .target(name: "NullmereLiveStage", dependencies: ["NullmereLive", "NullmereRealm", "NullmereWorld", "NullmereModels", "NullmereLand"]),
-    .testTarget(name: "NullmereLiveStageTests", dependencies: ["NullmereLiveStage", "NullmereLive", "NullmereWorld", "NullmereModels", "NullmereCore", "NullmereRealm",
+    .testTarget(name: "NullmereLiveStageTests", dependencies: ["NullmereLiveStage", "NullmereLive", "NullmereWorld", "NullmereModels", "NullmereLand", "NullmereRealm",
                                                            "NullmereTestSupport"]),
     .testTarget(name: "NullmereCoreTests", dependencies: ["NullmereCore"]),
     // The world's shapes: the land's relief and mesh, and every model in
@@ -51,7 +51,7 @@ var targets: [Target] = [
     // its instruments, its hall and the score written as it plays. Pure
     // Swift, so every sound is rendered and measured on Linux too.
     .target(name: "NullmereSound", dependencies: ["NullmereLand"]),
-    .testTarget(name: "NullmereSoundTests", dependencies: ["NullmereSound", "NullmereCore"]),
+    .testTarget(name: "NullmereSoundTests", dependencies: ["NullmereSound", "NullmereLand"]),
     // The trailer, apart from the GPU: its world, its shots and what moves
     // in them, and its score. Pure Swift, so every shot is staged and the
     // score rendered on Linux too; the Mac draws and encodes it.

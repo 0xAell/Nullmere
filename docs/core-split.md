@@ -174,6 +174,12 @@ hold walled in stone). Two ways off the old rules:
    questions, an expedition's stages) are its own. It depends on
    NullmereLand and NullmereModels alone.
 3. Test fixtures rebuilt on it, a few files at a time, each step green.
+   Begun on 16 November: the rebuilt realm's stage's and the sound's
+   tests named nothing of the rules and import the land instead; the
+   land's generator (WorldGenerator, and the seeded randomness and noise
+   it draws on, Random.swift) moved to NullmereLand, the rules taking it
+   from there, so a test can make a world's map, its seats and streams
+   without GameState and set its holds out on them.
 4. Voices, VoiceCheck, NullmereCounsel and the debug reports deleted.
    Done on 16 November: the old game's voices (Voices.swift,
    VoiceCheck.swift and their three test files), its counsel

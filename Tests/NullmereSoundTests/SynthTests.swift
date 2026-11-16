@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-import NullmereCore
+import NullmereLand
 @testable import NullmereSound
 
 /// Renders a synthesiser offline, as the Mac's audio engine would ask it,

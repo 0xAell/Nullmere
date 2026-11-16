@@ -1,4 +1,3 @@
-import NullmereLand
 /// Deterministic randomness. Every random choice in the rules flows from the
 /// world seed through these functions, so a world and its history replay
 /// exactly on any machine. Only integer operations are used.
@@ -75,7 +74,7 @@ public enum Seed {
         return hash
     }
 
-    static func finalize(_ value: UInt64) -> UInt64 {
+    package static func finalize(_ value: UInt64) -> UInt64 {
         var z = value
         z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
         z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
@@ -83,7 +82,7 @@ public enum Seed {
     }
 
     /// A stable value in 0..<1 for a lattice point, for noise.
-    static func lattice(_ x: Int, _ y: Int, _ seed: UInt64) -> Double {
+    package static func lattice(_ x: Int, _ y: Int, _ seed: UInt64) -> Double {
         let hashed = mix(seed, UInt64(bitPattern: Int64(x)), UInt64(bitPattern: Int64(y)))
         return Double(hashed >> 11) * 0x1.0p-53
     }

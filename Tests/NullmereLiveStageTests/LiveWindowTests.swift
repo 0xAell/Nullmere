@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+import NullmereLand
 @testable import NullmereLive
 @testable import NullmereLiveStage
 import NullmereModels
