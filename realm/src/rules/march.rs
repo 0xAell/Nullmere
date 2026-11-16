@@ -356,9 +356,10 @@ pub fn arrive(db: &mut impl Db, march: u64) {
             };
             site.gatherer = march.id;
             let amount = load(db, &march).min(site.left);
+            let ground = Hex::unpacked(site.hex);
             db.update(site);
             let pace = realm(db).map(|realm| realm.pace).unwrap_or(1);
-            let faster = 100 + boost(db, march.city, Topic::Gathering) + leading_of(db, &march).gathers;
+            let faster = 100 + boost(db, march.city, Topic::Gathering) + leading_of(db, &march).gathers + super::gathering_on(db, march.owner, ground);
             let hourly = (march.soldiers * GATHERED_AN_HOUR * faster / 100).max(1);
             let now = db.now();
             march.state = March::WORKING;

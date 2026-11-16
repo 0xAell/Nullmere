@@ -22,6 +22,7 @@ mod spire;
 mod study;
 mod tasks;
 mod trials;
+mod ward;
 
 pub use alliance::*;
 pub use army::*;
@@ -40,6 +41,7 @@ pub use spire::*;
 pub use study::*;
 pub use tasks::*;
 pub use trials::*;
+pub use ward::*;
 
 use crate::catalog::{Building, Goods, Topic, Troops};
 use crate::rows::Db;
@@ -181,6 +183,13 @@ pub enum Refusal {
     SameCommander,
     /// A commander already goes out beside another, or has one beside them: whose.
     AlreadyPaired(String),
+    /// An alliance has all the wardstones it may: so many.
+    WardsAll(u32),
+    NoWardThere,
+    /// Land another alliance holds: theirs, by tag and name.
+    OthersLand(String),
+    OffOwnLand,
+    NoSuchWard,
     NoSuchTopic,
     AlreadyStudying,
     /// The Academy can't be raised while it studies.
@@ -245,6 +254,8 @@ impl fmt::Display for Refusal {
             Refusal::TalentFull(name) => return write!(f, "{name} has learnt all there is of that."),
             Refusal::NoTalentPoints(name) => return write!(f, "{name} has no points left to spend. They gain one with each level."),
             Refusal::AlreadyPaired(name) => return write!(f, "{name} already goes out with another commander."),
+            Refusal::WardsAll(most) => return write!(f, "Your alliance has all the wardstones it may: {most}. It may raise one more for every five members, twenty at most."),
+            Refusal::OthersLand(theirs) => return write!(f, "That land is {theirs}'s."),
             Refusal::NothingMoreToLearn(topic) => return write!(f, "You have learnt all there is of {}.", topic.name()),
             Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
             Refusal::ChestNotEarned(marks) => return write!(f, "That chest opens at {marks} marks of the day's work."),
@@ -329,6 +340,9 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchTalent => "There is no such talent.",
             Refusal::NothingToForget => "That commander has learnt no talents to forget.",
             Refusal::SameCommander => "A commander can't go out beside themselves.",
+            Refusal::NoWardThere => "No wardstone can stand there: it needs clear ground.",
+            Refusal::OffOwnLand => "A wardstone after the first must stand on your alliance's own land.",
+            Refusal::NoSuchWard => "Your alliance has no such wardstone.",
             Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",

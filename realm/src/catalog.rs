@@ -651,6 +651,25 @@ pub const SPIRE_YIELD: u64 = 3;
 /// How many days of the realm a season lasts, at the written pace.
 pub const SEASON_DAYS: i64 = 28;
 
+/// How far an alliance's wardstone claims the land: every hex within so
+/// many steps of it.
+pub const WARD_REACH: u32 = 3;
+
+/// What raising a wardstone costs, out of the raiser's city.
+pub const WARD_COST: Goods = Goods::of(0, 30_000, 30_000, 0);
+
+/// How long a wardstone takes to raise, at the realm's first pace.
+pub const WARD_SECONDS: i64 = 3_600;
+
+/// Hundredths faster an alliance's members gather on its own land.
+pub const WARD_GATHERING: u64 = 25;
+
+/// The wardstones an alliance may have: one, and one more for every five
+/// members, twenty at most.
+pub fn wards_for(members: u32) -> u32 {
+    (1 + members / 5).min(20)
+}
+
 /// How many allies may help with one work: more with a higher Embassy.
 pub fn helps(embassy: u32) -> u32 {
     (4 + embassy).min(30)

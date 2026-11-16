@@ -119,7 +119,7 @@ pub fn join_alliance(db: &mut impl Db, player: u64, alliance: u64) -> Result<boo
 
 /// The member a player is, if they are of a rank to decide who is let
 /// into their alliance and who is put out of it.
-fn officer(db: &impl Db, player: u64) -> Result<Member, Refusal> {
+pub(super) fn officer(db: &impl Db, player: u64) -> Result<Member, Refusal> {
     let member = member_of(db, player).ok_or(Refusal::NotAllied)?;
     if member.rank < Member::OFFICER {
         return Err(Refusal::NotAnOfficer);
@@ -155,6 +155,7 @@ fn put_out(db: &mut impl Db, member: &Member) {
         for asked in Table::<Applicant>::by(db, 0, alliance.id) {
             Table::<Applicant>::delete(db, asked.player);
         }
+        super::fell_wards(db, alliance.id);
         Table::<Alliance>::delete(db, alliance.id);
     } else {
         db.update(alliance);

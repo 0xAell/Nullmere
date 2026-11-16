@@ -287,6 +287,10 @@ check("and what a player has given is theirs alone to read", (rows(ada, "SELECT 
 check("help is asked of an alliance, and given within one", (call(ada, "ask_help", 1), call(ada, "help", 0)), ("You are in no alliance.", "You are in no alliance."))
 check("one in no alliance sees no asking for help, and no one reads the table itself", (rows(ada, "SELECT * FROM my_pleas"), rows(ada, "SELECT * FROM my_helps"), isinstance(rows(ada, "SELECT * FROM plea"), str)), ([], [], True))
 check("one in no alliance sees no rallies, and no one reads the table itself", (rows(ada, "SELECT * FROM my_rallies"), rows(ada, "SELECT * FROM my_musters"), isinstance(rows(ada, "SELECT * FROM rally"), str)), ([], [], True))
+# An alliance's land: its wardstones, for all to read; raised only by an alliance's officers.
+check("every wardstone is for all to read, and there are none yet", rows(nobody, "SELECT * FROM ward"), [])
+check("one in no alliance raises none", call(ada, "raise_ward", adas[0] + 3, adas[1]), "You are in no alliance.")
+check("nor takes one down", call(ada, "raze_ward", 1), "You are in no alliance.")
 
 # Commanders: one to begin with, more from a Tavern.
 captains = rows(bryn, "SELECT * FROM my_commanders")

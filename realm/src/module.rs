@@ -10,12 +10,12 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 use crate::hex::Hex;
 use crate::rows::{
     alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
-    chest as _, daily as _, daily__view as _, duty as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _,
+    chest as _, daily as _, daily__view as _, duty as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _,
     building__view as _, city as _, city__view as _, commander as _, commander__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
     march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
     realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
     troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Bond, Building, Chest, City, Commander, Daily, Duty, Favour, Gift, Grace, Haul, Helper, Hunt, Job, Keeper, Land, Lore, March, Member, Muster, Rally,
-    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware,
+    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware, Ward,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
@@ -169,6 +169,7 @@ stored!(Gift in gift by player);
 stored!(Skill in skill by id, commander, owner);
 stored!(Bond in bond by commander, owner);
 stored!(Keeper in keeper by player);
+stored!(Ward in ward by id, alliance);
 stored!(Lore in lore by id, city);
 stored!(Study in study by id);
 stored!(Commander in commander by id, owner);
@@ -324,6 +325,19 @@ pub fn call_rally(ctx: &ReducerContext, q: i32, r: i32, soldiers: Vec<Soldiers>,
 pub fn join_rally(ctx: &ReducerContext, rally: u64, soldiers: Vec<Soldiers>, leader: u64) -> Result<(), String> {
     let asked: Vec<rules::Asked> = soldiers.iter().map(|s| rules::Asked { kind: s.kind, tier: s.tier, count: s.count }).collect();
     said(caller(ctx).and_then(|player| rules::join_rally(&mut Stdb(ctx), player, rally, &asked, leader)))
+}
+
+/// Raise a wardstone of the caller's alliance at a hex, as one of its
+/// officers, paid for out of the caller's city.
+#[reducer]
+pub fn raise_ward(ctx: &ReducerContext, q: i32, r: i32) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::raise_ward(&mut Stdb(ctx), player, Hex::new(q, r))))
+}
+
+/// Take down one of the caller's alliance's wardstones, as one of its officers.
+#[reducer]
+pub fn raze_ward(ctx: &ReducerContext, ward: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::raze_ward(&mut Stdb(ctx), player, ward)))
 }
 
 /// Give goods from the caller's city toward their alliance's Moonspire.

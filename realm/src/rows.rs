@@ -56,6 +56,7 @@ impl Place {
     pub const CITY: u8 = 1;
     pub const SITE: u8 = 2;
     pub const BARROW: u8 = 3;
+    pub const WARD: u8 = 4;
 }
 
 /// Somewhere on the land where goods lie to be gathered, until they run
@@ -741,6 +742,24 @@ pub struct Spire {
 }
 row!(Spire in spire, by alliance);
 
+/// A wardstone: an alliance's mark on the land. Once it stands it claims
+/// every hex within `catalog::WARD_REACH` of it that an older one does
+/// not. For everyone to read: whose land is whose is plain to all.
+#[spacetimedb::table(accessor = ward, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Ward {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub alliance: u64,
+    pub hex: u64,
+    /// Who raised it, and when it stands: it claims nothing before.
+    pub raised_by: u64,
+    pub stands_at: Seconds,
+}
+row!(Ward in ward, auto, by id, alliance);
+
 /// A season of the realm: when it began and ends, and the alliance that
 /// first raised its Moonspire whole in it, if one has. For everyone to
 /// read. Keyed by its number, from 1.
@@ -1126,6 +1145,7 @@ pub trait Db:
     + Table<Skill>
     + Table<Bond>
     + Table<Keeper>
+    + Table<Ward>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1180,6 +1200,7 @@ impl<
             + Table<Skill>
             + Table<Bond>
             + Table<Keeper>
+            + Table<Ward>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,
