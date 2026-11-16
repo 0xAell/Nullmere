@@ -10,11 +10,11 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 use crate::hex::Hex;
 use crate::rows::{
     alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
-    chest as _, daily as _, daily__view as _, duty as _, fame as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _, prisoner as _, prisoner__view as _, petition as _, petition__view as _, title as _, letter as _, letter__view as _, gear as _, gear__view as _, pattern as _,
+    chest as _, daily as _, daily__view as _, duty as _, fame as _, boon as _, boon__view as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _, prisoner as _, prisoner__view as _, petition as _, petition__view as _, title as _, letter as _, letter__view as _, gear as _, gear__view as _, pattern as _,
     building__view as _, city as _, city__view as _, commander as _, commander__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
     march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
     realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
-    troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Bond, Building, Chest, City, Commander, Daily, Duty, Fame, Favour, Gift, Grace, Haul, Helper, Hunt, Job, Keeper, Land, Lore, March, Member, Muster, Rally,
+    troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Bond, Building, Chest, City, Commander, Daily, Duty, Fame, Boon, Favour, Gift, Grace, Haul, Helper, Hunt, Job, Keeper, Land, Lore, March, Member, Muster, Rally,
     Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware, Ward, Learning, Gate, Envoy, Pact, Prisoner, Petition, Title, Letter, Gear, Pattern,
 };
 use crate::rules::{self, Refusal};
@@ -155,6 +155,7 @@ stored!(Daily in daily by player);
 stored!(Grace in grace by level);
 stored!(Favour in favour by player);
 stored!(Fame in fame by player);
+stored!(Boon in boon by id, player);
 stored!(Ware in ware by item);
 stored!(Satchel in satchel by id, player);
 stored!(Trial in trial by id);
@@ -449,6 +450,12 @@ pub fn equip(ctx: &ReducerContext, gear: u64, commander: u64) -> Result<(), Stri
 #[reducer]
 pub fn unequip(ctx: &ReducerContext, gear: u64) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::unequip(&mut Stdb(ctx), player, gear)))
+}
+
+/// Claim every gift waiting on the caller, for goods in their city.
+#[reducer]
+pub fn claim_boons(ctx: &ReducerContext) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::claim_boons(&mut Stdb(ctx), player)).map(|_| ()))
 }
 
 /// Write a letter to another player.
@@ -757,6 +764,12 @@ fn my_bonds(ctx: &ViewContext) -> Vec<Bond> {
 #[view(accessor = my_keeper, public)]
 fn my_keeper(ctx: &ViewContext) -> Option<Keeper> {
     ctx.db.keeper().player().find(viewer(ctx)?)
+}
+
+/// The gifts waiting on the caller, from their alliance's deeds.
+#[view(accessor = my_boons, public)]
+fn my_boons(ctx: &ViewContext) -> Vec<Boon> {
+    viewer(ctx).map(|player| ctx.db.boon().player().filter(player).collect()).unwrap_or_default()
 }
 
 /// The caller's gear, and who of their commanders wears it.

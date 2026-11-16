@@ -1292,6 +1292,28 @@ pub struct Fame {
 }
 row!(Fame in fame, by player);
 
+/// A gift to a member of an alliance, given as another member cleared a
+/// barrow or won a rally: theirs alone to read, claimed for goods before
+/// it is gone a day later. Keyed by number.
+#[spacetimedb::table(accessor = boon)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Boon {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub player: u64,
+    /// The member whose deed it came of, and the level of the barrow.
+    pub giver: u64,
+    pub level: u32,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub expires: i64,
+    pub timer: u64,
+}
+row!(Boon in boon, auto, by id, player);
+
 /// What a city has learnt of a topic: its owner's alone to read. Keyed
 /// by city and topic.
 #[spacetimedb::table(accessor = lore)]
@@ -1401,6 +1423,7 @@ pub trait Db:
     + Table<Grace>
     + Table<Favour>
     + Table<Fame>
+    + Table<Boon>
     + Table<Ware>
     + Table<Satchel>
     + Table<Trial>
@@ -1467,6 +1490,7 @@ impl<
             + Table<Grace>
             + Table<Favour>
             + Table<Fame>
+            + Table<Boon>
             + Table<Ware>
             + Table<Satchel>
             + Table<Trial>

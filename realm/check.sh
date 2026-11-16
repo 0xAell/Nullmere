@@ -238,6 +238,9 @@ refused = call(bryn, "send", adas[0], adas[1], 3, [{"kind": 1, "tier": 1, "count
 check("an army sent against a new city is refused", (refused or "").startswith("That city is at peace for another "), True)
 check("and against one's own", call(bryn, "send", home[0], home[1], 3, [{"kind": 1, "tier": 1, "count": 1}], 0), "That is your own city.")
 check("the realm's fame is for all to read, and no one has any before a city is fought", rows(nobody, "SELECT * FROM fame"), [])
+check("no alliance's gift waits on one in none", rows(bryn, "SELECT * FROM my_boons"), [])
+check("so none is claimed", call(bryn, "claim_boons"), "No gift is waiting on you.")
+check("and no one reads the gifts' table itself", isinstance(rows(bryn, "SELECT * FROM boon"), str), True)
 
 # A player's first tasks: the first is to raise the Keep, which Ada has done.
 tasks = rows(nobody, "SELECT * FROM task")

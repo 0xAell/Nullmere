@@ -260,6 +260,10 @@ fn the_armies_set_out_together_wait_for_the_last_and_clear_as_one_what_neither_c
     let held = |player: u64| realm::catalog::Item::MATERIALS.map(|item| rules::held(&db, player, item)).iter().sum::<u64>();
     assert_eq!((held(ada), held(bryn)), (level as u64, 0));
     assert!(Table::<Report>::by(&db, 0, ada).pop().unwrap().words.ends_with(" for the Forge."));
+    // The alliance's gift of it waits on every other member, Bryn among them.
+    let gifts = Table::<realm::rows::Boon>::by(&db, 0, bryn);
+    assert_eq!(gifts.iter().map(|boon| (boon.giver, boon.level)).collect::<Vec<_>>(), vec![(ada, level)]);
+    assert!(Table::<realm::rows::Boon>::by(&db, 0, ada).is_empty());
     // The spoils shared are no more than the barrow held.
     let shared: u64 = Table::<Haul>::all(&db).iter().map(|haul| haul.grain + haul.timber + haul.stone + haul.moonsalt).sum();
     assert!(shared <= catalog::spoils(level).parts().iter().sum::<u64>());

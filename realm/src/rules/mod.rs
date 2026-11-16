@@ -6,6 +6,7 @@
 //! nothing.
 
 mod alliance;
+mod boons;
 mod army;
 mod battle;
 mod city;
@@ -34,6 +35,7 @@ mod trials;
 mod ward;
 
 pub use alliance::*;
+pub use boons::*;
 pub use army::*;
 pub use battle::*;
 pub use city::*;
@@ -75,6 +77,7 @@ pub fn fire(db: &mut impl Db, timer: &Timer) {
         TIMER_SEASON => turn_season(db, timer.subject),
         TIMER_LEARNING => learnt_together_now(db, timer.subject),
         TIMER_PRISON => prison_done(db, timer.subject),
+        TIMER_BOON => boon_gone(db, timer.subject),
         _ => {}
     }
 }
@@ -117,6 +120,7 @@ pub enum Refusal {
     NoSuchTroops,
     OnlyHigher,
     NothingAsked,
+    NoBoons,
     /// The most that may be asked for at once.
     TooMany(u64),
     AlreadyTraining(Building),
@@ -362,6 +366,7 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchTroops => "There are no such troops.",
             Refusal::OnlyHigher => "Troops are raised only to a higher tier.",
             Refusal::NothingAsked => "Ask for at least one.",
+            Refusal::NoBoons => "No gift is waiting on you.",
             Refusal::NoSuchOrder => "The realm knows no such order.",
             Refusal::NothingThere => "There is nothing to gather there.",
             Refusal::SiteTaken => "Another army is gathering there.",
