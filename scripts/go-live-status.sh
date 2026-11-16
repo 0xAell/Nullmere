@@ -24,35 +24,44 @@ done_steps=0
 echo "Nullmere Online, going live: where it stands"
 echo
 
-# 1. The realm: its status, read as a keeper would.
-status_json=""
+# 1. The realm: its own row and its players, read as any client may.
+realm_json=""
+players_json=""
 token="$(curl -s -m 10 -X POST "$HOST/v1/identity" 2>/dev/null | sed -n 's/.*"token":"\([^"]*\)".*/\1/p' || true)"
+sql() {
+    curl -s -m 10 -X POST -H "Authorization: Bearer $token" -H "Content-Type: text/plain" --data "$1" \
+        "$HOST/v1/database/$DB/sql" 2>/dev/null || true
+}
 if [ -n "$token" ]; then
-    status_json="$(curl -s -m 10 -X POST -H "Authorization: Bearer $token" --data "SELECT version, status FROM status" \
-        "$HOST/v1/database/$DB/sql" 2>/dev/null || true)"
+    realm_json="$(sql "SELECT * FROM realm")"
+    players_json="$(sql "SELECT * FROM player")"
 fi
-realm="$(STATUS="$status_json" python3 -c '
+realm="$(REALM="$realm_json" PLAYERS="$players_json" python3 -c '
 import json, os
+def rows(text):
+    result = json.loads(text)[0]
+    names = [element["name"]["some"] for element in result["schema"]["elements"]]
+    return [dict(zip(names, row)) for row in result["rows"]]
 try:
-    rows = json.loads(os.environ["STATUS"])[0]["rows"]
-    s = json.loads(rows[0][1])
-    online = s["online"]
-    print("watch {0}, {1} of {2} seats held, {3} keeper{4} online|{5}".format(
-        s["watch"], s["seats"] - s["freeSeats"], s["seats"], online, "" if online == 1 else "s", s["keepers"]))
+    realm = rows(os.environ["REALM"])[0]
+    players = len(rows(os.environ["PLAYERS"]))
+    pace = "the realm proper" if realm["pace"] == 1 else "a trial realm at {0} times the pace".format(realm["pace"])
+    print("{0}, {1} hexes from the lake to its edge|{2}".format(pace, realm["radius"], players))
 except Exception:
     pass
 ' 2>/dev/null || true)"
-keepers=""
+players=""
+publish="the Publish the realm workflow, from the repository's Actions tab (docs/GO-LIVE.md, step 1)"
 if [ -n "$realm" ]; then
-    keepers="${realm##*|}"
+    players="${realm##*|}"
     line "1. The realm" "UP at $ADDRESS: ${realm%|*}"
     done_steps=$((done_steps + 1))
 elif [ -n "$token" ]; then
-    line "1. The realm" "NOT RAISED: SpacetimeDB answers at $HOST, but no realm \"$DB\" stands there"
-    also "spacetime login && scripts/raise-realm.sh maincloud"
+    line "1. The realm" "NOT PUBLISHED: SpacetimeDB answers at $HOST, but no realm \"$DB\" stands there"
+    also "$publish"
 else
     line "1. The realm" "OUT OF REACH: nothing answers at $HOST"
-    also "spacetime login && scripts/raise-realm.sh maincloud"
+    also "$publish"
 fi
 
 # 2. The release: signed and notarized, or not yet.
@@ -145,12 +154,12 @@ fi
 # 4. VoiceOver, listened to: no machine can tell how it sounds.
 line "4. VoiceOver" "BY EAR: docs/GO-LIVE.md, step 4 (CI audits every screen and walks the map: scripts/ui-test.sh)"
 
-# 5. The first keepers.
-if [ -n "$keepers" ] && [ "$keepers" -gt 0 ]; then
-    line "5. Keepers" "$keepers keeper$([ "$keepers" = 1 ] || echo s) known to the realm"
+# 5. The first players.
+if [ -n "$players" ] && [ "$players" -gt 0 ]; then
+    line "5. Players" "$players player$([ "$players" = 1 ] || echo s) joined"
     done_steps=$((done_steps + 1))
 else
-    line "5. Keepers" "NONE YET: they come once the realm is up and a release is out"
+    line "5. Players" "NONE YET: they come once the realm is up and a release is out"
 fi
 
 echo

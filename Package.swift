@@ -1,10 +1,9 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
-// The rules, the realm and the launcher's own logic build anywhere Swift
-// does, Linux included: the steward runs on a server. The app needs the Mac.
+// The rules, the realm's client and the launcher's own logic build anywhere
+// Swift does, Linux included. The app needs the Mac.
 var products: [Product] = [
-    .executable(name: "NullmereSteward", targets: ["NullmereSteward"]),
     .library(name: "NullmereCore", targets: ["NullmereCore"]),
 ]
 var targets: [Target] = [
@@ -16,11 +15,9 @@ var targets: [Target] = [
         linkerSettings: [.linkedLibrary("m", .when(platforms: [.linux]))]
     ),
     // The realm: the line between a keeper's client and the world it shares
-    // with every other keeper, over SpacetimeDB or hosted in-process, and the
-    // steward that runs the rules beside SpacetimeDB. Foundation only.
+    // with every other keeper, over SpacetimeDB or hosted in-process.
+    // Foundation only.
     .target(name: "NullmereRealm", dependencies: ["NullmereCore"]),
-    // The steward's command-line entry point.
-    .executableTarget(name: "NullmereSteward", dependencies: ["NullmereRealm", "NullmereCore"]),
     // A client of the realm being rebuilt (realm/): the rows of one
     // persistent world, pushed as they change, and the reducers a player
     // calls. Foundation only, so tested on Linux against a real server.

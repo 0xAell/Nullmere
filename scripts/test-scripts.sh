@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# What the scripts do, not only that they parse: raise-realm.sh stops the
-# steward it started (by its pid, or by name for one started before pids
-# were kept) and tells a local server's sign-in from maincloud's; the smoke
-# tests' helper puts this Mac's hosted realm and keeper's name back however
-# a test ends; check-on-mac.sh runs all its parts whatever any does, says
+# What the scripts do, not only that they parse: the smoke tests' helper
+# puts this Mac's hosted realm and keeper's name back however a test ends; check-on-mac.sh runs all its parts whatever any does, says
 # which passed (counsel its model wasn't ready for being unverified, not
 # passed), and refuses a Mac that can't run them. Each runs
 # against stand-ins, touching nothing real.
@@ -14,88 +11,11 @@ cd "$(dirname "$0")/.."
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
+mkdir -p "$WORK/bin"
 failures=0
 check() {
     if [ "$2" = "$3" ]; then echo "ok: $1"; else echo "FAILED: $1: got \"$2\", wanted \"$3\"" >&2; failures=$((failures + 1)); fi
 }
-
-# raise-realm.sh: its own functions, against a stand-in steward.
-sed -n '/^steward_env()/,/^}/p;/^stop_background_steward()/,/^}/p;/^token_issuer()/,/^}/p;/^signed_in_for_maincloud()/,/^}/p' \
-    scripts/raise-realm.sh > "$WORK/raise-realm-functions.sh"
-mkdir -p "$WORK/bin"
-printf '#!/usr/bin/env bash\necho "Stewarding $1"\nwhile :; do sleep 1; done\n' > "$WORK/bin/NullmereSteward"
-chmod +x "$WORK/bin/NullmereSteward"
-steward_running() {
-    if ps -eo command | grep -q "[N]ullmereSteward $1\$"; then echo running; else echo stopped; fi
-}
-(
-    TOKEN_FILE=/dev/null LOG="$WORK/steward.log" PID_FILE="$WORK/steward.pid" BIN="$WORK/bin/NullmereSteward"
-    ADDRESS="http://127.0.0.1:9/test-$$"
-    . "$WORK/raise-realm-functions.sh"
-    ( steward_env nohup "$BIN" "$ADDRESS" ) >> "$LOG" 2>&1 &
-    echo $! > "$PID_FILE"
-    sleep 1
-    echo "by pid: $(steward_running "$ADDRESS")" > "$WORK/started"
-    stop_background_steward
-    sleep 0.5
-    echo "by pid: $(steward_running "$ADDRESS")" > "$WORK/stopped"
-    ( steward_env nohup "$BIN" "$ADDRESS" ) >> "$LOG" 2>&1 &
-    sleep 1
-    stop_background_steward || true
-    sleep 0.5
-    echo "by name: $(steward_running "$ADDRESS")" > "$WORK/stopped-by-name"
-)
-check "a background steward's pid is the steward's" "$(cat "$WORK/started")" "by pid: running"
-check "--stop stops it by its pid" "$(cat "$WORK/stopped")" "by pid: stopped"
-check "--stop stops one started before pids were kept" "$(cat "$WORK/stopped-by-name")" "by name: stopped"
-
-token() {
-    local payload
-    payload="$(printf '{"iss":"%s","sub":"keeper"}' "$1" | base64 | tr -d '\n=' | tr '/+' '_-')"
-    printf 'eyJhbGciOiJFUzI1NiJ9.%s.signature' "$payload"
-}
-for issuer in localhost https://auth.spacetimedb.com; do
-    printf '#!/usr/bin/env bash\necho "Your auth token is %s"\n' "$(token "$issuer")" > "$WORK/bin/spacetime"
-    chmod +x "$WORK/bin/spacetime"
-    answer="$(PATH="$WORK/bin:$PATH" bash -c ". '$WORK/raise-realm-functions.sh'; echo \"\$(token_issuer) \$(signed_in_for_maincloud && echo signed-in || echo refused)\"")"
-    case "$issuer" in
-        localhost) check "a local server's sign-in is not maincloud's" "$answer" "localhost refused" ;;
-        *) check "maincloud's sign-in is" "$answer" "$issuer signed-in" ;;
-    esac
-done
-
-# raise-realm.sh, whole, against stand-in tools in a home of its own: a
-# publication that clears the realm stops its steward first, and one that
-# keeps the realm leaves it running.
-mkdir -p "$WORK/home" "$WORK/state"
-cat > "$WORK/bin/spacetime" <<'EOF'
-#!/usr/bin/env bash
-# A stand-in for the SpacetimeDB CLI that notes, as it publishes, whether
-# the realm's steward is still running.
-case "$1" in
-    --version) echo "spacetime (stand-in)" ;;
-    login) echo "Your auth token is stand-in" ;;
-    publish)
-        if ps -eo command | grep -q "[N]ullmereSteward $STUB_ADDRESS\$"; then echo running; else echo stopped; fi > "$STUB_DIR/at-publish" ;;
-esac
-EOF
-for tool in cargo rustup curl; do printf '#!/usr/bin/env bash\nexit 0\n' > "$WORK/bin/$tool"; done
-printf '#!/usr/bin/env bash\nexit 1\n' > "$WORK/bin/docker"
-chmod +x "$WORK"/bin/*
-raise() {
-    local address="http://127.0.0.1:3000/test-clear-$$"
-    ( exec "$WORK/bin/NullmereSteward" "$address" ) >/dev/null 2>&1 &
-    echo $! > "$WORK/state/steward-local-test-clear-$$.pid"
-    sleep 1
-    rm -f "$WORK/at-publish"
-    HOME="$WORK/home" PATH="$WORK/bin:$PATH" STUB_DIR="$WORK" STUB_ADDRESS="$address" REALM_DB="test-clear-$$" STEWARD=none \
-        NULLMERE_STATE_DIR="$WORK/state" SPACETIME_CLEAR="$1" scripts/raise-realm.sh local >"$WORK/raise.log" 2>&1 \
-        || echo "raise-realm.sh failed: $(tail -n 3 "$WORK/raise.log")" >&2
-    cat "$WORK/at-publish" 2>/dev/null || echo "never published"
-    pkill -f "(^|/)NullmereSteward $address\$" 2>/dev/null || true
-}
-check "a publication that clears the realm stops its steward first" "$(raise 1)" "stopped"
-check "one that keeps the realm leaves its steward running" "$(raise "")" "running"
 
 # smoke-realm.sh: a realm and a name set aside, and put back after a crash.
 mkdir -p "$WORK/home/Library/Application Support/Nullmere Online"

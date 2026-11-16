@@ -57,8 +57,9 @@ only, so tested on Linux too).
 - **On the keeper's iPhone:** open `Package.swift` in Xcode, choose the
   **NullmereCompanion** scheme and the phone, and set an Apple developer
   team to sign it. A phone needs iOS 26.
-- **Both apps at once:** `scripts/smoke-test-companion.sh`, with a realm
-  raised on this Mac (`STEWARD=background scripts/raise-realm.sh local`),
+- **Both apps at once:** `scripts/smoke-test-companion.sh`, with the
+  turn-based realm raised on this Mac (by `scripts/raise-realm.sh local`,
+  deleted with the steward on 16 November),
   enters it with a debug build of the Mac app, which offers a link, and
   runs the companion in a simulator, which takes it, gives orders (a
   company dug in, and a watch on, the blackwood set alight where it
@@ -398,8 +399,9 @@ The files in `Recorded/` are generated: run the script again to change them.
 
 `realm/` is the game's rules as the rework plan has them
 ([rework-plan.md](rework-plan.md), Phase 2): one persistent world on server
-time, the rules inside the SpacetimeDB module, no other server process. It
-grows beside `realm-server/` and the Swift rules until the apps switch to it.
+time, the rules inside the SpacetimeDB module, no other server process.
+Play opens it; the turn-based game's module (`realm-server/`) and steward
+were deleted on 16 November, and its Swift rules follow (plan 3.4, step B).
 
 - `src/rows.rs` holds the tables: each a plain struct and a SpacetimeDB
   table at once.
@@ -474,21 +476,21 @@ Sources/
   NullmereCore/       The rules and the realm's authority: world generation, economy, war, diplomacy, stewards, keepers, watches, ages. Pure, deterministic Swift
   NullmereModels/     The world's shapes: the land's relief and mesh, the models made in Blender read from their glTF files, and every other model built from solids in code, with the rigs that move them. Pure Swift
   NullmereWorld/      The world as the GPU draws it, apart from the GPU: the camera, the shaders' source, the frame's data. Pure Swift
-  NullmereRealm/      The client's line to the realm over SpacetimeDB or in-process, the steward, keeper identity. Foundation only
+  NullmereRealm/      The turn-based game's line to its realm over SpacetimeDB or in-process, keeper identity, and the SpacetimeDB connection the rebuilt realm's client shares. Foundation only
+  NullmereLive/       The rebuilt realm's client: its rows, pushed as they change, the reducers a player calls, and the typed world over them. Foundation only
+  NullmereLiveStage/  The rebuilt realm as the screens and the renderer take it: the session, its cards, palette, lists, map window and counsel. Pure Swift
   NullmereSound/      The game's sound apart from the Mac's audio engine: the synthesiser, its instruments and their recorded notes (Recorded/, made by Art/sound/make.py), its hall and the score. Pure Swift
   NullmereTrailer/    The trailer apart from the GPU: its world, its shots and what moves in them, and its score. Pure Swift
   NullmereKit/        The world's interface: front door, Metal world, panels, the audio engine
   NullmereCounsel/    Counsel of a House's commanders through Apple's on-device model (Foundation Models), and its check on a real Mac
   NullmereCompanionCore/ The keeper's phone apart from its screens: the link, the session, what it lists of a House. Foundation only
   NullmereCompanion/  Nullmere Companion, the keeper's iPhone app (SwiftUI); built for iOS by scripts/build-companion.sh
-  NullmereSteward/    The steward's command-line entry point
 Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereCounselTests, NullmereCompanionCoreTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a SpacetimeDB in memory)
-realm-server/         The SpacetimeDB module (Rust): keepers, requests, answers, the world
-Dockerfile.steward    The steward in a container, as raise-realm.sh runs it
+realm/                The rebuilt realm: its rules (Rust) inside one SpacetimeDB module, tested by realm/check.sh
 news/                 news.json, the launcher's news feed
 perf/                 CI's performance baseline; scripts/measure-mac.sh adds figures from real Macs in perf/mac/
 Packaging/            The Info.plist template, the Liquid Glass icon (AppIcon.icon) and the classic 1024 px icon
-scripts/              Building, packing and checking a release; smoke tests; raising the realm; going live
+scripts/              Building, packing and checking a release; smoke tests; serving a realm on this machine; going live
 Art/                  The models made in Blender: their scripts (blender/), the files they make (models/), and embed.py, which writes a file into the package; and sound/make.py, which makes the score's recorded notes
 Tools/icon/           Draws the icon, its Liquid Glass layers and the classic one (make-icon.py)
 Tools/scene-preview/  Browser preview of the lake shader

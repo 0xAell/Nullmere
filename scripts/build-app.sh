@@ -23,7 +23,7 @@ echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "VERSION must be
 BUILD_NUMBER="${BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 OUTPUT_DIR="${OUTPUT_DIR:-build}"
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
-# The realm the app enters: as scripts/raise-realm.sh printed it.
+# The realm the app enters: as the Publish the realm workflow published it.
 REALM_ADDRESS="${REALM_ADDRESS:-https://maincloud.spacetimedb.com/nullmere}"
 # Another bundle identifier, for a build that must never pass for the
 # app itself (scripts/ui-test.sh); empty keeps online.nullmere.launcher.

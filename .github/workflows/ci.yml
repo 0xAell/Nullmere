@@ -1,8 +1,8 @@
 name: CI
 
 # A run for each pull request update, and each push to main or a working
-# branch: the app built, tested and bundled on macOS; a realm raised on
-# SpacetimeDB; and the launcher's screens photographed. Changes that only
+# branch: the app built, tested and bundled on macOS, played against a
+# realm served on the runner, and its screens audited and photographed. Changes that only
 # touch documentation or the lake's browser preview don't start a run, nor
 # those to the trailer's own files alone (the Trailer workflow's).
 on:
@@ -14,8 +14,6 @@ on:
       - Packaging/**
       - scripts/**
       - perf/**
-      - realm-server/**
-      - Dockerfile.steward
       - news/**
       - Tools/**
       - UITests/**
@@ -37,8 +35,6 @@ on:
       - Packaging/**
       - scripts/**
       - perf/**
-      - realm-server/**
-      - Dockerfile.steward
       - news/**
       - Tools/**
       - UITests/**

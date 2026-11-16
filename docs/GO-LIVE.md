@@ -1,8 +1,8 @@
 # Going live
 
 Everything Nullmere Online needs is built and rehearsed in CI on every push
-that changes the code, the scripts or the news: the realm raised on a
-SpacetimeDB server and played through, a release signed and notarized with
+that changes the code, the scripts or the news: the realm published to a
+SpacetimeDB server and played through, by hand and by its own Swift client, a release signed and notarized with
 a throwaway identity, every screen put to Xcode's accessibility audit. What
 is left needs what only the maintainer has: a SpacetimeDB sign-in, an Apple
 Developer account, a Mac with Apple Intelligence, and ears.
@@ -11,7 +11,7 @@ Each step is a checklist. Paste each block into Terminal as it stands, from
 the repository's folder (the one block to fill in first is marked **Fill
 in**); the line after **Worked when** is what it prints when it did. Steps 1 to 4 stand alone and can be done in any order; step 5
 follows 1 and 2. Within a step, the checks come first and change nothing;
-the commands marked **Changes things** do: raising the realm, setting the
+the commands marked **Changes things** do: publishing the realm, setting the
 release's secrets, pushing a version tag, committing the figures.
 
 Where every step stands, at any time, and the command for each one not yet
@@ -21,87 +21,61 @@ done:
 scripts/go-live-status.sh
 ```
 
-## 1. Raise the realm on maincloud
+## 1. Publish the realm on maincloud
 
-Needs a GitHub account (SpacetimeDB signs in with it) and a machine that
-stays up, to run the steward beside the database. Docker on that machine
-keeps the steward running across restarts; without it, it runs as a
-background process.
+Needs a GitHub account (SpacetimeDB signs in with it). The realm is one
+SpacetimeDB module (`realm/`), its rules and its timers inside it: there is
+no steward to keep running beside it, and publishing it is the whole of
+raising it. On its first publish to a database it opens itself; published
+again, it keeps its rows.
 
-- [ ] Install the SpacetimeDB CLI and Rust, once (each says if already there),
-  and put them on this Terminal's path (new Terminals find them by themselves):
+- [ ] Install the SpacetimeDB CLI, once (it says if already there), and put
+  it on this Terminal's path (new Terminals find it by themselves):
 
   ```sh
   command -v spacetime || curl -sSf https://install.spacetimedb.com | sh
-  command -v cargo || curl -sSf https://sh.rustup.rs | sh -s -- -y
-  export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
-  spacetime --version && cargo --version
+  export PATH="$HOME/.local/bin:$PATH"
+  spacetime --version
   ```
 
-  **Worked when** it prints both versions.
+  **Worked when** it prints its version.
 
-- [ ] Sign in to SpacetimeDB (it opens a GitHub sign-in in the browser):
+- [ ] Sign in to SpacetimeDB (it opens a GitHub sign-in in the browser), and
+  put the token it keeps in the repository's `SPACETIME_TOKEN` secret:
 
   ```sh
   spacetime login
+  spacetime login show --token | awk '{print $NF}' | tail -n 1 | gh secret set SPACETIME_TOKEN
   ```
 
-- [ ] Check the tools and the sign-in, and build everything, changing nothing:
+  **Worked when** `gh secret list` shows `SPACETIME_TOKEN`.
+
+- [ ] **Changes things.** Publish it: run **Publish the realm** from the
+  repository's Actions tab with the database named `nullmere`, or here:
 
   ```sh
-  scripts/raise-realm.sh maincloud --dry-run
+  gh workflow run realm.yml -f database=nullmere
   ```
 
-  **Worked when** it ends: `Everything builds. Run it again without --dry-run to raise the realm.`
-  (If it ends `…but you aren't signed in…`, sign in as above, and run it again.)
+  **Worked when** the run's last line reads `Published https://maincloud.spacetimedb.com/nullmere`.
 
-- [ ] **Changes things.** Raise it: publish the realm's module and start its steward:
-
-  ```sh
-  scripts/raise-realm.sh maincloud
-  ```
-
-  **Worked when** it ends:
-
-  ```
-  The realm answers: it stands at watch 1.
-  == The realm is up at https://maincloud.spacetimedb.com/nullmere
-  Release builds of Nullmere Online go here already: scripts/build-app.sh
-  ```
-
-- [ ] Ask it how it stands, as a keeper's Mac would:
+- [ ] Ask it how it stands, as any client may:
 
   ```sh
   scripts/go-live-status.sh --expect-realm
   ```
 
-  **Worked when** its line for the realm reads `1. The realm … UP at https://maincloud.spacetimedb.com/nullmere: watch …`.
+  **Worked when** its line for the realm reads `1. The realm … UP at https://maincloud.spacetimedb.com/nullmere: the realm proper, …`.
 
-The steward, afterwards: `docker logs -f nullmere-steward-nullmere` (or,
-without Docker, `~/.config/nullmere/steward-maincloud.log`) says every ten
-minutes how the realm stands, when a round fails and when the server
-answers again. `scripts/raise-realm.sh maincloud --stop` stops it. Release
-builds already point at `https://maincloud.spacetimedb.com/nullmere`;
-nothing in the app changes.
+Release builds already point at `https://maincloud.spacetimedb.com/nullmere`;
+nothing in the app changes. If the name is taken, publish under another and
+build the app for it with
+`REALM_ADDRESS=https://maincloud.spacetimedb.com/<name> scripts/build-app.sh`.
 
-Keeping the Words safe: each line a keeper reports shows in that log as
-`REPORT by …`, with the lines said round it. Started with
-`NULLMERE_STEWARD_ORDERS` naming a file, the steward reads orders added
-to it, a line each: `remove 123` takes line 123 out of the Words,
-`bar 4 20` bars House 4 from them for twenty watches, and `forget Ama`
-forgets the keeper who goes by Ama, as the realm's compact promises
-whoever asks (their name and identity leave the roll; a steward keeps
-their House under another name). The log answers each `ORDER` with what
-was done.
-
-The realm's compact and its tongue: the compact keepers accept at the
-front door is `Compact` in `Sources/NullmereCore/Compact.swift`. Raise its
-`edition` (and say what changed in `changes`) whenever its words change in
-substance, and every keeper is asked to accept it again. A realm tells
-the tongue it speaks (`Speech.current`) and the oldest it still hears
-(`Speech.oldestHeard`): raise `oldestHeard` only when a Mac with an
-earlier build can no longer play, and its keeper is told at the door to
-get the new build from the repository's releases.
+Keeping the peace is not yet built on the rebuilt realm: no line can be
+reported, taken away or barred, and no player forgotten on asking, as the
+turn-based game's steward could (docs/rework-plan.md, 9.4). It is wanted
+before the realm is opened to strangers.
 
 ## 2. Sign and notarize the release
 

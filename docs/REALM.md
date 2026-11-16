@@ -1,6 +1,12 @@
 # The realm
 
-How the realm that holds Nullmere Online's world works, and how to raise one.
+How the realm that held the turn-based game's world worked. Play no longer
+opens that game: its module (`realm-server/`), its steward and the script
+that raised them were deleted on 16 November (docs/rework-plan.md, 3.4,
+step B), and what this tells of its client goes with the game. The rebuilt
+realm is `realm/`, the rules inside one SpacetimeDB module with no steward
+beside it: [DEVELOPING.md](DEVELOPING.md) tells how it is built and tested,
+and [GO-LIVE.md](GO-LIVE.md), step 1, how it is published.
 
 - [How it works](#how-it-works)
 - [Raising the realm](#raising-the-realm)
@@ -215,67 +221,16 @@ steward's answer). For development a realm can also be hosted in-process
 
 ## Raising the realm
 
-Release builds look for the realm proper at
-`https://maincloud.spacetimedb.com/nullmere`. Raising it is one command,
-after signing in to SpacetimeDB once:
-
-```sh
-spacetime login                                # once: opens a GitHub sign-in
-scripts/raise-realm.sh maincloud --dry-run     # optional: checks and builds everything, changes nothing
-scripts/raise-realm.sh maincloud               # publishes the module, starts the steward
-```
-
-When the steward is up, the script reads the realm's status back as any
-keeper would, and fails if the realm doesn't answer. CI runs the dry run
-for maincloud, building the steward's image from `Dockerfile.steward` as
-the realm proper's is built and starting it once, so the image can't fall
-out of step with the code; and it raises a whole realm standing alone on
-its own SpacetimeDB the same way (`scripts/raise-realm.sh local`, then
-`--stop`).
-
-The script checks its tools, publishes the module, keeps the steward's
-token in `~/.config/nullmere` (readable by you alone), and starts the
-steward: for maincloud, in a container (`Dockerfile.steward`, restarted with
-the machine) when Docker is there; otherwise, and always for a local realm,
-in the background, with its log beside the token. Run it again to update the module; the realm keeps its world. Ask
-for a fresh realm with `SPACETIME_CLEAR=1`: the script stops the realm's
-steward on this machine before it clears the database, since a steward
-left running would publish the realm it held over the fresh one. Stop
-any steward of it you run elsewhere first yourself.
-
-The module can also be published from GitHub: put the token
-`spacetime login show --token` prints in the `SPACETIME_TOKEN` secret, and
-run **Publish the realm** (`.github/workflows/realm.yml`) from the Actions
-tab. The steward still runs on a machine of yours, as that identity.
-
-If the name `nullmere` is taken on maincloud, choose another with
-`REALM_DB=…`, and build the app for it with
-`REALM_ADDRESS=https://maincloud.spacetimedb.com/<name> scripts/build-app.sh`;
-the address is kept in the app's Info.plist. `NULLMERE_REALM_NAME`,
-`NULLMERE_REALM_SEED`, `NULLMERE_REALM_SEATS` and `NULLMERE_WATCH_SECONDS`
-shape a new realm; a realm has two to a thousand and twenty-four seats,
-and the steward refuses to start, saying why, when asked for any other
-number.
-`STEWARD=foreground` keeps the steward in the terminal. The Frontier is
-raised the same way into a database of its own with `NULLMERE_FRONTIER=1`
-and `NULLMERE_BORDERS` naming the realms it borders by address, between
-commas; each of those realms' stewards is given the Frontier's address in
-its own `NULLMERE_BORDERS`.
-
-`scripts/raise-realm.sh local` raises the same realm on your own machine
-(starting SpacetimeDB if it isn't running); open a debug build with
-`NULLMERE_REALM=http://127.0.0.1:3000/nullmere`. CI runs this very script:
-on Linux, two keepers play through the server, and two realms and the
-Frontier are published as three databases whose stewards read each
-other, keepers of each realm crossing to the Frontier, seated there for
-their kingdoms at war, keeping its season to its end and told home of it
-once; then three databases more, fresh, where the stewards run on their
-own clocks and two keepers' own clients, the shipped link each, cross by
-an order at home, go across to the Frontier by the same key, keep a
-season of watches there and are told home; on macOS, the app itself
-enters the world across the network (`scripts/smoke-test-network.sh`).
+The rebuilt realm is published from GitHub, by **Publish the realm**
+(`.github/workflows/realm.yml`), or on your own machine by
+`scripts/serve-realm.sh <name>`, which starts SpacetimeDB where nothing
+answers and publishes `realm/` to it, its data fresh, as CI's Mac jobs do.
+A debug build enters it with `NULLMERE_REALM=http://127.0.0.1:3000/<name>`.
 
 ## Keeping the peace
+
+The turn-based game's steward kept the peace as follows. The rebuilt realm
+has nothing of it yet (docs/rework-plan.md, 9.4).
 
 Whoever runs a realm keeps its Words fit to read and forgets keepers who ask.
 A line a keeper reports reaches the steward's log with the three lines said
@@ -290,5 +245,5 @@ before it and after. The steward reads its orders from the file named by
 
 ## Going live
 
-Raising the realm on maincloud is the first of the five steps in
+Publishing the realm on maincloud is the first of the five steps in
 [GO-LIVE.md](GO-LIVE.md), each a checklist of commands to paste.
