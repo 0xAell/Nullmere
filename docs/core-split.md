@@ -97,7 +97,9 @@ hold walled in stone). Two ways off the old rules:
   `state` goes; holy sites have no rows in the rebuilt realm, so the shot
   that shows them shows the Moonspire's seat instead. The Trailer workflow
   renders stills to compare. Begun on the branch `trailer-world` (not
-  pushed to main): the world read from the rows, the actors and frames
+  pushed to main; a copy as `claude/trailer-world` on GitHub, whose push
+  ran the workflows on unfinished work: a `claude/` branch runs them all,
+  so push there only what is done): the world read from the rows, the actors and frames
   moved off `world.state`. What it still needs: the trailer's shots stand
   about the lake at the map's middle (`Relief.centre(of: Hex(0, 0))`), so
   the rows must set the twelve cities about the lake country's shore
