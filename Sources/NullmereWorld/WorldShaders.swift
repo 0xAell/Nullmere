@@ -429,6 +429,30 @@ public enum WorldShaders {
             + (1.0 - f.y) * nm_knowledge(h0 + int2(1, 0), radius NM_TEXTURE_PASS);
     }
 
+    // The glow of holds' hearths at a point: from the three hexes whose
+    // hearts surround it, as the land and what is known of it are blended,
+    // which hold every hearth near enough to light it. A hearth a hex
+    // further off would give a fortieth of its glow at most, and its six
+    // neighbours were read for it at every point of the land: the wide
+    // realms' frames were over their time on CI run 1018's Mac.
+    float nm_hearthAt(int2 h, float2 p, float radius NM_TEXTURE_ARGUMENT) {
+        if (nm_tileAt(h, radius NM_TEXTURE_PASS).y < 128.0) {
+            return 0.0;
+        }
+        float far = length(p - nm_hexCentre(h));
+        return exp(-far * far * 1.6);
+    }
+
+    float nm_hearthAround(float2 p, float radius NM_TEXTURE_ARGUMENT) {
+        float2 a = nm_axial(p);
+        float2 base = floor(a);
+        float2 f = a - base;
+        int2 h0 = int2(int(base.x), int(base.y));
+        int2 third = f.x + f.y <= 1.0 ? h0 : h0 + int2(1, 1);
+        return nm_hearthAt(third, p, radius NM_TEXTURE_PASS) + nm_hearthAt(h0 + int2(1, 0), p, radius NM_TEXTURE_PASS)
+            + nm_hearthAt(h0 + int2(0, 1), p, radius NM_TEXTURE_PASS);
+    }
+
     // How far a point lies inside its hex's edge, and the axial step to
     // the neighbour across the nearest edge.
     float3 nm_hexEdge(float2 p, int2 h) {
@@ -490,6 +514,10 @@ public enum WorldShaders {
     // of colour `albedo` facing `n`: `place` is where it is and how far it
     // reaches, `colour` its colour times its strength.
     float3 nm_pointLight(float3 albedo, float3 p, float3 n, float4 place, float4 colour) {
+        // A slot no light fills reaches nowhere, and costs nothing.
+        if (place.w <= 0.0) {
+            return float3(0.0);
+        }
         float3 toward = place.xyz - p;
         float d = length(toward);
         float fall = max(1.0 - d / max(place.w, 0.001), 0.0);
@@ -878,20 +906,9 @@ public enum WorldShaders {
             lit += albedo * 0.02;
         #endif
 
-            // A hold's hearths light the country round it.
-            for (int i = 0; i < 7; i++) {
-                int2 toward = int2(0, 0);
-                if (i == 1) { toward = int2(1, 0); }
-                if (i == 2) { toward = int2(-1, 0); }
-                if (i == 3) { toward = int2(0, 1); }
-                if (i == 4) { toward = int2(0, -1); }
-                if (i == 5) { toward = int2(1, -1); }
-                if (i == 6) { toward = int2(-1, 1); }
-                float4 near = nm_tileAt(h + toward, radius NM_TEXTURE_PASS);
-                if (near.y >= 128.0) {
-                    float far = length(p - nm_hexCentre(h + toward));
-                    lit += albedo * kHearth * 0.55 * exp(-far * far * 1.6) * frame.land.z;
-                }
+            // A hold's hearths light the country round it; none by day.
+            if (frame.land.z > 0.0) {
+                lit += albedo * kHearth * 0.55 * nm_hearthAround(p, radius NM_TEXTURE_PASS) * frame.land.z;
             }
             lit += marked;
             // Remembered, not watched: as it was last seen.
