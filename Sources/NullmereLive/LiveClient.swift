@@ -281,6 +281,9 @@ public final class LiveClient: @unchecked Sendable {
     /// Takes a piece of the player's gear off whoever wears it.
     public func unequip(gear: UInt64) async throws { try await ask("unequip", [.integer(gear)]) }
 
+    /// Claims every gift waiting on the player, for goods in their city.
+    public func claimBoons() async throws { try await ask("claim_boons", []) }
+
     /// Uses one of the player's items of peace on their city.
     public func usePeace(_ item: Int) async throws { try await ask("use_peace", [.integer(UInt64(item))]) }
 

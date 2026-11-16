@@ -684,3 +684,29 @@ extension LiveWorld {
     }
 }
 
+/// A gift waiting on the player, given as an ally cleared a barrow: whose
+/// deed it came of, the barrow's level, its goods and until when it waits.
+public struct LiveBoon: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let giver: UInt64
+    public let level: Int
+    public let goods: LiveGoods
+    public let expires: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let giver = cells.unsigned(2), let level = cells.whole(3), let expires = cells.whole(7) else { return nil }
+        (self.id, self.giver, self.level, self.expires) = (id, giver, level, expires)
+        goods = LiveGoods(grain: cells.unsigned(4) ?? 0, timber: cells.unsigned(5) ?? 0, stone: cells.unsigned(6) ?? 0)
+    }
+}
+
+extension LiveWorld {
+    /// Every gift waiting on the player, together.
+    public var boonGoods: LiveGoods {
+        boons.reduce(LiveGoods()) { sum, boon in
+            LiveGoods(grain: sum.grain + boon.goods.grain, timber: sum.timber + boon.goods.timber, stone: sum.stone + boon.goods.stone)
+        }
+    }
+}
+

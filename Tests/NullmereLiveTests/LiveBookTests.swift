@@ -225,12 +225,17 @@ final class LiveBookTests: XCTestCase {
                                 n(20), n(2), n(0), n(12), n(12), n(0), n(0), n(0), n(0), .string("Your army cleared a level 2 barrow. Of your 20, 2 were wounded."), .bool(false)]]
         later["player"] = [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)]]
         later["my_letters"] = [[n(41), n(2), n(1), .string("Bryn"), .string("Well met."), n(2_011), .bool(false)]]
+        later["my_boons"] = [[n(51), n(1), n(2), n(4), n(800), n(800), n(800), n(90_000), n(3)]]
         let march: [JSONValue] = [n(11), n(2), n(8), n(LiveMarch.attack), n(LiveMarch.going), n(Double(LiveHex(q: 9, r: 4).packed)),
                                   n(Double(LiveHex(q: 3, r: 4).packed)), n(7), n(1_000), n(2_100), n(300), .string(""), n(1), n(0)]
         later["march"] = [march]
         let told = LiveWorld.news(from: before, to: LiveWorld(snapshot: later), at: 2_030)
         XCTAssertEqual(told, ["The Sawmill stands at level 2.", "30 Spearmen of tier 1 are ready.",
-                              "A report: Your army cleared a level 2 barrow.", "A letter from Bryn.", "Bryn's army of 300 reaches your city in 1:10."])
+                              "A report: Your army cleared a level 2 barrow.", "A letter from Bryn.",
+                              "A gift from Bryn's barrow: 800 grain, 800 timber and 800 stone.", "Bryn's army of 300 reaches your city in 1:10."])
+        let gifted = LiveWorld(snapshot: later)
+        XCTAssertEqual(gifted.boons.map { [Int($0.giver), $0.level, $0.expires] }, [[2, 4, 90_000]])
+        XCTAssertEqual(gifted.boonGoods, LiveGoods(grain: 800, timber: 800, stone: 800))
         // Nothing new, nothing told; nor before there is a city to tell of.
         XCTAssertTrue(LiveWorld.news(from: before, to: before, at: 2_030).isEmpty)
         XCTAssertTrue(LiveWorld.news(from: LiveWorld(snapshot: [:]), to: before, at: 2_030).isEmpty)

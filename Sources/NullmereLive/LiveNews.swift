@@ -29,6 +29,10 @@ extension LiveWorld {
         for letter in after.lettersReceived where !letters.contains(letter.id) {
             told.append("A letter from \(after.shownName(of: letter.sender) ?? letter.name).")
         }
+        let gifts = Set(before.boons.map(\.id))
+        for boon in after.boons where !gifts.contains(boon.id) {
+            told.append("A gift from \(after.shownName(of: boon.giver) ?? "an ally")'s barrow: \(boon.goods.words).")
+        }
         let threatened = Set(before.threats(at: seconds).map(\.id))
         for threat in after.threats(at: seconds) where !threatened.contains(threat.id) && threat.march.state == LiveMarch.going {
             told.append(threat.words)

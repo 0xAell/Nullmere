@@ -105,6 +105,8 @@ public struct LiveWorld: Equatable, Sendable {
     /// What the Forge makes, by piece; and the player's gear.
     public var patterns: [Int: LivePattern] = [:]
     public var gear: [LiveGear] = []
+    /// The gifts waiting on the player from their alliance's deeds.
+    public var boons: [LiveBoon] = []
 
     public init() {}
 
@@ -191,6 +193,7 @@ public struct LiveWorld: Equatable, Sendable {
         letters = rows("my_letters", LiveLetter.init).sorted { $0.id > $1.id }
         patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
         gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
+        boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }
     }
 
     private static func key(_ kind: Int, _ level: Int) -> UInt64 { UInt64(kind) << 32 | UInt64(level) }

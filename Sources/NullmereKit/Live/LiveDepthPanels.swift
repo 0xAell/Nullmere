@@ -210,6 +210,18 @@ struct LiveAllianceDepth: View {
 
     var body: some View {
         let world = session.world
+        // The alliance's gifts waiting, as allies cleared barrows: claimed all at once.
+        if !world.boons.isEmpty {
+            Caps("Gifts", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                LiveSmall(words: "\(world.boons.count) \(world.boons.count == 1 ? "gift" : "gifts") from your alliance: \(world.boonGoods.words).")
+                Spacer(minLength: 0)
+                QuietButton(title: "Claim", prominent: true, enabled: session.asking == 0, name: "Claim your alliance's gifts") {
+                    Task { await session.claimBoons() }
+                }
+            }
+        }
         if let alliance = world.myMembership?.alliance {
             let spire = world.mySpire
             let stage = spire?.stage ?? 0

@@ -89,6 +89,7 @@ final class LiveGameTests: XCTestCase {
         rows["my_gear"] = [[n(1), n(1), n(1), n(11)], [n(2), n(1), n(10), n(0)]]
         rows["my_favour"] = [[n(1), n(140), n(1)]]
         rows["fame"] = [[n(1), n(120), n(80), n(30)], [n(2), n(340), n(200), n(12)]]
+        rows["my_boons"] = [[n(51), n(1), n(2), n(4), n(800), n(800), n(800), n(90_000), n(3)]]
         rows["trial"] = [[n(1), .string("The Long Hunt"), .string("Points for every barrow cleared."), n(7), n(3)]]
         rows["prize"] = [[n(257), n(1), n(1), n(100), n(9_000), n(0), n(0), n(0), n(1), n(0), n(0)], [n(258), n(1), n(2), n(400), n(0), n(0), n(0), n(100), n(0), n(2), n(0)]]
         rows["my_tallies"] = [[n(5), n(1), n(1), n(0), n(120), n(0)]]

@@ -82,6 +82,7 @@ public enum LiveSchema {
         "pattern": .init(columns: ["piece", "name", "slot", "grade", "words", "iron", "leather", "bone", "silver", "grain", "timber", "stone", "moonsalt",
                                    "forge_level"], key: "piece"),
         "my_gear": .init(columns: ["id", "owner", "piece", "commander"], key: "id"),
+        "my_boons": .init(columns: ["id", "player", "giver", "level", "grain", "timber", "stone", "expires", "timer"], key: "id"),
         "my_envoys": .init(columns: ["id", "sender", "receiver", "name", "terms", "days", "sent_at"], key: "id"),
         "my_prisoners": .init(columns: ["commander", "owner", "captor", "name", "grain", "timber", "stone", "freed_at", "timer"], key: "commander"),
         "my_petitions": .init(columns: ["asker", "alliance", "name", "grain", "timber", "stone", "moonsalt", "sent_grain", "sent_timber", "sent_stone",
@@ -96,7 +97,7 @@ public enum LiveSchema {
         "my_daily": "daily", "my_favour": "favour", "my_satchel": "satchel",
         "my_tallies": "tally", "my_rallies": "rally", "my_musters": "muster", "my_pleas": "plea", "my_helps": "helper", "my_gift": "gift",
         "my_skills": "skill", "my_bonds": "bond", "my_keeper": "keeper", "my_envoys": "envoy", "my_prisoners": "prisoner", "my_petitions": "petition",
-        "my_letters": "letter", "my_gear": "gear",
+        "my_letters": "letter", "my_gear": "gear", "my_boons": "boon",
     ]
 
     /// The queries that watch all of them.
