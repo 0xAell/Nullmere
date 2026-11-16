@@ -288,6 +288,8 @@ public final class LiveClient: @unchecked Sendable {
 
     /// Claims every gift waiting on the player, for goods in their city.
     public func claimBoons() async throws { try await ask("claim_boons", []) }
+    /// Buys so many of a thing from the alliance's stores with the player's honour.
+    public func buy(item: Int, count: UInt64) async throws { try await ask("buy", [.integer(UInt64(item)), .integer(count)]) }
 
     /// Uses one of the player's items of peace on their city.
     public func usePeace(_ item: Int) async throws { try await ask("use_peace", [.integer(UInt64(item))]) }

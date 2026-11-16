@@ -85,6 +85,8 @@ public enum LiveSchema {
         "my_boons": .init(columns: ["id", "player", "giver", "level", "grain", "timber", "stone", "expires", "timer"], key: "id"),
         "cairn": .init(columns: ["id", "hex", "level"], key: "id"),
         "my_finds": .init(columns: ["id", "player", "cairn", "at"], key: "id"),
+        "price": .init(columns: ["item", "honour"], key: "item"),
+        "my_honour": .init(columns: ["player", "honour", "day", "from_help"], key: "player"),
         "my_envoys": .init(columns: ["id", "sender", "receiver", "name", "terms", "days", "sent_at"], key: "id"),
         "my_prisoners": .init(columns: ["commander", "owner", "captor", "name", "grain", "timber", "stone", "freed_at", "timer"], key: "commander"),
         "my_petitions": .init(columns: ["asker", "alliance", "name", "grain", "timber", "stone", "moonsalt", "sent_grain", "sent_timber", "sent_stone",
@@ -99,7 +101,7 @@ public enum LiveSchema {
         "my_daily": "daily", "my_favour": "favour", "my_satchel": "satchel",
         "my_tallies": "tally", "my_rallies": "rally", "my_musters": "muster", "my_pleas": "plea", "my_helps": "helper", "my_gift": "gift",
         "my_skills": "skill", "my_bonds": "bond", "my_keeper": "keeper", "my_envoys": "envoy", "my_prisoners": "prisoner", "my_petitions": "petition",
-        "my_letters": "letter", "my_gear": "gear", "my_boons": "boon", "my_finds": "find",
+        "my_letters": "letter", "my_gear": "gear", "my_boons": "boon", "my_finds": "find", "my_honour": "honour",
     ]
 
     /// The queries that watch all of them.

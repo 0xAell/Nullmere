@@ -111,6 +111,10 @@ public struct LiveWorld: Equatable, Sendable {
     /// hoards the player's scouts have found.
     public var cairns: [UInt64: LiveCairn] = [:]
     public var finds: Set<UInt64> = []
+    /// The player's honour, and what the alliance's stores sell for it,
+    /// item by item.
+    public var honour: LiveHonour?
+    public var prices: [Int: UInt64] = [:]
 
     public init() {}
 
@@ -200,6 +204,8 @@ public struct LiveWorld: Equatable, Sendable {
         boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }
         cairns = Dictionary(rows("cairn", LiveCairn.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         finds = Set(rows("my_finds", LiveCairn.found))
+        honour = rows("my_honour", LiveHonour.init).first
+        prices = Dictionary(rows("price", LiveHonour.price).map { ($0.item, $0.honour) }, uniquingKeysWith: { _, new in new })
     }
 
     private static func key(_ kind: Int, _ level: Int) -> UInt64 { UInt64(kind) << 32 | UInt64(level) }

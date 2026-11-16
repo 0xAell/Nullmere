@@ -222,6 +222,23 @@ struct LiveAllianceDepth: View {
                 }
             }
         }
+        // Honour, earned helping allies and giving toward what the alliance
+        // learns, and what the alliance's stores sell for it.
+        let stores = world.storeLines()
+        if !stores.isEmpty {
+            Caps("The alliance's stores", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
+            LiveSmall(words: "Your honour: \(LiveWords.grouped(world.honourHeld)). Each help to an ally earns \(LiveHonour.aHelp), up to \(LiveWords.grouped(LiveHonour.fromHelpADay)) a day; giving toward what the alliance learns earns one for every thousand goods.", dim: true)
+            ForEach(stores) { line in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    LiveSmall(words: "\(line.ware.name): \(LiveWords.grouped(line.honour)) honour")
+                    Spacer(minLength: 0)
+                    QuietButton(title: "Buy", enabled: session.asking == 0 && line.block == nil, name: "Buy \(line.ware.name.lowercased())", why: line.block) {
+                        Task { await session.buy(item: line.ware.item) }
+                    }
+                }
+            }
+        }
         if let alliance = world.myMembership?.alliance {
             let spire = world.mySpire
             let stage = spire?.stage ?? 0

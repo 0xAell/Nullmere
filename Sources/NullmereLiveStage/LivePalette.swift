@@ -21,6 +21,8 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case promote(building: UInt64, from: Int, to: Int, count: UInt64)
         case claimBoons
         case helpAll
+        /// Buy one of a thing from the alliance's stores.
+        case buy(Int)
     }
 
     public let title: String
@@ -41,7 +43,8 @@ extension LiveSession {
     /// claim once it is done; each building that may be built or raised,
     /// each topic that may be studied, each of the day's chests that may
     /// be opened, the soldiers each training building may raise a tier,
-    /// each piece the Forge may make, another commander to take
+    /// each piece the Forge may make, each thing the alliance's stores
+    /// sell that the player's honour buys, another commander to take
     /// on and each contest's prize reached, now; and the nearest barrow the
     /// player may attack, the nearest cairn their scouts have not found,
     /// and the nearest site of each good no one works, to go to.
@@ -90,6 +93,9 @@ extension LiveSession {
         }
         if !world.boons.isEmpty {
             all.append(LiveCommand(title: "Claim your alliance's gifts: \(world.boonGoods.words)", act: .claimBoons))
+        }
+        for line in world.storeLines() where line.block == nil {
+            all.append(LiveCommand(title: "Buy \(line.ware.name.lowercased()) for \(LiveWords.grouped(line.honour)) honour", act: .buy(line.ware.item)))
         }
         if world.city != nil, world.hireBlock(at: seconds) == nil {
             all.append(LiveCommand(title: "Take on another commander", act: .hire))
@@ -151,6 +157,7 @@ extension LiveSession {
         case .promote(let building, let from, let to, let count): await promote(building: building, from: from, to: to, count: count)
         case .claimBoons: await claimBoons()
         case .helpAll: await helpAll()
+        case .buy(let item): await buy(item: item)
         }
         return nil
     }

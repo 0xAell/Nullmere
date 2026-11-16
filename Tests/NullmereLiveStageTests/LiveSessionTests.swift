@@ -732,6 +732,41 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(cairns.first?.label, "Cairn, level 3. Your scouts have found what it held. It stands for others to find.")
     }
 
+    /// Honour buys from the alliance's stores: what each costs, why what
+    /// costs too much can't be bought, the palette's commands, and a buy.
+    func testHonourBuysFromTheAlliancesStores() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["ware"] = [[n(1), .string("Five minutes' haste"), .string("Takes five minutes off a work."), n(300), n(1)],
+                        [n(2), .string("An hour's haste"), .string("Takes an hour off a work."), n(3_600), n(1)],
+                        [n(4), .string("Eight hours' peace"), .string("Keeps your city at peace."), n(28_800), n(2)]]
+        rows["price"] = [[n(4), n(5_000)], [n(1), n(100)], [n(2), n(1_000)]]
+        rows["my_honour"] = [[n(1), n(1_200), n(0), n(40)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        XCTAssertEqual(session.world.honourHeld, 1_200)
+        XCTAssertEqual(session.world.storeLines(), [], "no stores for one in no alliance")
+
+        line.change {
+            $0["alliance"] = [[self.n(5), self.n(77), self.n(78), .string("Keepers"), .string("MERE"), self.n(1), self.n(1_500), self.n(2), .bool(true), .string("")]]
+            $0["member"] = [[self.n(1), self.n(5), self.n(5), self.n(1_500)]]
+        }
+        session.refresh()
+        let stores = session.world.storeLines()
+        XCTAssertEqual(stores.map(\.ware.name), ["Five minutes' haste", "An hour's haste", "Eight hours' peace"], "the cheapest first")
+        XCTAssertEqual(stores.map(\.honour), [100, 1_000, 5_000])
+        XCTAssertEqual(stores.map(\.block), [nil, nil, "It costs 5,000 honour. You have 1,200."])
+        XCTAssertEqual(session.world.honourFromHelpLeft(at: 2_015), 960, "forty earned helping today")
+        XCTAssertEqual(session.world.honourFromHelpLeft(at: 2_015 + 86_400), 1_000, "a new day's")
+
+        let commands = session.commands(at: 2_015)
+        XCTAssertTrue(commands.contains(LiveCommand(title: "Buy five minutes' haste for 100 honour", act: .buy(1))))
+        XCTAssertTrue(commands.contains(LiveCommand(title: "Buy an hour's haste for 1,000 honour", act: .buy(2))))
+        XCTAssertFalse(commands.contains { $0.act == .buy(4) }, "nor what costs more than she has")
+        await session.perform(LiveCommand(title: "Buy an hour's haste for 1,000 honour", act: .buy(2)))
+        XCTAssertEqual(line.asked.last, "buy 1 of 2")
+    }
+
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
         let line = StandInLine(rows: LiveWindowTests.rows())
         // Seventeen seconds along its way of twenty-four: on 11, -2.
