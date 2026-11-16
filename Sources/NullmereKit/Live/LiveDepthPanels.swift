@@ -81,6 +81,7 @@ struct LiveDayPanel: View {
         if let favour = world.favour {
             LiveSmall(words: "Favour: level \(favour.level), \(LiveWords.grouped(favour.points)) points.")
         }
+        LiveMere(session: session)
 
         ForEach(world.trials.values.sorted { $0.id < $1.id }) { trial in
             let tally = world.tallies.filter { $0.trial == trial.id }.max { $0.round < $1.round }
@@ -389,5 +390,118 @@ struct LivePetitions: View {
                 QuietButton(title: "Petition", enabled: session.asking == 0, name: "Petition your alliance") { Task { await session.petition(LivePetitions.asked) } }
             }
         }
+    }
+}
+
+/// The Mere's Lord and the titles they have bestowed; for the Lord, ways
+/// to bestow each on a player of the realm and to take one back.
+struct LiveMere: View {
+    let session: LiveSession
+
+    var body: some View {
+        let world = session.world
+        Caps("The Mere", size: 10)
+            .foregroundStyle(Palette.text(0.7))
+        let lord = world.lord.flatMap { world.shownName(of: $0) }
+        LiveSmall(words: lord.map { "The Lord of the Mere is \($0), whose alliance won the last season won." } ?? "No season has been won: the Mere has no Lord.", dim: lord == nil)
+        let players = world.players.values.sorted { $0.id < $1.id }
+        ForEach(LiveTitle.names.keys.sorted(), id: \.self) { title in
+            let named = LiveTitle.names[title]
+            let held = world.titles[title]
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: named?.name ?? "A title")
+                        .font(.nm(12))
+                        .foregroundStyle(Palette.ink)
+                    LiveSmall(words: held.map { "Held by \(world.shownName(of: $0.holder) ?? $0.name)." } ?? (named?.lends ?? ""), dim: held == nil)
+                }
+                Spacer(minLength: 0)
+                if world.isLord {
+                    Menu("Bestow") {
+                        ForEach(players) { player in
+                            Button(player.name) { Task { await session.bestowTitle(title, on: player.id) } }
+                        }
+                    }
+                    .menuStyle(.button)
+                    .buttonStyle(.borderless)
+                    .fixedSize()
+                    .font(.nm(10))
+                    if held != nil {
+                        QuietButton(title: "Take back", enabled: session.asking == 0, name: "Take back \(named?.name ?? "the title")") { Task { await session.takeTitle(title) } }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The letters written to the player, to mark read or forget; and a
+/// letter to write, to a player of the realm or, for an officer, to the
+/// whole alliance.
+struct LiveLetters: View {
+    let session: LiveSession
+    let seconds: Double
+    @State private var to: UInt64?
+    @State private var words = ""
+
+    var body: some View {
+        let world = session.world
+        Caps("Letters", size: 10)
+            .foregroundStyle(Palette.text(0.7))
+        let received = world.lettersReceived
+        if received.isEmpty {
+            LiveSmall(words: "No letters yet.", dim: true)
+        }
+        ForEach(received.prefix(12)) { letter in
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: letter.name)
+                        .font(.nm(12, weight: letter.read ? .regular : .medium))
+                        .foregroundStyle(Palette.ink)
+                    LiveSmall(words: "\(LiveWords.spoken(max(Int(seconds) - letter.at, 0))) ago", dim: true)
+                    Spacer(minLength: 0)
+                    if !letter.read {
+                        QuietButton(title: "Read", enabled: session.asking == 0, name: "Mark the letter from \(letter.name) read") { Task { await session.readLetter(letter.id) } }
+                    }
+                    QuietButton(title: "Forget", enabled: session.asking == 0, name: "Forget the letter from \(letter.name)") { Task { await session.forgetLetter(letter.id) } }
+                }
+                LiveSmall(words: letter.words)
+            }
+        }
+        let others = world.players.values.filter { $0.id != world.me?.id }.sorted { $0.id < $1.id }
+        let addressee = to.flatMap { id in others.first { $0.id == id } }
+        HStack(spacing: 8) {
+            Menu(addressee.map { "To \($0.name)" } ?? "Write to…") {
+                ForEach(others) { player in
+                    Button(player.name) { to = player.id }
+                }
+            }
+            .menuStyle(.button)
+            .buttonStyle(.borderless)
+            .fixedSize()
+            .font(.nm(10))
+            LiveField(prompt: "A letter", text: $words, width: nil, submit: send)
+        }
+        HStack(spacing: 8) {
+            Spacer(minLength: 0)
+            if world.isOfficer {
+                QuietButton(title: "To the alliance", enabled: !words.isEmpty && session.asking == 0, name: "Send the letter to the whole alliance") { sendToAlliance() }
+            }
+            QuietButton(title: "Send", prominent: addressee != nil && !words.isEmpty, enabled: addressee != nil && !words.isEmpty && session.asking == 0,
+                        name: "Send the letter", why: addressee == nil ? "Choose whom it is to." : nil, action: send)
+        }
+    }
+
+    private func send() {
+        guard let to, !words.isEmpty else { return }
+        let words = self.words
+        self.words = ""
+        Task { await session.sendLetter(to: to, words) }
+    }
+
+    private func sendToAlliance() {
+        let words = self.words
+        self.words = ""
+        Task { await session.sendAllianceLetter(words) }
     }
 }

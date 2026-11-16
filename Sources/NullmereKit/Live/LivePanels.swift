@@ -43,7 +43,9 @@ struct LiveSidePanel: View {
                         LiveAlliancePanel(session: session)
                         LiveAllianceDepth(session: session, seconds: seconds)
                     case .chat: LiveChatPanel(session: session)
-                    case .reports: LiveReports(session: session, seconds: seconds)
+                    case .reports:
+                        LiveLetters(session: session, seconds: seconds)
+                        LiveReports(session: session, seconds: seconds)
                     case .day: LiveDayPanel(session: session, seconds: seconds)
                     }
                 }
@@ -334,7 +336,7 @@ struct LiveReports: View {
 }
 
 /// A line of typing with a rule under it, as the interface takes words.
-private struct LiveField: View {
+struct LiveField: View {
     let prompt: String
     @Binding var text: String
     var width: CGFloat?

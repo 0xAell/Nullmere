@@ -328,7 +328,7 @@ struct LiveDock: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(Self.doors) { door in
-                let unread = door.panel == .reports ? session.world.unread : 0
+                let unread = door.panel == .reports ? session.world.unread + session.world.unreadLetters : 0
                 QuietButton(title: unread > 0 ? "\(door.title) \(unread)" : door.title, prominent: panel == door.panel || unread > 0,
                             name: unread > 0 ? "\(door.title), \(unread) unread" : door.title) {
                     panel = panel == door.panel ? nil : door.panel

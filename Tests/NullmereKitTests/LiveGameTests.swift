@@ -87,7 +87,7 @@ final class LiveGameTests: XCTestCase {
         rows["my_bonds"] = [[n(12), n(1), n(11)]]
         rows["my_keeper"] = [[n(1), n(11)]]
         rows["spire"] = [[n(5), .string("Keepers of the Mere"), n(1), n(1), n(0), n(0), n(40_000), n(30_000), n(20_000), n(0)]]
-        rows["season"] = [[n(1), n(1_000), n(2_420_200), n(0), .string(""), n(0)]]
+        rows["season"] = [[n(1), n(1_000), n(2_420_200), n(5), .string("Keepers of the Mere"), n(1_800)]]
         rows["learning"] = [[n(5 << 8 | 1), n(5), n(1), n(1), n(0), n(0), n(60_000), n(0), n(0)]]
         rows["my_rallies"] = [[n(6), n(5), n(2), .string("[MERE] Bryn"), n(9), n(0), n(Int(LiveHex(q: 8, r: -2).packed)), n(2), n(2_300), n(1), n(1), n(500)]]
         rows["my_pleas"] = [[n(77), n(5), n(2), .string("[MERE] Bryn"), n(1), n(1), n(5)]]
@@ -100,6 +100,10 @@ final class LiveGameTests: XCTestCase {
                                 [n(31), n(2), n(1), .string("Sela"), n(5_000), n(5_000), n(5_000), n(200_000), n(0)]]
         rows["my_petitions"] = [[n(2), n(5), .string("[MERE] Bryn"), n(100_000), n(0), n(0), n(0), n(20_000), n(0), n(0), n(0), n(2_000)],
                                 [n(1), n(5), .string("[MERE] Ada"), n(0), n(50_000), n(0), n(0), n(0), n(0), n(0), n(0), n(2_000)]]
+        // Ada's alliance won the season: she is the Lord, a title bestowed; and letters, one unread.
+        rows["title"] = [[n(1), n(2), .string("Bryn"), n(1_900)]]
+        rows["my_letters"] = [[n(41), n(2), n(1), .string("[MERE] Bryn"), .string("The east road is clear. Come at dawn."), n(1_950), .bool(false)],
+                              [n(42), n(2), n(1), .string("[MERE] Bryn"), .string("Muster at dusk."), n(1_960), .bool(true)]]
         return rows
     }
 
