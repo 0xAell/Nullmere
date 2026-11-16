@@ -205,8 +205,9 @@ final class LiveWorldTests: XCTestCase {
     }
 
     func testThePlayersTaskIsReadAndReckonedDone() throws {
-        func task(_ step: Int, _ goal: Int, _ amount: Int, _ level: Int, _ words: String) -> [JSONValue] {
-            [n(Double(step)), n(Double(goal)), n(Double(amount)), n(Double(level)), .string(words), n(1_000), n(1_500), n(0), n(0)]
+        func task(_ step: Int, _ goal: Int, _ amount: Int, _ level: Int, _ words: String, _ items: [Double] = []) -> [JSONValue] {
+            let cells: [JSONValue] = [n(Double(step)), n(Double(goal)), n(Double(amount)), n(Double(level)), .string(words), n(1_000), n(1_500), n(0), n(0)]
+            return cells + items.map { n($0) }
         }
         var snapshot: [String: [[JSONValue]]] = [
             "me": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)]],
@@ -215,15 +216,23 @@ final class LiveWorldTests: XCTestCase {
             "my_troops": [[n(Double(7 << 16 | 1 << 8 | 1)), n(7), n(1), n(1), n(10), n(3)]],
             "my_squads": [[n(Double(3 << 16 | 1 << 8 | 1)), n(3), n(1), n(1), n(5), n(2)]],
             "my_hunt": [[n(1), n(940), n(2_000), n(1_000), n(8_000), n(1)]],
-            "task": [task(1, 1, 2, 0, "Raise your Keep to level 2."), task(2, 2, 7, 1, "Build a Barracks."), task(3, 3, 20, 0, "Have 20 soldiers."),
+            "task": [task(1, 1, 2, 0, "Raise your Keep to level 2."), task(2, 2, 7, 1, "Build a Barracks.", [2, 0, 0, 1]), task(3, 3, 20, 0, "Have 20 soldiers."),
                      task(4, 4, 2, 0, "Clear a level 2 barrow of the Unquiet."), task(5, 5, 0, 0, "Join an alliance, or found one."),
                      task(6, 6, 940, 0, "Reach 940 power."), task(7, 9, 0, 0, "Something not yet known here.")],
             "my_progress": [[n(1), n(2)]],
+            "ware": [[n(1), .string("Five minutes' haste"), .string("Takes five minutes off a work."), n(300), n(1)],
+                     [n(9), .string("Tome of war"), .string("Read by a commander."), n(500), n(4)]],
         ]
         let world = LiveWorld(snapshot: snapshot)
         XCTAssertEqual(world.step, 2)
         let on = try XCTUnwrap(world.task)
         XCTAssertEqual([on.words, on.gives.words], ["Build a Barracks.", "1,000 grain and 1,500 timber"])
+        // What it gives besides, by the item's number less one: two five
+        // minutes' hastes and a tome of war; none where a row tells none.
+        XCTAssertEqual(on.items, [2, 0, 0, 0, 0, 0, 0, 0, 1])
+        XCTAssertEqual(world.holdings(on.gives, on.items), "1,000 grain and 1,500 timber, Five minutes' haste ×2, Tome of war")
+        XCTAssertEqual(world.tasks[1]?.items, [UInt64](repeating: 0, count: 9))
+        XCTAssertEqual(world.holdings(world.tasks[1]!.gives, world.tasks[1]!.items), "1,000 grain and 1,500 timber")
         XCTAssertEqual([on.goal, Int(on.amount), on.level], [LiveTask.raised, 7, 1])
         // Done or not, as far as the rows tell.
         let done = (1...7).map { world.isDone(world.tasks[$0]!) }

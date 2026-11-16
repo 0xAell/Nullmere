@@ -70,7 +70,7 @@ public struct LiveCounsel: Sendable {
             lines.append("Standing idle: " + idle.map(\.words).joined(separator: "; ") + ".")
         }
         if let task = world.task {
-            lines.append("The task in hand: \(task.words) It gives \(task.gives.words)" + (world.isDone(task) ? ", and it is done." : "."))
+            lines.append("The task in hand: \(task.words) It gives \(world.holdings(task.gives, task.items))" + (world.isDone(task) ? ", and it is done." : "."))
         }
         lines.append(deedsSaid)
         return lines.joined(separator: "\n")

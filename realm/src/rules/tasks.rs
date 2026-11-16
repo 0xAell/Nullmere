@@ -1,8 +1,9 @@
 //! A player's first tasks: a chain that leads a new city through its
-//! first buildings, soldiers and fights, each giving goods when done.
+//! first buildings, soldiers and fights, each giving goods when done, and
+//! some hastes or tomes of war besides.
 
-use super::{asking, building_of, city_of, goods, member_of, set_goods, settle, squads, Refusal};
-use crate::catalog::{self, Goal, Goods};
+use super::{asking, building_of, city_of, give, goods, member_of, set_goods, settle, squads, Refusal};
+use crate::catalog::{self, Goal, Goods, Item};
 use crate::rows::{Db, Find, Hunt, March, Progress, Task, Troop};
 use crate::store::Table;
 
@@ -10,8 +11,11 @@ use crate::store::Table;
 pub fn write_tasks(db: &mut impl Db) {
     for (index, (goal, gives)) in catalog::tasks().into_iter().enumerate() {
         let (kind, amount, level) = goal.numbers();
+        let step = index as u64 + 1;
+        let items = catalog::task_items(step);
+        let count = |item: Item| items.iter().filter(|(given, _)| *given == item).map(|(_, count)| count).sum();
         db.insert(Task {
-            step: index as u64 + 1,
+            step,
             goal: kind,
             amount,
             level,
@@ -20,6 +24,10 @@ pub fn write_tasks(db: &mut impl Db) {
             timber: gives.timber,
             stone: gives.stone,
             moonsalt: gives.moonsalt,
+            brief_hastes: count(Item::Haste5),
+            hour_hastes: count(Item::Haste60),
+            long_hastes: count(Item::Haste480),
+            tomes: count(Item::Tome),
         });
     }
 }
@@ -48,8 +56,8 @@ pub fn met(db: &impl Db, player: u64, goal: Goal) -> bool {
 }
 
 /// A player claims the task they are on: if their city has done what it
-/// asks, what it gives goes into their stock (though it overfill it) and
-/// the next task is set.
+/// asks, the goods it gives go into their stock (though they overfill
+/// it), its hastes and tomes into their satchel, and the next task is set.
 pub fn claim_task(db: &mut impl Db, player: u64) -> Result<Goods, Refusal> {
     asking(db, player)?;
     let city = city_of(db, player)?;
@@ -65,6 +73,9 @@ pub fn claim_task(db: &mut impl Db, player: u64) -> Result<Goods, Refusal> {
     let more = goods(&stock).plus(gives);
     set_goods(&mut stock, more);
     db.update(stock);
+    for (item, count) in catalog::task_items(progress.step) {
+        give(db, player, item, count);
+    }
     progress.step += 1;
     if Table::<Progress>::get(db, player).is_some() {
         db.update(progress);

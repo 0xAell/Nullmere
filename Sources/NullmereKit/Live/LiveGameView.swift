@@ -603,7 +603,7 @@ struct LiveTaskChip: View {
                     Text(verbatim: task.words)
                         .font(.nm(LiveType.body, weight: .medium))
                         .foregroundStyle(LiveEmphasis.primary)
-                    Text(verbatim: "Gives \(task.gives.words).")
+                    Text(verbatim: "Gives \(session.world.holdings(task.gives, task.items)).")
                         .font(.nm(LiveType.small))
                         .foregroundStyle(LiveEmphasis.secondary)
                 }

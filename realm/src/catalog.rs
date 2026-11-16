@@ -950,6 +950,30 @@ pub fn tasks() -> Vec<(Goal, Goods)> {
     ]
 }
 
+/// What a first task gives besides goods, by its step: hastes as a new
+/// city's works grow long, and tomes of war as its commanders first fight.
+pub fn task_items(step: u64) -> Vec<(Item, u64)> {
+    match step {
+        2 => vec![(Item::Haste5, 2)],
+        3 => vec![(Item::Haste5, 3)],
+        4 => vec![(Item::Tome, 1)],
+        7 => vec![(Item::Haste5, 2)],
+        9 => vec![(Item::Haste60, 1)],
+        10 => vec![(Item::Haste5, 3)],
+        13 => vec![(Item::Tome, 1)],
+        14 => vec![(Item::Haste5, 5)],
+        15 => vec![(Item::Tome, 2)],
+        16 => vec![(Item::Haste60, 2)],
+        18 => vec![(Item::Tome, 2)],
+        19 => vec![(Item::Haste480, 1)],
+        21 => vec![(Item::Haste60, 2)],
+        22 => vec![(Item::Haste60, 1)],
+        23 => vec![(Item::Tome, 3)],
+        24 => vec![(Item::Haste480, 1), (Item::Tome, 3)],
+        _ => Vec::new(),
+    }
+}
+
 /// A deed of the day's work: something every player may do each day of
 /// the realm, counted from the day's beginning.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

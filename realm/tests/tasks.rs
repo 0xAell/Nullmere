@@ -1,7 +1,7 @@
 //! A player's first tasks over a store kept in memory: what each asks,
 //! when it is done, and what claiming it gives.
 
-use realm::catalog::{self, Building as Kind, Goal, Goods, Troops};
+use realm::catalog::{self, Building as Kind, Goal, Goods, Item, Troops};
 use realm::rows::{Building, City, Hunt, Progress, Stock, Task, Troop};
 use realm::rules::{self, Refusal};
 use realm::store::{Mem, Seconds, Table};
@@ -53,7 +53,20 @@ fn the_tasks_are_written_out_in_their_order_and_in_plain_words() {
         assert_eq!(task.words, goal.words());
         assert_eq!(Goods::of(task.grain, task.timber, task.stone, task.moonsalt), gives);
         assert!(!gives.is_none(), "every task gives something");
+        // What it gives besides, hastes and tomes, written out as it is given.
+        let items = catalog::task_items(task.step);
+        let count = |item: Item| items.iter().filter(|(given, _)| *given == item).map(|(_, count)| count).sum::<u64>();
+        assert_eq!((task.brief_hastes, task.hour_hastes, task.long_hastes, task.tomes),
+                   (count(Item::Haste5), count(Item::Haste60), count(Item::Haste480), count(Item::Tome)), "step {}", task.step);
+        assert!(items.iter().all(|(item, count)| *count > 0 && [Item::Haste5, Item::Haste60, Item::Haste480, Item::Tome].contains(item)));
     }
+    // Hastes and tomes come with most of the tasks after the first, the
+    // longer hastes as the Keep rises; none past the last.
+    let giving = (1..=tasks.len() as u64).filter(|step| !catalog::task_items(*step).is_empty()).count();
+    assert!(giving >= tasks.len() / 2, "{giving} of {} tasks give items", tasks.len());
+    assert!(catalog::task_items(1).is_empty() && catalog::task_items(tasks.len() as u64 + 1).is_empty());
+    assert_eq!(written[18].words, "Raise your Keep to level 5.");
+    assert_eq!(written[18].long_hastes, 1);
     assert_eq!(written[0].words, "Raise your Keep to level 2.");
     assert_eq!(written[1].words, "Build a Barracks.");
     assert_eq!(Goal::Raised(Kind::Embassy, 1).words(), "Build an Embassy.");
@@ -109,7 +122,10 @@ fn a_task_is_claimed_once_it_is_done() {
     raise(&mut db, city.id, Kind::Barracks, 0);
     assert!(!rules::met(&db, player, Goal::Raised(Kind::Barracks, 1)));
     raise(&mut db, city.id, Kind::Barracks, 1);
+    // Its two five minutes' hastes go into the satchel with its goods.
+    assert_eq!(rules::held(&db, player, Item::Haste5), 0);
     assert!(db.call(|db| rules::claim_task(db, player)).is_ok());
+    assert_eq!(rules::held(&db, player, Item::Haste5), 2);
 
     // Soldiers count wherever they are: ready, wounded, or out with an army.
     assert!(!rules::met(&db, player, Goal::Soldiers(20)));
@@ -117,6 +133,7 @@ fn a_task_is_claimed_once_it_is_done() {
     assert!(rules::met(&db, player, Goal::Soldiers(20)));
     assert!(!rules::met(&db, player, Goal::Soldiers(21)));
     assert!(db.call(|db| rules::claim_task(db, player)).is_ok());
+    assert_eq!(rules::held(&db, player, Item::Haste5), 5, "three more, beside the two kept");
 
     // A barrow cleared, an alliance joined, power reached.
     assert!(!rules::met(&db, player, Goal::Cleared(1)));
@@ -154,6 +171,7 @@ fn the_last_task_claimed_leaves_none() {
     assert_eq!(after, before.plus(Goods::of(20_000, 20_000, 10_000, 500)), "given in full, though it overfill what the city holds");
     assert!(after.grain > Table::<Stock>::get(&db, city.id).unwrap().holds.min(after.grain - 1));
     assert_eq!(rules::progress_of(&db, player).step, last + 1);
+    assert_eq!((rules::held(&db, player, Item::Haste480), rules::held(&db, player, Item::Tome)), (1, 3), "an eight hours' haste and three tomes besides");
     db.advance(START + 30, |db, timer| rules::fire(db, timer));
     assert_eq!(db.call(|db| rules::claim_task(db, player)), Err(Refusal::NoTasksLeft));
     assert_eq!(Refusal::NoTasksLeft.to_string(), "You have done every task there is.");

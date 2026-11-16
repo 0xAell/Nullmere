@@ -8,9 +8,9 @@ import NullmereRealm
 // module's order (`LiveSchema` lists them; `LiveSchemaTests` holds the
 // lists to the module's source).
 
-/// How many of each item a chest or a prize holds, by the item's number
-/// less one: five minutes' haste, an hour's, eight hours', and eight
-/// hours' peace.
+/// How many of each item a chest, a prize or a task holds, by the item's
+/// number less one: five minutes' haste, an hour's, eight hours', eight
+/// hours' peace, and on to the tomes of war.
 public typealias LiveHastes = [UInt64]
 
 /// One of the day's deeds, how much of it earns its marks, and how many.

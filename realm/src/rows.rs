@@ -689,6 +689,12 @@ pub struct Task {
     pub timber: u64,
     pub stone: u64,
     pub moonsalt: u64,
+    /// How many of each haste it gives besides: five minutes', an hour's,
+    /// eight hours'; and how many tomes of war.
+    pub brief_hastes: u64,
+    pub hour_hastes: u64,
+    pub long_hastes: u64,
+    pub tomes: u64,
 }
 row!(Task in task, by step);
 

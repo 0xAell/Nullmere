@@ -689,6 +689,9 @@ public struct LiveTask: Equatable, Sendable, Identifiable {
     public let level: Int
     public let words: String
     public let gives: LiveGoods
+    /// What it gives besides, by the item's number less one: hastes of
+    /// five minutes, an hour and eight hours, and tomes of war.
+    public let items: LiveHastes
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
@@ -696,6 +699,7 @@ public struct LiveTask: Equatable, Sendable, Identifiable {
               let words = cells.text(4) else { return nil }
         (self.step, self.goal, self.amount, self.level, self.words) = (step, goal, amount, level, words)
         gives = LiveGoods(grain: cells.unsigned(5) ?? 0, timber: cells.unsigned(6) ?? 0, stone: cells.unsigned(7) ?? 0, moonsalt: cells.unsigned(8) ?? 0)
+        items = [cells.unsigned(9) ?? 0, cells.unsigned(10) ?? 0, cells.unsigned(11) ?? 0, 0, 0, 0, 0, 0, cells.unsigned(12) ?? 0]
     }
 }
 
