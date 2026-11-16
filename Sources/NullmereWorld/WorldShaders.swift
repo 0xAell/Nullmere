@@ -229,8 +229,12 @@ public enum WorldShaders {
         if (growth > 0.0) {
             float country = nm_fbm2(p * 0.23 + float2(17.3, 5.1));
             float3 lush = float3(0.80, 0.96, 0.78);
-            float3 dry = float3(1.04, 0.99, 0.76);
+            float3 dry = float3(0.98, 0.97, 0.80);
             float3 reach = mix(dry, lush, smoothstep(0.3, 0.7, country));
+            // Swards a hex or less across, some yellower and some bluer, so
+            // a meadow under the sun is never one green.
+            float sward = nm_fbm2(p * 1.9 + float2(5.3, 27.1));
+            reach *= mix(float3(1.07, 1.03, 0.82), float3(0.86, 1.0, 0.98), smoothstep(0.3, 0.7, sward));
             // Glades: paler grass in rounds a hex or so across.
             float glade = smoothstep(0.6, 0.8, nm_fbm2(p * 0.9 + float2(41.0, 8.0)));
             reach = mix(reach, float3(1.05, 1.03, 0.86), glade * 0.55);
