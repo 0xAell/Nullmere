@@ -164,6 +164,11 @@ struct LiveCommanders: View {
                     LiveSmall(words: commander.isFree ? "In the city" : (commander.isHeld ? "Held prisoner" : "Out with an army"), dim: true)
                 }
                 LiveSmall(words: commander.wayWords)
+                // What they wear from the Forge, if anything.
+                let worn = world.wornGear(of: commander.id).compactMap { world.patterns[$0.piece]?.name }
+                if !worn.isEmpty {
+                    LiveSmall(words: "Wears \(worn.joined(separator: ", ")).")
+                }
                 LiveTalents(session: session, commander: commander)
             }
             .accessibilityElement(children: .contain)
