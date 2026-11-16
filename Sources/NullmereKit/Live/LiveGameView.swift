@@ -76,6 +76,12 @@ public struct LiveGameView: View {
         self.session = session
     }
 
+    /// The same, opened at one part of a destination.
+    init(session: LiveSession, opening: Panel?) {
+        self.session = session
+        _panel = State(initialValue: opening)
+    }
+
     public var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -230,41 +236,61 @@ struct LiveNameCard: View {
     }
 }
 
-/// What lies over the world while it is played.
+/// What lies over the world while it is played, keeping to its edges so
+/// the world keeps the screen (`ChromeBudget`): the top bar and the task
+/// at the top left, the armies out and the four destinations at the foot,
+/// a card for what is chosen, and an open destination at the top right,
+/// no taller than `LiveHUD.panelShare` of the window.
 struct LiveHUD: View {
     let session: LiveSession
     @Binding var panel: LiveGameView.Panel?
 
+    /// The share of the window's height an open destination stands to.
+    static let panelShare: CGFloat = 0.42
+
     var body: some View {
         // Counted afresh each second: goods grow and timers run down
         // between the realm's own words.
-        TimelineView(.periodic(from: .now, by: 1)) { _ in
-            let seconds = session.now
-            HStack(alignment: .top, spacing: 12) {
-                VStack(spacing: 10) {
-                    LiveTopBar(session: session, seconds: seconds)
-                    HStack(alignment: .top, spacing: 12) {
-                        LiveTaskChip(session: session)
+        GeometryReader { proxy in
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                let seconds = session.now
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(spacing: 10) {
+                        HStack(alignment: .top, spacing: 12) {
+                            LiveTopBar(session: session, seconds: seconds)
+                                .chrome("live-bar")
+                            Spacer(minLength: 0)
+                        }
+                        HStack(alignment: .top, spacing: 12) {
+                            LiveTaskChip(session: session)
+                                .chrome("live-task")
+                            Spacer(minLength: 0)
+                        }
+                        if let said = session.said {
+                            LiveSaid(words: said) { session.said = nil }
+                                .chrome("live-said")
+                        }
                         Spacer(minLength: 0)
+                        HStack(alignment: .bottom, spacing: 12) {
+                            LiveArmies(session: session, seconds: seconds)
+                                .chrome("live-armies")
+                            Spacer(minLength: 0)
+                            LiveDock(session: session, panel: $panel)
+                                .chrome("live-dock")
+                        }
+                        if let selection = session.selection {
+                            LiveCardView(session: session, card: session.card(for: selection), panel: $panel)
+                                .chrome("live-card")
+                        }
                     }
-                    if let said = session.said {
-                        LiveSaid(words: said) { session.said = nil }
-                    }
-                    Spacer(minLength: 0)
-                    HStack(alignment: .bottom, spacing: 12) {
-                        LiveArmies(session: session, seconds: seconds)
-                        Spacer(minLength: 0)
-                        LiveDock(session: session, panel: $panel)
-                    }
-                    if let selection = session.selection {
-                        LiveCardView(session: session, card: session.card(for: selection), panel: $panel)
+                    if let panel {
+                        LiveSidePanel(session: session, seconds: seconds, panel: panel, close: { self.panel = nil }, choose: { self.panel = $0 },
+                                      tallest: max(proxy.size.height * LiveHUD.panelShare, ChromeBudget.leastHeight))
+                            .chrome("live-panel")
                     }
                 }
-                if let panel {
-                    LiveSidePanel(session: session, seconds: seconds, panel: panel, close: { self.panel = nil }, choose: { self.panel = $0 })
-                }
+                .padding(12)
             }
-            .padding(12)
         }
     }
 }
@@ -297,7 +323,6 @@ struct LiveTopBar: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(city.name), your city: go to it")
             }
-            Spacer(minLength: 0)
             if let stock = session.world.stock {
                 let goods = stock.goods(at: seconds).parts
                 ForEach(Array(Self.stores.enumerated()), id: \.offset) { index, store in

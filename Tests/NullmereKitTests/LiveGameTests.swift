@@ -124,6 +124,48 @@ final class LiveGameTests: XCTestCase {
         return litPixels(try CardShot.draw(framed, size: size))
     }
 
+    /// The world's share of a laptop's window as the rebuilt realm's play
+    /// view lays it out, with a destination open or none, and the pieces
+    /// that took the rest.
+    private func worldShare(_ session: LiveSession, opening panel: LiveGameView.Panel?) -> (share: Double, pieces: [String]) {
+        let size = CGSize(width: 1512, height: 982)
+        ChromeLedger.isListening = true
+        defer { ChromeLedger.isListening = false }
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: LiveGameView(session: session, opening: panel).frame(width: size.width, height: size.height))
+        window.orderFrontRegardless()
+        defer { window.close() }
+        spin(1.0)
+        return (1 - ChromeLedger.covered(of: size), ChromeLedger.frames.keys.sorted())
+    }
+
+    /// The world is the screen in the rebuilt realm too: whatever is open,
+    /// the interface keeps to the edges and leaves the world its share.
+    func testTheWorldKeepsMostOfTheScreenWhateverIsOpen() async throws {
+        let (session, _) = await playing()
+        let plain = worldShare(session, opening: nil)
+        XCTAssertTrue(plain.pieces.contains("live-bar") && plain.pieces.contains("live-dock"), "The interface notes where it lies: \(plain.pieces)")
+        session.selected = session.world.city?.hex
+        let chosen = worldShare(session, opening: nil)
+        XCTAssertTrue(chosen.pieces.contains("live-card"))
+        session.selected = nil
+        var opened: [String] = []
+        for place in LiveGameView.Destination.allCases {
+            for part in place.panels {
+                let open = worldShare(session, opening: part)
+                XCTAssertTrue(open.pieces.contains("live-panel"), "\(part) is open")
+                XCTAssertGreaterThan(open.share, ChromeBudget.worldShare, "With \(part.title) open, the world keeps its share")
+                opened.append("\(part.title) \(Int((open.share * 100).rounded()))%")
+            }
+        }
+        func share(_ value: Double) -> String { "\(Int((value * 100).rounded()))%" }
+        print("LAYOUT the rebuilt realm's world in a 1512x982 window: \(share(plain.share)) plain, \(share(chosen.share)) with her city chosen; "
+              + "open: \(opened.joined(separator: ", ")) (pieces: \(chosen.pieces.joined(separator: ", ")))")
+        XCTAssertGreaterThan(plain.share, ChromeBudget.worldShare, "Nothing chosen, the world is the screen")
+        XCTAssertGreaterThan(chosen.share, ChromeBudget.worldShare, "A card for what is chosen keeps to the foot")
+    }
+
     func testWhatLiesOverTheWorldIsDrawnForEachState() async throws {
         let (session, line) = await playing()
         XCTAssertEqual(session.phase, .playing)

@@ -12,6 +12,8 @@ struct LiveSidePanel: View {
     let close: () -> Void
     /// Turns to another part of the same destination.
     var choose: (LiveGameView.Panel) -> Void = { _ in }
+    /// The tallest it stands, its parts scrolling within.
+    var tallest: CGFloat = .infinity
 
     var body: some View {
         let parts = panel.destination.panels
@@ -53,8 +55,8 @@ struct LiveSidePanel: View {
             }
         }
         .padding(14)
-        .frame(width: 340)
-        .frame(maxHeight: .infinity, alignment: .top)
+        .frame(width: 300)
+        .frame(maxHeight: tallest, alignment: .top)
         .panelBackground()
     }
 }
