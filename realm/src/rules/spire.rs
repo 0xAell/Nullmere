@@ -188,6 +188,8 @@ pub fn spire_risen(db: &mut impl Db, alliance: u64) {
         season.victor_name = spire.name.clone();
         season.won_at = db.now();
         db.update(season.clone());
+        // A new Lord of the Mere: the titles the last bestowed lapse.
+        super::titles_lapse(db);
     }
     raise_if_paid(db, &mut spire);
     keep(db, spire.clone());

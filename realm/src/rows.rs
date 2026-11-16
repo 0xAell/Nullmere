@@ -529,6 +529,8 @@ impl Report {
     /// Goods sent in answer to a petition, or a petition answered in
     /// full: `foe` is the other player.
     pub const PETITION: u8 = 13;
+    /// A title bestowed on the player, or taken back: `foe` is the title.
+    pub const TITLE: u8 = 14;
 }
 
 /// An alliance of players. Everyone may read it.
@@ -801,6 +803,20 @@ pub struct Gate {
     pub fighter: u64,
 }
 row!(Gate in gate, by id);
+
+/// A title of the Mere and who holds it, bestowed by the Lord of the Mere,
+/// the leader of the alliance that last won a season. For everyone to
+/// read. Keyed by the title (`catalog::Title`).
+#[spacetimedb::table(accessor = title, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Title {
+    #[primary_key]
+    pub title: u64,
+    pub holder: u64,
+    pub name: String,
+    pub since: Seconds,
+}
+row!(Title in title, by title);
 
 /// A member's petition to their alliance for goods: what is asked, what
 /// allies have sent so far, and when it was made (it stands a day). Its
@@ -1308,6 +1324,7 @@ pub trait Db:
     + Table<Pact>
     + Table<Prisoner>
     + Table<Petition>
+    + Table<Title>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1369,6 +1386,7 @@ impl<
             + Table<Pact>
             + Table<Prisoner>
             + Table<Petition>
+            + Table<Title>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

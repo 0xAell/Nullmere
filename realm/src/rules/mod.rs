@@ -25,6 +25,7 @@ mod rally;
 mod siege;
 mod spire;
 mod study;
+mod titles;
 mod tasks;
 mod trials;
 mod ward;
@@ -49,6 +50,7 @@ pub use rally::*;
 pub use siege::*;
 pub use spire::*;
 pub use study::*;
+pub use titles::*;
 pub use tasks::*;
 pub use trials::*;
 pub use ward::*;
@@ -224,6 +226,10 @@ pub enum Refusal {
     PetitionTooLarge(u64),
     PetitionStands,
     NoSuchPetition,
+    NotTheLord,
+    NoSuchTitle,
+    TitleHeld,
+    NoSuchPlayer,
     NoSuchTopic,
     AlreadyStudying,
     /// The Academy can't be raised while it studies.
@@ -396,6 +402,10 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchPrisoner => "There is no such prisoner of yours.",
             Refusal::PetitionStands => "Your petition stands already. Withdraw it to ask anew.",
             Refusal::NoSuchPetition => "There is no such petition.",
+            Refusal::NotTheLord => "Only the Lord of the Mere bestows its titles: the leader of the alliance that won the last season won.",
+            Refusal::NoSuchTitle => "There is no such title held.",
+            Refusal::TitleHeld => "They hold that title already.",
+            Refusal::NoSuchPlayer => "There is no such player.",
             Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",
             Refusal::NoCityThere => "There is no city to attack there.",

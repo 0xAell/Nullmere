@@ -674,6 +674,52 @@ pub fn gate_garrison() -> Vec<Unit> {
     barrow(TOP_BARROW).into_iter().map(|unit| Unit { count: unit.count * 2, ..unit }).collect()
 }
 
+/// A title the Lord of the Mere bestows: each held by one player at a
+/// time, lending them what so many levels of a study would.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Title {
+    /// Their armies gather faster.
+    Steward = 1,
+    /// Their soldiers are trained sooner.
+    Marshal = 2,
+    /// Their buildings are raised sooner.
+    Mason = 3,
+    /// Everyone they send or keep is harder to bring down.
+    Warden = 4,
+    /// Their armies march faster.
+    Herald = 5,
+}
+
+impl Title {
+    pub const ALL: [Title; 5] = [Title::Steward, Title::Marshal, Title::Mason, Title::Warden, Title::Herald];
+
+    pub fn of(code: u8) -> Option<Title> {
+        Title::ALL.into_iter().find(|title| *title as u8 == code)
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Title::Steward => "Steward of the Mere",
+            Title::Marshal => "Marshal of the Mere",
+            Title::Mason => "Mason of the Mere",
+            Title::Warden => "Warden of the Mere",
+            Title::Herald => "Herald of the Mere",
+        }
+    }
+
+    /// The study it lends, and as many levels of it as.
+    pub fn lends(self) -> (Topic, u32) {
+        match self {
+            Title::Steward => (Topic::Gathering, 2),
+            Title::Marshal => (Topic::Drill, 4),
+            Title::Mason => (Topic::Building, 4),
+            Title::Warden => (Topic::Shields, 3),
+            Title::Herald => (Topic::Marching, 3),
+        }
+    }
+}
+
 /// The most of each good a petition may ask of an alliance, how long it
 /// stands, at the realm's pace, and the hundredths of what allies send
 /// that the road takes.
