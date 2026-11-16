@@ -30,6 +30,12 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
     public let title: String
     public let act: Act
     public var id: String { title }
+
+    /// A command of the screen's own, beside the realm's: leaving it, say.
+    public init(title: String, act: Act) {
+        self.title = title
+        self.act = act
+    }
 }
 
 extension LiveSession {
