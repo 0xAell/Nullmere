@@ -192,8 +192,11 @@ hold walled in stone). Two ways off the old rules:
    weather, fields of the dead, a plea's bearer, hand-to-hand fronts and
    a GameState's tile texture, and the tests of them in StageTests,
    EffectsTests, CorpseLightsTests, TownsfolkTests and FrontPressTests),
-   which go with the rules at step 5, and WorldPreviewTests, which plays
-   the old game to draw it, to be rebuilt on the test world.
+   which go with the rules at step 5. WorldPreviewTests, which played the
+   old game to draw it, draws a test world: every company staged in its
+   owner's colour, the vigils carried round the lake on a ring six out
+   from its heart (the old current was the rules'), and the tiles known
+   about the seat, five out as a keeper first knew them, then the whole.
    TileTextureTests are: a tile's owner is written by the world's own
    `TileTexture.name` (the rebuilt realm's window writes its alliances'
    land with it), and the tests hold the texture's layout and its

@@ -1,6 +1,7 @@
 import Foundation
-@testable import NullmereCore
+import NullmereLand
 import NullmereModels
+import NullmereTestSupport
 @testable import NullmereWorld
 import XCTest
 
@@ -59,32 +60,30 @@ final class WorldPreviewTests: XCTestCase {
     /// Every model a world's keeper sees, staged as the app stages them:
     /// the land's furniture, the holds with their works, the companies in
     /// formation, the birds over the water.
-    static func stage(_ state: GameState) -> SceneFrame {
-        let relief = Relief(map: state.map)
-        let stage = WorldStage(map: state.map, relief: relief)
+    static func stage(_ world: TestWorld) -> SceneFrame {
+        let relief = Relief(map: world.map)
+        let stage = WorldStage(map: world.map, relief: relief)
         let houses = (0..<16).map { index -> Vec4 in
             let hue = Double(index) / 16 * 6.283
             return Vec4(Float(0.35 + 0.3 * cos(hue)), Float(0.3 + 0.25 * cos(hue + 2.1)), Float(0.3 + 0.25 * cos(hue + 4.2)), 1)
         }
         var frame = SceneFrame()
-        let sights = state.holds.map { HoldSight(hold: $0, colour: WorldStage.colour(houses, sigil: state.houses[$0.owner].sigil)) }
+        let sights = world.holds.map { HoldSight(hold: $0, colour: WorldStage.colour(houses, sigil: $0.owner)) }
         let (holds, hearths) = stage.holds(sights, time: 20, into: &frame)
         let townsfolk = stage.townsfolk(sights, time: 20, crowds: true, into: &frame)
-        let visible = state.visibility(for: state.player)
-        let poses = state.units.filter { $0.owner == state.player || (state.map.index(of: $0.position).map { visible[$0] } ?? false) }
-            .enumerated().map { index, unit -> CompanyPose in
+        let poses = world.companies.enumerated().map { index, unit -> CompanyPose in
                 let centre = Relief.centre(of: unit.position)
                 return CompanyPose(unit: unit.id, key: .figure(unit.kind, tier: 1 + index % ModelKey.tiers(of: unit.kind)),
-                                   sigil: state.houses[unit.owner].sigil, health: unit.health, hex: unit.position,
+                                   sigil: unit.owner, health: 100, hex: unit.position,
                                    position: Vec3(centre.x, max(relief.height(of: unit.position), Relief.waterline), centre.z),
-                                   heading: Float(index) * 0.7, clipTime: Float(index) * 0.4, isOwn: unit.owner == state.player,
+                                   heading: Float(index) * 0.7, clipTime: Float(index) * 0.4, isOwn: unit.owner == 0,
                                    commander: index % 3 == 0 ? index % ModelKey.commanderVariants : nil,
-                                   spread: state.hold(at: unit.position) == nil ? 1 : 0.3)
+                                   spread: world.holds.contains { $0.position == unit.position } ? 0.3 : 1)
             }
         let companies = stage.companies(poses, houses: houses, into: &frame)
         let lake = Relief.centre(of: Hex(0, 0))
         let flights = WorldStage.flights(arrows: [], birdsOver: Vec3(lake.x, 0, lake.z), hearths: hearths, time: 20, into: &frame)
-        frame.fixed = stage.furnish(occupied: Set(poses.map(\.hex)), holds: Set(state.holds.map(\.position)))
+        frame.fixed = stage.furnish(occupied: Set(poses.map(\.hex)), holds: Set(world.holds.map(\.position)))
         // The fishers out on the lake, their lanterns on the water, as the
         // game stages them.
         let fishers = stage.boats(about: Vec3(lake.x, Relief.waterline, lake.z), time: 20, into: &frame)
@@ -92,7 +91,7 @@ final class WorldPreviewTests: XCTestCase {
         // A blow landing beside the seat, the seat's hall burning, and
         // fireflies over the reeds near it.
         var happenings = Happenings()
-        if let seat = state.seat(of: state.player) {
+        if let seat = world.holds.first {
             let centre = Relief.centre(of: seat.position)
             let heart = Vec3(centre.x, max(relief.height(of: seat.position), Relief.waterline), centre.z)
             happenings.blazes = [Happenings.Spot(at: heart, strength: 0.9, seed: 1)]
@@ -112,18 +111,39 @@ final class WorldPreviewTests: XCTestCase {
     }
 
     /// Vigils' lights for the fallen carried one behind another round the
-    /// lake on its current, from still water some way out from its heart:
-    /// eight, each a hex on from the last, as the rules carry them.
-    static func procession(in state: GameState, from heart: Hex) -> [VigilSight] {
-        guard var at = state.map.hexes.filter({ $0.distance(to: heart) == 6 && state.map[$0]?.terrain == .still }).min() else { return [] }
+    /// lake, from still water some way out from its heart: eight, each a hex
+    /// on from the last, keeping as near six from the heart as the water
+    /// lets them.
+    static func procession(in world: TestWorld, from heart: Hex) -> [VigilSight] {
+        let still = { (hex: Hex) in world.map[hex]?.terrain == .still }
+        guard var at = world.map.hexes.filter({ $0.distance(to: heart) == 6 && still($0) }).min() else { return [] }
+        var passed: Set<Hex> = [at]
         var sights: [VigilSight] = []
         for index in 0..<8 {
-            let next = state.downstream(of: at)
+            let next = at.neighbors.filter { still($0) && !passed.contains($0) }
+                .min { (abs($0.distance(to: heart) - 6), $0) < (abs($1.distance(to: heart) - 6), $1) }
             sights.append(VigilSight(at: at, next: next, id: 40 + index, burned: Float(index) / 8))
             guard let next else { break }
+            passed.insert(next)
             at = next
         }
         return sights
+    }
+
+    /// The tiles as a keeper knows them: the tiles `known` watched, each
+    /// hold on them lit and its land named its House's.
+    static func tiles(_ world: TestWorld, known: (Hex) -> Bool) -> [UInt8] {
+        let ground = TileTexture.Ground(map: world.map)
+        var bytes = ground.bytes
+        for (index, hex) in world.map.hexes.enumerated() where known(hex) {
+            let offset = ground.offsets[index]
+            bytes[offset + 1] |= 2 * TileTexture.seenStep
+            if let hold = world.holds.first(where: { $0.position == hex }) {
+                bytes[offset + 1] |= TileTexture.holdFlag
+                TileTexture.name(hold.owner + 1, in: &bytes, at: offset)
+            }
+        }
+        return bytes
     }
 
     /// A frame's models as the preview reads them: each kind's instances,
@@ -150,17 +170,17 @@ final class WorldPreviewTests: XCTestCase {
     }
 
     func testAWorldExportsForThePreview() throws {
-        var state = GameState(settings: GameSettings(seedText: "preview", houseCount: 12, radius: 24, keepers: 1))
-        let opening = TileTexture.bytes(for: state, viewer: state.player)
-        state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
-        let whole = TileTexture.bytes(for: state, viewer: state.player)
-        let terrain = TerrainMesh(relief: Relief(map: state.map), spacing: 0.3)
-        let seat = try XCTUnwrap(state.seat(of: state.player)).position
+        var world = TestWorld(seedText: "preview", houses: 12, radius: 24)
+        let seat = world.holds[0].position
+        // The country about the seat known, as its keeper first knows it,
+        // and then the whole lake.
+        let opening = WorldPreviewTests.tiles(world) { $0.distance(to: seat) <= 5 }
+        let whole = WorldPreviewTests.tiles(world) { _ in true }
+        let terrain = TerrainMesh(relief: Relief(map: world.map), spacing: 0.3)
         // The seat walled, with works for its townsfolk to go about.
-        let seatIndex = try XCTUnwrap(state.holds.firstIndex { $0.position == seat })
-        state.holds[seatIndex].levels = [.walls: 2, .granary: 2, .sawpit: 1, .quarry: 1, .saltworks: 1, .beacon: 1]
-        state.holds[seatIndex].ward = state.holds[seatIndex].maximumWard
-        let lake = try XCTUnwrap(state.moonWater).hex
+        world.holds[0].levels = [.walls: 2, .granary: 2, .sawpit: 1, .quarry: 1, .saltworks: 1, .beacon: 1]
+        world.holds[0].ward = world.holds[0].maximumWard
+        let lake = try XCTUnwrap(world.map.deepestWater()).hex
 
         var near = Camera(scale: 34)
         near.focus(on: seat)
@@ -176,7 +196,7 @@ final class WorldPreviewTests: XCTestCase {
         // Close in on the seat, and closer on a company, with every model staged.
         var close = Camera(scale: 70, tilt: 0.95)
         close.focus(on: seat)
-        let company = try XCTUnwrap(state.units(of: state.player).first { $0.kind.isMilitary })
+        let company = try XCTUnwrap(world.companies.first { $0.owner == 0 && $0.kind.isMilitary })
         var companyView = Camera(scale: 150, tilt: 0.85, heading: 0.5)
         companyView.focus(on: company.position)
         // And among the seat's townsfolk, going about its works.
@@ -185,11 +205,11 @@ final class WorldPreviewTests: XCTestCase {
         // And out over the lake's middle, where the fishers row with their lanterns.
         var fishersView = Camera(scale: 60, tilt: 0.85)
         fishersView.focus(on: Hex(0, 0))
-        let scene = WorldPreviewTests.stage(state)
+        let scene = WorldPreviewTests.stage(world)
         // And low over the water nearer the shore, a procession of vigils'
         // lights for the fallen carried round on the current, the nearest
         // mirrored in it, halfway through the watch.
-        let procession = WorldPreviewTests.procession(in: state, from: lake)
+        let procession = WorldPreviewTests.procession(in: world, from: lake)
         XCTAssertEqual(procession.count, 8, "Eight lights on the water, one behind another")
         var vigilView = Camera(scale: 130, tilt: 1.2, heading: 0.4)
         vigilView.focus(on: try XCTUnwrap(procession.dropFirst(4).first).at)
@@ -199,29 +219,29 @@ final class WorldPreviewTests: XCTestCase {
         vigils.lights += lit.lights
         // The whole realm from afar, its holds glowing round the lake.
         var afar = scene
-        afar.motes += WorldStage(map: state.map, relief: Relief(map: state.map))
-            .glows(state.holds.map { HoldSight(hold: $0, colour: Vec4(1, 1, 1, 1)) }, scale: far.scale)
+        afar.motes += WorldStage(map: world.map, relief: Relief(map: world.map))
+            .glows(world.holds.map { HoldSight(hold: $0, colour: Vec4(1, 1, 1, 1)) }, scale: far.scale)
         // And the vigils' procession on the lake, seen across it.
         afar.motes += WorldStage.vigils(procession, progress: 0.5, scale: far.scale, time: 20).motes
         // And a field fought on open land out from the seat this watch: each
         // side's dead lying where the fronts met, a volley's among the arrows
         // standing about them, and birds come down to it.
         func open(_ hex: Hex) -> Bool {
-            state.map[hex]?.terrain == .greyfield && state.hold(at: hex) == nil && hex.distance(to: seat) >= 3
+            world.map[hex]?.terrain == .greyfield && !world.holds.contains { $0.position == hex } && hex.distance(to: seat) >= 3
         }
-        let field = state.map.hexes.filter { open($0) && (3...5).contains($0.distance(to: seat)) }.sorted().lazy.compactMap { stood -> (Hex, Hex, Hex)? in
+        let field = world.map.hexes.filter { open($0) && (3...5).contains($0.distance(to: seat)) }.sorted().lazy.compactMap { stood -> (Hex, Hex, Hex)? in
             guard let beside = stood.neighbors.first(where: open),
                   let beyond = beside.neighbors.first(where: { open($0) && $0.distance(to: stood) == 2 }) else { return nil }
             return (stood, beside, beyond)
         }.first
         let (stood, beside, beyond) = try XCTUnwrap(field, "three hexes of open land out from the seat")
-        let foe = WorldPreviewTests.houses[3], own = WorldPreviewTests.houses[state.houses[state.player].sigil % 16]
+        let foe = WorldPreviewTests.houses[3], own = WorldPreviewTests.houses[0]
         let blows = [FieldBlow(from: stood, at: beside, struck: .init(kind: .figure(.spear, tier: 2), colour: foe, troops: 2_400),
                                striker: .init(kind: .figure(company.kind, tier: 1), colour: own, troops: 900), watch: 0, seed: 5),
                      FieldBlow(from: stood, at: beyond, struck: .init(kind: .figure(.rider, tier: 1), colour: foe, troops: 1_600),
                                striker: nil, watch: 0, seed: 6)]
         var fought = scene
-        let dead = WorldStage(map: state.map, relief: Relief(map: state.map)).fieldDead(blows, watch: 0, time: 20, into: &fought)
+        let dead = WorldStage(map: world.map, relief: Relief(map: world.map)).fieldDead(blows, watch: 0, time: 20, into: &fought)
         XCTAssertFalse(dead.isEmpty)
         fought.batches += dead
         var fieldView = Camera(scale: 150, tilt: 0.9, heading: 0.5)
@@ -235,7 +255,7 @@ final class WorldPreviewTests: XCTestCase {
         var unquietView = Camera(scale: 110, tilt: 0.9, heading: 0.5)
         unquietView.focus(on: beside)
         var unquiet = scene
-        let land = WorldStage(map: state.map, relief: Relief(map: state.map))
+        let land = WorldStage(map: world.map, relief: Relief(map: world.map))
         let corpses = land.corpseLights([UnburiedSight(at: beside, troops: 11_000, darkIn: 1),
                                          UnburiedSight(at: beyond, troops: 1_400, darkIn: 1)],
                                         near: unquietView.focus, scale: unquietView.scale, time: 20)
@@ -251,13 +271,13 @@ final class WorldPreviewTests: XCTestCase {
         ]
         var frames: [[String: Any]] = []
         for (name, camera, tiles, scene) in views {
-            var uniforms = WorldPreviewTests.frame(camera, terrain: terrain, radius: state.map.radius, time: 20)
+            var uniforms = WorldPreviewTests.frame(camera, terrain: terrain, radius: world.map.radius, time: 20)
             if let scene { uniforms.light(with: PointLight.strongest(scene.lights, near: camera.focus)) }
             var entry = WorldPreviewTests.uniforms(uniforms)
             // The same view at other hours of the day: `light=day` and the rest.
             var lit: [String: Any] = [:]
             for hour in WorldPreviewTests.hours {
-                lit[hour.name] = WorldPreviewTests.hour(WorldPreviewTests.frame(camera, terrain: terrain, radius: state.map.radius, time: 20,
+                lit[hour.name] = WorldPreviewTests.hour(WorldPreviewTests.frame(camera, terrain: terrain, radius: world.map.radius, time: 20,
                                                                                  daylight: hour.light))
             }
             entry["lit"] = lit
@@ -273,7 +293,7 @@ final class WorldPreviewTests: XCTestCase {
             "colors": Data(mesh.vertices.flatMap { [$0.color.x, $0.color.y, $0.color.z] }.withUnsafeBufferPointer { Data(buffer: $0) }).base64EncodedString(),
             "indices": mesh.indices.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString(),
             "heights": terrain.heights.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString(),
-            "columns": terrain.columns, "rows": terrain.rows, "side": TileTexture.side(for: state.map), "frames": frames,
+            "columns": terrain.columns, "rows": terrain.rows, "side": TileTexture.side(for: world.map), "frames": frames,
             "models": WorldPreviewTests.meshes(for: fought).merging(WorldPreviewTests.meshes(for: unquiet)) { kept, _ in kept },
             "viewport": [Double(WorldPreviewTests.viewport.width), Double(WorldPreviewTests.viewport.height)],
         ]
