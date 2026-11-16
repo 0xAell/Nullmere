@@ -1,4 +1,8 @@
 import Foundation
+#if canImport(CoreGraphics)
+// CGPoint's Equatable on a Mac is CoreGraphics', not Foundation's.
+import CoreGraphics
+#endif
 import NullmereCore
 import NullmereLive
 import NullmereModels
