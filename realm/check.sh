@@ -278,6 +278,12 @@ check("no one reads another's tallies", isinstance(rows(ada, "SELECT * FROM tall
 check("a rally is called by a member of an alliance", call(ada, "call_rally", adas[0], adas[1], [{"kind": 1, "tier": 1, "count": 1}], 0), "You are in no alliance.")
 check("and joined by one", call(ada, "join_rally", 1, [{"kind": 1, "tier": 1, "count": 1}], 0), "You are in no alliance.")
 check("an army is not sent to a rally by an order of its own", call(ada, "send", adas[0], adas[1], 6, [{"kind": 1, "tier": 1, "count": 1}], 0), "The realm knows no such order.")
+# The Moonspire: a race among alliances, season by season.
+seasons = rows(nobody, "SELECT * FROM season")
+check("the first season is written out for all to read, begun as the realm opened", ([(season["number"], season["victor"]) for season in seasons], seasons[0]["ends"] > seasons[0]["began"] if seasons else None), ([(1, 0)], True))
+check("and every alliance's Moonspire with it", isinstance(rows(nobody, "SELECT * FROM spire"), list), True)
+check("one in no alliance has no Moonspire to give toward", call(ada, "give_to_spire", 10, 10, 10, 0), "You are in no alliance.")
+check("and what a player has given is theirs alone to read", (rows(ada, "SELECT * FROM my_gift"), isinstance(rows(ada, "SELECT * FROM gift"), str)), ([], True))
 check("help is asked of an alliance, and given within one", (call(ada, "ask_help", 1), call(ada, "help", 0)), ("You are in no alliance.", "You are in no alliance."))
 check("one in no alliance sees no asking for help, and no one reads the table itself", (rows(ada, "SELECT * FROM my_pleas"), rows(ada, "SELECT * FROM my_helps"), isinstance(rows(ada, "SELECT * FROM plea"), str)), ([], [], True))
 check("one in no alliance sees no rallies, and no one reads the table itself", (rows(ada, "SELECT * FROM my_rallies"), rows(ada, "SELECT * FROM my_musters"), isinstance(rows(ada, "SELECT * FROM rally"), str)), ([], [], True))

@@ -510,6 +510,8 @@ impl Report {
     /// An ally's soldiers have joined the player's city as its garrison:
     /// `foe` is the ally's number, and `stood` how many came.
     pub const REINFORCED: u8 = 6;
+    /// Of the player's alliance's Moonspire, and of the season's end.
+    pub const SPIRE: u8 = 7;
 }
 
 /// An alliance of players. Everyone may read it.
@@ -668,6 +670,59 @@ pub struct Chest {
     pub long_hastes: u64,
 }
 row!(Chest in chest, by id);
+
+/// An alliance's Moonspire this season: the stage it stands at, whether
+/// the next is being raised and till when, and the goods given toward the
+/// next. For everyone to read: the realm's seasons are a race to raise
+/// one. Keyed by alliance.
+#[spacetimedb::table(accessor = spire, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Spire {
+    #[primary_key]
+    pub alliance: u64,
+    /// The alliance's name as it was when it began this one.
+    pub name: String,
+    pub season: u64,
+    pub stage: u32,
+    /// When the stage being raised stands; 0 when none is.
+    pub rises_at: Seconds,
+    pub timer: u64,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+}
+row!(Spire in spire, by alliance);
+
+/// A season of the realm: when it began and ends, and the alliance that
+/// first raised its Moonspire whole in it, if one has. For everyone to
+/// read. Keyed by its number, from 1.
+#[spacetimedb::table(accessor = season, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Season {
+    #[primary_key]
+    pub number: u64,
+    pub began: Seconds,
+    pub ends: Seconds,
+    /// The first alliance to raise its Moonspire whole, and its name then; 0 and empty for none yet.
+    pub victor: u64,
+    pub victor_name: String,
+    pub won_at: Seconds,
+}
+row!(Season in season, by number);
+
+/// What a player has given toward their alliance's Moonspire this season:
+/// theirs alone to read. Keyed by player.
+#[spacetimedb::table(accessor = gift)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Gift {
+    #[primary_key]
+    pub player: u64,
+    pub season: u64,
+    /// Goods given, all four counted together.
+    pub given: u64,
+}
+row!(Gift in gift, by player);
 
 /// A work its owner has asked their alliance's help with: the alliance's
 /// alone to read. Keyed by the work's job. It lasts as long as the work.
@@ -1015,6 +1070,9 @@ pub trait Db:
     + Table<Muster>
     + Table<Plea>
     + Table<Helper>
+    + Table<Spire>
+    + Table<Season>
+    + Table<Gift>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1063,6 +1121,9 @@ impl<
             + Table<Muster>
             + Table<Plea>
             + Table<Helper>
+            + Table<Spire>
+            + Table<Season>
+            + Table<Gift>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,

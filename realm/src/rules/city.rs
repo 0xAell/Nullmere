@@ -168,7 +168,8 @@ pub(super) fn reckon(db: &mut impl Db, city: u64) -> City {
     if let Ok(mut stock) = settle(db, city) {
         // What the city has learnt adds to what its works bring in and
         // to what it holds.
-        let more = |amount: u64, topic: Topic| amount * (100 + boost(db, city, topic)) / 100;
+        let lifted = super::spire_boost(db, row.owner);
+        let more = |amount: u64, topic: Topic| amount * (100 + boost(db, city, topic) + lifted) / 100;
         let hourly = hourly.times(pace);
         (stock.grain_hourly, stock.timber_hourly, stock.stone_hourly, stock.moonsalt_hourly) =
             (more(hourly.grain, Topic::Tillage), more(hourly.timber, Topic::Forestry), more(hourly.stone, Topic::Masonry), more(hourly.moonsalt, Topic::Saltcraft));

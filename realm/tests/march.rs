@@ -131,7 +131,7 @@ fn an_army_marches_to_a_site_gathers_and_carries_it_home() {
     assert!(Table::<March>::all(&db).is_empty());
     assert!(Table::<Squad>::all(&db).is_empty());
     assert!(Table::<Haul>::all(&db).is_empty());
-    assert!(db.timers.is_empty());
+    assert!(db.timers.values().all(|timer| timer.kind != rules::TIMER_MARCH), "no march's timer is left");
     assert_eq!(rules::troop(&db, city.id, Troops::Spearmen, 1).ready, 100);
     let now = stock(&db, city.id);
     assert!(now.grain >= grown.grain + carried as u64 && now.grain <= grown.grain + carried as u64 + 1_300, "{} then {}", grown.grain, now.grain);
@@ -215,7 +215,7 @@ fn an_army_is_called_home_from_the_road_and_from_its_work() {
     assert_eq!(back[0], way[(way.len() - 1) / 2], "from where it stood, half way along");
     assert_eq!(*back.last().unwrap(), Hex::unpacked(city.hex));
     assert_eq!(turned.arrives - turned.departed, (back.len() as Seconds - 1) * 6);
-    assert_eq!(db.timers.len(), 1, "its old timer called off");
+    assert_eq!(db.timers.values().filter(|timer| timer.kind == rules::TIMER_MARCH).count(), 1, "its old timer called off");
     assert_eq!(db.call(|db| rules::recall(db, ada, march.id)), Err(Refusal::AlreadyReturning));
     wait(&mut db, turned.arrives - turned.departed);
     assert_eq!(rules::troop(&db, city.id, Troops::Spearmen, 1).ready, 100);

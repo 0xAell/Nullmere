@@ -87,7 +87,9 @@ fn take_in(db: &mut impl Db, mut alliance: Alliance, player: u64) -> Result<Memb
     alliance.members += 1;
     db.update(alliance.clone());
     Table::<Applicant>::delete(db, player);
-    Ok(db.insert(Member { player, alliance: alliance.id, rank: Member::MEMBER, joined: db.now() }))
+    let member = db.insert(Member { player, alliance: alliance.id, rank: Member::MEMBER, joined: db.now() });
+    super::reckon_player(db, player);
+    Ok(member)
 }
 
 /// A player joins an alliance: at once if it is open, and otherwise they
@@ -143,6 +145,7 @@ pub fn answer_applicant(db: &mut impl Db, player: u64, applicant: u64, admit: bo
 /// alliance is no more.
 fn put_out(db: &mut impl Db, member: &Member) {
     Table::<Member>::delete(db, member.player);
+    super::reckon_player(db, member.player);
     let Some(mut alliance) = Table::<Alliance>::get(db, member.alliance) else { return };
     alliance.members = alliance.members.saturating_sub(1);
     if alliance.members == 0 {

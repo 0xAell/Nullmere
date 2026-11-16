@@ -18,6 +18,7 @@ mod items;
 mod march;
 mod rally;
 mod siege;
+mod spire;
 mod study;
 mod tasks;
 mod trials;
@@ -35,6 +36,7 @@ pub use items::*;
 pub use march::*;
 pub use rally::*;
 pub use siege::*;
+pub use spire::*;
 pub use study::*;
 pub use tasks::*;
 pub use trials::*;
@@ -49,6 +51,8 @@ pub fn fire(db: &mut impl Db, timer: &Timer) {
     match timer.kind {
         TIMER_JOB => finish(db, timer.subject),
         TIMER_MARCH => arrive(db, timer.subject),
+        TIMER_SPIRE => spire_risen(db, timer.subject),
+        TIMER_SEASON => turn_season(db, timer.subject),
         _ => {}
     }
 }
@@ -179,6 +183,7 @@ pub enum Refusal {
     NoSuchChest,
     NoSuchItem,
     NoSuchPrize,
+    SpireComplete,
     HelpAsked,
     NoSuchPlea,
     YourOwnWork,
@@ -291,6 +296,7 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchChest => "There is no such chest.",
             Refusal::NoSuchItem => "There is no such thing to use.",
             Refusal::NoSuchPrize => "There is no such prize.",
+            Refusal::SpireComplete => "Your alliance's Moonspire stands whole this season.",
             Refusal::HelpAsked => "You have asked your alliance's help with that already.",
             Refusal::NoSuchPlea => "Your alliance has no such work to help with.",
             Refusal::YourOwnWork => "That work is your own. Your allies help with it.",

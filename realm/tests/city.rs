@@ -193,7 +193,7 @@ fn the_keep_is_raised_on_a_timer_and_paid_for_at_once() {
     let job = db.call(|db| rules::upgrade(db, ada, keep.id)).unwrap();
     assert_eq!((job.kind, job.subject, job.level, job.started, job.ends), (Job::RAISE, keep.id, 2, START, START + 8));
     assert_eq!(rules::goods(&stock(&db, city.id)), catalog::STARTING_GOODS.minus(Goods::of(0, 620, 310, 0)), "paid as it begins");
-    assert_eq!(db.timers.len(), 1);
+    assert_eq!(db.timers.values().filter(|timer| timer.kind == rules::TIMER_JOB).count(), 1);
     assert_eq!(db.timers[&job.timer].at, START + 8);
 
     // While it rises: still level 1, its builder busy, and it can't be raised twice.
@@ -210,7 +210,7 @@ fn the_keep_is_raised_on_a_timer_and_paid_for_at_once() {
     let city = rules::city_of(&db, ada).unwrap();
     assert_eq!((city.keep, city.power), (2, 400 + 20 + 20));
     assert!(Table::<Job>::all(&db).is_empty());
-    assert!(db.timers.is_empty());
+    assert!(db.timers.values().all(|timer| timer.kind != rules::TIMER_JOB), "no work's timer is left");
 
     // Now the Farm may follow it, and one builder raises one thing at a time.
     let job = db.call(|db| rules::upgrade(db, ada, farm.id)).unwrap();
@@ -494,7 +494,7 @@ fn a_speedup_takes_a_quarter_of_what_is_left_of_a_raising_for_goods() {
     let hastened = db.call(|db| rules::speed_up(db, ada, job.id)).unwrap();
     assert_eq!(hastened.ends, db.clock + 3);
     assert_eq!(rules::goods(&stock(&db, city.id)), before.minus(catalog::SPEEDUP));
-    assert_eq!(db.timers.len(), 1, "one timer, reset to the new end");
+    assert_eq!(db.timers.values().filter(|timer| timer.kind == rules::TIMER_JOB).count(), 1, "one timer, reset to the new end");
     assert_eq!(db.timers[&hastened.timer].at, hastened.ends);
 
     // Still rising at the old end, done at the new one.

@@ -616,6 +616,41 @@ pub const ENERGY_SECONDS: u64 = 8;
 /// How long a fight at a barrow lasts, as written.
 pub const FIGHT_SECONDS: i64 = 15;
 
+/// A number as a word of order: first, second, and so on.
+pub fn ordinal(number: u32) -> String {
+    match number {
+        1 => "first".into(),
+        2 => "second".into(),
+        3 => "third".into(),
+        4 => "fourth".into(),
+        5 => "fifth".into(),
+        n => format!("{n}th"),
+    }
+}
+
+/// The stages of an alliance's Moonspire.
+pub const SPIRE_STAGES: u32 = 5;
+
+/// What each stage of a Moonspire asks of its alliance's members, all
+/// told, before it is raised: a hundred thousand of each good times the
+/// stage squared, and moonsalt from the third.
+pub fn spire_cost(stage: u32) -> Goods {
+    let each = 100_000 * (stage as u64).pow(2);
+    Goods::of(each, each, each, if stage >= 3 { each / 10 } else { 0 })
+}
+
+/// How long a stage takes to raise once it is paid for, at the written pace.
+pub fn spire_seconds(stage: u32) -> i64 {
+    4 * 3_600 * stage as i64
+}
+
+/// By how many hundredths each stage of an alliance's Moonspire lifts what
+/// every member's works bring in.
+pub const SPIRE_YIELD: u64 = 3;
+
+/// How many days of the realm a season lasts, at the written pace.
+pub const SEASON_DAYS: i64 = 28;
+
 /// How many allies may help with one work: more with a higher Embassy.
 pub fn helps(embassy: u32) -> u32 {
     (4 + embassy).min(30)
