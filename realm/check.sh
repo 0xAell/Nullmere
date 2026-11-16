@@ -25,6 +25,9 @@ WASM="${REALM_WASM:-$PWD/realm/target/wasm32-unknown-unknown/release/realm.wasm}
 echo "== The rules' tests"
 (cd realm && cargo test --quiet)
 
+echo "== The rules at a thousand players, in release"
+(cd realm && cargo test --quiet --release --test scale -- --ignored --nocapture)
+
 echo "== The module, built"
 (cd realm && cargo build --quiet --release --target wasm32-unknown-unknown)
 ls -l realm/target/wasm32-unknown-unknown/release/realm.wasm
