@@ -301,6 +301,9 @@ check("one in no alliance sees no envoys, and no one reads the table itself", (r
 # Prisoners: a player's own to read; none held yet, and no one ransoms or lets go what is not theirs.
 check("no one is held yet, and no one reads the table itself", (rows(ada, "SELECT * FROM my_prisoners"), isinstance(rows(ada, "SELECT * FROM prisoner"), str)), ([], True))
 check("a commander not held is not ransomed, nor let go", (call(ada, "ransom", 1), call(ada, "release_prisoner", 1)), ("There is no such prisoner of yours.",) * 2)
+# Petitions: an alliance's alone to read; one in none petitions nothing.
+check("one in no alliance petitions no one", call(ada, "petition_alliance", 10, 0, 0, 0), "You are in no alliance.")
+check("one in no alliance sees no petitions, and no one reads the table itself", (rows(ada, "SELECT * FROM my_petitions"), isinstance(rows(ada, "SELECT * FROM petition"), str)), ([], True))
 # The gates of the ridge: six, for all to read, held by the Unquiet as the realm opens; stormed only by an alliance's rally.
 gates = sorted(rows(nobody, "SELECT * FROM gate"), key=lambda gate: gate["id"])
 check("six gates stand in the ridge's passes, held by the Unquiet", [(gate["id"], gate["holder"], gate["fighter"]) for gate in gates], [(n, 0, 0) for n in range(1, 7)])

@@ -674,6 +674,13 @@ pub fn gate_garrison() -> Vec<Unit> {
     barrow(TOP_BARROW).into_iter().map(|unit| Unit { count: unit.count * 2, ..unit }).collect()
 }
 
+/// The most of each good a petition may ask of an alliance, how long it
+/// stands, at the realm's pace, and the hundredths of what allies send
+/// that the road takes.
+pub const PETITION_MOST: u64 = 500_000;
+pub const PETITION_STANDS: i64 = DAY;
+pub const PETITION_TOLL: u64 = 10;
+
 /// How many days, at the realm's pace, a commander taken prisoner is held
 /// before they go free of themselves.
 pub const PRISON_DAYS: i64 = 3;

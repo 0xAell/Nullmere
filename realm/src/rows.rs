@@ -526,6 +526,9 @@ impl Report {
     /// A commander taken prisoner, ransomed, released or gone free: `foe`
     /// is the other player.
     pub const PRISONER: u8 = 12;
+    /// Goods sent in answer to a petition, or a petition answered in
+    /// full: `foe` is the other player.
+    pub const PETITION: u8 = 13;
 }
 
 /// An alliance of players. Everyone may read it.
@@ -798,6 +801,29 @@ pub struct Gate {
     pub fighter: u64,
 }
 row!(Gate in gate, by id);
+
+/// A member's petition to their alliance for goods: what is asked, what
+/// allies have sent so far, and when it was made (it stands a day). Its
+/// alliance's alone to read, through `my_petitions`. One a player.
+#[spacetimedb::table(accessor = petition)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Petition {
+    #[primary_key]
+    pub asker: u64,
+    #[index(btree)]
+    pub alliance: u64,
+    pub name: String,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+    pub sent_grain: u64,
+    pub sent_timber: u64,
+    pub sent_stone: u64,
+    pub sent_moonsalt: u64,
+    pub made_at: Seconds,
+}
+row!(Petition in petition, by asker, alliance);
 
 /// A commander held prisoner: whose they are, who holds them, their name,
 /// the ransom asked for them, and when they go free of themselves. The two
@@ -1278,6 +1304,7 @@ pub trait Db:
     + Table<Envoy>
     + Table<Pact>
     + Table<Prisoner>
+    + Table<Petition>
     + Table<Lore>
     + Table<Study>
     + Table<Commander>
@@ -1338,6 +1365,7 @@ impl<
             + Table<Envoy>
             + Table<Pact>
             + Table<Prisoner>
+            + Table<Petition>
             + Table<Lore>
             + Table<Study>
             + Table<Commander>,
