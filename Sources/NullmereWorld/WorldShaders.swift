@@ -247,6 +247,14 @@ public enum WorldShaders {
         float beds = 0.5 + 0.5 * sin(world.y * 15.0 + nm_fbm2(p * 2.3 + float2(2.0, 31.0)) * 9.0);
         float broken = smoothstep(0.3, 0.7, nm_noise(p * 1.1 + float2(23.0, 4.0)));
         shown *= mix(1.0, 0.72 + 0.4 * beds, stone * steep * broken);
+        // Salt: the palest, least coloured ground. Under the sun it stood a
+        // blank glare (run 991's pictures: a salt flat at 227, 223, 211,
+        // read as a cloud); it is set a little lower and crusted, thin dark
+        // cracks wandering through it and its crust patchy.
+        float salt = smoothstep(0.62, 0.72, least) * (1.0 - growth);
+        float crack = 1.0 - smoothstep(0.0, 0.035, abs(nm_noise(p * 1.7 + float2(5.0, 13.0)) - 0.5));
+        float crust = 0.9 + 0.12 * nm_fbm2(p * 2.6 + float2(31.0, 2.0));
+        shown *= mix(1.0, 0.86 * crust * (1.0 - 0.22 * crack), salt);
         // Blades and grit, close to.
         float fine = nm_noise(p * 43.0 + float2(7.0, 19.0)) - 0.5;
         shown *= 1.0 + 0.16 * fine * (1.0 - smoothstep(0.012, 0.045, pixel));
