@@ -67,7 +67,8 @@ struct LiveDayPanel: View {
         if held.isEmpty {
             LiveSmall(words: "Nothing yet. The day's chests hold hastes, and the last a peace.", dim: true)
         }
-        let work = world.jobs.first
+        // A haste goes on the soonest work that can still be hastened.
+        let work = world.works(at: seconds).first?.job
         ForEach(held) { ware in
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(verbatim: "\(ware.name) ×\(world.satchel[ware.item] ?? 0)")
