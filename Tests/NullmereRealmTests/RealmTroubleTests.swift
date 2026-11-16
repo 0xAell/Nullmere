@@ -59,39 +59,5 @@ final class RealmTroubleTests: XCTestCase {
             XCTFail("Garbled credentials don't decode")
         }
     }
-
-    /// The link, over SpacetimeDB's HTTP API, to a server that doesn't answer.
-    func testAServerThatDoesntAnswerIsSaidPlainlyByTheLink() async throws {
-        let server = StubHTTP.serve { _ in throw URLError(.cannotConnectToHost) }
-        let transport = try XCTUnwrap(SpacetimeHTTP(address: server.address.appendingPathComponent("nullmere"), session: server.session))
-        let told = try await firstTrouble(NetworkRealmLink(transport: transport, credentials: MemoryStore(), pollInterval: 0.05))
-        XCTAssertEqual(told, "The realm can't be reached.")
-    }
-
-    /// A keychain that won't keep the key the realm's server gave.
-    func testAKeychainThatWontKeepTheKeyIsSaidPlainly() async throws {
-        let server = StubHTTP.serve { _ in StubHTTP.Answer(text: #"{"identity":"c200abc","token":"t0ken"}"#) }
-        let transport = try XCTUnwrap(SpacetimeHTTP(address: server.address.appendingPathComponent("nullmere"), session: server.session))
-        let told = try await firstTrouble(NetworkRealmLink(transport: transport, credentials: LockedStore(), pollInterval: 0.05))
-        XCTAssertEqual(told, "This Mac's keychain wouldn't keep your key. Unlock the keychain, then try again.")
-    }
-
-    private func firstTrouble(_ link: NetworkRealmLink) async throws -> String {
-        let listener = Listener()
-        listener.listen(to: link)
-        link.connect()
-        defer { link.leave() }
-        let deadline = Date().addingTimeInterval(10)
-        while Date() < deadline {
-            for event in listener.events { if case .unreachable(let words) = event { return words } }
-            try await Task.sleep(nanoseconds: 20_000_000)
-        }
-        throw SpacetimeError("The link told of no trouble")
-    }
 }
 
-/// A keychain that is locked: nothing kept, nothing keeps.
-private final class LockedStore: IdentityStore, @unchecked Sendable {
-    func load() -> String? { nil }
-    func save(_ identity: String) throws { throw NSError(domain: "NSOSStatusErrorDomain", code: -25308) }
-}

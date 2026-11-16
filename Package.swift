@@ -14,10 +14,10 @@ var targets: [Target] = [
         name: "NullmereCore",
         linkerSettings: [.linkedLibrary("m", .when(platforms: [.linux]))]
     ),
-    // The realm: the line between a keeper's client and the world it shares
-    // with every other keeper, over SpacetimeDB or hosted in-process.
-    // Foundation only.
-    .target(name: "NullmereRealm", dependencies: ["NullmereCore"]),
+    // The line to a realm on a SpacetimeDB server: its HTTP API, its
+    // subscriptions pushed over a WebSocket, a player's identity, and
+    // trouble said in plain words. Foundation only.
+    .target(name: "NullmereRealm"),
     // A client of the realm being rebuilt (realm/): the rows of one
     // persistent world, pushed as they change, and the reducers a player
     // calls. Foundation only, so tested on Linux against a real server.
@@ -52,8 +52,8 @@ var targets: [Target] = [
     .testTarget(name: "NullmereTrailerTests", dependencies: ["NullmereTrailer", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound"]),
     // SpacetimeDB in memory, and credentials kept in memory, for tests of
     // the realm across the network: the realm's and the app's.
-    .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereCore", "NullmereLive", "NullmereLiveStage"], path: "Tests/NullmereTestSupport"),
-    .testTarget(name: "NullmereRealmTests", dependencies: ["NullmereRealm", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereTestSupport"]),
+    .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereLive", "NullmereLiveStage"], path: "Tests/NullmereTestSupport"),
+    .testTarget(name: "NullmereRealmTests", dependencies: ["NullmereRealm", "NullmereTestSupport"]),
     // Platform-independent launcher logic: settings, navigation, scene
     // constants, the news feed and the moon's veil. Pure Swift, so it is
     // tested on Linux too.

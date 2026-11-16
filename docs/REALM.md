@@ -3,7 +3,8 @@
 How the realm that held the turn-based game's world worked. Play no longer
 opens that game: its module (`realm-server/`), its steward and the script
 that raised them were deleted on 16 November (docs/rework-plan.md, 3.4,
-step B), and what this tells of its client goes with the game. The rebuilt
+step B), and its client with them (the link, the in-process realm and
+the steward's code, the same day). The rebuilt
 realm is `realm/`, the rules inside one SpacetimeDB module with no steward
 beside it: [DEVELOPING.md](DEVELOPING.md) tells how it is built and tested,
 and [GO-LIVE.md](GO-LIVE.md), step 1, how it is published.

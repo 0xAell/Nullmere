@@ -4,8 +4,7 @@ import NullmereTestSupport
 import XCTest
 
 /// The realm's word pushed as it happens: SpacetimeDB's subscription
-/// protocol, a WebSocket of our own where the system has none, and the
-/// link reading at once what it is told has changed.
+/// protocol, and a WebSocket of our own where the system has none.
 final class RealmWatchTests: XCTestCase {
     func testTheSubscriptionIsAskedAndHeardAsSpacetimeDBSaysIt() throws {
         let subscribe = SpacetimeSubscription.subscribe(["SELECT * FROM status"])
@@ -200,71 +199,6 @@ final class RealmWatchTests: XCTestCase {
         let ftp = SpacetimeHTTP(server: URL(string: "ftp://127.0.0.1")!, database: "x")
         let none = await ftp.watch([], token: "key") {}
         XCTAssertNil(none)
-    }
-
-    private func until(_ what: String, timeout: Double = 15, _ condition: () async -> Bool) async throws {
-        let deadline = Date().addingTimeInterval(timeout)
-        while await !condition() {
-            if Date() > deadline { throw SpacetimeError("Timed out waiting for \(what)") }
-            try await Task.sleep(nanoseconds: 20_000_000)
-        }
-    }
-
-    /// A keeper whose link would read the realm only once a minute on its
-    /// own hears another's arrival at once: the realm pushed word of it.
-    func testTheLinkReadsAtOnceWhatThePushTellsItOf() async throws {
-        let db = FakeSpacetime()
-        await db.setPushing(true)
-        let credentials = try await db.createIdentity()
-        let steward = try await RealmSteward(transport: db, token: credentials.token, name: "The Nullmere", seed: "pushed", seats: 4,
-                                             watchLength: 600, now: 0)
-        let running = Task { await steward.run(clock: { 1 }) }
-        defer { running.cancel() }
-        let (ama, bel, earB) = await MainActor.run { () -> (NetworkRealmLink, NetworkRealmLink, Listener) in
-            let ama = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05)
-            let bel = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 60)
-            let earB = Listener()
-            earB.listen(to: bel)
-            ama.connect()
-            bel.connect()
-            return (ama, bel, earB)
-        }
-        try await until("Bel to hear the realm's status") { await MainActor.run { earB.hasStatus } }
-        try await until("the realm watched") { await db.watching == 2 }
-        let told = await MainActor.run { earB.events.count }
-        await MainActor.run { ama.arrive(name: "Ama") }
-        try await until("Bel to hear of Ama's arrival at once") { await MainActor.run { earB.events.count > told } }
-        let pushes = await MainActor.run { bel.pushes }
-        XCTAssertGreaterThan(pushes, 0)
-        // Word pushed while the link is reading is read straight after.
-        let heardDuringARead = await MainActor.run { () -> Int in
-            var once = false
-            earB.listen(to: bel)
-            let listen = bel.onEvent
-            bel.onEvent = { event in
-                listen?(event)
-                if !once {
-                    once = true
-                    bel.pushed()
-                }
-            }
-            return earB.events.count
-        }
-        let kept = await MainActor.run { bel.credentials?.token }
-        let belsToken = try XCTUnwrap(kept)
-        let readsBefore = await db.queried(FakeSpacetime.statusPoll, by: belsToken)
-        await MainActor.run { ama.setReady(true) }
-        try await until("Bel to hear Ama ready") { await MainActor.run { earB.events.count > heardDuringARead } }
-        try await until("Bel to read again straight after", timeout: 5) {
-            await db.queried(FakeSpacetime.statusPoll, by: belsToken) >= readsBefore + 2
-        }
-        let next = await MainActor.run { bel.nextPoll }
-        XCTAssertEqual(next, 60, "while the word comes, the link's own reads stay as far apart as asked")
-        await MainActor.run {
-            ama.close()
-            bel.close()
-        }
-        try await until("the watches stopped") { await db.watching == 0 }
     }
 }
 
