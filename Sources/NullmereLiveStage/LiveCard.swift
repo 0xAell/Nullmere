@@ -14,6 +14,13 @@ public struct LiveCard: Equatable, Sendable {
         case send
         /// Call an army home.
         case recall(UInt64)
+        /// Call a rally of the player's alliance against what is chosen,
+        /// with everyone ready.
+        case rally
+        /// Raise a wardstone of the player's alliance where is chosen, or
+        /// take one down.
+        case raiseWard
+        case razeWard(UInt64)
     }
 
     public struct Button: Equatable, Sendable {
@@ -54,6 +61,23 @@ extension LiveSession {
         return nil
     }
 
+    /// A button to call a rally against what is chosen, for a member of an
+    /// alliance; none for anyone else.
+    private func rallyButton(why: String?) -> [LiveCard.Button] {
+        guard world.myMembership != nil else { return [] }
+        if let mine = world.myRally {
+            return [.init(title: "Call a rally", act: .rally, why: "Your army is in a rally already: \(world.rallyWords(mine, at: now))")]
+        }
+        return [.init(title: "Call a rally", act: .rally, why: why ?? cannotSend)]
+    }
+
+    /// When the gates of the ridge may be stormed this season: a week in,
+    /// at the realm's pace.
+    var gatesOpenAt: Int? {
+        guard let season = world.season, let realm = world.realm else { return nil }
+        return season.began + 7 * 86_400 / max(realm.pace, 1)
+    }
+
     /// The card for what lies at a chosen hex.
     public func card(for selection: LiveSelection) -> LiveCard {
         let seconds = now
@@ -86,8 +110,9 @@ extension LiveSession {
                 return LiveCard(title: city.name, lines: [lines[0], "Your ally."], buttons: [])
             }
             if why == nil, let leaderLine { lines.append(leaderLine) }
+            let peace = city.peace(at: seconds) > 0 ? "That city is at peace for another \(LiveWords.spoken(city.peace(at: seconds)))." : nil
             return LiveCard(title: city.name, lines: lines,
-                            buttons: [.init(title: ready > 0 ? "Attack with \(soldiers(ready))" : "Attack", act: .send, why: why)])
+                            buttons: [.init(title: ready > 0 ? "Attack with \(soldiers(ready))" : "Attack", act: .send, why: why)] + rallyButton(why: peace))
 
         case .site(let site):
             let good = LiveSession.goods.indices.contains(site.kind - 1) ? LiveSession.goods[site.kind - 1] : "Goods"
@@ -114,8 +139,40 @@ extension LiveSession {
                 why = "Another army is fighting there."
             }
             if why == nil, let leaderLine { lines.append(leaderLine) }
+            // A rally reaches three levels past what one may attack alone.
+            let reach = (world.hunt?.mayAttack ?? 1) + 3
+            var rallyWhy: String? = barrow.fighter != 0 ? "Another army is fighting there." : nil
+            if energy < LiveWorld.energyAnAttack { rallyWhy = "A rally takes \(LiveWorld.energyAnAttack) energy. You have \(energy)." }
+            if barrow.level > reach { rallyWhy = "A rally of yours may go against a barrow of level \(reach) at most." }
             return LiveCard(title: "Barrow, level \(barrow.level)", lines: lines,
-                            buttons: [.init(title: ready > 0 ? "Attack with \(soldiers(ready))" : "Attack", act: .send, why: why)])
+                            buttons: [.init(title: ready > 0 ? "Attack with \(soldiers(ready))" : "Attack", act: .send, why: why)] + rallyButton(why: rallyWhy))
+
+        case .gate(let gate):
+            let mine = world.myMembership?.alliance
+            var lines = [gate.holder == 0 ? "A gate of the ridge, held by the Unquiet." : "A gate of the ridge, held by \(gate.holderName)."]
+            if gate.holder != 0, gate.holder == mine {
+                lines.append("Your alliance holds it: your armies pass it, and your city may move into the lake country.")
+                return LiveCard(title: "Gate of the ridge", lines: lines, buttons: [])
+            }
+            lines.append("Only an alliance's rally may storm it; whoever holds it passes it.")
+            var why: String?
+            if let opens = gatesOpenAt, opens > Int(seconds) { why = "The gates of the ridge may be stormed in \(LiveWords.spoken(opens - Int(seconds)))." }
+            if gate.fighter != 0 { why = "Another rally is at that gate." }
+            return LiveCard(title: "Gate of the ridge", lines: lines, buttons: rallyButton(why: why))
+
+        case .ward(let ward):
+            let owner = world.alliances[ward.alliance].map { "[\($0.tag)] \($0.name)" } ?? "An alliance"
+            var lines = ["\(owner)'s wardstone. Once it stands it claims the land within \(LiveWard.reach) hexes."]
+            if !ward.stands(at: seconds) {
+                lines.append("It stands in \(LiveWords.spoken(ward.standsAt - Int(seconds))).")
+            }
+            let ours = world.myMembership?.alliance == ward.alliance
+            if !ours {
+                // Another alliance's: a rally of one's own may take it down.
+                return LiveCard(title: "Wardstone", lines: lines, buttons: rallyButton(why: nil))
+            }
+            let buttons: [LiveCard.Button] = world.isOfficer ? [.init(title: "Take it down", act: .razeWard(ward.id), why: nil)] : []
+            return LiveCard(title: "Wardstone", lines: lines, buttons: buttons)
 
         case .army(let march, let own):
             guard own, let line = world.marchLines().first(where: { $0.id == march.id }) else {
@@ -130,9 +187,18 @@ extension LiveSession {
             let why = line.canRecall ? nil : (march.state == LiveMarch.fighting ? "That army is fighting. Wait for the fight to end." : "That army is already on its way home.")
             return LiveCard(title: "Your army", lines: lines, buttons: [.init(title: "Call home", act: .recall(march.id), why: why)])
 
-        case .land(_, let ground):
+        case .land(let hex, let ground):
             let name = ground.flatMap { LiveSession.grounds.indices.contains(Int($0)) ? LiveSession.grounds[Int($0)] : nil }
-            return LiveCard(title: name ?? "Unknown land", lines: [], buttons: [])
+            var lines: [String] = []
+            if let owner = world.landOf(hex, at: seconds), let alliance = world.alliances[owner] {
+                lines.append("The land of [\(alliance.tag)] \(alliance.name).")
+            }
+            // An officer may raise a wardstone on clear ground of strand, plain or heath.
+            guard world.isOfficer, let ground, [2, 4, 6].contains(ground) else {
+                return LiveCard(title: name ?? "Unknown land", lines: lines, buttons: [])
+            }
+            return LiveCard(title: name ?? "Unknown land", lines: lines,
+                            buttons: [.init(title: "Raise a wardstone", act: .raiseWard, why: world.stock.map { $0.goods(at: seconds).covers(LiveGoods(timber: 30_000, stone: 30_000)) } == true ? nil : "A wardstone takes 30,000 timber and 30,000 stone.")])
         }
     }
 
@@ -146,6 +212,11 @@ extension LiveSession {
         case .send:
             if let selected { await send(everyoneReady, to: selected) }
         case .recall(let march): await recall(march: march)
+        case .rally:
+            if let selected { await callRally(at: selected) }
+        case .raiseWard:
+            if let selected { await raiseWard(at: selected) }
+        case .razeWard(let ward): await razeWard(ward)
         case .city, .troops: break
         }
     }

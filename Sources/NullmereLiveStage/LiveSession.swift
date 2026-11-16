@@ -64,6 +64,9 @@ public enum LiveSelection: Equatable, Sendable {
     case city(LiveCity, of: String)
     case site(LiveSite)
     case barrow(LiveBarrow)
+    /// A gate of the ridge, and an alliance's wardstone.
+    case gate(LiveGate)
+    case ward(LiveWard)
     /// An army there now, and whether it is the player's own.
     case army(LiveMarch, own: Bool)
     /// Bare land: its ground, as the module numbers it, where it is known.
@@ -332,6 +335,10 @@ public final class LiveSession {
                 if let site = world.sites[place.id] { return .site(site) }
             case LivePlace.barrow:
                 if let barrow = world.barrows[place.id] { return .barrow(barrow) }
+            case LivePlace.gate:
+                if let gate = world.gates[place.id] { return .gate(gate) }
+            case LivePlace.ward:
+                if let ward = world.wards[place.id] { return .ward(ward) }
             default: break
             }
         }

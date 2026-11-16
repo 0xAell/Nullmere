@@ -399,6 +399,78 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(card(500, 0).title, "Unknown land")
     }
 
+    func testRalliesGatesAndWardstonesAreCalledFromTheirCards() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]
+        rows["my_hunt"] = [[n(1), n(1_000), n(2_000), n(1_000), n(8_000), n(1)]]
+        rows["my_stock"] = [[n(7), n(60_000), n(60_000), n(60_000), n(0), n(2_000), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(200_000)]]
+        rows["alliance"] = [[n(5), n(77), n(78), .string("Keepers"), .string("MERE"), n(1), n(1_500), n(2), .bool(true), .string("")]]
+        rows["member"] = [[n(1), n(5), n(5), n(1_500)]]
+        rows["season"] = [[n(1), n(1_000), n(2_420_200), n(0), .string(""), n(0)]]
+        // Ada's army is home; a barrow of the fourth level and one of the
+        // ninth; a gate of the ridge; and a wardstone of her own alliance.
+        rows["march"] = rows["march"]?.filter { $0[1] != .number(1) }
+        rows["barrow"]?.append([n(10), n(LiveHex(q: 6, r: -1).packed), n(4), n(0)])
+        rows["place"]?.append([n(LiveHex(q: 6, r: -1).packed), n(3), n(10)])
+        rows["barrow"]?.append([n(12), n(LiveHex(q: 5, r: -1).packed), n(9), n(0)])
+        rows["place"]?.append([n(LiveHex(q: 5, r: -1).packed), n(3), n(12)])
+        rows["gate"] = [[n(1), n(LiveHex(q: 4, r: -6).packed), n(0), .string(""), n(0), n(0)]]
+        rows["place"]?.append([n(LiveHex(q: 4, r: -6).packed), n(5), n(1)])
+        rows["ward"] = [[n(3), n(5), n(LiveHex(q: 12, r: -8).packed), n(1), n(1_500)], [n(4), n(6), n(LiveHex(q: 2, r: -9).packed), n(2), n(1_500)]]
+        rows["place"]?.append([n(LiveHex(q: 12, r: -8).packed), n(4), n(3)])
+        rows["place"]?.append([n(LiveHex(q: 2, r: -9).packed), n(4), n(4)])
+        rows["alliance"]?.append([n(6), n(79), n(80), .string("Wardens"), .string("WRD"), n(2), n(1_600), n(1), .bool(true), .string("")])
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        func card(_ q: Int, _ r: Int) -> LiveCard { session.card(for: session.selection(at: LiveHex(q: q, r: r))) }
+
+        // A member may call a rally against a barrow up to three levels past what they may attack alone.
+        let fourth = card(6, -1)
+        XCTAssertEqual(fourth.buttons.map(\.title), ["Attack with 40 soldiers", "Call a rally"])
+        XCTAssertEqual(fourth.buttons[0].why, "Clear a level 3 barrow first.")
+        XCTAssertNil(fourth.buttons[1].why)
+        XCTAssertEqual(card(5, -1).buttons[1].why, "A rally of yours may go against a barrow of level 5 at most.")
+        // And against another's city.
+        XCTAssertEqual(card(14, -4).buttons.map(\.act), [.send, .rally])
+
+        // A gate: held by the Unquiet, stormed only by a rally, and only a week into the season.
+        guard case .gate(let gate) = session.selection(at: LiveHex(q: 4, r: -6)) else { return XCTFail("the gate is chosen") }
+        XCTAssertEqual(gate.id, 1)
+        XCTAssertEqual(card(4, -6), LiveCard(title: "Gate of the ridge",
+                                             lines: ["A gate of the ridge, held by the Unquiet.", "Only an alliance's rally may storm it; whoever holds it passes it."],
+                                             buttons: [.init(title: "Call a rally", act: .rally, why: "The gates of the ridge may be stormed in 6 days 23 hours.")]))
+
+        // Her alliance's wardstone, which she may take down; its land, where she may raise another.
+        XCTAssertEqual(card(12, -8), LiveCard(title: "Wardstone", lines: ["[MERE] Keepers's wardstone. Once it stands it claims the land within 3 hexes."],
+                                              buttons: [.init(title: "Take it down", act: .razeWard(3), why: nil)]))
+        XCTAssertEqual(card(12, -7), LiveCard(title: "Plain", lines: ["The land of [MERE] Keepers."], buttons: [.init(title: "Raise a wardstone", act: .raiseWard, why: nil)]))
+        XCTAssertEqual(card(-20, 0).buttons, [], "nothing is raised on deep water")
+        // Another alliance's wardstone: a rally may take it down.
+        XCTAssertEqual(card(2, -9), LiveCard(title: "Wardstone", lines: ["[WRD] Wardens's wardstone. Once it stands it claims the land within 3 hexes."],
+                                             buttons: [.init(title: "Call a rally", act: .rally, why: nil)]))
+
+        // Pressed, each goes to the realm.
+        line.clear()
+        session.selected = LiveHex(q: 6, r: -1)
+        await session.press(card(6, -1).buttons[1])
+        session.selected = LiveHex(q: 12, r: -7)
+        await session.press(card(12, -7).buttons[0])
+        await session.press(card(12, -8).buttons[0])
+        XCTAssertEqual(line.asked.count, 3)
+        XCTAssertTrue(line.asked[0].hasPrefix("rally at 6,-1 with 40 of 1.1 led by "), line.asked[0])
+        XCTAssertEqual(Array(line.asked.dropFirst()), ["raise ward 12,-7", "raze ward 3"])
+
+        // One in no alliance is offered no rally.
+        line.change { rows in
+            rows["member"] = nil
+        }
+        session.refresh()
+        XCTAssertEqual(card(6, -1).buttons.map(\.act), [.send])
+        XCTAssertEqual(card(4, -6).buttons, [])
+        XCTAssertEqual(card(12, -7).buttons, [], "nor a wardstone to raise")
+    }
+
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
         let line = StandInLine(rows: LiveWindowTests.rows())
         // Seventeen seconds along its way of twenty-four: on 11, -2.
