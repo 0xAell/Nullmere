@@ -189,6 +189,9 @@ public final class LiveClient: @unchecked Sendable {
 
     /// Says something: to the whole realm, or within the player's alliance.
     public func say(_ words: String, withinAlliance: Bool) async throws { try await ask("say", [.bool(withinAlliance), .string(words)]) }
+    /// Reports a line said in the realm's chat, or within the player's
+    /// alliance, to the realm's owner.
+    public func reportLine(_ line: UInt64, withinAlliance: Bool) async throws { try await ask("report_line", [.integer(line), .bool(withinAlliance)]) }
 
     /// Calls one of the player's armies home.
     public func recall(march: UInt64) async throws { try await ask("recall", [.integer(march)]) }

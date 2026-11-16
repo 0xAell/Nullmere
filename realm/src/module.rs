@@ -13,9 +13,9 @@ use crate::rows::{
     chest as _, daily as _, daily__view as _, duty as _, fame as _, boon as _, boon__view as _, cairn as _, find as _, find__view as _, honour as _, honour__view as _, price as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _, prisoner as _, prisoner__view as _, petition as _, petition__view as _, title as _, letter as _, letter__view as _, gear as _, gear__view as _, pattern as _,
     building__view as _, city as _, city__view as _, commander as _, commander__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
     march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
-    realm_chat as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
+    realm_chat as _, complaint as _, bar as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
     troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Bond, Building, Chest, City, Commander, Daily, Duty, Fame, Boon, Cairn, Find, Honour, Price, Favour, Gift, Grace, Haul, Helper, Hunt, Job, Keeper, Land, Lore, March, Member, Muster, Rally,
-    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware, Ward, Learning, Gate, Envoy, Pact, Prisoner, Petition, Title, Letter, Gear, Pattern,
+    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Complaint, Bar, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Task, Trial, Troop, Ware, Ward, Learning, Gate, Envoy, Pact, Prisoner, Petition, Title, Letter, Gear, Pattern,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
@@ -147,6 +147,8 @@ stored!(Member in member by player, alliance);
 stored!(Applicant in applicant by player, alliance);
 stored!(RealmChat in realm_chat by id);
 stored!(AllianceChat in alliance_chat by id, alliance);
+stored!(Complaint in complaint by id, reporter);
+stored!(Bar in bar by player);
 stored!(Task in task by step);
 stored!(Progress in progress by player);
 stored!(Duty in duty by deed);
@@ -612,6 +614,51 @@ pub fn set_alliance(ctx: &ReducerContext, open: bool, words: String) -> Result<(
 #[reducer]
 pub fn say(ctx: &ReducerContext, within_alliance: bool, words: String) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::say(&mut Stdb(ctx), player, within_alliance, &words)))
+}
+
+/// Report a line said in the realm's chat, or within the caller's
+/// alliance, to the realm's owner.
+#[reducer]
+pub fn report_line(ctx: &ReducerContext, line: u64, within_alliance: bool) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::report_line(&mut Stdb(ctx), player, line, within_alliance)))
+}
+
+/// Refused unless the caller published the module: the realm's owner.
+fn owning(ctx: &ReducerContext) -> Result<(), Refusal> {
+    match ctx.db.owner().id().find(0) {
+        Some(owner) if owner.identity == ctx.sender() => Ok(()),
+        _ => Err(Refusal::NotTheOwner),
+    }
+}
+
+/// Take a line of chat away: the realm's owner's alone.
+#[reducer]
+pub fn take_away(ctx: &ReducerContext, line: u64, within_alliance: bool) -> Result<(), String> {
+    said(owning(ctx).and_then(|_| rules::take_away(&mut Stdb(ctx), line, within_alliance)))
+}
+
+/// Bar a player from speaking for so many hours, or lift a bar with none:
+/// the realm's owner's alone.
+#[reducer]
+pub fn bar_player(ctx: &ReducerContext, player: u64, hours: u64) -> Result<(), String> {
+    said(owning(ctx).and_then(|_| rules::bar(&mut Stdb(ctx), player, hours)))
+}
+
+/// Let a report go: the realm's owner's alone.
+#[reducer]
+pub fn dismiss_report(ctx: &ReducerContext, complaint: u64) -> Result<(), String> {
+    said(owning(ctx).and_then(|_| rules::dismiss(&mut Stdb(ctx), complaint)))
+}
+
+/// Forget a player who asks it: their name leaves the realm, and their
+/// identity is let go, so whoever comes back with it joins anew. The
+/// realm's owner's alone.
+#[reducer]
+pub fn forget_player(ctx: &ReducerContext, player: u64) -> Result<(), String> {
+    owning(ctx).map_err(|refusal| refusal.to_string())?;
+    said(rules::forget(&mut Stdb(ctx), player))?;
+    ctx.db.account().player().delete(player);
+    Ok(())
 }
 
 /// Have the caller's Academy study the next level of a topic.

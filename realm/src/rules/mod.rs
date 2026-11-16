@@ -25,6 +25,7 @@ mod letters;
 mod learning;
 mod march;
 mod pacts;
+mod peace;
 mod petitions;
 mod prisoners;
 mod rally;
@@ -56,6 +57,7 @@ pub use letters::*;
 pub use learning::*;
 pub use march::*;
 pub use pacts::*;
+pub use peace::*;
 pub use petitions::*;
 pub use prisoners::*;
 pub use rally::*;
@@ -314,6 +316,19 @@ pub enum Refusal {
     ChestOpened,
     /// Something only the realm's owner may do.
     NotTheOwner,
+    /// No such line of chat, or none the player may report.
+    NoSuchLine,
+    TakenAwayAlready,
+    OwnWords,
+    ReportedAlready,
+    /// The most reports a player may have waiting at once.
+    TooManyReports(u64),
+    NoSuchComplaint,
+    /// Barred from speaking: for how much longer.
+    Barred(i64),
+    /// The longest bar, in hours.
+    BarTooLong(u64),
+    ForgottenAlready,
 }
 
 impl fmt::Display for Refusal {
@@ -358,6 +373,9 @@ impl fmt::Display for Refusal {
             Refusal::RallyTooStrong(level) => return write!(f, "A rally of yours may go against a barrow of level {level} at most."),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
             Refusal::AtPeaceLonger(left) => return write!(f, "Your city is at peace for another {} already.", crate::catalog::spoken(*left)),
+            Refusal::TooManyReports(most) => return write!(f, "You have {most} reports waiting already. Wait for the realm's owner to read them."),
+            Refusal::Barred(left) => return write!(f, "You may not speak for another {}.", crate::catalog::spoken(*left)),
+            Refusal::BarTooLong(hours) => return write!(f, "A player is barred for {hours} hours at most."),
             Refusal::ShortOfMaterials(words) => return write!(f, "You need {words} more."),
             Refusal::HeldPrisoner(name) => return write!(f, "{name} is held prisoner."),
             Refusal::SeenAll(name) => return write!(f, "{name} has seen all there is to see of war."),
@@ -488,6 +506,12 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchJob => "No such work is under way in your city.",
             Refusal::NothingToSpeed => "That is nearly done. There is nothing to hasten.",
             Refusal::NotTheOwner => "Only the realm's owner may do that.",
+            Refusal::NoSuchLine => "There is no such line to report.",
+            Refusal::TakenAwayAlready => "That line was taken away already.",
+            Refusal::OwnWords => "Those are your own words.",
+            Refusal::ReportedAlready => "You have reported that line already.",
+            Refusal::NoSuchComplaint => "No such report is waiting.",
+            Refusal::ForgottenAlready => "That player is forgotten already.",
             _ => "",
         })
     }

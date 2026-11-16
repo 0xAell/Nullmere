@@ -382,6 +382,27 @@ check("and everyone reads it, tidied, under their name", [(s["name"], s["words"]
 check("one thing at a time", call(ada, "say", False, "And again"), "Wait a moment before you say more.")
 check("nothing is not said", call(bryn, "say", False, "   "), "Say something first.")
 check("no alliance, no alliance's chat", call(bryn, "say", True, "Hello?"), "You are in no alliance.")
+# Keeping the peace: a line reported and kept for the owner, who takes it
+# away; a player barred from speaking, and the bar lifted.
+def as_owner(*command):
+    return subprocess.run(shlex.split(spacetime) + list(command[:1]) + ["--server", server, db] + [str(part) for part in command[1:]], capture_output=True, text=True)
+said_line = rows(nobody, "SELECT * FROM realm_chat")[0]["id"]
+check("a player reports a line", call(bryn, "report_line", said_line, False), None)
+check("once", call(bryn, "report_line", said_line, False), "You have reported that line already.")
+check("never their own words", call(ada, "report_line", said_line, False), "Those are your own words.")
+check("nor a line that isn't there", call(bryn, "report_line", 999, False), "There is no such line to report.")
+check("reports are closed to players", isinstance(rows(bryn, "SELECT * FROM complaint"), str), True)
+check("the owner reads it, with the line", "Good morning, all." in as_owner("sql", "SELECT * FROM complaint").stdout, True)
+check("only the owner takes a line away", call(bryn, "take_away", said_line, False), "Only the realm's owner may do that.")
+check("the owner does", as_owner("call", "take_away", said_line, "false").returncode, 0)
+check("and it stands where it was, its words gone", [(s["name"], s["words"]) for s in rows(nobody, "SELECT * FROM realm_chat") if s["id"] == said_line], [("Ada of the Lake", "")])
+check("its report let go", "Good morning, all." in as_owner("sql", "SELECT * FROM complaint").stdout, False)
+ada_id = rows(ada, "SELECT * FROM me")[0]["id"]
+check("only the owner bars a player", call(bryn, "bar_player", ada_id, 1), "Only the realm's owner may do that.")
+check("the owner bars one for an hour", as_owner("call", "bar_player", ada_id, 1).returncode, 0)
+check("who may not speak", (call(ada, "say", False, "Hello again") or "").startswith("You may not speak for another "), True)
+check("until the bar is lifted", as_owner("call", "bar_player", ada_id, 0).returncode, 0)
+check("and they speak again", call(ada, "say", False, "Hello again"), None)
 check("an alliance is founded from an Embassy", call(bryn, "found_alliance", "Keepers of the Mere", "MERE"), "Raise your Embassy to level 1 first.")
 check("there is none to join yet", call(bryn, "join_alliance", 1), "There is no such alliance.")
 check("nor to leave", call(bryn, "leave_alliance"), "You are in no alliance.")

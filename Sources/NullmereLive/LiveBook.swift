@@ -442,6 +442,14 @@ public struct LiveChatLine: Equatable, Identifiable, Sendable {
     public let words: String
     /// Whether the player said it themselves.
     public let own: Bool
+    /// Whether the realm's owner took its words away.
+    public let takenAway: Bool
+
+    /// What a line taken away shows in place of its words.
+    public static let takenAwayWords = "Taken away by the realm's owner."
+
+    /// Whether the player may report it: another's, and still standing.
+    public var reportable: Bool { !own && !takenAway }
 }
 
 extension LiveWorld {
@@ -508,7 +516,10 @@ extension LiveWorld {
     /// What has been said, the oldest first: in the realm, or within the
     /// player's alliance.
     public func chatLines(withinAlliance: Bool) -> [LiveChatLine] {
-        (withinAlliance ? allianceChat : realmChat).map { LiveChatLine(id: $0.id, name: $0.name, words: $0.words, own: $0.player == me?.id) }
+        (withinAlliance ? allianceChat : realmChat).map { said in
+            LiveChatLine(id: said.id, name: said.name, words: said.words.isEmpty ? LiveChatLine.takenAwayWords : said.words,
+                         own: said.player == me?.id, takenAway: said.words.isEmpty)
+        }
     }
 
     /// Whether the player may let applicants in, put members out and the

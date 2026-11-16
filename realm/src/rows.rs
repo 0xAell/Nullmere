@@ -617,6 +617,38 @@ pub struct RealmChat {
 }
 row!(RealmChat in realm_chat, auto, by id);
 
+/// A line of chat a player reported, kept for the realm's owner: the
+/// line, the alliance it was said in (0 for the realm's chat), who said it
+/// and when, and the lines said about it, a line each as "Name: words",
+/// the one reported marked. Private: the database's owner reads it.
+#[spacetimedb::table(accessor = complaint)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Complaint {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub reporter: u64,
+    pub line: u64,
+    pub alliance: u64,
+    pub speaker: u64,
+    pub words: String,
+    pub said: Seconds,
+    pub reported: Seconds,
+    pub around: String,
+}
+row!(Complaint in complaint, auto, by id, reporter);
+
+/// Until when a player may not speak, as the realm's owner barred them.
+#[spacetimedb::table(accessor = bar)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Bar {
+    #[primary_key]
+    pub player: u64,
+    pub until: Seconds,
+}
+row!(Bar in bar, by player);
+
 /// Something said within an alliance, for its members alone to read.
 #[spacetimedb::table(accessor = alliance_chat)]
 #[derive(Clone, Debug, PartialEq)]
@@ -1483,6 +1515,8 @@ pub trait Db:
     + Table<Applicant>
     + Table<RealmChat>
     + Table<AllianceChat>
+    + Table<Complaint>
+    + Table<Bar>
     + Table<Task>
     + Table<Progress>
     + Table<Duty>
@@ -1554,6 +1588,8 @@ impl<
             + Table<Applicant>
             + Table<RealmChat>
             + Table<AllianceChat>
+            + Table<Complaint>
+            + Table<Bar>
             + Table<Task>
             + Table<Progress>
             + Table<Duty>

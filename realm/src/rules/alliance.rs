@@ -2,7 +2,7 @@
 //! joining and leaving it, its ranks, and the realm's chat and each
 //! alliance's own.
 
-use super::{asking, building_of, city_of, name_key, tidy, Refusal};
+use super::{asking, barred_for, building_of, city_of, name_key, tidy, Refusal};
 use crate::catalog::{self, Building as Kind};
 use crate::rows::{Alliance, AllianceChat, Applicant, Db, Member, Pace, Player, RealmChat};
 use crate::store::Table;
@@ -249,9 +249,12 @@ fn spoken_words(words: &str, may_be_empty: bool) -> Result<String, Refusal> {
 }
 
 /// A player says something: to the whole realm, or within their
-/// alliance. One thing every two seconds.
+/// alliance. One thing every two seconds, and nothing while barred.
 pub fn say(db: &mut impl Db, player: u64, within_alliance: bool, words: &str) -> Result<(), Refusal> {
     let speaker = asking(db, player)?;
+    if let Some(left) = barred_for(db, player) {
+        return Err(Refusal::Barred(left));
+    }
     let words = spoken_words(words, false)?;
     let now = db.now();
     let mut pace = Table::<Pace>::get(db, player).ok_or(Refusal::NotAPlayer)?;

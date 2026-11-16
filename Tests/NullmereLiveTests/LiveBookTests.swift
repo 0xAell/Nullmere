@@ -388,7 +388,8 @@ final class LiveBookTests: XCTestCase {
             "alliance": [[n(5), n(77), n(78), .string("Keepers of the Mere"), .string("MERE"), n(1), n(1_500), n(40), .bool(false), .string("We keep the east shore.")],
                          [n(6), n(79), n(80), .string("Wardens"), .string("WRD"), n(4), n(1_600), n(100), .bool(true), .string("")],
                          [n(7), n(81), n(82), .string("Lanterns"), .string("LAN"), n(5), n(1_700), n(60), .bool(true), .string("")]],
-            "realm_chat": [[n(11), n(1), .string("[MERE] Ada"), n(2_000), .string("Good morning, all.")], [n(12), n(2), .string("Bryn"), n(2_010), .string("Morning.")]],
+            "realm_chat": [[n(11), n(1), .string("[MERE] Ada"), n(2_000), .string("Good morning, all.")], [n(12), n(2), .string("Bryn"), n(2_010), .string("Morning.")],
+                           [n(13), n(3), .string("Cato"), n(2_020), .string("")]],
         ]
         // In no alliance: each is offered, the largest first; a full one can't be joined.
         var world = LiveWorld(snapshot: snapshot)
@@ -423,8 +424,12 @@ final class LiveBookTests: XCTestCase {
         XCTAssertEqual(lines[2].standing, nil, "someone else's asking is not his own")
 
         // What is said, the oldest first, his own marked.
-        XCTAssertEqual(world.chatLines(withinAlliance: false).map { [$0.name, $0.words] }, [["[MERE] Ada", "Good morning, all."], ["Bryn", "Morning."]])
-        XCTAssertEqual(world.chatLines(withinAlliance: false).map(\.own), [false, true])
+        XCTAssertEqual(world.chatLines(withinAlliance: false).map { [$0.name, $0.words] },
+                       [["[MERE] Ada", "Good morning, all."], ["Bryn", "Morning."], ["Cato", "Taken away by the realm's owner."]])
+        XCTAssertEqual(world.chatLines(withinAlliance: false).map(\.own), [false, true, false])
+        // Only another's words, still standing, may be reported.
+        XCTAssertEqual(world.chatLines(withinAlliance: false).map(\.takenAway), [false, false, true])
+        XCTAssertEqual(world.chatLines(withinAlliance: false).map(\.reportable), [true, false, false])
         XCTAssertTrue(world.chatLines(withinAlliance: true).isEmpty)
 
         // Shapes the realm takes, as the module has them.

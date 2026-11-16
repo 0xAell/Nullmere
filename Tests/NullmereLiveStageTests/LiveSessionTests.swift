@@ -971,6 +971,15 @@ final class LiveSessionTests: XCTestCase {
                                                        "say within: East shore is quiet", "leave alliance"])
         XCTAssertNil(session.said)
 
+        // A line reported to the realm's owner, and said so.
+        XCTAssertFalse(session.hasReported(line: 12, withinAlliance: false))
+        await session.report(line: 12, withinAlliance: false)
+        XCTAssertEqual(line.asked.last, "report realm line 12")
+        XCTAssertEqual(session.said, "Reported to the realm's owner, who reads every report.")
+        XCTAssertTrue(session.hasReported(line: 12, withinAlliance: false))
+        XCTAssertFalse(session.hasReported(line: 12, withinAlliance: true), "a line of the alliance's is another")
+        session.said = nil
+
         // The realm's depth goes the same way: help, land, learning, the
         // Moonspire, talents, pairs, the keeper, hastes, items, chests and
         // prizes; and rallies, with everyone ready.

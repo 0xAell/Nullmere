@@ -35,6 +35,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func setRank(of player: UInt64, to rank: Int) async throws
     func setAlliance(open: Bool, words: String) async throws
     func say(_ words: String, withinAlliance: Bool) async throws
+    func reportLine(_ line: UInt64, withinAlliance: Bool) async throws
     func scout(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
     func explore(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws
     func reinforce(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
@@ -138,8 +139,11 @@ public final class LiveSession {
 
     public private(set) var phase: Phase = .opening
     public private(set) var world = LiveWorld()
-    /// What the realm last would not do, in its own words, until put away.
+    /// What the realm last would not do, in its own words, or a thing
+    /// done that wants saying, until put away.
     public var said: String?
+    /// The lines of chat the player has reported while this session lasts.
+    private var reported: Set<String> = []
     /// How many things asked are still on their way.
     public private(set) var asking = 0
     /// The hex of the world the player has chosen.
@@ -421,22 +425,26 @@ public final class LiveSession {
     /// What is said when the realm can't be asked at all.
     public static let unreached = "The realm could not be reached. Try again in a moment."
 
-    /// Asks something of the realm; its refusal is kept in `said`.
-    private func ask(_ work: @Sendable (any LiveLine) async throws -> Void) async {
+    /// Asks something of the realm, its refusal kept in `said`; whether
+    /// it was done.
+    @discardableResult
+    private func ask(_ work: @Sendable (any LiveLine) async throws -> Void) async -> Bool {
         guard let line else {
             said = LiveSession.unreached
-            return
+            return false
         }
         asking += 1
         defer { asking -= 1 }
         do {
             try await work(line)
             refresh()
+            return true
         } catch let refusal as LiveRefusal {
             said = refusal.words
         } catch {
             said = LiveSession.unreached
         }
+        return false
     }
 
     public func join(name: String) async { await ask { try await $0.join(name: name) } }
@@ -462,6 +470,24 @@ public final class LiveSession {
     public func setRank(of player: UInt64, to rank: Int) async { await ask { try await $0.setRank(of: player, to: rank) } }
     public func setAlliance(open: Bool, words: String) async { await ask { try await $0.setAlliance(open: open, words: words) } }
     public func say(_ words: String, withinAlliance: Bool) async { await ask { try await $0.say(words, withinAlliance: withinAlliance) } }
+
+    /// Reports a line of chat to the realm's owner, and says so.
+    public func report(line: UInt64, withinAlliance: Bool) async {
+        if await ask({ try await $0.reportLine(line, withinAlliance: withinAlliance) }) {
+            reported.insert(LiveSession.reportKey(line, withinAlliance))
+            said = LiveSession.reportedWords
+        }
+    }
+
+    /// Whether the player has reported a line while this session lasts.
+    public func hasReported(line: UInt64, withinAlliance: Bool) -> Bool {
+        reported.contains(LiveSession.reportKey(line, withinAlliance))
+    }
+
+    static func reportKey(_ line: UInt64, _ withinAlliance: Bool) -> String { (withinAlliance ? "alliance " : "realm ") + String(line) }
+
+    /// What the player is told of a line they reported.
+    public static let reportedWords = "Reported to the realm's owner, who reads every report."
 
     // The alliance's help, land, learning and Moonspire; commanders'
     // talents, pairs and the city's keeper; the day's work, items and

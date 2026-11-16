@@ -72,10 +72,24 @@ nothing in the app changes. If the name is taken, publish under another and
 build the app for it with
 `REALM_ADDRESS=https://maincloud.spacetimedb.com/<name> scripts/build-app.sh`.
 
-Keeping the peace is not yet built on the rebuilt realm: no line can be
-reported, taken away or barred, and no player forgotten on asking, as the
-turn-based game's steward could (docs/rework-plan.md, 9.4). It is wanted
-before the realm is opened to strangers.
+Keeping the peace: a player reports a line of chat from the Mac's chat,
+and the report waits for you with the line and the three said before and
+after it. As the identity that published the realm (the
+`SPACETIME_TOKEN`'s, signed in with `spacetime login`):
+
+```sh
+spacetime sql --server maincloud nullmere "SELECT * FROM complaint"   # the reports waiting
+spacetime call --server maincloud nullmere take_away 42 false         # line 42 of the realm's chat (true: an alliance's)
+spacetime call --server maincloud nullmere bar_player 7 24            # player 7 says nothing for 24 hours (0 lifts it)
+spacetime call --server maincloud nullmere dismiss_report 3           # report 3 let go
+spacetime call --server maincloud nullmere forget_player 7            # player 7 forgotten, on their asking
+```
+
+A line taken away stands where it was, its words gone, and its reports
+go with it. A player forgotten keeps their city under the name
+`Forgotten #7`, their name leaves the roll, the chat, their letters and
+what alliances hold of them, and their identity is let go, so they join
+anew if they come back; words others wrote of them stay.
 
 ## 2. Sign and notarize the release
 

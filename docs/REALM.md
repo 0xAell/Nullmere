@@ -230,7 +230,7 @@ A debug build enters it with `NULLMERE_REALM=http://127.0.0.1:3000/<name>`.
 ## Keeping the peace
 
 The turn-based game's steward kept the peace as follows. The rebuilt realm
-has nothing of it yet (docs/rework-plan.md, 9.4).
+keeps it by its owner's reducers instead: [GO-LIVE.md](GO-LIVE.md), step 1.
 
 Whoever runs a realm keeps its Words fit to read and forgets keepers who ask.
 A line a keeper reports reaches the steward's log with the three lines said

@@ -532,17 +532,31 @@ struct LiveChatPanel: View {
         if lines.isEmpty {
             LiveSmall(words: "Nothing has been said here yet.", dim: true)
         }
+        let alliance = within && world.myAlliance != nil
         ForEach(lines.reversed()) { line in
-            VStack(alignment: .leading, spacing: 1) {
-                Text(verbatim: line.name)
-                    .font(.nm(LiveType.small, weight: .medium))
-                    .foregroundStyle(line.own ? Palette.glowWords : LiveEmphasis.secondary)
-                Text(verbatim: line.words)
-                    .font(.nm(LiveType.body))
-                    .foregroundStyle(LiveEmphasis.primary)
-                    .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: line.name)
+                        .font(.nm(LiveType.small, weight: .medium))
+                        .foregroundStyle(line.own ? Palette.glowWords : LiveEmphasis.secondary)
+                    Text(verbatim: line.words)
+                        .font(.nm(LiveType.body))
+                        .foregroundStyle(line.takenAway ? LiveEmphasis.tertiary : LiveEmphasis.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+                Spacer(minLength: 0)
+                // Another's words may be reported to the realm's owner, once.
+                if line.reportable {
+                    if session.hasReported(line: line.id, withinAlliance: alliance) {
+                        LiveSmall(words: "Reported", dim: true)
+                    } else {
+                        QuietButton(title: "Report", enabled: session.asking == 0, name: "Report \(line.name)'s words to the realm's owner") {
+                            Task { await session.report(line: line.id, withinAlliance: alliance) }
+                        }
+                    }
+                }
             }
-            .accessibilityElement(children: .combine)
         }
     }
 

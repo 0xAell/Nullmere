@@ -151,6 +151,7 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func setRank(of player: UInt64, to rank: Int) async throws { try take("rank \(player) \(rank)") }
     public func setAlliance(open: Bool, words: String) async throws { try take("alliance \(open ? "open" : "closed"): \(words)") }
     public func say(_ words: String, withinAlliance: Bool) async throws { try take("say \(withinAlliance ? "within" : "to all"): \(words)") }
+    public func reportLine(_ line: UInt64, withinAlliance: Bool) async throws { try take("report \(withinAlliance ? "alliance" : "realm") line \(line)") }
     public func scout(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws { try take("scout \(hex.q),\(hex.r) with \(listed(soldiers))") }
     public func explore(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws { try take("explore \(hex.q),\(hex.r) with \(listed(soldiers))") }
     public func reinforce(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {

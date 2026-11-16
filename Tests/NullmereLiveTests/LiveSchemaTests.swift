@@ -111,7 +111,7 @@ final class LiveSchemaTests: XCTestCase {
         let module = try source("module.rs")
         for (reducer, arguments) in [("join", 1), ("build", 1), ("upgrade", 1), ("train", 3), ("promote", 4), ("send", 5), ("recall", 1), ("heal", 3), ("hire", 0),
                                       ("read_report", 1), ("forget_report", 1), ("found_alliance", 2), ("join_alliance", 1), ("leave_alliance", 0),
-                                      ("answer_applicant", 2), ("expel", 1), ("set_rank", 2), ("set_alliance", 2), ("say", 2), ("claim_task", 0), ("learn", 1),
+                                      ("answer_applicant", 2), ("expel", 1), ("set_rank", 2), ("set_alliance", 2), ("say", 2), ("report_line", 2), ("claim_task", 0), ("learn", 1),
                                       ("call_rally", 4), ("join_rally", 3), ("ask_help", 1), ("help", 1), ("raise_ward", 2), ("move_city", 2), ("raze_ward", 1),
                                       ("give_to_learning", 4), ("give_to_spire", 4), ("learn_talent", 2), ("forget_talents", 1), ("pair", 2),
                                       ("keep_city", 1), ("speed_up", 1), ("use_item", 2), ("use_peace", 1), ("forge", 1), ("equip", 2), ("unequip", 1), ("claim_boons", 0), ("buy", 2), ("read_tome", 3), ("open_chest", 1), ("claim_prize", 2), ("send_envoy", 3),
