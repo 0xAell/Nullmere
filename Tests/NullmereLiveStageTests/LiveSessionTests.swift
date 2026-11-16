@@ -312,11 +312,11 @@ final class LiveSessionTests: XCTestCase {
         // The grove Bryn's army works; the barrow his other army fights at.
         let grove = card(12, -2)
         XCTAssertEqual(grove.title, "Timber, level 4")
-        XCTAssertEqual(grove.lines, ["80,000 left to gather.", "Another army is gathering here."])
+        XCTAssertEqual(grove.lines, ["80,000 left to gather."], "another army there is said once, as why")
         XCTAssertEqual(grove.buttons.first?.why, "Another army is gathering there.")
         let fought = card(8, -2)
         XCTAssertEqual(fought.title, "Barrow, level 2")
-        XCTAssertEqual(fought.lines, ["The Unquiet hold it. An attack takes 50 energy.", "Another army is fighting here."])
+        XCTAssertEqual(fought.lines, ["The Unquiet hold it. An attack takes 50 energy."])
         XCTAssertEqual(fought.buttons.first?.why, "Another army is fighting there.")
         // A barrow two levels above the one she has cleared.
         XCTAssertEqual(card(6, -1).buttons.first?.why, "Clear a level 3 barrow first.")

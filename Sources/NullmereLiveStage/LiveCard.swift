@@ -163,10 +163,12 @@ extension LiveSession {
             let good = LiveSession.goods.indices.contains(site.kind - 1) ? LiveSession.goods[site.kind - 1] : "Goods"
             var lines = ["\(LiveWords.grouped(site.left)) left to gather."]
             var why = cannotSend
+            // Who gathers here, said once: the player's own army as a line,
+            // and as why no other may; another's as the why alone.
             if site.gatherer != 0 {
                 let mine = world.myMarches.contains { $0.id == site.gatherer }
-                lines.append(mine ? "Your army is gathering here." : "Another army is gathering here.")
-                why = "Another army is gathering there."
+                if mine { lines.append("Your army is gathering here.") }
+                why = mine ? "Your army is gathering here." : "Another army is gathering there."
             }
             if why == nil, let leaderLine { lines.append(leaderLine) }
             return LiveCard(title: "\(good), level \(site.level)", lines: lines,
@@ -180,8 +182,8 @@ extension LiveSession {
             if barrow.level > (world.hunt?.mayAttack ?? 1) { why = "Clear a level \(barrow.level - 1) barrow first." }
             if barrow.fighter != 0 {
                 let mine = world.myMarches.contains { $0.id == barrow.fighter }
-                lines.append(mine ? "Your army is fighting here." : "Another army is fighting here.")
-                why = "Another army is fighting there."
+                if mine { lines.append("Your army is fighting here.") }
+                why = mine ? "Your army is fighting here." : "Another army is fighting there."
             }
             if why == nil, let leaderLine { lines.append(leaderLine) }
             // A rally reaches three levels past what one may attack alone.

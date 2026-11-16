@@ -871,7 +871,7 @@ struct LiveRing: View {
                     .foregroundStyle(LiveEmphasis.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if let why = card.buttons.compactMap(\.why).first {
+            if let why = card.buttons.compactMap(\.why).first, !card.lines.contains(why) {
                 Text(verbatim: why)
                     .font(.nm(LiveType.small))
                     .foregroundStyle(LiveEmphasis.tertiary)
@@ -917,7 +917,7 @@ struct LiveCardView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 // Why the first thing that can't be done can't be.
-                if let why = card.buttons.compactMap(\.why).first {
+                if let why = card.buttons.compactMap(\.why).first, !card.lines.contains(why) {
                     Text(verbatim: why)
                         .font(.nm(LiveType.small))
                         .foregroundStyle(LiveEmphasis.tertiary)
