@@ -15,6 +15,9 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case learn(Int)
         case claimTask
         case openChest(Int)
+        case forge(Int)
+        case hire
+        case claimPrize(contest: Int, place: Int)
     }
 
     public let title: String
@@ -33,8 +36,10 @@ extension LiveSession {
     /// Every command there is at a moment: the player's city and each army
     /// out to go to; every part of every destination to open; the task to
     /// claim once it is done; each building that may be built or raised,
-    /// each topic that may be studied, and each of the day's chests that
-    /// may be opened, now; and the nearest barrow the player may attack,
+    /// each topic that may be studied, each of the day's chests that may
+    /// be opened, each piece the Forge may make, another commander to take
+    /// on and each contest's prize reached, now; and the nearest barrow the
+    /// player may attack,
     /// and the nearest site of each good no one works, to go to.
     public func commands(at seconds: Double) -> [LiveCommand] {
         var all: [LiveCommand] = []
@@ -65,6 +70,18 @@ extension LiveSession {
         }
         for chest in world.chestLines(at: seconds) where chest.ready {
             all.append(LiveCommand(title: "Open the day's chest at \(chest.marks) marks", act: .openChest(chest.id)))
+        }
+        for line in world.forgeLines(at: seconds) where line.block == nil {
+            all.append(LiveCommand(title: "Make a piece at the Forge: \(line.pattern.name)", act: .forge(line.pattern.piece)))
+        }
+        if world.city != nil, world.hireBlock(at: seconds) == nil {
+            all.append(LiveCommand(title: "Take on another commander", act: .hire))
+        }
+        for prize in world.prizes {
+            let tally = world.tallies.filter { $0.trial == prize.trial }.max { $0.round < $1.round }
+            guard let tally, tally.points >= prize.points, !tally.hasClaimed(prize.place) else { continue }
+            let name = world.trials[prize.trial]?.name ?? "the contest"
+            all.append(LiveCommand(title: "Claim the prize of \(name) at \(prize.points) points", act: .claimPrize(contest: prize.trial, place: prize.place)))
         }
         if let home = world.city?.hex {
             func nearest<T>(_ things: [T], _ hex: (T) -> LiveHex) -> T? {
@@ -108,6 +125,9 @@ extension LiveSession {
         case .learn(let topic): await learn(topic: topic)
         case .claimTask: await claimTask()
         case .openChest(let chest): await openChest(chest)
+        case .forge(let piece): await forge(piece: piece)
+        case .hire: await hire()
+        case .claimPrize(let contest, let place): await claimPrize(contest: contest, place: place)
         }
         return nil
     }

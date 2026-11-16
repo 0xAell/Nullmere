@@ -425,6 +425,17 @@ final class LiveSessionTests: XCTestCase {
         rows["place"]?.append([n(LiveHex(q: 6, r: 0).packed), n(3), n(11)])
         rows["site"]?.append([n(6), n(LiveHex(q: 7, r: 1).packed), n(1), n(2), n(40_000), n(0)])
         rows["place"]?.append([n(LiveHex(q: 7, r: 1).packed), n(2), n(6)])
+        // A Forge and a Tavern of the first level; iron and leather enough
+        // for a sword; and a contest whose first prize she has reached.
+        rows["my_buildings"]?.append(contentsOf: [[n(32), n(7), n(19), n(1)], [n(33), n(7), n(16), n(1)]])
+        rows["my_satchel"] = [[n(1 << 8 | 5), n(1), n(5), n(4)], [n(1 << 8 | 6), n(1), n(6), n(4)]]
+        rows["pattern"] = [[n(1), .string("Iron sword"), n(1), n(1), .string("Everyone its wearer leads strikes 3% harder."), n(4), n(4), n(0), n(0), n(0), n(5_000), n(5_000),
+                            n(0), n(1)],
+                           [n(5), .string("Steel sword"), n(1), n(2), .string("Everyone its wearer leads strikes 6% harder."), n(8), n(8), n(0), n(0), n(0), n(20_000), n(20_000),
+                            n(0), n(8)]]
+        rows["trial"] = [[n(1), .string("The Long Hunt"), .string("Points for every barrow cleared."), n(7), n(3)]]
+        rows["prize"] = [[n(257), n(1), n(1), n(100), n(9_000), n(0), n(0), n(0), n(1), n(0), n(0)], [n(258), n(1), n(2), n(400), n(0), n(0), n(0), n(100), n(0), n(2), n(0)]]
+        rows["my_tallies"] = [[n(5), n(1), n(1), n(0), n(120), n(0)]]
         let line = StandInLine(rows: rows)
         let session = session(line)
         await session.open()
@@ -442,6 +453,11 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertTrue(all.contains(LiveCommand(title: "Go to the nearest grain site, of level 2", act: .go(LiveHex(q: 7, r: 1)))))
         XCTAssertFalse(all.contains { $0.title.contains("timber site") }, "the grove is being worked")
         XCTAssertFalse(all.contains { $0.act == .claimTask }, "no task done to claim")
+        XCTAssertTrue(all.contains(LiveCommand(title: "Make a piece at the Forge: Iron sword", act: .forge(1))))
+        XCTAssertFalse(all.contains { $0.act == .forge(5) }, "the steel sword wants a Forge of the eighth level")
+        XCTAssertTrue(all.contains(LiveCommand(title: "Take on another commander", act: .hire)))
+        XCTAssertTrue(all.contains(LiveCommand(title: "Claim the prize of The Long Hunt at 100 points", act: .claimPrize(contest: 1, place: 1))))
+        XCTAssertFalse(all.contains { $0.act == .claimPrize(contest: 1, place: 2) }, "400 points not reached")
 
         // Searched by every word, whatever its case.
         XCTAssertEqual(session.commands(matching: "open REP", at: 2_015).map(\.title), ["Open Reports and letters"])
@@ -459,7 +475,10 @@ final class LiveSessionTests: XCTestCase {
         await session.perform(LiveCommand(title: "Study Tillage to level 1", act: .learn(1)))
         await session.perform(LiveCommand(title: "Claim the task", act: .claimTask))
         await session.perform(LiveCommand(title: "Open the day's chest at 20 marks", act: .openChest(1)))
-        XCTAssertEqual(line.asked, ["upgrade 22", "build 7", "learn 1", "claim task", "open chest 1"])
+        await session.perform(LiveCommand(title: "Make a piece at the Forge: Iron sword", act: .forge(1)))
+        await session.perform(LiveCommand(title: "Take on another commander", act: .hire))
+        await session.perform(LiveCommand(title: "Claim the prize of The Long Hunt at 100 points", act: .claimPrize(contest: 1, place: 1)))
+        XCTAssertEqual(line.asked, ["upgrade 22", "build 7", "learn 1", "claim task", "open chest 1", "forge 1", "hire", "claim prize 1 of 1"])
     }
 
     func testRalliesGatesAndWardstonesAreCalledFromTheirCards() async throws {
