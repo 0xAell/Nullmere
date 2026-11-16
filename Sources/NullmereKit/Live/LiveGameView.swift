@@ -2,6 +2,8 @@ import Foundation
 import NullmereCore
 import NullmereLive
 import NullmereLiveStage
+import NullmereModels
+import NullmereWorld
 import SwiftUI
 
 /// The rebuilt realm, played: the world filling the window, and over it
@@ -289,7 +291,8 @@ struct LiveHUD: View {
                             LiveDock(session: session, panel: $panel, find: { palette.toggle() })
                                 .chrome("live-dock")
                         }
-                        if let selection = session.selection {
+                        // What is chosen, where it can't be shown beside it on the map.
+                        if let selection = session.selection, LiveRing.place(of: session, in: proxy.size) == nil {
                             LiveCardView(session: session, card: session.card(for: selection), panel: $panel)
                                 .chrome("live-card")
                         }
@@ -301,6 +304,12 @@ struct LiveHUD: View {
                     }
                 }
                 .padding(12)
+                .overlay {
+                    // What is chosen, shown about it on the map: its ring and its callout.
+                    if let selection = session.selection, let place = LiveRing.place(of: session, in: proxy.size) {
+                        LiveRing(session: session, card: session.card(for: selection), at: place, panel: $panel)
+                    }
+                }
                 .overlay(alignment: .top) {
                     if palette {
                         LivePaletteView(session: session, seconds: seconds, open: { panel = $0 }) { palette = false }
@@ -540,8 +549,113 @@ struct LiveArmies: View {
     }
 }
 
+/// What is chosen, shown where it stands on the map: each thing that can
+/// be done about it a symbol in a ring about it, the first of them at
+/// the top and the rest round the clock, with a way to put it away last;
+/// and beside the ring a small callout saying what it is, a few lines
+/// about it, and why the first thing that can't be done can't be.
+struct LiveRing: View {
+    let session: LiveSession
+    let card: LiveCard
+    let at: CGPoint
+    @Binding var panel: LiveGameView.Panel?
+
+    /// How far the ring's symbols stand from the heart of what is chosen,
+    /// and how large each is.
+    static let radius: CGFloat = 58
+    static let side: CGFloat = 34
+
+    /// Where what is chosen stands in a view of a size: the heart of its
+    /// hex, at the height of the land there, kept clear of the view's
+    /// edges; nil where it is not in the window drawn, or behind the eye.
+    static func place(of session: LiveSession, in size: CGSize) -> CGPoint? {
+        guard let local = session.selectedLocal, size.width > 0, size.height > 0 else { return nil }
+        let height = session.land().map { Double($0.relief.height(of: local)) } ?? 0
+        let point = session.camera.viewPoint(of: local, height: height, in: size)
+        guard point.x > -radius, point.x < size.width + radius, point.y > -radius, point.y < size.height + radius else { return nil }
+        let margin = radius + side
+        return CGPoint(x: min(max(point.x, margin), size.width - margin - 300), y: min(max(point.y, margin), size.height - margin - 60))
+    }
+
+    var body: some View {
+        let count = card.buttons.count + 1
+        ZStack(alignment: .topLeading) {
+            ForEach(Array(card.buttons.enumerated()), id: \.offset) { index, button in
+                symbol(button.icon, name: button.title, enabled: button.why == nil && session.asking == 0, why: button.why) { press(button) }
+                    .position(spot(index, of: count))
+            }
+            symbol("xmark", name: "Put away \(card.title)", enabled: true, why: nil) { session.selected = nil }
+                .position(spot(count - 1, of: count))
+            callout
+                .frame(width: 280, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .position(x: at.x + LiveRing.radius + LiveRing.side / 2 + 152, y: at.y)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// The place of the ring's `index`th symbol of `count`: the first at
+    /// the top, the rest clockwise.
+    private func spot(_ index: Int, of count: Int) -> CGPoint {
+        let angle = -Double.pi / 2 + Double(index) * 2 * .pi / Double(max(count, 1))
+        return CGPoint(x: at.x + LiveRing.radius * CGFloat(cos(angle)), y: at.y + LiveRing.radius * CGFloat(sin(angle)))
+    }
+
+    private func symbol(_ icon: String, name: String, enabled: Bool, why: String?, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.nm(LiveType.title, weight: .medium))
+                .foregroundStyle(enabled ? LiveEmphasis.primary : LiveEmphasis.tertiary)
+                .frame(width: LiveRing.side, height: LiveRing.side)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .panelBackground()
+        .clipShape(Circle())
+        .help(why ?? name)
+        .accessibilityLabel(why.map { "\(name): \($0)" } ?? name)
+        .chrome("live-ring")
+    }
+
+    private var callout: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(verbatim: card.title)
+                .font(.nm(LiveType.title, weight: .medium))
+                .foregroundStyle(LiveEmphasis.primary)
+            ForEach(card.lines, id: \.self) { line in
+                Text(verbatim: line)
+                    .font(.nm(LiveType.small))
+                    .foregroundStyle(LiveEmphasis.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let why = card.buttons.compactMap(\.why).first {
+                Text(verbatim: why)
+                    .font(.nm(LiveType.small))
+                    .foregroundStyle(LiveEmphasis.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .panelBackground()
+        .chrome("live-card")
+    }
+
+    /// Does what a symbol says: opens a part of the House, or asks the realm.
+    private func press(_ button: LiveCard.Button) {
+        if button.act == .city {
+            panel = .city
+        } else if button.act == .troops {
+            panel = .troops
+        } else {
+            Task { await session.press(button) }
+        }
+    }
+}
+
 /// The card for what is chosen: its name, a few lines, and what can be
-/// done about it.
+/// done about it; at the foot of the window, where what is chosen can't
+/// be shown beside it on the map.
 struct LiveCardView: View {
     let session: LiveSession
     let card: LiveCard

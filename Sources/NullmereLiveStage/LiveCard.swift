@@ -34,6 +34,23 @@ public struct LiveCard: Equatable, Sendable {
         public let act: Act
         /// Why it can't be pressed now; nil where it can.
         public let why: String?
+
+        /// The symbol it is drawn as in a ring about what is chosen, a
+        /// system symbol's name.
+        public var icon: String {
+            switch act {
+            case .city: return "building.2"
+            case .troops: return "person.3"
+            case .send: return title.hasPrefix("Gather") ? "shippingbox" : "flame"
+            case .recall: return "arrow.uturn.backward"
+            case .rally: return "flag"
+            case .raiseWard: return "shield.lefthalf.filled"
+            case .razeWard: return "hammer"
+            case .scout: return "eye"
+            case .reinforce: return "shield"
+            case .moveCity: return "arrow.up.and.down.and.arrow.left.and.right"
+            }
+        }
     }
 
     public let title: String

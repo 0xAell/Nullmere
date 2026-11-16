@@ -291,6 +291,10 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(home.lines, ["Your city. Keep level 3, power 1,000.", "Farm to level 3: 1:25"])
         XCTAssertEqual(home.buttons.map(\.title), ["Buildings", "Troops"])
         XCTAssertEqual(home.buttons.map(\.act), [.city, .troops])
+        XCTAssertEqual(home.buttons.map(\.icon), ["building.2", "person.3"], "each drawn as a symbol in the ring about it")
+        let acts: [LiveCard.Act] = [.city, .troops, .send, .recall(1), .rally, .raiseWard, .razeWard(1), .scout, .reinforce, .moveCity]
+        XCTAssertEqual(Set(acts.map { LiveCard.Button(title: "", act: $0, why: nil).icon }).count, acts.count, "no two acts drawn alike")
+        XCTAssertEqual(LiveCard.Button(title: "Gather with 40 soldiers", act: .send, why: nil).icon, "shippingbox")
         // Ada has one army out and a Keep of the third level: no second
         // army may go, wherever it is sent.
         let oneOut = "Your one army is out. Raise your Keep to send more."

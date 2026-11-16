@@ -187,6 +187,10 @@ final class LiveGameTests: XCTestCase {
             let card = session.card(for: session.selection(at: hex))
             XCTAssertGreaterThan(try drawn(LiveCardView(session: session, card: card, panel: binding), width: 640, height: 120), 40, card.title)
         }
+        // What is chosen, shown about it: a ring of its symbols and a callout beside it.
+        let home = session.card(for: session.selection(at: LiveHex(q: 10, r: -4)))
+        XCTAssertGreaterThan(try drawn(LiveRing(session: session, card: home, at: CGPoint(x: 160, y: 160), panel: binding), width: 640, height: 320,
+                                       as: "live-ring.png"), 300)
         XCTAssertGreaterThan(try drawn(LiveSaid(words: "Clear a level 3 barrow first.") {}, width: 600, height: 60), 60)
         XCTAssertGreaterThan(try drawn(LiveArmies(session: session, seconds: 2_015), width: 400, height: 80), 60)
 
