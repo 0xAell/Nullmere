@@ -225,6 +225,9 @@ public final class LiveClient: @unchecked Sendable {
     /// Raises a wardstone of the player's alliance at a hex, as an officer.
     public func raiseWard(at hex: LiveHex) async throws { try await ask("raise_ward", [.signed(Int64(hex.q)), .signed(Int64(hex.r))]) }
 
+    /// Moves the player's city to clear ground, with its buildings and troops.
+    public func moveCity(to hex: LiveHex) async throws { try await ask("move_city", [.signed(Int64(hex.q)), .signed(Int64(hex.r))]) }
+
     /// Takes down one of the player's alliance's wardstones, as an officer.
     public func razeWard(_ ward: UInt64) async throws { try await ask("raze_ward", [.integer(ward)]) }
 

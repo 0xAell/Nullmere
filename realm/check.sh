@@ -295,6 +295,8 @@ check("one in no alliance sees no rallies, and no one reads the table itself", (
 check("every wardstone is for all to read, and there are none yet", rows(nobody, "SELECT * FROM ward"), [])
 check("one in no alliance raises none", call(ada, "raise_ward", adas[0] + 3, adas[1]), "You are in no alliance.")
 check("nor takes one down", call(ada, "raze_ward", 1), "You are in no alliance.")
+# A city moves only to clear ground (or, while an army of its is out, not at all).
+check("a city is moved by its owner, never into the lake", call(ada, "move_city", 0, 0) in ("No city can stand there.", "Bring your armies home before your city moves."), True)
 # What an alliance learns together: for all to read; given toward only by its members.
 check("what alliances have learnt is for all to read, and there is nothing yet", rows(nobody, "SELECT * FROM learning"), [])
 check("one in no alliance gives nothing toward it", call(ada, "give_to_learning", 1, 10, 10, 10), "You are in no alliance.")

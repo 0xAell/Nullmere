@@ -342,6 +342,13 @@ pub fn raise_ward(ctx: &ReducerContext, q: i32, r: i32) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::raise_ward(&mut Stdb(ctx), player, Hex::new(q, r))))
 }
 
+/// Move the caller's city to clear ground, with its buildings and troops,
+/// paid for out of it; not while any of its armies is out.
+#[reducer]
+pub fn move_city(ctx: &ReducerContext, q: i32, r: i32) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::relocate(&mut Stdb(ctx), player, Hex::new(q, r))))
+}
+
 /// Take down one of the caller's alliance's wardstones, as one of its officers.
 #[reducer]
 pub fn raze_ward(ctx: &ReducerContext, ward: u64) -> Result<(), String> {

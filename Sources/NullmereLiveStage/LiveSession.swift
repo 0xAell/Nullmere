@@ -50,6 +50,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func keepCity(commander: UInt64) async throws
     func speedUp(job: UInt64) async throws
     func useItem(_ item: Int, on job: UInt64) async throws
+    func moveCity(to hex: LiveHex) async throws
     func usePeace(_ item: Int) async throws
     func openChest(_ chest: Int) async throws
     func claimPrize(contest: Int, place: Int) async throws
@@ -454,6 +455,28 @@ public final class LiveSession {
     public func sendAllianceLetter(_ words: String) async { await ask { try await $0.sendAllianceLetter(words) } }
     public func readLetter(_ letter: UInt64) async { await ask { try await $0.readLetter(letter) } }
     public func forgetLetter(_ letter: UInt64) async { await ask { try await $0.forgetLetter(letter) } }
+
+    /// One soldier of the first kind and tier standing ready: a scout.
+    public var scoutParty: [(kind: Int, tier: Int, count: UInt64)] {
+        everyoneReady.first.map { [(kind: $0.kind, tier: $0.tier, count: 1)] } ?? []
+    }
+
+    /// Sends a scout to see the city at a hex.
+    public func scout(at hex: LiveHex) async {
+        let party = scoutParty
+        await ask { try await $0.scout(at: hex, soldiers: party) }
+    }
+
+    /// Sends everyone ready to stay in an ally's city at a hex, led by the
+    /// highest commander in the city.
+    public func reinforce(at hex: LiveHex) async {
+        let asked = everyoneReady
+        let leader = world.freeLeader?.id ?? 0
+        await ask { try await $0.reinforce(at: hex, soldiers: asked, leader: leader) }
+    }
+
+    /// Moves the player's city to clear ground at a hex.
+    public func moveCity(to hex: LiveHex) async { await ask { try await $0.moveCity(to: hex) } }
 
     /// Joins a rally of the player's alliance with everyone ready, led by
     /// the highest commander in the city.

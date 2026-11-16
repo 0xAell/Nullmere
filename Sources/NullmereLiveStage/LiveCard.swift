@@ -21,6 +21,12 @@ public struct LiveCard: Equatable, Sendable {
         /// take one down.
         case raiseWard
         case razeWard(UInt64)
+        /// Send a scout to the city chosen, or everyone ready to stay in
+        /// an ally's.
+        case scout
+        case reinforce
+        /// Move the player's city to the ground chosen.
+        case moveCity
     }
 
     public struct Button: Equatable, Sendable {
@@ -40,6 +46,10 @@ extension LiveSession {
     static let grounds = ["Deep water", "Shallows", "Strand", "Salt flat", "Plain", "Wood", "Heath", "Mountains"]
     /// The goods a site holds, by its kind.
     static let goods = ["Grain", "Timber", "Stone", "Moonsalt"]
+    /// The Scout Camp, as the module's catalogue numbers buildings.
+    static let scoutCamp = 18
+    /// What moving a city costs, as the module's catalogue has it.
+    static let moving = LiveGoods(grain: 3_000, timber: 3_000, stone: 3_000)
 
     private func soldiers(_ count: UInt64) -> String { "\(LiveWords.grouped(count)) \(count == 1 ? "soldier" : "soldiers")" }
 
@@ -104,15 +114,20 @@ extension LiveSession {
             if city.peace(at: seconds) > 0 {
                 why = "That city is at peace for another \(LiveWords.spoken(city.peace(at: seconds)))."
             }
-            // An ally's city is never attacked, and nothing else can be
-            // sent to it yet.
+            // An ally's city is never attacked: soldiers are sent to stay in it.
             if world.isAlly(city.owner) {
-                return LiveCard(title: city.name, lines: [lines[0], "Your ally."], buttons: [])
+                var allied = [lines[0], "Your ally."]
+                if cannotSend == nil, let leaderLine { allied.append(leaderLine) }
+                return LiveCard(title: city.name, lines: allied,
+                                buttons: [.init(title: ready > 0 ? "Reinforce with \(soldiers(ready))" : "Reinforce", act: .reinforce, why: cannotSend)])
             }
             if why == nil, let leaderLine { lines.append(leaderLine) }
             let peace = city.peace(at: seconds) > 0 ? "That city is at peace for another \(LiveWords.spoken(city.peace(at: seconds)))." : nil
+            // A scout, one soldier, sees its garrison and comes home whole.
+            let scout = world.building(LiveSession.scoutCamp) == nil ? "Raise a Scout Camp first." : cannotSend
             return LiveCard(title: city.name, lines: lines,
-                            buttons: [.init(title: ready > 0 ? "Attack with \(soldiers(ready))" : "Attack", act: .send, why: why)] + rallyButton(why: peace))
+                            buttons: [.init(title: ready > 0 ? "Attack with \(soldiers(ready))" : "Attack", act: .send, why: why),
+                                      .init(title: "Scout", act: .scout, why: scout)] + rallyButton(why: peace))
 
         case .site(let site):
             let good = LiveSession.goods.indices.contains(site.kind - 1) ? LiveSession.goods[site.kind - 1] : "Goods"
@@ -193,12 +208,22 @@ extension LiveSession {
             if let owner = world.landOf(hex, at: seconds), let alliance = world.alliances[owner] {
                 lines.append("The land of [\(alliance.tag)] \(alliance.name).")
             }
-            // An officer may raise a wardstone on clear ground of strand, plain or heath.
-            guard world.isOfficer, let ground, [2, 4, 6].contains(ground) else {
+            // Clear ground of strand, plain or heath: an officer may raise a
+            // wardstone on it, and anyone may move their city to it.
+            guard let ground, [2, 4, 6].contains(ground) else {
                 return LiveCard(title: name ?? "Unknown land", lines: lines, buttons: [])
             }
-            return LiveCard(title: name ?? "Unknown land", lines: lines,
-                            buttons: [.init(title: "Raise a wardstone", act: .raiseWard, why: world.stock.map { $0.goods(at: seconds).covers(LiveGoods(timber: 30_000, stone: 30_000)) } == true ? nil : "A wardstone takes 30,000 timber and 30,000 stone.")])
+            var buttons: [LiveCard.Button] = []
+            let goods = world.stock?.goods(at: seconds) ?? LiveGoods()
+            if world.isOfficer {
+                buttons.append(.init(title: "Raise a wardstone", act: .raiseWard, why: goods.covers(LiveGoods(timber: 30_000, stone: 30_000)) ? nil : "A wardstone takes 30,000 timber and 30,000 stone."))
+            }
+            if world.city != nil {
+                let away = world.myMarches.isEmpty ? nil : "Bring your armies home before your city moves."
+                let dear = goods.covers(LiveSession.moving) ? nil : "Moving your city takes \(LiveSession.moving.words)."
+                buttons.append(.init(title: "Move your city here", act: .moveCity, why: away ?? dear))
+            }
+            return LiveCard(title: name ?? "Unknown land", lines: lines, buttons: buttons)
         }
     }
 
@@ -217,6 +242,12 @@ extension LiveSession {
         case .raiseWard:
             if let selected { await raiseWard(at: selected) }
         case .razeWard(let ward): await razeWard(ward)
+        case .scout:
+            if let selected { await scout(at: selected) }
+        case .reinforce:
+            if let selected { await reinforce(at: selected) }
+        case .moveCity:
+            if let selected { await moveCity(to: selected) }
         case .city, .troops: break
         }
     }

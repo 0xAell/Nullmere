@@ -294,9 +294,10 @@ final class LiveSessionTests: XCTestCase {
         // Ada has one army out and a Keep of the third level: no second
         // army may go, wherever it is sent.
         let oneOut = "Your one army is out. Raise your Keep to send more."
-        // Another's: whose, that they are here, and that it may be attacked.
+        // Another's: whose, that they are here, and that it may be attacked or scouted.
         XCTAssertEqual(card(14, -4), LiveCard(title: "Bryn", lines: ["Bryn's city. Keep level 8, power 9,000. They are here now."],
-                                              buttons: [.init(title: "Attack with 40 soldiers", act: .send, why: oneOut)]))
+                                              buttons: [.init(title: "Attack with 40 soldiers", act: .send, why: oneOut),
+                                                        .init(title: "Scout", act: .scout, why: "Raise a Scout Camp first.")]))
         XCTAssertEqual(card(7, 1), LiveCard(title: "Grain, level 2", lines: ["40,000 left to gather."],
                                             buttons: [.init(title: "Gather with 40 soldiers", act: .send, why: oneOut)]))
         // The grove Bryn's army works; the barrow his other army fights at.
@@ -356,13 +357,16 @@ final class LiveSessionTests: XCTestCase {
         await session.press(card(14, -4).buttons[0])
         XCTAssertEqual(line.asked.last, "attack at 14, -4 with 40 of 1.1")
         // Once he is of her alliance, his city is her ally's: named with its
-        // tag, and nothing to be done to it.
+        // tag, never attacked, and soldiers may be sent to stay in it.
         line.change { rows in
             rows["alliance"] = [[self.n(5), self.n(77), self.n(78), .string("Keepers"), .string("MERE"), self.n(1), self.n(1_500), self.n(2), .bool(true), .string("")]]
             rows["member"] = [[self.n(1), self.n(5), self.n(5), self.n(1_500)], [self.n(2), self.n(5), self.n(1), self.n(1_600)]]
         }
         session.refresh()
-        XCTAssertEqual(card(14, -4), LiveCard(title: "Bryn", lines: ["[MERE] Bryn's city. Keep level 8, power 9,000. They are here now.", "Your ally."], buttons: []))
+        XCTAssertEqual(card(14, -4), LiveCard(title: "Bryn", lines: ["[MERE] Bryn's city. Keep level 8, power 9,000. They are here now.", "Your ally."],
+                                              buttons: [.init(title: "Reinforce with 40 soldiers", act: .reinforce, why: nil)]))
+        await session.press(card(14, -4).buttons[0])
+        XCTAssertEqual(line.asked.last, "reinforce 14,-4 with 40 of 1.1 led by 0")
         line.change { rows in
             rows["alliance"] = nil
             rows["member"] = nil
@@ -392,8 +396,9 @@ final class LiveSessionTests: XCTestCase {
         session.refresh()
         XCTAssertEqual(card(7, 1).buttons.first, .init(title: "Gather", act: .send, why: "No soldiers stand ready in your city."))
 
-        // Bare land by its ground; land never told.
-        XCTAssertEqual(card(5, 5), LiveCard(title: "Plain", lines: [], buttons: []))
+        // Bare land by its ground, where her city may move if she has the goods; land never told.
+        XCTAssertEqual(card(5, 5), LiveCard(title: "Plain", lines: [],
+                                            buttons: [.init(title: "Move your city here", act: .moveCity, why: "Moving your city takes 3,000 grain, 3,000 timber and 3,000 stone.")]))
         XCTAssertEqual(card(20, -4).title, "Wood")
         XCTAssertEqual(card(-12, 0).title, "Deep water")
         XCTAssertEqual(card(500, 0).title, "Unknown land")
@@ -431,8 +436,15 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(fourth.buttons[0].why, "Clear a level 3 barrow first.")
         XCTAssertNil(fourth.buttons[1].why)
         XCTAssertEqual(card(5, -1).buttons[1].why, "A rally of yours may go against a barrow of level 5 at most.")
-        // And against another's city.
-        XCTAssertEqual(card(14, -4).buttons.map(\.act), [.send, .rally])
+        // And against another's city, which may be scouted from a Scout Camp: one soldier goes.
+        XCTAssertEqual(card(14, -4).buttons.map(\.act), [.send, .scout, .rally])
+        XCTAssertEqual(card(14, -4).buttons[1].why, "Raise a Scout Camp first.")
+        line.change { $0["my_buildings"]?.append([self.n(31), self.n(7), self.n(18), self.n(1)]) }
+        session.refresh()
+        XCTAssertNil(card(14, -4).buttons[1].why)
+        session.selected = LiveHex(q: 14, r: -4)
+        await session.press(card(14, -4).buttons[1])
+        XCTAssertEqual(line.asked.last, "scout 14,-4 with 1 of 1.1")
 
         // A gate: held by the Unquiet, stormed only by a rally, and only a week into the season.
         guard case .gate(let gate) = session.selection(at: LiveHex(q: 4, r: -6)) else { return XCTFail("the gate is chosen") }
@@ -444,7 +456,8 @@ final class LiveSessionTests: XCTestCase {
         // Her alliance's wardstone, which she may take down; its land, where she may raise another.
         XCTAssertEqual(card(12, -8), LiveCard(title: "Wardstone", lines: ["[MERE] Keepers's wardstone. Once it stands it claims the land within 3 hexes."],
                                               buttons: [.init(title: "Take it down", act: .razeWard(3), why: nil)]))
-        XCTAssertEqual(card(12, -7), LiveCard(title: "Plain", lines: ["The land of [MERE] Keepers."], buttons: [.init(title: "Raise a wardstone", act: .raiseWard, why: nil)]))
+        XCTAssertEqual(card(12, -7), LiveCard(title: "Plain", lines: ["The land of [MERE] Keepers."],
+                                              buttons: [.init(title: "Raise a wardstone", act: .raiseWard, why: nil), .init(title: "Move your city here", act: .moveCity, why: nil)]))
         XCTAssertEqual(card(-20, 0).buttons, [], "nothing is raised on deep water")
         // Another alliance's wardstone: a rally may take it down.
         XCTAssertEqual(card(2, -9), LiveCard(title: "Wardstone", lines: ["[WRD] Wardens's wardstone. Once it stands it claims the land within 3 hexes."],
@@ -460,6 +473,9 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(line.asked.count, 3)
         XCTAssertTrue(line.asked[0].hasPrefix("rally at 6,-1 with 40 of 1.1 led by "), line.asked[0])
         XCTAssertEqual(Array(line.asked.dropFirst()), ["raise ward 12,-7", "raze ward 3"])
+        session.selected = LiveHex(q: 12, r: -7)
+        await session.press(card(12, -7).buttons[1])
+        XCTAssertEqual(line.asked.last, "move city to 12,-7")
 
         // One in no alliance is offered no rally.
         line.change { rows in
@@ -468,7 +484,7 @@ final class LiveSessionTests: XCTestCase {
         session.refresh()
         XCTAssertEqual(card(6, -1).buttons.map(\.act), [.send])
         XCTAssertEqual(card(4, -6).buttons, [])
-        XCTAssertEqual(card(12, -7).buttons, [], "nor a wardstone to raise")
+        XCTAssertEqual(card(12, -7).buttons.map(\.act), [.moveCity], "nor a wardstone to raise; her city may still move there")
     }
 
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
