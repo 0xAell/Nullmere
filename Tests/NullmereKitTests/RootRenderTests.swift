@@ -1,5 +1,6 @@
 import LauncherCore
 @testable import LauncherKit
+import NullmereLiveStage
 import NullmereRealm
 import NullmereWorld
 import SwiftUI
@@ -238,15 +239,29 @@ final class RootRenderTests: XCTestCase {
         shell.playTitle()
         XCTAssertEqual(shell.app.ambience.titleLake, GameApp.lastLake, "Over the launcher, the last lake's title theme")
         shell.showSettings()
+        // Play opens the realm at its address, in place of the launcher.
+        var asked: [String] = []
+        shell.opening = { address in
+            asked.append(address)
+            return LiveSession(line: StandInLine(rows: LiveSample.rows())) { 2_015 }
+        }
         shell.enterRealm()
         XCTAssertTrue(shell.inRealm)
+        XCTAssertEqual(asked, [GameApp.realmURL(in: Bundle.main.infoDictionary).absoluteString], "The realm the app was built to go to")
+        XCTAssertNotNil(shell.rebuilt)
         XCTAssertNil(shell.app.ambience.titleLake, "Within the realm, its own score")
         try draw(NullmereOnlineView(shell: shell))
+        // Settings… waits for the launcher: nothing opens over the realm.
         shell.showSettings()
-        XCTAssertTrue(shell.app.showsSettings, "In the realm, Settings is the game's")
         shell.leaveRealm()
+        XCTAssertEqual(shell.launcher.screen, .title, "Back at the launcher's menu")
         XCTAssertFalse(shell.inRealm)
+        XCTAssertNil(shell.rebuilt, "Left, the realm is no longer watched")
         XCTAssertEqual(shell.app.ambience.titleLake, GameApp.lastLake, "The title theme again")
+        // A debug run may name another realm; nothing that is no address.
+        XCTAssertEqual(OnlineShell.realmAddress(info: nil, environment: ["NULLMERE_REALM": "http://127.0.0.1:3000/nullmere-ui"]), "http://127.0.0.1:3000/nullmere-ui")
+        XCTAssertEqual(OnlineShell.realmAddress(info: nil, environment: ["NULLMERE_REALM": "local"]), GameApp.maincloudURL.absoluteString)
+        XCTAssertNil(OnlineShell.session(at: "nowhere at all"))
 
         // The launcher's Music and the realm's are one choice, either way.
         let music = UserDefaults.standard.object(forKey: "music.enabled")

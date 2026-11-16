@@ -2,9 +2,9 @@ import AppKit
 import XCTest
 
 /// Nullmere Online as VoiceOver and Accessibility Inspector meet it, through
-/// the Mac's own accessibility: the app opened as a keeper opens it, every
-/// screen put to Xcode's accessibility audit, and the lake's map walked
-/// through the elements VoiceOver reads.
+/// the Mac's own accessibility: the app opened as a player opens it, and
+/// every screen, the launcher's and the realm's, put to Xcode's
+/// accessibility audit.
 ///
 /// It opens the debug build scripts/ui-test.sh makes and registers with
 /// Launch Services: only a debug build reads the variables that open it as
@@ -27,10 +27,10 @@ final class NullmereUITests: XCTestCase {
         let kept = FileManager.default.temporaryDirectory.appendingPathComponent("nullmere-ui-\(UUID().uuidString)", isDirectory: true)
         app.launchEnvironment = [
             "NULLMERE_MODEL_STATE": "ready",
-            "NULLMERE_REALM": "local",
-            "NULLMERE_REALM_SEED": "walked by VoiceOver",
+            // The rebuilt realm CI publishes on this Mac's SpacetimeDB server.
+            "NULLMERE_REALM": "http://127.0.0.1:3000/nullmere-ui",
             "NULLMERE_IDENTITY_FILE": kept.appendingPathComponent("identity").path,
-            // The hosted realm and the voices, kept apart from any on this Mac.
+            // What it keeps, kept apart from any on this Mac.
             "NULLMERE_STORE": kept.path,
             // The news this build ships with, not whatever the repository
             // holds today.
@@ -105,185 +105,86 @@ final class NullmereUITests: XCTestCase {
         report()
     }
 
-    /// A realm that doesn't answer: its door says so, offers to try again,
-    /// and passes the audit.
+    /// A realm that doesn't answer: Play says so, offers to try again or go
+    /// back, passes the audit, and Back is the launcher again.
     func testAnUnansweringRealmsDoorPassesTheAudit() throws {
         app.launchEnvironment["NULLMERE_REALM"] = "http://127.0.0.1:9/nullmere"
         let window = try openTheLauncher()
         window.buttons["Play"].click()
-        XCTAssertTrue(window.buttons["Try again"].waitForExistence(timeout: 60), "Out of reach, the door offers to try again")
-        // Its name field is being written in as the door opens.
-        audit("the door of a realm out of reach", editing: true)
+        XCTAssertTrue(window.buttons["Try again"].waitForExistence(timeout: 60), "Out of reach, the realm offers to try again")
+        audit("a realm out of reach")
+        let back = window.buttons["Back to the launcher"]
+        XCTAssertTrue(back.exists, "and a way back")
+        back.click()
+        XCTAssertTrue(window.buttons["Play"].waitForExistence(timeout: 20), "Back, the launcher's menu again")
         report()
     }
 
-    /// The realm's front door, entered by name by way of the realm's
-    /// compact, and the world beyond it: each passes the audit, the map is
-    /// walked as VoiceOver walks it, and what a keeper opens over the map
-    /// passes too.
-    func testTheDoorAndTheWorldPassTheAuditAndTheMapIsWalked() throws {
-        // The world held still (Motion: Still, as a keeper may set it), so
-        // each audit reads a screen that has settled, not one redrawn under
-        // it every frame.
-        // And a keeper who has never accepted the realm's compact.
-        app.launchArguments += ["-launcher.motion", "still", "-compact.accepted", "0"]
+    /// The realm entered through Play, as a newcomer meets it: the name it
+    /// asks for, then the world and every part of every destination over
+    /// it, and the palette, each put to the audit; and the way back to the
+    /// launcher, Command-Shift-W. The realm is the rebuilt one (realm/),
+    /// published by CI to the SpacetimeDB server on this Mac.
+    func testTheRealmAndEveryDestinationPassTheAudit() throws {
+        // The world held still (Motion: Still, as a player may set it), so
+        // each audit reads a screen that has settled.
+        app.launchArguments += ["-launcher.motion", "still"]
         let window = try openTheLauncher()
         window.buttons["Play"].click()
-        let name = window.textFields["Your name on the lake"]
-        XCTAssertTrue(name.waitForExistence(timeout: 30), "Play crosses to the realm's door, which asks for a name")
-        XCTAssertTrue(window.buttons["Enter the world"].waitForExistence(timeout: 30), "The way in")
-        // The name field is being written in as the door opens; then the
-        // door as it is with the field left.
-        audit("the realm's front door", editing: true)
-        app.typeKey(XCUIKeyboardKey.tab.rawValue, modifierFlags: [])
-        audit("the realm's front door, the name field left")
+        let name = window.textFields["Your name in the realm"]
+        XCTAssertTrue(name.waitForExistence(timeout: 60), "Play crosses into the realm, which asks a newcomer's name")
+        // The name field is being written in as the card opens.
+        audit("the realm's name card", editing: true)
         name.click()
-        name.typeText("Ama\r")
+        let letters = (0..<4).map { _ in String("abcdefghijklmnopqrstuvwxyz".randomElement() ?? "a") }.joined()
+        name.typeText("Ama \(letters)\r")
+        let map = labelled("The realm's map", in: window)
+        XCTAssertTrue(map.waitForExistence(timeout: 60), "Then the world, about the city founded")
+        let house = window.buttons["House"]
+        XCTAssertTrue(house.waitForExistence(timeout: 60), "and the destinations beside it")
+        audit("the realm")
 
-        // The realm's compact, read and accepted before the first entry.
-        let accept = window.buttons["Accept and enter"]
-        XCTAssertTrue(accept.waitForExistence(timeout: 30), "The compact before the first entry")
-        audit("the realm's compact")
-        accept.click()
-
-        // The card a keeper first meets holds the keys and VoiceOver until
-        // it is put away; the world lies behind it.
-        let begin = window.buttons["Begin"]
-        XCTAssertTrue(begin.waitForExistence(timeout: 60), "Entering, the seat's briefing")
-        audit("the seat's briefing")
-        begin.click()
-        let map = labelled("The world map", in: window)
-        XCTAssertTrue(map.waitForExistence(timeout: 30), "Then the world")
-        audit("the world")
-        walk(map, in: window)
-
-        // Each panel over the map, opened and closed by its key.
-        for (key, panel) in [("1", "Houses"), ("2", "Chronicle"), ("3", "Archive"), ("4", "Commanders"), ("5", "Alliance"),
-                             ("6", "The Realm"), ("7", "Words"), ("/", "Guide")] {
-            app.typeKey(key, modifierFlags: [])
-            if window.staticTexts[panel].waitForExistence(timeout: 10) {
-                audit("the \(panel) panel")
-                if panel == "Houses" { houses(in: window) }
-            } else {
-                found("UIWALK the \(panel) panel didn't open with \(key)")
+        // Each destination from the dock, and each of its parts, then closed again.
+        for (place, parts) in [("House", ["Buildings", "Troops", "Studies", "Forge", "Today"]), ("Alliance", ["Alliance"]),
+                               ("Realm", ["The Mere", "Chat"]), ("Mail", ["Reports and letters"])] {
+            let door = window.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", place)).firstMatch
+            guard door.waitForExistence(timeout: 10) else {
+                found("UIWALK the dock has no \(place)")
+                continue
             }
-            app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+            door.click()
+            for (index, part) in parts.enumerated() {
+                if index > 0 {
+                    let tab = window.buttons["\(part), in \(place)"]
+                    guard tab.waitForExistence(timeout: 10) else {
+                        found("UIWALK \(place) shows no \(part) to turn to")
+                        continue
+                    }
+                    tab.click()
+                }
+                audit("\(place): \(part)")
+            }
+            door.click()
         }
 
-        // The realm's Settings, over the world.
-        app.typeKey(",", modifierFlags: .command)
-        let done = app.buttons["Done"]
-        if done.waitForExistence(timeout: 10) {
-            audit("the realm's Settings")
-            done.click()
+        // The palette, as Command-K opens it, and put away with Escape.
+        app.typeKey("k", modifierFlags: .command)
+        if window.textFields["Search for something to do"].waitForExistence(timeout: 10) {
+            audit("the palette", editing: true)
+            app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
         } else {
-            found("UIWALK the realm's Settings didn't open with ⌘,")
+            found("UIWALK the palette didn't open with Command-K")
         }
+
+        // Back to the launcher.
+        app.typeKey("w", modifierFlags: [.command, .shift])
+        XCTAssertTrue(window.buttons["Play"].waitForExistence(timeout: 20), "Left, the launcher's menu again")
         report()
-    }
-
-    // MARK: The walk
-
-    /// The map as VoiceOver walks it: an element for each hold and company
-    /// the keeper knows of, the keeper's own first, each saying what it is,
-    /// whose and how it stands, and lying where it is drawn, so that
-    /// choosing one there selects it: a company opens its orders, the seat
-    /// its works and musters.
-    private func walk(_ map: XCUIElement, in window: XCUIElement) {
-        let items = map.buttons.allElementsBoundByIndex
-        let labels = items.map(\.label)
-        print("UIMAP \(items.count) elements in \(map.frame): "
-              + zip(labels, items).map { "\($0) @ \($1.frame)" }.joined(separator: " | "))
-        guard items.count >= 2 else {
-            found("UIWALK the map holds \(items.count) elements, not its holds and companies")
-            return
-        }
-        if labels.first?.contains("seat, yours") != true {
-            found("UIWALK the keeper's seat isn't first: \(labels.first ?? "")")
-        }
-        for (label, item) in zip(labels, items) where label.isEmpty || item.frame.isEmpty {
-            found("UIWALK an element without words or a place: '\(label)' \(item.frame)")
-        }
-        let mapFrame = map.frame
-        let onMap = items.filter { mapFrame.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
-        guard let company = onMap.first(where: { $0.label.contains(", yours,") && $0.label.contains("health") }) else {
-            found("UIWALK no company of the keeper's lies on the map in view, among: \(labels.joined(separator: " | "))")
-            return
-        }
-        // Chosen where it lies, as VoiceOver's click there would choose it.
-        let kind = String(company.label.prefix { $0 != "," })
-        company.click()
-        if window.staticTexts[kind].waitForExistence(timeout: 5) {
-            audit("a company chosen")
-        } else {
-            found("UIWALK choosing '\(company.label)' at \(company.frame) opened no panel for \(kind)")
-        }
-        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
-
-        // Without a pointer: H chooses the seat, ] each company in turn.
-        app.typeKey("h", modifierFlags: [])
-        if window.staticTexts["Works"].waitForExistence(timeout: 5) {
-            audit("the seat chosen by its key")
-        } else {
-            found("UIWALK H chose no hold with its works")
-        }
-        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
-        app.typeKey("]", modifierFlags: [])
-        let companies = ["Lanterns", "Spears", "Bows", "Riders", "Founders"]
-        if !companies.contains(where: { window.staticTexts[$0].waitForExistence(timeout: 2) }) {
-            found("UIWALK ] chose no company")
-        }
-        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
-    }
-
-    /// What the Houses panel opens for a House: the gifts to send, a trade
-    /// to write, and war asked twice, never declared.
-    private func houses(in window: XCUIElement) {
-        // Each House a line until it is chosen: the first opened.
-        let row = window.buttons.matching(identifier: "house-row").firstMatch
-        if row.waitForExistence(timeout: 5) {
-            row.click()
-        } else {
-            found("UIWALK the Houses panel lists no House to open")
-        }
-        let gift = window.buttons["Send a gift"].firstMatch
-        if gift.waitForExistence(timeout: 5) {
-            gift.click()
-            if app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Send '")).element(boundBy: 1).waitForExistence(timeout: 5) {
-                audit("the gifts to send")
-            } else {
-                found("UIWALK Send a gift opened no gifts")
-            }
-            app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
-        } else {
-            found("UIWALK the Houses panel offers no gift")
-        }
-        let trade = window.buttons["Offer a trade"].firstMatch
-        if trade.waitForExistence(timeout: 5) {
-            trade.click()
-            if app.buttons["Offer"].waitForExistence(timeout: 5) {
-                audit("a trade written")
-            } else {
-                found("UIWALK Offer a trade opened nothing to write it in")
-            }
-            app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
-        }
-        let war = window.buttons["Declare war"].firstMatch
-        if war.waitForExistence(timeout: 5) {
-            war.click()
-            // Armed, it keeps its name and asks in its value; never pressed
-            // again, no war is declared, and closing the panel lets it go.
-            let asked = window.buttons.matching(NSPredicate(format: "label == 'Declare war' AND value BEGINSWITH 'War on '")).firstMatch
-            if asked.waitForExistence(timeout: 3) {
-                audit("war asked twice")
-            } else {
-                found("UIWALK Declare war asked nothing a second time")
-            }
-        }
     }
 
     // MARK: Helpers
 
+    /// Opens the app and its launcher, past the opening, at the menu.
     private func openTheLauncher() throws -> XCUIElement {
         app.launch()
         window = app.windows["Nullmere Online"]

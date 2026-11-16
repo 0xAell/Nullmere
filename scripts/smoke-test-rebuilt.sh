@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Opens Nullmere Online on the rebuilt realm (realm/): its module built
 # and published to the SpacetimeDB server already running on this Mac, a
-# dozen players played into it, and the app opened on it as one more, who
-# is settled beside them. The app must still be running after a while,
+# dozen players played into it, and the app opened and Play pressed, as a
+# player presses it, to enter it as one more, who is settled beside them. The app must still be running after a while,
 # and its world must be rendering with Metal. Saves three pictures, each
 # at noon of the world's day: the player's first sight of their city and
 # their neighbours (rebuilt-world.png), the city's buildings open
@@ -15,8 +15,9 @@
 # DATABASE the name to publish under (nullmere-rebuilt). Whatever is
 # published under that name is replaced.
 #
-# Only debug builds honour NULLMERE_REBUILT_REALM, NULLMERE_REBUILT_NAME,
-# NULLMERE_REBUILT_SHOW and NULLMERE_HOUR.
+# Only debug builds honour NULLMERE_MODEL_STATE, NULLMERE_LAUNCHER_KEYS,
+# NULLMERE_REALM, NULLMERE_REBUILT_NAME, NULLMERE_REBUILT_SHOW and
+# NULLMERE_HOUR.
 set -euo pipefail
 export NULLMERE_HOUR="${NULLMERE_HOUR:-12}"
 
@@ -40,13 +41,9 @@ if ! curl -s -o /dev/null -X POST "$SERVER/v1/identity"; then
     exit 1
 fi
 
-echo "Building the rebuilt realm's module…"
-rustup target add wasm32-unknown-unknown >/dev/null 2>&1 || true
-(cd realm && cargo build --release --target wasm32-unknown-unknown 2>&1 | tail -n 3)
-spacetime publish --server "$SERVER" --bin-path realm/target/wasm32-unknown-unknown/release/realm.wasm --yes --delete-data "$DATABASE"
 # Sixty times its written pace while the players settle in; they slow it
 # to twice before their armies set out.
-spacetime call --server "$SERVER" "$DATABASE" set_pace 60
+SERVER="$SERVER" PACE=60 scripts/serve-realm.sh "$DATABASE"
 python3 realm/people.py "$SERVER" "$DATABASE" 12 -- spacetime call --server "$SERVER" "$DATABASE" set_pace
 
 LOG=""
@@ -54,8 +51,9 @@ LOG=""
 run() {
     local shot="$1"
     local show="${2:-}"
-    echo "Opening Nullmere Online on the rebuilt realm…"
-    NULLMERE_REBUILT_REALM="$SERVER/$DATABASE" NULLMERE_REBUILT_NAME="Ilsen" NULLMERE_REBUILT_SHOW="$show" \
+    echo "Opening Nullmere Online, and pressing Play into the rebuilt realm…"
+    NULLMERE_MODEL_STATE=ready NULLMERE_LAUNCHER_KEYS=return NULLMERE_REALM="$SERVER/$DATABASE" \
+        NULLMERE_REBUILT_NAME="Ilsen" NULLMERE_REBUILT_SHOW="$show" \
         NULLMERE_IDENTITY_FILE="$IDENTITY" "$BIN" >build/rebuilt-stdout.log 2>&1 &
     local pid=$!
     sleep "$WAIT"

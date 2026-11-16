@@ -254,42 +254,21 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: mkdir -p build && scripts/smoke-test-launcher-menu.sh 2>&1 | tee build/smoke-menu.log
 
-      # Opens the debug build past the model gate (only debug builds allow
-      # that), presses Play and enters a realm hosted on the runner as a
-      # keeper, whose world must render with Metal, photographed at noon
-      # and at midnight of its day; then the same realm forty watches on,
-      # and forty more with counsel asked of a battle.
-      - name: Open the game
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: mkdir -p build && scripts/smoke-test-game.sh 2>&1 | tee build/smoke-game.log
-
-      # A realm raised on the runner, as on maincloud: SpacetimeDB with the
-      # realm module published, and the steward beside it. Then the app
-      # itself enters the world across the network.
-      - name: Raise a realm on SpacetimeDB
+      # SpacetimeDB on the runner, as a player's realm stands on maincloud;
+      # then the rebuilt realm (realm/) on it: its module built and
+      # published, a dozen players played into it, and the app opened and
+      # Play pressed to enter it as one more. Its pictures are kept with the
+      # rest (rebuilt-*.png).
+      - name: Start SpacetimeDB on the runner
         id: realm
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 20
         run: |
-          command -v rustup >/dev/null || curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          scripts/serve-realm.sh
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
-          curl -sSf https://install.spacetimedb.com | sh -s -- --yes
-          # The same one command that raises the realm proper.
-          STEWARD=background CONFIGURATION=debug STEWARD_LOG="$PWD/build/steward.log" \
-            NULLMERE_REALM_SEED="black moon" scripts/raise-realm.sh local
 
-      - name: Enter the realm across the network
-        if: ${{ !cancelled() && steps.realm.outcome == 'success' }}
-        env:
-          NULLMERE_REALM: http://127.0.0.1:3000/nullmere
-        run: mkdir -p build && scripts/smoke-test-network.sh 2>&1 | tee build/smoke-network.log
-
-      # The rebuilt realm (realm/) on the same server: its module built and
-      # published, a dozen players played into it, and the app opened on
-      # it as one more. Its pictures are kept with the rest (rebuilt-*.png).
-      - name: Open the rebuilt realm
+      - name: Open the realm through Play
         if: ${{ !cancelled() && steps.realm.outcome == 'success' }}
         timeout-minutes: 15
         run: mkdir -p build && scripts/smoke-test-rebuilt.sh 2>&1 | tee build/smoke-rebuilt.log
@@ -551,8 +530,8 @@ jobs:
 
   # The app as VoiceOver and Accessibility Inspector meet it, through the
   # Mac's own accessibility: Xcode's UI testing opens the debug build as a
-  # keeper would, puts every screen to its accessibility audit, and walks
-  # the lake's map through the elements VoiceOver reads.
+  # player would and puts every screen, the launcher's and the realm's,
+  # to its accessibility audit.
   accessibility:
     name: Accessibility audit
     runs-on: macos-26
@@ -570,9 +549,15 @@ jobs:
       - name: Let UI tests drive the Mac
         run: sudo automationmodetool enable-automationmode-without-authentication || echo "::warning::Could not enable automation mode"
 
+      # The realm the UI tests play into, as Play reaches it: SpacetimeDB on
+      # the runner, the rebuilt realm (realm/) published to it.
+      - name: Serve the realm
+        timeout-minutes: 20
+        run: scripts/serve-realm.sh nullmere-ui
+
       # The debug app built and registered, then the UI tests: one command,
       # as on a contributor's Mac.
-      - name: Audit every screen and walk the map
+      - name: Audit every screen
         run: scripts/ui-test.sh
 
       # Last, so a short read of the log holds it: what the audit and the

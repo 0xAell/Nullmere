@@ -19,7 +19,7 @@ struct NullmereOnlineApp: App {
         .defaultSize(width: 1440, height: 900)
         .commands {
             LauncherCommands(model: shell.launcher, settings: { shell.showSettings() })
-            GameCommands(app: shell.app)
+            RealmCommands(shell: shell)
         }
     }
 }

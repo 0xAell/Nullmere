@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Opens Nullmere Online through Xcode's UI testing, as VoiceOver and
-# Accessibility Inspector meet it: every screen put to Xcode's
-# accessibility audit, and the lake's map walked through the elements
-# VoiceOver reads.
+# Accessibility Inspector meet it: every screen, the launcher's and the
+# realm's, put to Xcode's accessibility audit. The realm is the one
+# scripts/serve-realm.sh nullmere-ui stands on this Mac.
 #
-#   scripts/ui-test.sh
+#   scripts/serve-realm.sh nullmere-ui && scripts/ui-test.sh
 #
 # Builds the debug app (only a debug build opens as if the on-device model
-# were ready, with a realm of its own) under a bundle identifier of its own,
+# were ready, on a realm it is told of) under a bundle identifier of its own,
 # so an installed Nullmere Online is never the one opened and its settings
 # are never touched; registers it with Launch Services, and runs
 # UITests/NullmereUITests.xcodeproj, whose tests keep what the app keeps in

@@ -248,7 +248,17 @@ final class LiveGameTests: XCTestCase {
         let lost = LiveSession(line: StandInLine(reachable: false))
         await lost.open()
         XCTAssertEqual(lost.phase, .lost)
-        XCTAssertGreaterThan(try drawn(LiveGameView(session: lost), width: 900, height: 600), 120, "The realm can't be reached, and a way to try again")
+        let tryAgain = try drawn(LiveGameView(session: lost), width: 900, height: 600)
+        XCTAssertGreaterThan(tryAgain, 120, "The realm can't be reached, and a way to try again")
+        var left = 0
+        XCTAssertGreaterThan(try drawn(LiveGameView(session: lost) { left += 1 }, width: 900, height: 600, as: "live-lost.png"), tryAgain,
+                             "and, entered from the launcher, a way back to it")
+        XCTAssertEqual(left, 0, "Drawing leaves nothing")
+        // The palette offers leaving for the launcher, last, where there is one to leave for.
+        XCTAssertEqual(LivePaletteView.found("leave", in: session, at: 2_015, leaving: true).last, LivePaletteView.leaving)
+        XCTAssertFalse(LivePaletteView.found("leave", in: session, at: 2_015, leaving: false).contains(LivePaletteView.leaving))
+        XCTAssertFalse(LivePaletteView.found("barrow", in: session, at: 2_015, leaving: true).contains(LivePaletteView.leaving), "Only where its words are searched for")
+        XCTAssertLessThanOrEqual(LivePaletteView.found("", in: session, at: 2_015, leaving: true).count, LivePaletteView.most)
         XCTAssertGreaterThan(try drawn(LiveNotice(title: "The world can't be drawn", words: "This Mac's graphics could not draw it.", button: nil) {}, width: 600, height: 200), 80)
         XCTAssertGreaterThan(try drawn(LiveNameCard(session: session), width: 400, height: 260, as: "live-name.png"), 80)
         XCTAssertTrue(LiveNameCard.fits("Ada"))

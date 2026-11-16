@@ -81,17 +81,21 @@ public struct LiveGameView: View {
     }
 
     private let session: LiveSession
+    /// Back to the launcher, where there is one to go back to.
+    private let leave: (() -> Void)?
     @State private var panel: Panel?
     @State private var palette = false
     @State private var cannotDraw = false
 
-    public init(session: LiveSession) {
+    public init(session: LiveSession, leave: (() -> Void)? = nil) {
         self.session = session
+        self.leave = leave
     }
 
     /// The same, opened at one part of a destination.
-    init(session: LiveSession, opening: Panel?) {
+    init(session: LiveSession, opening: Panel?, leave: (() -> Void)? = nil) {
         self.session = session
+        self.leave = leave
         _panel = State(initialValue: opening)
     }
 
@@ -100,9 +104,9 @@ public struct LiveGameView: View {
             Color.black.ignoresSafeArea()
             switch session.phase {
             case .opening:
-                LiveNotice(title: "Reaching the realm", words: "One moment.", button: nil) {}
+                LiveNotice(title: "Reaching the realm", words: "One moment.", button: nil, back: leave) {}
             case .lost:
-                LiveNotice(title: "The realm can't be reached", words: "Check your connection, then try again.", button: "Try again") {
+                LiveNotice(title: "The realm can't be reached", words: "Check your connection, then try again.", button: "Try again", back: leave) {
                     Task { await session.open() }
                 }
             case .naming, .playing:
@@ -116,7 +120,7 @@ public struct LiveGameView: View {
                 if session.phase == .naming {
                     LiveNameCard(session: session)
                 } else {
-                    LiveHUD(session: session, panel: $panel, palette: $palette)
+                    LiveHUD(session: session, panel: $panel, palette: $palette, leave: leave)
                 }
             }
         }
@@ -179,6 +183,8 @@ struct LiveNotice: View {
     let title: String
     let words: String
     let button: String?
+    /// Back to the launcher, where there is one.
+    var back: (() -> Void)?
     let action: () -> Void
 
     var body: some View {
@@ -188,8 +194,13 @@ struct LiveNotice: View {
             Text(verbatim: words)
                 .font(.nm(LiveType.body))
                 .foregroundStyle(LiveEmphasis.secondary)
-            if let button {
-                QuietButton(title: button, prominent: true, action: action)
+            HStack(spacing: 16) {
+                if let back {
+                    QuietButton(title: "Back", name: "Back to the launcher", action: back)
+                }
+                if let button {
+                    QuietButton(title: button, prominent: true, action: action)
+                }
             }
         }
         .padding(24)
@@ -259,6 +270,8 @@ struct LiveHUD: View {
     @Binding var panel: LiveGameView.Panel?
     /// Whether the palette is open, to search for anything to do.
     @Binding var palette: Bool
+    /// Back to the launcher, where there is one.
+    var leave: (() -> Void)?
 
     /// The share of the window's height an open destination stands to.
     static let panelShare: CGFloat = 0.42
@@ -323,7 +336,7 @@ struct LiveHUD: View {
                 }
                 .overlay(alignment: .top) {
                     if palette {
-                        LivePaletteView(session: session, seconds: seconds, open: { panel = $0 }) { palette = false }
+                        LivePaletteView(session: session, seconds: seconds, open: { panel = $0 }, leave: leave) { palette = false }
                             .padding(.top, 90)
                     }
                 }
@@ -339,15 +352,30 @@ struct LivePaletteView: View {
     let session: LiveSession
     let seconds: Double
     let open: (LiveGameView.Panel) -> Void
+    /// Back to the launcher, where there is one: the palette offers it last.
+    var leave: (() -> Void)?
     let dismiss: () -> Void
     @State private var search = ""
     @FocusState private var focused: Bool
 
     /// The most it lists at once.
     static let most = 8
+    /// The command that leaves the realm for the launcher.
+    static let leaving = LiveCommand(title: "Leave the realm for the launcher", act: .open("launcher"))
+
+    /// What answers to a search: the realm's commands, and leaving where
+    /// there is somewhere to leave for; at most `most` of them.
+    static func found(_ search: String, in session: LiveSession, at seconds: Double, leaving: Bool) -> [LiveCommand] {
+        var all = session.commands(matching: search, at: seconds)
+        let words = search.lowercased().split(separator: " ").map(String.init)
+        if leaving, words.allSatisfy({ LivePaletteView.leaving.title.lowercased().contains($0) }) {
+            all.append(LivePaletteView.leaving)
+        }
+        return Array(all.prefix(most))
+    }
 
     var body: some View {
-        let found = Array(session.commands(matching: search, at: seconds).prefix(Self.most))
+        let found = LivePaletteView.found(search, in: session, at: seconds, leaving: leave != nil)
         VStack(alignment: .leading, spacing: 6) {
             TextField("What would you do?", text: $search)
                 .textFieldStyle(.plain)
@@ -381,6 +409,10 @@ struct LivePaletteView: View {
     /// destination where that is what it does.
     private func choose(_ command: LiveCommand) {
         dismiss()
+        if command == LivePaletteView.leaving {
+            leave?()
+            return
+        }
         Task { if let part = await session.perform(command), let panel = LiveGameView.Panel(part: part) { open(panel) } }
     }
 }

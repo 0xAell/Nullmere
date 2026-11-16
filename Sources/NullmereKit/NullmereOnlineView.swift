@@ -14,10 +14,13 @@ public final class OnlineShell {
 
     public let launcher: LauncherModel
     public let app: GameApp
-    /// A player's session in the rebuilt realm, where this run was told
-    /// of one: played in the window in place of the launcher, while the
-    /// rebuilt realm is grown beside the realm the launcher opens.
+    /// The player's session in the realm, played in the window in place of
+    /// the launcher: opened by Play, or at once where a debug run was told
+    /// of a realm to open on.
     public private(set) var rebuilt: LiveSession?
+    /// How a session is opened on a realm's address; the keychain's way, but
+    /// for a test.
+    var opening: @MainActor (String) -> LiveSession? = { OnlineShell.session(at: $0) }
 
     public convenience init() {
         self.init(launcher: LauncherModel(), app: GameApp(opensAtOnce: false))
@@ -41,14 +44,37 @@ public final class OnlineShell {
         launcher.onMusicChanged = { [weak app] on in app?.isMusicOn = on }
     }
 
-    /// A session in the rebuilt realm an environment names with
+    /// A session in the realm an environment names with
     /// NULLMERE_REBUILT_REALM (a server and, as its path, the database's
-    /// name). The player is kept in the keychain, one for each realm, or
-    /// for a test in the file NULLMERE_IDENTITY_FILE names.
+    /// name), opened at once without the launcher. The player is kept in
+    /// the keychain, one for each realm, or for a test in the file
+    /// NULLMERE_IDENTITY_FILE names.
     static func session(in environment: [String: String]) -> LiveSession? {
-        guard let text = environment["NULLMERE_REBUILT_REALM"], let address = LiveDoor.address(text) else { return nil }
+        guard let text = environment["NULLMERE_REBUILT_REALM"] else { return nil }
+        return session(at: text, identityFile: environment["NULLMERE_IDENTITY_FILE"] ?? "")
+    }
+
+    /// The address Play opens: where the app was built to go (its
+    /// Info.plist's NullmereRealm), or maincloud's; a debug run may name
+    /// another with NULLMERE_REALM.
+    static func realmAddress(info: [String: Any]?, environment: [String: String]) -> String {
+        #if DEBUG
+        if let text = environment["NULLMERE_REALM"], LiveDoor.address(text) != nil {
+            return text
+        }
+        #endif
+        return GameApp.realmURL(in: info).absoluteString
+    }
+
+    /// A session in the realm at an address, nil where the text is none.
+    static func session(at text: String, identityFile: String = "") -> LiveSession? {
+        var named = identityFile
+        #if DEBUG
+        if named.isEmpty { named = ProcessInfo.processInfo.environment["NULLMERE_IDENTITY_FILE"] ?? "" }
+        #endif
+        let file = named
+        guard let address = LiveDoor.address(text) else { return nil }
         let (server, database) = (address.server, address.database)
-        let file = environment["NULLMERE_IDENTITY_FILE"] ?? ""
         return LiveSession(opening: {
             if !file.isEmpty {
                 return try await LiveDoor.open(server: server, database: database, keeping: FileIdentityStore(url: URL(fileURLWithPath: file)))
@@ -65,26 +91,31 @@ public final class OnlineShell {
         app.ambience.start()
     }
 
+    /// Play: into the realm, in place of the launcher.
     func enterRealm() {
         inRealm = true
         RunLedger.shared.note(.door)
-        // The realm's own score, at peace or at war, from its door on.
+        // The realm's own score from here on.
         app.ambience.titleLake = nil
-        app.open()
+        app.ambience.start()
+        if rebuilt == nil {
+            rebuilt = opening(OnlineShell.realmAddress(info: Bundle.main.infoDictionary, environment: ProcessInfo.processInfo.environment))
+        }
     }
 
-    func leaveRealm() {
+    /// Back to the launcher: the realm is no longer watched.
+    public func leaveRealm() {
+        rebuilt?.close()
+        rebuilt = nil
         inRealm = false
         RunLedger.shared.note(.launcher)
         launcher.returnFromRealm()
         playTitle()
     }
 
-    /// What Settings… opens: the launcher's panel, or the game's settings.
+    /// What Settings… opens: the launcher's panel, where the launcher shows.
     public func showSettings() {
-        if inRealm {
-            app.showsSettings = true
-        } else {
+        if !inRealm, rebuilt == nil {
             launcher.show(.settings)
         }
     }
@@ -103,17 +134,41 @@ public struct NullmereOnlineView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let rebuilt = shell.rebuilt {
-                LiveGameView(session: rebuilt)
-            } else if shell.inRealm {
-                GameRootView(app: shell.app)
+                LiveGameView(session: rebuilt) { shell.leaveRealm() }
                     .transition(.opacity)
             } else {
                 LauncherRootView(model: shell.launcher)
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.8), value: shell.inRealm)
+        .animation(.easeInOut(duration: 0.8), value: shell.rebuilt == nil)
         .background(WindowFitter())
         .onAppear { if !shell.inRealm, shell.rebuilt == nil { shell.playTitle() } }
+    }
+}
+
+/// The menu's commands while the realm shows: leaving it for the launcher,
+/// and its sound and music.
+public struct RealmCommands: Commands {
+    let shell: OnlineShell
+
+    public init(shell: OnlineShell) {
+        self.shell = shell
+    }
+
+    public var body: some Commands {
+        CommandGroup(after: .newItem) {
+            Button("Leave the Realm") { shell.leaveRealm() }
+                .keyboardShortcut("w", modifiers: [.command, .shift])
+                .disabled(shell.rebuilt == nil)
+        }
+        CommandMenu("Realm") {
+            Toggle("Sound", isOn: Binding(get: { shell.app.isSoundOn }, set: { shell.app.isSoundOn = $0 }))
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+                .disabled(!shell.inRealm)
+            Toggle("Music", isOn: Binding(get: { shell.app.isMusicOn }, set: { shell.app.isMusicOn = $0 }))
+                .keyboardShortcut("u", modifiers: [.command, .shift])
+                .disabled(!shell.inRealm || !shell.app.isSoundOn)
+        }
     }
 }
