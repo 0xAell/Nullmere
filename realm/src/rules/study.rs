@@ -10,13 +10,17 @@ use crate::catalog::{self, Building as Kind, Deed, Topic, Troops, TOP_STUDY};
 use crate::rows::{Db, Job, Lore, Study};
 use crate::store::Table;
 
-/// What a city's studies add to its soldiers in a fight, in hundredths:
-/// how much harder each kind strikes, by the kind's number less one, and
-/// how much harder all of them are to bring down.
+/// What a side has in a fight beyond its numbers, in hundredths: how
+/// much harder each kind strikes, by the kind's number less one, and how
+/// much harder all of them are to bring down, as its city has learnt and
+/// its commander adds; and, by its commander's skill, how much harder it
+/// strikes, or stands, every fourth round.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Mastery {
     pub strikes: [u64; 4],
     pub shields: u64,
+    pub surge: u64,
+    pub stand: u64,
 }
 
 /// The level a city has learnt a topic to.
@@ -37,7 +41,7 @@ pub fn sooner(db: &impl Db, city: u64, topic: Topic, seconds: i64) -> i64 {
 
 /// What a city's studies add to its soldiers in a fight.
 pub fn mastery(db: &impl Db, city: u64) -> Mastery {
-    let mut mastery = Mastery { strikes: [0; 4], shields: boost(db, city, Topic::Shields) };
+    let mut mastery = Mastery { shields: boost(db, city, Topic::Shields), ..Mastery::default() };
     for kind in Troops::ALL {
         mastery.strikes[kind as usize - 1] = boost(db, city, Topic::sharpens(kind));
     }

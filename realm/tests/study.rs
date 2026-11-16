@@ -246,15 +246,15 @@ fn what_is_learnt_of_arms_tells_in_a_fight() {
     let plain = rules::fight(&unit(100), &unit(100), || 10);
     assert!(!plain.won, "like against like, the defenders hold");
     // Spearcraft to the full: three tenths harder a blow, and the same hundred win.
-    let sharp = Mastery { strikes: [30, 0, 0, 0], shields: 0 };
+    let sharp = Mastery { strikes: [30, 0, 0, 0], ..Mastery::default() };
     let sharper = rules::fight_learned(&unit(100), &unit(100), [sharp, Mastery::default()], 0, || 10);
     assert!(sharper.won);
     assert!(sharper.attackers_lost[0] < plain.attackers_lost[0]);
     // The other kinds' craft is nothing to spearmen.
-    let wrong = Mastery { strikes: [0, 30, 30, 30], shields: 0 };
+    let wrong = Mastery { strikes: [0, 30, 30, 30], ..Mastery::default() };
     assert_eq!(rules::fight_learned(&unit(100), &unit(100), [wrong, Mastery::default()], 0, || 10), plain);
     // Shields to the full on the defenders' side: they lose fewer, and hold against more.
-    let guarded = Mastery { strikes: [0; 4], shields: 30 };
+    let guarded = Mastery { shields: 30, ..Mastery::default() };
     let held = rules::fight_learned(&unit(110), &unit(100), [Mastery::default(), guarded], 0, || 10);
     assert!(!held.won, "a hundred and ten would have beaten a hundred unshielded");
     assert!(rules::fight(&unit(110), &unit(100), || 10).won);
@@ -265,7 +265,7 @@ fn what_is_learnt_of_arms_tells_in_a_fight() {
     learn(&mut db, city.id, Topic::Archery, 4);
     learn(&mut db, city.id, Topic::Siegecraft, 1);
     learn(&mut db, city.id, Topic::Shields, 7);
-    assert_eq!(rules::mastery(&db, city.id), Mastery { strikes: [0, 12, 0, 3], shields: 21 });
+    assert_eq!(rules::mastery(&db, city.id), Mastery { strikes: [0, 12, 0, 3], shields: 21, ..Mastery::default() });
 
     // And it tells at a barrow: the same army loses fewer with its craft learnt.
     let lost_with = |spearcraft: u32| {

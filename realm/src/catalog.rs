@@ -1326,7 +1326,9 @@ pub const TOP_COMMAND: u32 = 30;
 /// harder each kind strikes (by the kind's number less one), how much
 /// harder all are to bring down, how much faster it marches and gathers,
 /// how much more it carries, and how much less a Wall shelters those it
-/// attacks.
+/// attacks; and their skill in a fight, which every fourth round has
+/// their army strike so much harder (`surge`) or stand so much harder to
+/// bring down (`stand`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Leading {
     pub strikes: [u64; 4],
@@ -1335,6 +1337,8 @@ pub struct Leading {
     pub gathers: u64,
     pub carries: u64,
     pub breaches: u64,
+    pub surge: u64,
+    pub stand: u64,
 }
 
 impl Way {
@@ -1358,11 +1362,11 @@ impl Way {
     /// What they are best at, in a player's words.
     pub fn words(self) -> &'static str {
         match self {
-            Way::Vanguard => "Spearmen they lead strike harder.",
-            Way::Fletcher => "Archers they lead strike harder.",
-            Way::Outrider => "Riders they lead strike harder, and their army marches faster.",
-            Way::Wallbreaker => "Mangonels they lead strike harder, and a Wall shelters its city less from them.",
-            Way::Warden => "Everyone they lead is harder to bring down.",
+            Way::Vanguard => "Spearmen they lead strike harder; every fourth round of a fight, their army charges.",
+            Way::Fletcher => "Archers they lead strike harder; every fourth round of a fight, their army looses a volley.",
+            Way::Outrider => "Riders they lead strike harder, and their army marches faster; every fourth round of a fight, it rides its foe down.",
+            Way::Wallbreaker => "Mangonels they lead strike harder, and a Wall shelters its city less from them; every fourth round of a fight, they bombard.",
+            Way::Warden => "Everyone they lead is harder to bring down, and every fourth round of a fight harder still.",
             Way::Gleaner => "Their army gathers faster and carries more.",
         }
     }
@@ -1374,7 +1378,15 @@ impl Way {
         let level = level.clamp(1, TOP_COMMAND) as u64;
         let best = 5 + level;
         let also = 3 + level / 2;
+        // Their skill in a fight: a fifth more and two hundredths a level,
+        // every fourth round. A gleaner's skill is in gathering.
+        let skill = 20 + 2 * level;
         let mut leading = Leading::default();
+        match self {
+            Way::Warden => leading.stand = skill,
+            Way::Gleaner => {}
+            _ => leading.surge = skill,
+        }
         match self {
             Way::Vanguard => leading.strikes[Troops::Spearmen as usize - 1] = best,
             Way::Fletcher => leading.strikes[Troops::Archers as usize - 1] = best,
@@ -1410,6 +1422,8 @@ impl Leading {
             gathers: self.gathers + other.gathers,
             carries: self.carries + other.carries,
             breaches: self.breaches + other.breaches,
+            surge: self.surge + other.surge,
+            stand: self.stand + other.stand,
         }
     }
 
@@ -1422,6 +1436,8 @@ impl Leading {
             gathers: self.gathers / 2,
             carries: self.carries / 2,
             breaches: self.breaches / 2,
+            surge: self.surge / 2,
+            stand: self.stand / 2,
         }
     }
 }

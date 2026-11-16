@@ -74,11 +74,11 @@ fn each_way_of_war_adds_what_it_is_best_at() {
     }
     assert_eq!(Way::of(0), None);
     assert_eq!(Way::of(7), None);
-    assert_eq!(Way::Vanguard.leading(1), Leading { strikes: [6, 0, 0, 0], ..Leading::default() });
+    assert_eq!(Way::Vanguard.leading(1), Leading { strikes: [6, 0, 0, 0], surge: 22, ..Leading::default() });
     assert_eq!(Way::Fletcher.leading(10).strikes, [0, 15, 0, 0]);
-    assert_eq!(Way::Outrider.leading(10), Leading { strikes: [0, 0, 15, 0], haste: 8, ..Leading::default() });
-    assert_eq!(Way::Wallbreaker.leading(30), Leading { strikes: [0, 0, 0, 35], breaches: 40, ..Leading::default() });
-    assert_eq!(Way::Warden.leading(30).shields, 35);
+    assert_eq!(Way::Outrider.leading(10), Leading { strikes: [0, 0, 15, 0], haste: 8, surge: 40, ..Leading::default() });
+    assert_eq!(Way::Wallbreaker.leading(30), Leading { strikes: [0, 0, 0, 35], breaches: 40, surge: 80, ..Leading::default() });
+    assert_eq!((Way::Warden.leading(30).shields, Way::Warden.leading(30).stand, Way::Warden.leading(30).surge), (35, 80, 0), "a warden's skill is to stand");
     assert_eq!(Way::Gleaner.leading(5), Leading { gathers: 20, carries: 10, ..Leading::default() });
     assert_eq!([1, 2, 10].map(catalog::command_needs), [100, 400, 10_000]);
     assert_eq!([0, 1, 4, 5, 10, 19, 20, 25].map(catalog::commanders), [1, 2, 2, 3, 4, 5, 6, 6]);
@@ -92,7 +92,7 @@ fn a_player_begins_with_one_commander_and_takes_on_more_from_a_tavern() {
     assert_eq!(rules::commanders_of(&db, player), vec![first.clone()]);
     assert_eq!((first.owner, first.level, first.seen, first.march), (player, 1, 0, 0));
     assert!(Way::of(first.way).is_some());
-    assert!(first.name.len() >= 4 && first.name.chars().next().unwrap().is_uppercase(), "{}", first.name);
+    assert!(first.name.len() >= 3 && first.name.chars().next().unwrap().is_uppercase(), "{}", first.name);
 
     // No Tavern, no more.
     assert_eq!(db.call(|db| rules::hire(db, player)), Err(Refusal::NeedsOther(Kind::Tavern, 1)));

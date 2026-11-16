@@ -278,6 +278,8 @@ pub fn defence_of(db: &impl Db, city: u64, owner: u64) -> Mastery {
             all.strikes[kind] += leading.strikes[kind];
         }
         all.shields += leading.shields;
+        all.surge += leading.surge;
+        all.stand += leading.stand;
     }
     all
 }

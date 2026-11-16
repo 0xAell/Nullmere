@@ -71,6 +71,8 @@ pub fn fight_learned(attackers: &[Unit], defenders: &[Unit], learnt: [Mastery; 2
     let mut rounds = 0;
     while rounds < MOST_ROUNDS && left.iter().all(|side| side.iter().sum::<u64>() > 0) {
         rounds += 1;
+        // Every fourth round each side's commander uses their skill.
+        let skilled = rounds % 4 == 0;
         let stood = left.clone();
         for striking in 0..2 {
             let struck = 1 - striking;
@@ -82,11 +84,13 @@ pub fn fight_learned(attackers: &[Unit], defenders: &[Unit], learnt: [Mastery; 2
                 let sharper = 100 + learnt[striking].strikes[unit.kind as usize - 1] as u128;
                 blow += *count as u128 * unit.kind.soldier(unit.tier).attack as u128 * sharper / 100 * over / heads / 100;
             }
-            let blow = blow * luck / 100 / 4;
+            let surge = if skilled { 100 + learnt[striking].surge as u128 } else { 100 };
+            let blow = blow * luck / 100 / 4 * surge / 100;
+            let stand = if skilled { 100 + learnt[struck].stand } else { 100 };
             for (index, unit) in sides[struck].iter().enumerate() {
                 let soldier = unit.kind.soldier(unit.tier);
                 let behind = if struck == 1 { 100 + shelter } else { 100 };
-                let tough = (soldier.health * soldier.defence * behind * (100 + learnt[struck].shields) / 1_000_000).max(1);
+                let tough = (soldier.health * soldier.defence * behind * (100 + learnt[struck].shields) * stand / 100_000_000).max(1);
                 worn[struck][index] += (blow * stood[struck][index] as u128 / heads) as u64;
                 let down = (worn[struck][index] / tough).min(left[struck][index]);
                 worn[struck][index] -= down * tough;
@@ -112,6 +116,8 @@ pub(super) fn led(db: &impl Db, march: &March) -> Mastery {
         all.strikes[kind] += leading.strikes[kind];
     }
     all.shields += leading.shields;
+    all.surge += leading.surge;
+    all.stand += leading.stand;
     all
 }
 

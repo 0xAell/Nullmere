@@ -526,3 +526,25 @@ fn a_speedup_hastens_the_healing_of_the_wounded() {
     wait(&mut db, 1);
     assert_eq!(rules::troop(&db, city.id, Troops::Spearmen, 1).wounded, 30);
 }
+
+#[test]
+fn a_commanders_skill_tells_every_fourth_round_of_a_fight() {
+    use realm::rules::Mastery;
+    let side = |count| vec![realm::catalog::Unit { kind: realm::catalog::Troops::Spearmen, tier: 1, count }];
+    let fight = |count: u64, learnt: [Mastery; 2]| rules::fight_learned(&side(5_000), &side(count), learnt, 0, || 10);
+    let plain = fight(5_000, [Mastery::default(); 2]);
+    assert!(plain.rounds >= 8, "an even fight goes on: {} rounds", plain.rounds);
+
+    // A charge, a volley, a riding-down or a bombardment: every fourth round the army strikes harder.
+    let charging = Mastery { surge: 80, ..Mastery::default() };
+    let charged = fight(5_000, [charging, Mastery::default()]);
+    assert!(charged.defenders_lost[0] > plain.defenders_lost[0], "{charged:?} against {plain:?}");
+    assert!(charged.attackers_lost[0] <= plain.attackers_lost[0], "fewer foes left to strike back");
+
+    // A shield wall: every fourth round the army is harder to bring down.
+    let walled = fight(5_000, [Mastery::default(), Mastery { stand: 80, ..Mastery::default() }]);
+    assert!(walled.defenders_lost[0] < plain.defenders_lost[0], "{walled:?} against {plain:?}");
+
+    // A fight over before the fourth round goes as it would without.
+    assert_eq!(fight(100, [charging, Mastery::default()]), fight(100, [Mastery::default(); 2]));
+}

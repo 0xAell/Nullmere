@@ -165,7 +165,7 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertEqual(world.commanders.map(\.name), ["Corwen", "Halen", "Ulric"], "in the order they came")
         let (corwen, halen, ulric) = (world.commanders[0], world.commanders[1], world.commanders[2])
         XCTAssertEqual([corwen.wayName, halen.wayName, ulric.wayName], ["Vanguard", "Outrider", "Gleaner"])
-        XCTAssertEqual(halen.wayWords, "Riders they lead strike harder, and their army marches faster.")
+        XCTAssertEqual(halen.wayWords, "Riders they lead strike harder, and their army marches faster; every fourth round of a fight, it rides its foe down.")
         XCTAssertEqual([corwen.isFree, halen.isFree], [false, true])
         XCTAssertEqual(corwen.march, 31)
         XCTAssertEqual([corwen.needs, halen.needs], [400, 1_600], "a hundred times the level, squared")

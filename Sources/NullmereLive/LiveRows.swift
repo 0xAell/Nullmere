@@ -720,11 +720,11 @@ public struct LiveCommander: Equatable, Sendable, Identifiable {
     /// The ways of war, as the module's catalogue numbers and names them,
     /// with what each is best at.
     public static let ways: [Int: (name: String, words: String)] = [
-        1: ("Vanguard", "Spearmen they lead strike harder."),
-        2: ("Fletcher", "Archers they lead strike harder."),
-        3: ("Outrider", "Riders they lead strike harder, and their army marches faster."),
-        4: ("Wallbreaker", "Mangonels they lead strike harder, and a Wall shelters its city less from them."),
-        5: ("Warden", "Everyone they lead is harder to bring down."),
+        1: ("Vanguard", "Spearmen they lead strike harder; every fourth round of a fight, their army charges."),
+        2: ("Fletcher", "Archers they lead strike harder; every fourth round of a fight, their army looses a volley."),
+        3: ("Outrider", "Riders they lead strike harder, and their army marches faster; every fourth round of a fight, it rides its foe down."),
+        4: ("Wallbreaker", "Mangonels they lead strike harder, and a Wall shelters its city less from them; every fourth round of a fight, they bombard."),
+        5: ("Warden", "Everyone they lead is harder to bring down, and every fourth round of a fight harder still."),
         6: ("Gleaner", "Their army gathers faster and carries more."),
     ]
     /// The highest level a commander reaches.
