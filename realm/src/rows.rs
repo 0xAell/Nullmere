@@ -1353,6 +1353,33 @@ impl Find {
     }
 }
 
+/// A player's honour, earned helping allies and giving toward what their
+/// alliance learns, spent in its stores: theirs alone to read. Keyed by
+/// player.
+#[spacetimedb::table(accessor = honour)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Honour {
+    #[primary_key]
+    pub player: u64,
+    pub honour: u64,
+    /// The day of the realm `from_help` was earned on, and how much of
+    /// their honour that day came of helping.
+    pub day: u64,
+    pub from_help: u64,
+}
+row!(Honour in honour, by player);
+
+/// What an alliance's stores sell, and for how much honour each, as the
+/// realm writes it out for clients. Keyed by item.
+#[spacetimedb::table(accessor = price, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Price {
+    #[primary_key]
+    pub item: u64,
+    pub honour: u64,
+}
+row!(Price in price, by item);
+
 /// What a city has learnt of a topic: its owner's alone to read. Keyed
 /// by city and topic.
 #[spacetimedb::table(accessor = lore)]
@@ -1465,6 +1492,8 @@ pub trait Db:
     + Table<Boon>
     + Table<Cairn>
     + Table<Find>
+    + Table<Honour>
+    + Table<Price>
     + Table<Ware>
     + Table<Satchel>
     + Table<Trial>
@@ -1534,6 +1563,8 @@ impl<
             + Table<Boon>
             + Table<Cairn>
             + Table<Find>
+            + Table<Honour>
+            + Table<Price>
             + Table<Ware>
             + Table<Satchel>
             + Table<Trial>

@@ -33,6 +33,7 @@ pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
     write_days(db);
     write_graces(db);
     write_wares(db);
+    super::write_prices(db);
     super::write_patterns(db);
     write_trials(db);
     begin_season(db, 1, now);

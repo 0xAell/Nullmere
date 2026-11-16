@@ -8,6 +8,7 @@
 mod alliance;
 mod boons;
 mod cairns;
+mod honour;
 mod army;
 mod battle;
 mod city;
@@ -38,6 +39,7 @@ mod ward;
 pub use alliance::*;
 pub use boons::*;
 pub use cairns::*;
+pub use honour::*;
 pub use army::*;
 pub use battle::*;
 pub use city::*;
@@ -127,6 +129,9 @@ pub enum Refusal {
     /// The player's scouts found what that cairn held already.
     FoundAlready,
     ScoutsOnTheWay,
+    NoSuchWare,
+    /// How much honour the player has.
+    NotEnoughHonour(u64),
     /// The most that may be asked for at once.
     TooMany(u64),
     AlreadyTraining(Building),
@@ -324,6 +329,7 @@ impl fmt::Display for Refusal {
                 return write!(f, "You have only {} tier {tier} {} ready.", crate::catalog::grouped(*ready), troops.name());
             }
             Refusal::TooStrong(level) => return write!(f, "Clear a level {level} barrow first."),
+            Refusal::NotEnoughHonour(honour) => return write!(f, "You have only {} honour.", crate::catalog::grouped(*honour)),
             Refusal::NoEnergy(energy) => {
                 return write!(f, "An attack takes {} energy. You have {energy}.", crate::catalog::ENERGY_A_HUNT);
             }
@@ -376,6 +382,7 @@ impl fmt::Display for Refusal {
             Refusal::NoCairnThere => "No cairn stands there.",
             Refusal::FoundAlready => "Your scouts have found what that cairn held already.",
             Refusal::ScoutsOnTheWay => "Your scouts are on their way to that cairn already.",
+            Refusal::NoSuchWare => "The alliance's stores sell no such thing.",
             Refusal::NoSuchOrder => "The realm knows no such order.",
             Refusal::NothingThere => "There is nothing to gather there.",
             Refusal::SiteTaken => "Another army is gathering there.",

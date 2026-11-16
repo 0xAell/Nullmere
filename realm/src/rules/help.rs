@@ -53,6 +53,7 @@ fn give(db: &mut impl Db, player: u64, mut plea: Plea) {
     plea.helped += 1;
     db.insert(Helper { id: Helper::key(plea.job, player), job: plea.job, player });
     db.update(plea);
+    super::honoured_for_help(db, player);
 }
 
 /// A player helps with an ally's work.

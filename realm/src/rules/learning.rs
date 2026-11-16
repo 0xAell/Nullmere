@@ -72,6 +72,7 @@ pub fn give_to_learning(db: &mut impl Db, player: u64, topic: u8, gift: Goods) -
     }
     set_goods(&mut stock, have.minus(taken));
     db.update(stock);
+    super::honoured_for_giving(db, player, taken.grain + taken.timber + taken.stone);
     (learning.grain, learning.timber, learning.stone) = (learning.grain + taken.grain, learning.timber + taken.timber, learning.stone + taken.stone);
     if given(&learning).covers(cost) {
         let pace = realm(db)?.pace;
