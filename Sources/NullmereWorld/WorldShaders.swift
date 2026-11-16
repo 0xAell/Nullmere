@@ -251,16 +251,22 @@ public enum WorldShaders {
     // The country a point of the land lies in by day, slow enough to be
     // worked out at the land's corners, a third of a unit apart, and
     // carried between them: whole reaches lusher or drier than the rest,
-    // several hexes across (rgb, the reach's tint), and glades of paler
-    // grass in rounds a hex or so across (a, how much of a glade). At every
-    // pixel these were the day's dearest work (CI run 1074: the land by day
-    // took four milliseconds more than by night, the most of it this).
+    // several hexes across, and swards half a hex across in them, some
+    // yellower and some bluer, so a meadow under the sun is never one
+    // green (rgb, the tint of both); and glades of paler grass in rounds a
+    // hex or so across (a, how much of a glade). At every pixel these were
+    // the day's dearest work (CI run 1074: the land by day took four
+    // milliseconds more than by night, the most of it this; run 1078, the
+    // reaches and glades carried, still 2.3).
     float4 nm_dayCountry(float2 p) {
         float country = nm_fbm2(p * 0.23 + float2(17.3, 5.1));
         float3 lush = float3(0.80, 0.96, 0.78);
         float3 dry = float3(0.98, 0.97, 0.80);
+        float sward = nm_noise(p * 1.1 + float2(5.3, 27.1));
+        float3 reach = mix(dry, lush, smoothstep(0.3, 0.7, country))
+            * mix(float3(1.07, 1.03, 0.82), float3(0.86, 1.0, 0.98), smoothstep(0.3, 0.7, sward));
         float glade = smoothstep(0.6, 0.8, nm_noise(p * 0.9 + float2(41.0, 8.0)));
-        return float4(mix(dry, lush, smoothstep(0.3, 0.7, country)), glade);
+        return float4(reach, glade);
     }
 
     // The ground by day, over its grain: the country it lies in (`country`,
@@ -288,13 +294,8 @@ public enum WorldShaders {
         // where there is some.
         float3 shown = c;
         if (growth > 0.0) {
-            // Swards a hex or less across, some yellower and some bluer, so
-            // a meadow under the sun is never one green: too fine to be
-            // carried between the land's corners, worked out here.
-            float sward = nm_noise(p * 1.9 + float2(5.3, 27.1));
-            float3 reach = country.rgb * mix(float3(1.07, 1.03, 0.82), float3(0.86, 1.0, 0.98), smoothstep(0.3, 0.7, sward));
-            // Glades: paler grass in rounds a hex or so across.
-            reach = mix(reach, float3(1.05, 1.03, 0.86), country.a * 0.55);
+            // The country's reaches and swards, and its glades of paler grass.
+            float3 reach = mix(country.rgb, float3(1.05, 1.03, 0.86), country.a * 0.55);
             shown = c * mix(float3(1.0), reach, growth);
         }
         // The land's colours were chosen to be read by the moon, whose
