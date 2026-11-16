@@ -217,6 +217,31 @@ final class LiveBookTests: XCTestCase {
         XCTAssertNil(training.promotion(try XCTUnwrap(training.trainLines(at: 2_000).first), at: 2_000))
     }
 
+    func testArmiesMarchingOnTheCityAreToldSoonestFirst() throws {
+        var snapshot = rows()
+        let home = n(Double(LiveHex(q: 3, r: 4).packed)), away = n(Double(LiveHex(q: 9, r: 4).packed))
+        snapshot["player"] = [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)],
+                              [n(3), n(8), .string("Cole"), n(1_000), .bool(true), n(1_000)]]
+        // (id, owner, kind, state, to, arrives, soldiers)
+        let marches: [(Int, Int, Int, Int, JSONValue, Int, Int)] = [(11, 2, LiveMarch.attack, LiveMarch.going, home, 2_100, 300),
+                                                                   (12, 2, LiveMarch.scout, LiveMarch.going, home, 2_050, 1),
+                                                                   (13, 3, LiveMarch.rally, LiveMarch.fighting, home, 2_400, 900),
+                                                                   (14, 1, LiveMarch.gather, LiveMarch.going, away, 2_300, 20),
+                                                                   (15, 3, LiveMarch.attack, LiveMarch.going, away, 2_200, 50),
+                                                                   (16, 2, LiveMarch.attack, LiveMarch.returning, home, 2_500, 280)]
+        var marchRows: [[JSONValue]] = []
+        for (id, owner, kind, state, to, arrives, soldiers) in marches {
+            let row: [JSONValue] = [n(id), n(owner), n(8), n(kind), n(state), away, to, n(7), n(1_000), n(arrives), n(soldiers), .string(""), n(1), n(0)]
+            marchRows.append(row)
+        }
+        snapshot["march"] = marchRows
+        let threats = LiveWorld(snapshot: snapshot).threats(at: 2_000)
+        XCTAssertEqual(threats.map(\.words), ["Bryn's scouts reach your city in 0:50.", "Bryn's army of 300 reaches your city in 1:40.",
+                                              "An army of Cole's rally, 900 strong, is storming your city."])
+        XCTAssertEqual(threats.map(\.id), [12, 11, 13])
+        XCTAssertTrue(LiveWorld(snapshot: [:]).threats(at: 2_000).isEmpty)
+    }
+
     func testTheRealmsRankingsAreReadFromCitiesFameAndAlliances() throws {
         // Three players: Ada and Bryn of one alliance, Cole of none; Bryn has fought a city.
         let player: (Int, String) -> [JSONValue] = { [self] id, name in [n(id), n(9), .string(name), n(1_000), .bool(true), n(1_000)] }

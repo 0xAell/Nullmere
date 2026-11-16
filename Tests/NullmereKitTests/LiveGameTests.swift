@@ -213,6 +213,13 @@ final class LiveGameTests: XCTestCase {
         XCTAssertGreaterThan(try drawn(LiveArmies(session: session, seconds: 2_015), width: 400, height: 80), 60)
 
         XCTAssertGreaterThan(try drawn(LiveTaskChip(session: session), width: 420, height: 70), 60)
+        // An army marching on her city: told in red, with a way to look at it.
+        var threatened = LiveSample.rows()
+        threatened["march"]?.append([n(21), n(2), n(8), n(LiveMarch.attack), n(LiveMarch.going), n(Int(LiveHex(q: 14, r: -4).packed)),
+                                     n(Int(LiveHex(q: 10, r: -4).packed)), n(7), n(2_000), n(2_100), n(300), .string(""), n(4)])
+        let (under, _) = await playing(threatened)
+        XCTAssertEqual(under.world.threats(at: 2_015).map(\.words), ["Bryn's army of 300 reaches your city in 1:25."])
+        XCTAssertGreaterThan(try drawn(LiveThreats(session: under, seconds: 2_015), width: 600, height: 80, as: "live-threats.png"), 100)
         XCTAssertGreaterThan(try drawn(LiveDock(session: session, panel: binding), width: 640, height: 50), 100)
         // Four destinations: the House of four parts, the alliance, the realm of two, the mail.
         XCTAssertEqual(LiveDock.destinations.map(\.title), ["House", "Alliance", "Realm", "Mail"])

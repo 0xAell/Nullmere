@@ -214,6 +214,11 @@ public struct LiveMarch: Equatable, Sendable, Identifiable {
     public static let hunt = 2
     /// To take another player's city by storm.
     public static let attack = 3
+    /// To see what another player's city holds; to stand in an ally's
+    /// city beside its defenders; and an army of a rally.
+    public static let scout = 4
+    public static let reinforce = 5
+    public static let rally = 6
 
     public static let going = 1
     public static let working = 2

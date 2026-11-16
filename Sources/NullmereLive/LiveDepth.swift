@@ -648,3 +648,39 @@ extension LiveWorld {
     }
 }
 
+/// An army marching on the player's city, or storming it now: whose, and
+/// when it is at the walls.
+public struct LiveThreat: Equatable, Sendable, Identifiable {
+    public let march: LiveMarch
+    public var id: UInt64 { march.id }
+    public let words: String
+}
+
+extension LiveWorld {
+    /// Every other player's army marching on the player's city, scouts and
+    /// rally armies among them, or storming it now: the soonest at its
+    /// walls first, each in words.
+    public func threats(at seconds: Double) -> [LiveThreat] {
+        guard let home = city else { return [] }
+        let foes = marches.values.filter { march in
+            march.owner != me?.id && march.to == home.hex && [LiveMarch.attack, LiveMarch.scout, LiveMarch.rally].contains(march.kind)
+                && (march.state == LiveMarch.going || march.state == LiveMarch.fighting)
+        }
+        return foes.sorted { ($0.arrives, $0.id) < ($1.arrives, $1.id) }.map { march in
+            let who = shownName(of: march.owner) ?? "Someone"
+            let what: String
+            switch march.kind {
+            case LiveMarch.scout: what = "\(who)'s scouts"
+            case LiveMarch.rally: what = "An army of \(who)'s rally, \(LiveWords.grouped(march.soldiers)) strong,"
+            default: what = "\(who)'s army of \(LiveWords.grouped(march.soldiers))"
+            }
+            if march.state == LiveMarch.fighting {
+                return LiveThreat(march: march, words: march.kind == LiveMarch.scout ? "\(what) are at your walls." : "\(what) is storming your city.")
+            }
+            let left = LiveWords.clock(max(Int((Double(march.arrives) - seconds).rounded(.up)), 0))
+            let verb = march.kind == LiveMarch.scout ? "reach" : "reaches"
+            return LiveThreat(march: march, words: "\(what) \(verb) your city in \(left).")
+        }
+    }
+}
+

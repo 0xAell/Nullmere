@@ -320,6 +320,13 @@ struct LiveHUD: View {
                             .chrome("live-task")
                         Spacer(minLength: 0)
                     }
+                    if !session.world.threats(at: seconds).isEmpty {
+                        HStack(alignment: .top, spacing: 12) {
+                            LiveThreats(session: session, seconds: seconds)
+                                .chrome("live-threats")
+                            Spacer(minLength: 0)
+                        }
+                    }
                     if let said = session.said {
                         LiveSaid(words: said) { session.said = nil }
                             .chrome("live-said")
@@ -521,6 +528,45 @@ struct LiveTaskChip: View {
             .panelBackground()
             .accessibilityElement(children: .contain)
         }
+    }
+}
+
+/// Armies marching on the player's city, or storming it: each in words,
+/// the soonest at the walls first, with a way to look at it on the map.
+struct LiveThreats: View {
+    let session: LiveSession
+    let seconds: Double
+
+    var body: some View {
+        let threats = session.world.threats(at: seconds)
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(threats.prefix(3)) { threat in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.nm(LiveType.small))
+                        .foregroundStyle(Palette.bad)
+                        .accessibilityHidden(true)
+                    Text(verbatim: threat.words)
+                        .font(.nm(LiveType.body, weight: .medium))
+                        .foregroundStyle(LiveEmphasis.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    QuietButton(title: "Look", name: "Look at it: \(threat.words)") {
+                        let at = threat.march.position(at: seconds)
+                        let hex = HexLayout(size: 1).hex(atX: at.x, y: at.y)
+                        session.go(to: LiveHex(q: hex.q, r: hex.r))
+                    }
+                }
+            }
+            if threats.count > 3 {
+                LiveSmall(words: "And \(threats.count - 3) more.", dim: true)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .panelBackground()
+        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Palette.bad.opacity(0.7), lineWidth: 1))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Your city is threatened")
     }
 }
 
