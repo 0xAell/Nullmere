@@ -542,17 +542,17 @@ final class LiveBookTests: XCTestCase {
         snapshot["march"] = [march(1, kind: 1, state: 1, target: 5), march(2, kind: 1, state: 2, target: 5), march(3, kind: 1, state: 3, target: 5),
                              march(4, kind: 2, state: 1, target: 9), march(5, kind: 2, state: 4, target: 9), march(6, kind: 2, state: 3, target: 99, soldiers: 14),
                              march(7, kind: 1, state: 1, target: 77), march(9, kind: 3, state: 1, target: 12), march(10, kind: 3, state: 4, target: 12),
-                             march(11, kind: 3, state: 3, target: 13),
+                             march(11, kind: 3, state: 3, target: 13), march(14, kind: 8, state: 1, target: 5),
                              [n(8), n(2), n(8), n(1), n(1), n(0), n(0), n(5), n(2_000), n(2_060), n(9), way, n(1)]]
         snapshot["city"] = [[n(12), n(2), n(Double(LiveHex(q: 4, r: 4).packed)), .string("Bryn"), n(4), n(900), n(1_000), n(1)]]
         snapshot["my_hauls"] = [[n(3), n(1), n(0), n(240), n(0), n(0)]]
         snapshot["my_squads"] = [[n(6 << 16 | 1 << 8 | 1), n(6), n(1), n(1), n(14), n(6)]]
         let lines = LiveWorld(snapshot: snapshot).marchLines()
-        XCTAssertEqual(lines.map(\.id), [1, 2, 3, 4, 5, 6, 7, 9, 10, 11], "her own, not another's")
+        XCTAssertEqual(lines.map(\.id), [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 14], "her own, not another's")
         XCTAssertEqual(lines.map(\.doing), ["On its way to gather timber", "Gathering timber", "Coming home with 240 timber", "On its way to a level 3 barrow",
                                             "Fighting at a level 3 barrow", "Coming home", "On its way to gather", "On its way to Bryn's city",
-                                            "Attacking Bryn's city", "Coming home"])
-        XCTAssertEqual(lines.map(\.canRecall), [true, true, false, true, false, false, true, true, false, false])
+                                            "Attacking Bryn's city", "Coming home", "On its way to fall on the army gathering timber"])
+        XCTAssertEqual(lines.map(\.canRecall), [true, true, false, true, false, false, true, true, false, false, true])
         XCTAssertEqual(lines[2].carrying, LiveGoods(timber: 240))
         XCTAssertEqual([lines[5].soldiers, lines[5].wounded], [14, 6])
         XCTAssertTrue(LiveWorld().marchLines().isEmpty)
