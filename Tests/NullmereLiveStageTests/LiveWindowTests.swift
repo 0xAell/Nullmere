@@ -193,6 +193,13 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual([1, 2, 3, 4, 5].map { LiveWindow.store(of: $0) }, [.grain, .timber, .stone, .moonsalt, nil])
         let far = LiveWindow(world: world, centre: LiveHex(q: -20, r: 20), radius: 4)
         XCTAssertTrue(far.sites(in: world).isEmpty && far.barrows(in: world).isEmpty)
+        // A cairn of the old folk, staged as a found barrow: its mound and the stones of its mouth.
+        var withCairn = LiveWindowTests.rows()
+        withCairn["cairn"] = [[.number(1), .number(Double(LiveHex(q: 13, r: -6).packed)), .number(2)]]
+        let cairned = LiveWorld(snapshot: withCairn)
+        XCTAssertEqual(window.cairns(in: cairned).map { [$0.hex.q, $0.hex.r] }, [[3, -2]])
+        XCTAssertEqual(window.cairns(in: cairned).map(\.kind), [.barrow])
+        XCTAssertTrue(far.cairns(in: cairned).isEmpty && window.cairns(in: world).isEmpty)
 
         // Arrived, Ada's stands at the grove; before it set out, at her city.
         XCTAssertEqual(window.companies(in: world, relief: relief, at: 9_999)[0].position.x, grove.x, accuracy: 1e-4)
