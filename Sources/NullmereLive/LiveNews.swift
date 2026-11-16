@@ -44,6 +44,11 @@ extension LiveWorld {
             }
             told.append(more == 1 ? "An ally helped with \(work)." : "\(more) allies helped with \(work).")
         }
+        // A rally an ally has called, while there is time to join it.
+        let called = Set(before.rallies.map(\.id))
+        for rally in after.rallies where !called.contains(rally.id) && rally.caller != mine && rally.state == LiveRally.mustering {
+            told.append(after.rallyWords(rally, at: seconds))
+        }
         let gifts = Set(before.boons.map(\.id))
         for boon in after.boons where !gifts.contains(boon.id) {
             told.append("A gift from \(after.shownName(of: boon.giver) ?? "an ally")'s barrow: \(boon.goods.words).")
