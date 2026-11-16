@@ -719,11 +719,13 @@ public enum WorldShaders {
 
     // How much of the key light reaches a point of the land past the land
     // itself, 0 none to 1 all: the heights grid walked toward the light in
-    // ten lengthening strides, near enough three hexes, and wherever the
+    // six lengthening strides, near enough three hexes, and wherever the
     // land rises over the line from the point to the light, the less of
     // it the higher, softened the further off it rises, so a ridge's
-    // shadow falls hard at its foot and blurs toward its end. Nothing when
-    // the light stands overhead or under the horizon.
+    // shadow falls hard at its foot and blurs toward its end; the walk
+    // ends once nothing of the light is left. Nothing when the light
+    // stands overhead or under the horizon. (Ten strides of a shorter
+    // step cost the wide realm's frame too much on CI run 1000's Mac.)
     float nm_landShadow(float3 world NM_FRAME_ARGUMENT NM_HEIGHTS_ARGUMENT) {
         float3 toward = normalize(frame.key.xyz);
         float across = length(toward.xz);
@@ -734,11 +736,14 @@ public enum WorldShaders {
         float rise = toward.y / across;
         float lit = 1.0;
         float t = 0.3;
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 6; i++) {
             float2 grid = (world.xz + way * t - frame.heights.xy) / frame.haze.w + 0.5;
             float over = NM_HEIGHT(grid / frame.heights.zw) - (world.y + rise * t);
             lit = min(lit, clamp(1.0 - over * 2.0 / t, 0.0, 1.0));
-            t *= 1.38;
+            if (lit <= 0.0) {
+                break;
+            }
+            t *= 1.75;
         }
         return lit;
     }

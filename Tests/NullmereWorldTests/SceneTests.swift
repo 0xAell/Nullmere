@@ -6,7 +6,9 @@ import XCTest
 
 final class SceneTests: XCTestCase {
     func testTheGPUReadsTheFrameAndTheModelsAsTheShadersDeclareThem() {
-        XCTAssertEqual(MemoryLayout<FrameUniforms>.stride, 688)
+        XCTAssertEqual(MemoryLayout<FrameUniforms>.stride, 704)
+        XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.origin), 688, "The last, as the shaders declare it")
+        XCTAssertTrue(WorldShaders.source.contains("float4 origin;"))
         XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.still), 384)
         XCTAssertTrue(WorldShaders.source.contains("float4 still;"))
         XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.shadow), 400)
