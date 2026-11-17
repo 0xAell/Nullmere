@@ -20,6 +20,10 @@ enum CardShot {
         hosting.frame = NSRect(origin: .zero, size: drawn)
         let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
+        // Dark, as the game's own window is (`NullmereOnlineView`): what
+        // the system draws, its menus and fields, takes its colours from
+        // the window, and in a light one they were dark grey on black.
+        window.appearance = NSAppearance(named: .darkAqua)
         window.contentView = hosting
         window.orderFrontRegardless()
         defer { window.orderOut(nil) }
