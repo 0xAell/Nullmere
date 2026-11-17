@@ -65,6 +65,7 @@ front. Press it for the popup:
 |---|---|
 | **Blocks requests** | 135,154 filters from EasyList, EasyPrivacy and a short list of Stillwater's own become 12,997 rules for Chrome's `declarativeNetRequest`, inside the 30,000 Chrome guarantees every extension. Filters for whole hosts are merged, so 94,309 hosts are blocked by 184 of those rules. |
 | **Gives stand-ins** | 37 filters keep a request back by giving the page something harmless of Stillwater's own in its place, where refusing it outright would leave the page waiting on it: an empty script, text or JSON, a one-pixel image, a second of silent video, or a few lines that answer as Google's tag manager, Chartbeat or fingerprintjs2 would and send nothing. Chrome serves them from the extension; nothing is fetched. |
+| **Runs scriptlets** | 29 filters name a site where a short script of Stillwater's own is to run in its pages, in the page's own world and before the site's scripts: most stop the script of an anti-adblock wall (Admiral's, on many news sites), others give a property a value the page can't change, take a script out before it runs, or answer a tracker's request without sending it. Ten kinds, written for Stillwater under the names the lists use. Only on the sites a filter names, never on a site let through, and none while paused. |
 | **Hides ad slots** | 30,934 selectors. A site's own are applied as its pages begin. The 13,637 generic ones are not thrown at every page: a content script tells the extension which classes and ids a page has, and only the selectors that could match are added. They are added as the user's own style, so a page's `!important` can't undo them. |
 | **Follows worded filters** | 283 filters pick an element by the words in it (*hide the card whose label says Sponsored*). No style sheet can; the content script follows them as short plans. |
 | **Closes pop-up ads** | 2,977 filters name the addresses of pop-up ads. A tab or window a page opens to one is closed: at once if it is opened straight there, or as it gets there if it is opened empty or by way of another address. A tab you open yourself (a new tab, a bookmark, an address you type) is never touched. |
@@ -125,12 +126,12 @@ rules made ahead of time. So:
   | Left out | How many | Why |
   |---|---|---|
   | Exceptions that take back only a stand-in (`$redirect-rule`) | 1 | They leave the block standing; Chrome's `allow` would take back both. |
-  | Scriptlets and procedural filters beyond `:has-text` | 43 | They need a script run in the page (`+js(...)`, `:xpath`, `:-abp-properties`). |
+  | Scriptlets Stillwater has not written, HTML filtering, procedural filters beyond `:has-text` | 14 | `json-edit` is not among the scriptlets written for it; `##^` would rewrite a page before the browser reads it, which no extension may; `:xpath` and `:-abp-properties` are not followed. |
   | Regular expressions Chrome refuses | 15 | Chrome's engine has no lookahead and refuses expressions that compile too large. `tools/validate.js` asks a real Chromium which. |
   | Hiding exceptions for part of a site | 13 | Only an exception for a whole host can be looked up when a page's selectors are chosen. |
   | Others | 7 | Four selectors Chromium can't read, two filters for addresses that are not hosts, and one that would match every request. |
 
-  That is 79 of 135,154 filters, 0.1%. Nothing is approximated in a
+  That is 50 of 135,154 filters, 0.04%. Nothing is approximated in a
   way that blocks more than the filter meant.
 
 **A pop-up is closed, not prevented.** No rule of Chrome's can stop a page
@@ -162,6 +163,12 @@ YouTube let through, nothing of that part runs in YouTube's pages at all.
 A player embedded in a site you have let through is left alone only from
 the moment the extension has looked the site up, which is after the
 player has read its first data.
+
+**A scriptlet can be noticed.** A page that looks can tell that a property
+it reads has been fixed, or a function of its own wrapped, and a wall
+that looks for that can show itself again; and a site that changes its
+script is missed until the lists are refreshed. They run only on the
+sites their filters name, so nowhere else has anything to notice.
 
 **The count is Chrome's.** Chrome counts what it blocked on each tab and
 starts afresh as a navigation finishes. A request blocked in a page's very
@@ -201,7 +208,7 @@ history of either.
 | `declarativeNetRequestFeedback` | Reading Chrome's count of what it blocked on a tab, for the popup. |
 | `storage` | The sites let through and the switches. Kept on this computer. |
 | `webNavigation` | Being told when a page opens a tab or window, and where it goes in its first seconds, so a pop-up ad can be closed. |
-| `scripting` | Adding the style that hides ad slots to a page, and registering the two YouTube scripts only while their switch is on. |
+| `scripting` | Adding the style that hides ad slots to a page; registering the two YouTube scripts only while their switch is on; and registering each scriptlet for the sites its filter names, while its list is on. |
 | Access to all sites | The content script that reports a page's classes and ids and follows the worded filters. It reads class names, ids, and for worded filters the text of the elements a list points at; none of it leaves the browser. |
 
 ## How it is put together

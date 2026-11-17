@@ -14,6 +14,7 @@ import { buildCosmetic } from './lib/cosmetic.js';
 import { problemsWith, toRules } from './lib/dnr.js';
 import { parseList, splitSelectors } from './lib/filters.js';
 import { buildPopups } from './lib/popups.js';
+import { patternsFor, scriptletSource } from './lib/scriptlets.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -49,6 +50,7 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
   mkdirSync(join(out, 'rules'), { recursive: true });
   mkdirSync(join(out, 'cosmetic'), { recursive: true });
   mkdirSync(join(out, 'popups'), { recursive: true });
+  mkdirSync(join(out, 'scriptlets'), { recursive: true });
   cpSync(join(root, 'src'), out, { recursive: true });
   for (const file of ['THIRD-PARTY-NOTICES.md', 'licences']) {
     if (existsSync(join(root, file))) cpSync(join(root, file), join(out, file), { recursive: true });
@@ -91,6 +93,16 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
     writeFileSync(join(out, 'rules', `${list.id}.json`), `[\n${rules.map((rule) => JSON.stringify(rule)).join(',\n')}\n]\n`);
     writeFileSync(join(out, 'cosmetic', `${list.id}.json`), `${JSON.stringify(cosmetic.data)}\n`);
     writeFileSync(join(out, 'popups', `${list.id}.json`), `${JSON.stringify(popups.data)}\n`);
+    // Each scriptlet filter a file of its own, and what Chrome is to
+    // register it for: the service worker reads this as the list is on.
+    const scriptlets = parsed.scriptlets.map((filter, index) => {
+      const file = `scriptlets/${list.id}-${index + 1}.js`;
+      writeFileSync(join(out, file), scriptletSource(filter));
+      const script = { id: `scriptlet-${list.id}-${index + 1}`, js: [file], matches: patternsFor(filter.include) };
+      if (filter.exclude.length) script.excludeMatches = patternsFor(filter.exclude);
+      return script;
+    });
+    writeFileSync(join(out, 'scriptlets', `${list.id}.json`), `${JSON.stringify(scriptlets, null, 1)}\n`);
     built.push({
       id: list.id,
       title: list.title,
@@ -104,6 +116,7 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
       procedural: cosmetic.counts.procedural,
       popups: popups.count,
       standIns: parsed.network.filter((filter) => filter.redirect).length,
+      scriptlets: scriptlets.length,
       dropped: count(dropped),
     });
   }
@@ -115,6 +128,7 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
     cosmetic: built.reduce((sum, list) => sum + list.cosmetic, 0),
     popups: built.reduce((sum, list) => sum + list.popups, 0),
     standIns: built.reduce((sum, list) => sum + list.standIns, 0),
+    scriptlets: built.reduce((sum, list) => sum + list.scriptlets, 0),
   };
   if (totals.regexRules > LIMITS.regexRules) throw new Error(`${totals.regexRules} regular-expression rules: Chrome takes ${LIMITS.regexRules}`);
 

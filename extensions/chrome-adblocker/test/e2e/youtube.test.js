@@ -191,10 +191,10 @@ test('with the YouTube switch off nothing of the extension answers a page that c
   assert.equal(await page.evaluate(() => window.unanswered), true, 'its call goes unanswered');
   await page.waitForTimeout(300);
   assert.deepEqual(await page.evaluate(() => window.heard), ['stillwater:page'], 'and nothing is said back, then or later');
-  assert.deepEqual(await browser.worker.evaluate(async () => (await chrome.scripting.getRegisteredContentScripts()).map((script) => script.id)), [], 'neither script is registered');
+  assert.deepEqual(await browser.worker.evaluate(async () => (await chrome.scripting.getRegisteredContentScripts()).map((script) => script.id).filter((id) => id.startsWith('youtube'))), [], 'neither script is registered');
   await page.close();
   await browser.ask({ type: 'settings:set', patch: { youtube: true } });
-  assert.deepEqual(await browser.worker.evaluate(async () => (await chrome.scripting.getRegisteredContentScripts()).map((script) => script.id).sort()), ['youtube', 'youtube-main']);
+  assert.deepEqual(await browser.worker.evaluate(async () => (await chrome.scripting.getRegisteredContentScripts()).map((script) => script.id).filter((id) => id.startsWith('youtube')).sort()), ['youtube', 'youtube-main']);
 });
 
 test('a player embedded in another site is handled there too, and left alone where that site is let through', async () => {

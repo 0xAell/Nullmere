@@ -56,6 +56,30 @@ async function apply(settings) {
   await chrome.action.setBadgeBackgroundColor({ color: settings.badge ? [22, 35, 58, 255] : [0, 0, 0, 0] });
   await chrome.action.setBadgeTextColor({ color: settings.badge ? [228, 234, 242, 255] : [0, 0, 0, 1] });
   await applyYouTube(settings);
+  await applyScriptlets(settings);
+}
+
+/**
+ * Keeps the scriptlets of the lists that are on registered with Chrome,
+ * each for the sites its filter names (scriptlets/<list>.json, made by
+ * the build), in the page's own world before its first script: never
+ * while paused, and never for a site let through. Chrome keeps them
+ * registered between sessions; they are made afresh whenever the
+ * settings change.
+ */
+async function applyScriptlets(settings) {
+  const registered = await chrome.scripting.getRegisteredContentScripts();
+  const ours = registered.filter((script) => script.id.startsWith('scriptlet-')).map((script) => script.id);
+  if (ours.length) await chrome.scripting.unregisterContentScripts({ ids: ours });
+  if (settings.paused) return;
+  const off = new Set(settings.listsOff);
+  const through = settings.allowlist.flatMap((site) => [`*://${site}/*`, `*://*.${site}/*`]);
+  const plans = await Promise.all(listIds().filter((id) => !off.has(id)).map(async (id) => (await fetch(chrome.runtime.getURL(`scriptlets/${id}.json`))).json()));
+  const scripts = plans.flat().map((script) => {
+    const excluded = [...(script.excludeMatches ?? []), ...through];
+    return { ...script, ...(excluded.length ? { excludeMatches: excluded } : {}), runAt: 'document_start', allFrames: true, world: 'MAIN' };
+  });
+  if (scripts.length) await chrome.scripting.registerContentScripts(scripts);
 }
 
 const YOUTUBE = ['youtube.com', 'youtube-nocookie.com'];

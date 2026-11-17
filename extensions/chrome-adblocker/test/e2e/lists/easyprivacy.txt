@@ -2,3 +2,18 @@
 ! Title: Fixture trackers
 ||tracker.test^
 ##.tracking-pixel
+! --- scriptlets, run in the page's own world on the sites named ---
+scripted.test##+js(set, adBlockerDetected, false)
+scripted.test##+js(set, wall.config.enabled, false)
+scripted.test,~quiet.scripted.test##+js(set, sparedValue, 1)
+scripted.test##+js(acs, document.createElement, admiral)
+scripted.test##+js(aost, decodeURI, /(?=^(?!.*\.js))/)
+scripted.test##+js(rmnt, script, '"v4ac1eiZr0"')
+scripted.test##+js(set-local-storage-item, chosen, true)
+scripted.test##+js(set-local-storage-item, tracked, $remove$)
+scripted.test##+js(set-cookie, consent, accept)
+scripted.test##+js(cookie-remover, /^_track/)
+scripted.test##+js(no-fetch-if, /beacon/)
+scripted.test##+js(no-xhr-if, telemetry)
+scripted.test##+js(aeld, ping, trackPing)
+scripted.test##+js(json-edit, ..props.children.*[?.key=="admiral-script"])

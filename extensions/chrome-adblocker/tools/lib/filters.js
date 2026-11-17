@@ -6,6 +6,7 @@
 import { domainToASCII } from 'node:url';
 import { isProcedural, planFor, styleRule } from './procedural.js';
 import { redirectFile } from './redirects.js';
+import { readScriptlet } from './scriptlets.js';
 import { isBalanced, isContained, splitSelectors } from './selectors.js';
 
 export { isBalanced, isContained, splitSelectors };
@@ -83,6 +84,25 @@ function domainList(text, separator) {
 }
 
 /**
+ * Reads a scriptlet filter (`site##+js(name, arguments)`). Returns
+ *   { kind: 'scriptlet', method, args, include, exclude }
+ * for one Stillwater has (scriptlets.js), on the hosts it names; or
+ * { kind: 'unsupported', reason }. One for every site, or for entities
+ * alone (`site.*`, which Chrome can't match a script to), is left out:
+ * leaving an entity out of the hosts named only narrows where it runs.
+ */
+function scriptlet(domains, separator, body) {
+  const unsupported = (reason) => ({ kind: 'unsupported', reason: `cosmetic:${reason}` });
+  if (separator.includes('@')) return unsupported('scriptlet-exception');
+  const read = readScriptlet(body);
+  if (!read.method) return unsupported('scriptlet');
+  const list = domainList(domains, ',');
+  if (list.bad.length) return unsupported('domain');
+  if (!list.include.length) return unsupported(list.entities.length ? 'scriptlet-entity' : 'scriptlet-generic');
+  return { kind: 'scriptlet', method: read.method, name: read.name, args: read.args, include: list.include, exclude: list.exclude };
+}
+
+/**
  * Reads a cosmetic filter. Returns
  *   { kind: 'cosmetic', exception, selectors, include, exclude, entities }
  * with, where the filter is of that kind, `procedural: [{ raw, steps }]`
@@ -93,7 +113,8 @@ function cosmetic(domains, separator, body) {
   const unsupported = (reason) => ({ kind: 'unsupported', reason: `cosmetic:${reason}` });
   if (separator.includes('$') || separator.includes('%')) return unsupported('snippet');
   let selector = body.trim();
-  if (selector.startsWith('+js(') || selector.startsWith('^')) return unsupported('scriptlet');
+  if (selector.startsWith('+js(')) return scriptlet(domains, separator, selector);
+  if (selector.startsWith('^')) return unsupported('scriptlet');
   const list = domainList(domains, ',');
   const filter = {
     kind: 'cosmetic',
@@ -309,6 +330,7 @@ export function parseList(text) {
   const network = [];
   const cosmetic = [];
   const popups = [];
+  const scriptlets = [];
   const dropped = new Map();
   let lines = 0;
   for (const line of text.split(/\r?\n/)) {
@@ -318,7 +340,8 @@ export function parseList(text) {
     if (parsed.popup) popups.push(parsed);
     if (parsed.kind === 'network') network.push(parsed);
     else if (parsed.kind === 'cosmetic') cosmetic.push(parsed);
+    else if (parsed.kind === 'scriptlet') scriptlets.push(parsed);
     else if (parsed.kind !== 'popup') dropped.set(parsed.reason, (dropped.get(parsed.reason) ?? 0) + 1);
   }
-  return { network, cosmetic, popups, dropped, lines };
+  return { network, cosmetic, popups, scriptlets, dropped, lines };
 }

@@ -34,12 +34,13 @@ test('the README\'s numbers are the build\'s', (t) => {
   says(`| ${grouped(worded.size)} filters pick an element`);
   says(`| ${grouped(totals.popups)} filters name the addresses of pop-up ads.`);
   says(`| **Gives stand-ins** | ${grouped(totals.standIns)} filters keep a request back`);
+  says(`| **Runs scriptlets** | ${grouped(totals.scriptlets)} filters name a site`);
   assert.equal(left('option:popup', 'popup:'), 0, 'no pop-up filter is left out, so the README has no row for them');
 
   // What was left out, by the README's own rows.
   const rows = [
     ['Exceptions that take back only a stand-in (`$redirect-rule`)', left('option:redirect', 'option:rewrite')],
-    ['Scriptlets and procedural filters beyond `:has-text`', left('cosmetic:scriptlet', 'cosmetic:procedural', 'cosmetic:snippet')],
+    ['Scriptlets Stillwater has not written, HTML filtering, procedural filters beyond `:has-text`', left('cosmetic:scriptlet', 'cosmetic:procedural', 'cosmetic:snippet')],
     ['Regular expressions Chrome refuses', left('regex:')],
     ['Hiding exceptions for part of a site', left('hide-exception:')],
   ];
@@ -47,7 +48,7 @@ test('the README\'s numbers are the build\'s', (t) => {
   const all = lists.reduce((sum, list) => sum + Object.values(list.dropped).reduce((n, count) => n + count, 0), 0);
   const others = all - rows.reduce((sum, [, count]) => sum + count, 0);
   says(`| Others | ${grouped(others)} |`);
-  says(`That is ${grouped(all)} of ${grouped(totals.filters)} filters, ${((all / totals.filters) * 100).toFixed(1)}%.`);
+  says(`That is ${grouped(all)} of ${grouped(totals.filters)} filters, ${((all / totals.filters) * 100).toFixed(2)}%.`);
 
   const day = new Date(source.committed).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
   says(`as they stood on ${day}`);
