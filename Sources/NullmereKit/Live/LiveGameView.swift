@@ -388,7 +388,9 @@ struct LiveHUD: View {
                 // Over each city in view, whose it is and its Keep's level: beneath the
                 // interface, and never in the way of a click on the map.
                 .background {
-                    ForEach(session.cityLabels(in: proxy.size)) { label in
+                    // What the ring about what is chosen would cover is left out while it is shown.
+                    let ring = session.selection == nil ? nil : LiveRing.place(of: session, in: proxy.size)
+                    ForEach(session.cityLabels(in: proxy.size).filter { !LiveRing.covers($0.point, ringAt: ring) }) { label in
                         Text(verbatim: label.words)
                             .font(.nm(LiveType.small, weight: label.own ? .semibold : .medium))
                             .foregroundStyle(label.own || label.ally ? LiveEmphasis.primary : LiveEmphasis.secondary)
@@ -403,7 +405,7 @@ struct LiveHUD: View {
                     .accessibilityHidden(true)
                     // Over each army in view, whose it is; over the player's own, who
                     // leads it and how many; edged red where it marches on their city.
-                    ForEach(session.armyLabels(in: proxy.size)) { label in
+                    ForEach(session.armyLabels(in: proxy.size).filter { !LiveRing.covers($0.point, ringAt: ring) }) { label in
                         Text(verbatim: label.words)
                             .font(.nm(LiveType.small, weight: label.own ? .semibold : .regular))
                             .foregroundStyle(label.own || label.ally ? LiveEmphasis.primary : LiveEmphasis.secondary)
@@ -889,6 +891,15 @@ struct LiveRing: View {
     /// heart of what is chosen.
     static let calloutWidth: CGFloat = 280
     static let calloutReach: CGFloat = radius + side / 2 + calloutWidth / 2 + 12
+
+    /// Whether a name over the map, centred at a point, would lie under a
+    /// ring shown about a place: within its symbols' reach across, with
+    /// room for a name's half width, and up and down. Such a name is left
+    /// out while the ring is shown, so no symbol stands over its words.
+    static func covers(_ point: CGPoint, ringAt place: CGPoint?) -> Bool {
+        guard let place else { return false }
+        return abs(point.x - place.x) < radius + side / 2 + 56 && abs(point.y - place.y) < radius + side / 2 + 10
+    }
 
     /// Whether the callout goes to the ring's left: where, to its right, it
     /// would lie under a destination open at the top right of a view of a

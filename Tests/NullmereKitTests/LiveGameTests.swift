@@ -324,6 +324,12 @@ final class LiveGameTests: XCTestCase {
         XCTAssertTrue(LiveRing.leftward(at: CGPoint(x: 500, y: 200), in: window, beside: 294))
         XCTAssertFalse(LiveRing.leftward(at: CGPoint(x: 500, y: 600), in: window, beside: 294), "Beneath the destination, room to the right")
         XCTAssertFalse(LiveRing.leftward(at: CGPoint(x: 100, y: 200), in: window, beside: 294), "Far enough left to clear it")
+        // A name the ring would cover is left out while it is shown: an army's at the site chosen, say.
+        XCTAssertFalse(LiveRing.covers(CGPoint(x: 560, y: 210), ringAt: nil), "No ring shown: every name")
+        XCTAssertTrue(LiveRing.covers(CGPoint(x: 560, y: 210), ringAt: CGPoint(x: 500, y: 200)), "Beside one of its symbols")
+        XCTAssertTrue(LiveRing.covers(CGPoint(x: 500, y: 170), ringAt: CGPoint(x: 500, y: 200)), "What is chosen's own name, under its top symbol")
+        XCTAssertFalse(LiveRing.covers(CGPoint(x: 700, y: 200), ringAt: CGPoint(x: 500, y: 200)), "Well clear across")
+        XCTAssertFalse(LiveRing.covers(CGPoint(x: 500, y: 320), ringAt: CGPoint(x: 500, y: 200)), "Well clear beneath")
         XCTAssertGreaterThan(try drawn(LiveRing(session: session, card: home, at: CGPoint(x: 480, y: 160), panel: binding, leftward: true), width: 640, height: 320), 300)
         XCTAssertGreaterThan(try drawn(LiveSaid(words: "Clear a level 3 barrow first.") {}, width: 600, height: 60), 60)
         XCTAssertGreaterThan(try drawn(LiveArmies(session: session, seconds: 2_015), width: 400, height: 80), 60)
