@@ -1187,6 +1187,22 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertNotEqual(counsel.armiesLook, "No army of your lord's is out.")
         XCTAssertEqual(counsel.allianceLook, "Your lord is in no alliance.")
         XCTAssertEqual(counsel.realmLook, "Your lord stands 2nd in power in the realm.")
+        // Each look as the model asks it, held to five sights; words that are no sight's own fall to the nearest, or the city.
+        XCTAssertEqual(LiveCounsel.Sight.allCases.map(\.rawValue), ["city", "armies", "alliance", "realm", "yourself"])
+        XCTAssertEqual(LiveCounsel.Sight.allCases.map { counsel.look($0) },
+                       [counsel.cityLook, counsel.armiesLook, counsel.allianceLook, counsel.realmLook, counsel.yourselfLook], "short enough to be whole")
+        XCTAssertEqual(["Armies", "the armies out", "our alliance", "the realm.", "Yourself", "the granary", ""].map { LiveCounsel.Sight(asked: $0) },
+                       [.armies, .armies, .alliance, .realm, .yourself, .city, .city])
+        XCTAssertEqual(LiveCounsel.Sight.allCases.map(\.label), ["the city", "the armies out", "the alliance", "the realm", "themself"])
+        // A look too long for the model's room: whole sentences while they fit, then a word that there is more.
+        let long = (1...60).map { "Army \($0) gathers timber at the grove." }.joined(separator: " ")
+        let held = LiveCounsel.capped(long, most: LiveCounsel.lookMost)
+        XCTAssertLessThanOrEqual(held.count, LiveCounsel.lookMost)
+        XCTAssertTrue(held.hasPrefix("Army 1 gathers timber at the grove. Army 2 gathers"), held)
+        XCTAssertTrue(held.hasSuffix("at the grove. There is more than this."), held)
+        XCTAssertEqual(LiveCounsel.capped("Short words.", most: 700), "Short words.")
+        XCTAssertEqual(LiveCounsel.capped("One long sentence without an end in sight at all", most: 40), "One long. There is more than this.")
+        XCTAssertLessThanOrEqual(LiveCounsel.capped(String(repeating: "word ", count: 400), most: 120).count, 120)
 
         // A deed put forward: in its own words, or in words it holds; only ever one that can be done now.
         let raise = counsel.propose("Raise the Farm to level 3.")

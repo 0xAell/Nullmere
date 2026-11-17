@@ -121,6 +121,74 @@ public struct LiveCounsel: Sendable {
 
     // MARK: What the commander may look at
 
+    /// The things a commander may look at, by the words the model is held
+    /// to when it asks for a look: no other is possible.
+    public enum Sight: String, CaseIterable, Sendable {
+        case city, armies, alliance, realm, yourself
+
+        /// How the counsel names what was looked at, to the player.
+        public var label: String {
+            switch self {
+            case .city: "the city"
+            case .armies: "the armies out"
+            case .alliance: "the alliance"
+            case .realm: "the realm"
+            case .yourself: "themself"
+            }
+        }
+
+        /// The sight asked for in words: its own word, or the first whose
+        /// word the words hold; the city where none is named.
+        public init(asked: String) {
+            let words = asked.lowercased().trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+            if let exact = Sight(rawValue: words) {
+                self = exact
+            } else if words.contains("arm") {
+                self = .armies
+            } else if words.contains("alli") {
+                self = .alliance
+            } else if words.contains("realm") {
+                self = .realm
+            } else if words.contains("self") {
+                self = .yourself
+            } else {
+                self = .city
+            }
+        }
+    }
+
+    /// The most letters a look hands the model: the on-device model holds
+    /// a few thousand words in all, instructions, briefing and answers
+    /// together, and one look of a crowded realm must not crowd them out.
+    public static let lookMost = 700
+
+    /// What a commander sees of one thing, held to `lookMost` letters.
+    public func look(_ sight: Sight) -> String {
+        let words: String
+        switch sight {
+        case .city: words = cityLook
+        case .armies: words = armiesLook
+        case .alliance: words = allianceLook
+        case .realm: words = realmLook
+        case .yourself: words = yourselfLook
+        }
+        return LiveCounsel.capped(words, most: LiveCounsel.lookMost)
+    }
+
+    /// Words held to a number of letters: whole sentences while they fit,
+    /// then a word that there is more. Words that fit are as they were.
+    static func capped(_ words: String, most: Int) -> String {
+        let more = " There is more than this."
+        guard words.count > most else { return words }
+        let room = words.prefix(max(most - more.count, 0))
+        guard let end = room.range(of: ". ", options: .backwards) else {
+            // No sentence ends in the room: cut at the last word that fits.
+            let cut = room.range(of: " ", options: .backwards).map { room[..<$0.lowerBound] } ?? room
+            return String(cut) + "." + more
+        }
+        return String(room[..<end.lowerBound]) + "." + more
+    }
+
     /// The commander themself, as they are told it.
     public var yourselfLook: String { yourselfSaid }
 

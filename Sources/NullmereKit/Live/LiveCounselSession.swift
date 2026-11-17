@@ -29,22 +29,11 @@ actor LiveCounselBench {
     /// One look: at the city, the armies out, the alliance, the realm or
     /// the commander themself.
     func look(at asked: String) -> String {
-        let what = asked.lowercased()
-        let found: (label: String, words: String)
-        if what.contains("arm") {
-            found = ("the armies out", counsel.armiesLook)
-        } else if what.contains("alli") {
-            found = ("the alliance", counsel.allianceLook)
-        } else if what.contains("realm") {
-            found = ("the realm", counsel.realmLook)
-        } else if what.contains("self") {
-            found = ("themself", counsel.yourselfLook)
-        } else {
-            found = ("the city", counsel.cityLook)
-        }
-        looked.append(found.label)
-        seen.append(found.words)
-        return found.words
+        let sight = LiveCounsel.Sight(asked: asked)
+        let words = counsel.look(sight)
+        looked.append(sight.label)
+        seen.append(words)
+        return words
     }
 
     /// The numbers in an answer that nothing the commander was told,
@@ -81,7 +70,8 @@ struct LiveCounselLook: Tool {
 
     @Generable
     struct Arguments {
-        @Guide(description: "What to look at: city, armies, alliance, realm or yourself")
+        // Held to the five sights: the model can ask for no other.
+        @Guide(description: "What to look at: city, armies, alliance, realm or yourself", .anyOf(["city", "armies", "alliance", "realm", "yourself"]))
         var at: String
     }
 
