@@ -744,6 +744,13 @@ pub const PETITION_MOST: u64 = 500_000;
 pub const PETITION_STANDS: i64 = DAY;
 pub const PETITION_TOLL: u64 = 10;
 
+/// What a Watchtower of a level adds to how hard every defender of its
+/// city strikes when the city is stormed, in hundredths: one a level, its
+/// watchers loosing from above with them. The Watchtower's whole work.
+pub fn watch(level: u32) -> u64 {
+    level as u64
+}
+
 /// The hundredths of what is sent in answer to a petition that the road
 /// takes, from a city with a Market of a level: a tenth with none, one
 /// hundredth less for every three levels begun, never less than two. The

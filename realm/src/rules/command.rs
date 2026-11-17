@@ -301,9 +301,15 @@ pub(super) fn keeper_in(db: &impl Db, player: u64) -> Option<Commander> {
 }
 
 /// What a city's defenders have beyond their numbers: what it has
-/// learnt, and what the commander keeping it brings to a fight.
+/// learnt, what its Watchtower adds, and what the commander keeping it
+/// brings to a fight.
 pub fn defence_of(db: &impl Db, city: u64, owner: u64) -> Mastery {
     let mut all = super::mastery(db, city);
+    // The Watchtower's watchers loose with every defender.
+    let watch = catalog::watch(building_of(db, city, Kind::Watchtower).map(|tower| tower.level).unwrap_or(0));
+    for strike in all.strikes.iter_mut() {
+        *strike += watch;
+    }
     if let Some(keeper) = keeper_in(db, owner) {
         let leading = commanding(db, &keeper);
         for kind in 0..4 {

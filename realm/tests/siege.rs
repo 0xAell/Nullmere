@@ -409,3 +409,16 @@ fn an_ally_sends_soldiers_to_reinforce_a_city_and_they_stay_in_it() {
     assert_eq!(Table::<Troop>::by(&db, 0, hers.id).iter().map(|row| row.ready).sum::<u64>(), 200);
     let _ = bryn;
 }
+
+#[test]
+fn a_watchtower_has_every_defender_strike_harder() {
+    assert_eq!([0, 1, 10, 25].map(catalog::watch), [0, 1, 10, 25]);
+    let (mut db, _, (bryn, his)) = neighbours(&[(Troops::Spearmen, 1, 100)], &[(Troops::Spearmen, 1, 100)]);
+    let before = rules::defence_of(&db, his.id, bryn);
+    db.insert(Building { id: 0, city: his.id, kind: Kind::Watchtower as u8, level: 10 });
+    let after = rules::defence_of(&db, his.id, bryn);
+    for kind in 0..4 {
+        assert_eq!(after.strikes[kind], before.strikes[kind] + 10, "every kind of defender, ten hundredths harder");
+    }
+    assert_eq!((after.shields, after.surge, after.stand), (before.shields, before.surge, before.stand), "and nothing else");
+}
