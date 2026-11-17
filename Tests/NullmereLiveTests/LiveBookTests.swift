@@ -64,6 +64,9 @@ final class LiveBookTests: XCTestCase {
         XCTAssertEqual([0, 1, 45, 60, 61, 3_600, 12_000, 86_400, 90_000, 200_000, -5].map { LiveWords.spoken($0) },
                        ["0 seconds", "1 second", "45 seconds", "1 minute", "1 minute 1 second", "1 hour", "3 hours 20 minutes", "1 day",
                         "1 day 1 hour", "2 days 7 hours", "0 seconds"])
+        XCTAssertEqual([0, 4, 5, 55, 60, 65, 3_599, 3_600, 12_005, 86_399, 90_000, 200_000, -5].map { LiveWords.ago($0) },
+                       ["Just now", "Just now", "5 seconds ago", "55 seconds ago", "1 minute ago", "1 minute ago", "59 minutes ago", "1 hour ago",
+                        "3 hours ago", "23 hours ago", "1 day ago", "2 days ago", "Just now"])
         XCTAssertEqual([0, 5, 65, 3_605, 12_005, 90_000, -1].map { LiveWords.clock($0) }, ["0:00", "0:05", "1:05", "1:00:05", "3:20:05", "1d 1h", "0:00"])
         XCTAssertEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101, 111].map { LiveWords.ordinal($0) },
                        ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd", "101st", "111th"])

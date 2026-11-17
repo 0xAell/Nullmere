@@ -451,7 +451,7 @@ struct LiveReports: View {
                     .foregroundStyle(report.read ? LiveEmphasis.secondary : LiveEmphasis.primary)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
-                    LiveSmall(words: "\(LiveWords.spoken(max(Int(seconds) - report.at, 0))) ago", dim: true)
+                    LiveSmall(words: LiveWords.ago(Int(seconds) - report.at), dim: true)
                     Spacer(minLength: 0)
                     QuietButton(title: "Show", name: "Show where this happened") {
                         session.go(to: report.hex)

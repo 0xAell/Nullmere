@@ -39,6 +39,18 @@ public enum LiveWords {
         return unit(rest, "second")
     }
 
+    /// How long ago something was, in its largest unit alone, as a list
+    /// beside its buttons has room for: "Just now", "45 seconds ago",
+    /// "1 minute ago", "3 hours ago", "2 days ago".
+    public static func ago(_ seconds: Int) -> String {
+        let seconds = max(seconds, 0)
+        func unit(_ count: Int, _ name: String) -> String { "\(count) \(name)\(count == 1 ? "" : "s") ago" }
+        if seconds >= 86_400 { return unit(seconds / 86_400, "day") }
+        if seconds >= 3_600 { return unit(seconds / 3_600, "hour") }
+        if seconds >= 60 { return unit(seconds / 60, "minute") }
+        return seconds < 5 ? "Just now" : unit(seconds, "second")
+    }
+
     /// A length of time as a clock counts it down: 0:45, 3:20:05, 2d 4h.
     public static func clock(_ seconds: Int) -> String {
         let seconds = max(seconds, 0)

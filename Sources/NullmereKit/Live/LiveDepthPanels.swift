@@ -666,7 +666,7 @@ struct LiveLetters: View {
                     Text(verbatim: letter.name)
                         .font(.nm(LiveType.body, weight: letter.read ? .regular : .medium))
                         .foregroundStyle(LiveEmphasis.primary)
-                    LiveSmall(words: "\(LiveWords.spoken(max(Int(seconds) - letter.at, 0))) ago", dim: true)
+                    LiveSmall(words: LiveWords.ago(Int(seconds) - letter.at), dim: true)
                     Spacer(minLength: 0)
                     if !letter.read {
                         QuietButton(title: "Read", enabled: session.asking == 0, name: "Mark the letter from \(letter.name) read") { Task { await session.readLetter(letter.id) } }
