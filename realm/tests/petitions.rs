@@ -89,3 +89,15 @@ fn a_petition_stands_a_day_and_may_be_withdrawn() {
     // Withdrawn, another may be made.
     assert!(db.call(|db| rules::petition(db, ada, Goods::of(2_000, 0, 0, 0))).is_ok());
 }
+
+#[test]
+fn a_market_takes_the_roads_toll_down() {
+    assert_eq!([0, 1, 3, 4, 6, 7, 24, 25].map(catalog::petition_toll), [10, 9, 9, 8, 8, 7, 2, 2]);
+    let (mut db, [ada, bryn, _], cities) = realm();
+    db.insert(Building { id: 0, city: cities[1].id, kind: Kind::Market as u8, level: 4 });
+    db.call(|db| rules::petition(db, ada, Goods::of(100_000, 0, 0, 0))).unwrap();
+    let came = db.call(|db| rules::answer_petition(db, bryn, ada, Goods::of(50_000, 0, 0, 0))).unwrap();
+    assert_eq!(came, Goods::of(46_000, 0, 0, 0), "eight hundredths taken, from a Market of the fourth level");
+    let told: Vec<String> = Table::<Report>::by(&db, 0, ada).into_iter().filter(|report| report.kind == Report::PETITION).map(|report| report.words).collect();
+    assert!(told.iter().any(|words| words.contains("came into your city, the road taking 8 hundredths of what was sent.")), "{told:?}");
+}

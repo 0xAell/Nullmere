@@ -360,7 +360,7 @@ check("one in no alliance petitions no one", call(ada, "petition_alliance", 10, 
 check("one in no alliance sees no petitions, and no one reads the table itself", (rows(ada, "SELECT * FROM my_petitions"), isinstance(rows(ada, "SELECT * FROM petition"), str)), ([], True))
 # The titles of the Mere: for all to read; none held, and none bestowed with no season yet won.
 check("the titles are for all to read, and none is held", rows(nobody, "SELECT * FROM title"), [])
-check("no one bestows a title before a season is won", call(ada, "bestow_title", 1, 2), "Only the Lord of the Mere bestows its titles: the leader of the alliance that won the last season won.")
+check("no one bestows a title before a season is won", call(ada, "bestow_title", 1, 2), "Only the Lord of the Mere bestows its titles: the leader of the alliance that won the last season.")
 # Letters: a player's own to read; one written, and read by the one it is to.
 check("a letter goes to another player", call(ada, "send_letter", 2, "Well met, neighbour."), None)
 check("who reads it in their letters, and no one reads the table itself", ([(l["sender"], l["words"], l["read"]) for l in rows(bryn, "SELECT * FROM my_letters")], isinstance(rows(bryn, "SELECT * FROM letter"), str)), ([(1, "Well met, neighbour.", False)], True))

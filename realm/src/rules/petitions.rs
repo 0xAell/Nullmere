@@ -3,12 +3,13 @@
 //! A member of an alliance petitions it for goods, half a million of each
 //! at most, one petition at a time; it stands a day. Any other member may
 //! answer it from their own city with what it still asks, or some of it;
-//! a tenth of what is sent is taken by the road, and the rest comes into
-//! the asker's city at once. Answered in full, the petition is done. The
+//! a tenth of what is sent is taken by the road, less from a city with a
+//! Market (`catalog::petition_toll`), and the rest comes into the asker's
+//! city at once. Answered in full, the petition is done. The
 //! asker is told of every answer. One whose day is done is answered no
 //! more, and is replaced when its asker petitions anew.
 
-use super::{asking, city_of, goods, member_of, realm, report, set_goods, settle, shown_name, Refusal};
+use super::{asking, building_of, city_of, goods, member_of, realm, report, set_goods, settle, shown_name, Refusal};
 use crate::catalog::{self, Goods};
 use crate::rows::{Db, Petition, Player, Report};
 use crate::store::Table;
@@ -69,7 +70,7 @@ pub fn petition(db: &mut impl Db, player: u64, wanted: Goods) -> Result<Petition
 }
 
 /// An ally answers a petition from their own city: as much of what is
-/// sent as it still asks is taken, the road takes a tenth of that, and
+/// sent as it still asks is taken, the road takes its toll of that, and
 /// the rest comes into the asker's city.
 pub fn answer_petition(db: &mut impl Db, player: u64, asker: u64, sending: Goods) -> Result<Goods, Refusal> {
     asking(db, player)?;
@@ -93,7 +94,9 @@ pub fn answer_petition(db: &mut impl Db, player: u64, asker: u64, sending: Goods
     }
     set_goods(&mut stock, have.minus(taken));
     db.update(stock);
-    let arrives = Goods::from_parts(taken.parts().map(|part| part - part * catalog::PETITION_TOLL / 100));
+    let market = building_of(db, city.id, catalog::Building::Market).map(|market| market.level).unwrap_or(0);
+    let toll = catalog::petition_toll(market);
+    let arrives = Goods::from_parts(taken.parts().map(|part| part - part * toll / 100));
     let theirs = city_of(db, asker)?;
     let mut stock = settle(db, theirs.id)?;
     let more = goods(&stock).plus(arrives);
@@ -109,7 +112,8 @@ pub fn answer_petition(db: &mut impl Db, player: u64, asker: u64, sending: Goods
         db.update(petition);
     }
     let giver = Table::<Player>::get(db, player).map(|row| shown_name(db, &row)).unwrap_or_default();
-    let mut words = format!("{giver} answered your petition: {arrives} came into your city, the road taking a tenth of what was sent.");
+    let road = if toll == catalog::PETITION_TOLL { "a tenth".to_string() } else { format!("{toll} hundredths") };
+    let mut words = format!("{giver} answered your petition: {arrives} came into your city, the road taking {road} of what was sent.");
     if done {
         words += " Your petition is answered in full.";
     }

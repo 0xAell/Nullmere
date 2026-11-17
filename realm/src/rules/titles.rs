@@ -1,6 +1,6 @@
 //! The titles of the Mere, bestowed by its Lord.
 //!
-//! The leader of the alliance that won the last season won is the Lord of
+//! The leader of the alliance that won the last season is the Lord of
 //! the Mere, until another season is won. The Lord bestows the realm's
 //! five titles on whom they will, anyone in the realm, one holder to a
 //! title; bestowing a title on another takes it from whoever held it, and

@@ -59,7 +59,7 @@ fn the_lord_of_the_mere_bestows_titles_that_lend_what_studies_would() {
     assert_eq!(db.call(|db| rules::bestow_title(db, ada, Kind2::Forager as u8, edda)), Err(Refusal::NotTheLord));
     assert_eq!(
         Refusal::NotTheLord.to_string(),
-        "Only the Lord of the Mere bestows its titles: the leader of the alliance that won the last season won."
+        "Only the Lord of the Mere bestows its titles: the leader of the alliance that won the last season."
     );
 
     // The Keepers raise their Moonspire whole and win the season: Ada is the Lord.

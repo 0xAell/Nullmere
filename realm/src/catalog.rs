@@ -744,6 +744,14 @@ pub const PETITION_MOST: u64 = 500_000;
 pub const PETITION_STANDS: i64 = DAY;
 pub const PETITION_TOLL: u64 = 10;
 
+/// The hundredths of what is sent in answer to a petition that the road
+/// takes, from a city with a Market of a level: a tenth with none, one
+/// hundredth less for every three levels begun, never less than two. The
+/// Market's whole work: its carters know the roads.
+pub fn petition_toll(market: u32) -> u64 {
+    PETITION_TOLL.saturating_sub((market as u64).div_ceil(3)).max(2)
+}
+
 /// How many days, at the realm's pace, a commander taken prisoner is held
 /// before they go free of themselves.
 pub const PRISON_DAYS: i64 = 3;

@@ -512,7 +512,7 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchPrisoner => "There is no such prisoner of yours.",
             Refusal::PetitionStands => "Your petition stands already. Withdraw it to ask anew.",
             Refusal::NoSuchPetition => "There is no such petition.",
-            Refusal::NotTheLord => "Only the Lord of the Mere bestows its titles: the leader of the alliance that won the last season won.",
+            Refusal::NotTheLord => "Only the Lord of the Mere bestows its titles: the leader of the alliance that won the last season.",
             Refusal::NoSuchTitle => "There is no such title held.",
             Refusal::TitleHeld => "They hold that title already.",
             Refusal::NoSuchPlayer => "There is no such player.",
