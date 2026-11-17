@@ -683,9 +683,10 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(all.first, LiveCommand(title: "Go to your city", act: .go(LiveHex(q: 10, r: -4))))
         XCTAssertTrue(all.contains { $0.title.hasPrefix("Go to your army: ") }, "her army out")
         XCTAssertEqual(all.compactMap { command -> String? in
-            if case .open(let part) = command.act { return part }
+            if case .open(let part) = command.act, command.title.hasPrefix("Open ") { return part }
             return nil
         }, LiveSession.parts.map { $0.name }, "every part of every destination")
+        XCTAssertTrue(all.contains(LiveCommand(title: "Your devices, and leaving the realm", act: .open("day"))), "and Today again, for the account")
         XCTAssertTrue(all.contains(LiveCommand(title: "Raise the Farm to level 3", act: .upgrade(22))))
         XCTAssertTrue(all.contains(LiveCommand(title: "Build a Barracks", act: .build(7))))
         XCTAssertTrue(all.contains(LiveCommand(title: "Go to the nearest barrow you may attack, of level 2", act: .go(LiveHex(q: 6, r: 0)))))
