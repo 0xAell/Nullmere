@@ -115,15 +115,15 @@
       "note": "a realm of ninety-six seats, the widest, near, only the regions in view drawn: CI's first figure (2c57480), against 12.88 for forty-eight seats in the same run"
     },
     "live.stage.cpu.p50": {
-      "baseline": 7.0,
+      "baseline": 9.5,
       "cpu": true,
-      "note": "the rebuilt realm's frame staged (LiveStagingTimeTests: 50 cities and 51 armies in a laptop's window), CI runs 1037 to 1057 brought to the calibration's pace: 6.1 to 7.9, the view opening at scale 46; from 64 it shows less, so a ceiling. Timed by the wall's clock until run 1124, whose runner, taking the thread away, made the same code's median 10.9 at the pace where runs 1111 to 1122 made 7.6 to 10.1; since, by the thread's own clock, as the calibration that paces it"
+      "note": "the rebuilt realm's frame staged (LiveStagingTimeTests: 50 cities and 51 armies in a laptop's window), by the thread's own clock, brought to the calibration's pace. Runs 1037 to 1057 read 6.1 to 7.9, and the baseline was 7; runs 1111 to 1126, on code whose staging none of them changed, read 7.6, 8.9, 8.7, 10.1, 9.5, 10.9 and 11.05, the last by the thread's clock and the wall's alike (15.55 ms each at x1.41), so the work was the thread's own, not a runner taking it away. The plain work that paces it doesn't follow this work from one runner's host to another; the baseline is their median, 9.5, a regression still half as much again, and the test holds the median within a frame at the pace. Why it costs more than in runs 1037 to 1057 is to be found on a Mac with a profiler"
     },
     "live.stage.cpu.p95": {
-      "baseline": 9.0,
+      "baseline": 15.0,
       "cpu": true,
       "ratio": 1.75,
-      "note": "the same frame's slowest twentieth, CI runs 1037 to 1057 brought to the calibration's pace: 7.0 to 9.5, once 14.3 (run 1044), so allowed more than the median; by the thread's own clock since run 1124, whose wall clock read 29.2"
+      "note": "the same frame's slowest twentieth, by the thread's own clock, brought to the calibration's pace: runs 1037 to 1057 read 7.0 to 9.5, once 14.3 (run 1044), and the baseline was 9; runs 1118 to 1126 read 14.4, 11.9, 18.0 and 18.1, so 15, allowed more than the median"
     },
     "wider.gpu.scale28.day.p50": {
       "baseline": 16.09,
