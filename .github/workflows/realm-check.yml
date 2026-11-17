@@ -86,7 +86,12 @@ jobs:
 
       - name: The server's log, if it failed
         if: failure()
-        run: tail -n 60 build/realm-check-server.log 2>/dev/null || true
+        run: |
+          tail -n 60 build/realm-check-server.log 2>/dev/null || true
+          # What failed, again, at the log's very foot, where its tail finds
+          # it: the steps after a failing one bury its own account.
+          echo "== What failed"
+          grep -hE ": error: |' failed \(" realm-client.log realm-stage.log pure-swift.log build-client.log 2>/dev/null | head -n 40 || true
 
   # The realm's Swift client (Sources/NullmereLive) on the same server:
   # its lists of the realm's tables held to the module's source, then two
@@ -166,4 +171,9 @@ jobs:
 
       - name: The server's log, if it failed
         if: failure()
-        run: tail -n 60 build/realm-check-server.log 2>/dev/null || true
+        run: |
+          tail -n 60 build/realm-check-server.log 2>/dev/null || true
+          # What failed, again, at the log's very foot, where its tail finds
+          # it: the steps after a failing one bury its own account.
+          echo "== What failed"
+          grep -hE ": error: |' failed \(" realm-client.log realm-stage.log pure-swift.log build-client.log 2>/dev/null | head -n 40 || true
