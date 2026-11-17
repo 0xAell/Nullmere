@@ -77,13 +77,19 @@ public struct LiveCounsel: Sendable {
     }
 
     /// The commander themself: their way, their level and how far toward
-    /// the next, and where they are.
+    /// the next, their renown and gift if they are one of the realm's own,
+    /// and where they are.
     var yourselfSaid: String {
         var told = "You are \(commander.name), \(commander.wayName.lowercased()) of level \(commander.level)"
         if commander.level < LiveCommander.topLevel {
             told += ", \(LiveWords.grouped(commander.seen)) of \(LiveWords.grouped(commander.needs)) seen toward the next"
         }
         told += "."
+        if let known = commander.person(in: world.people) {
+            let does = known.giftWords(at: commander.gift)
+            told += " You are \(known.renownName.lowercased()) among the realm's commanders, and your gift is \(known.giftName), at level \(max(commander.gift, 1))"
+            told += does.isEmpty ? "." : ": \(does.prefix(1).lowercased() + does.dropFirst())"
+        }
         if world.prisoners[commander.id] != nil {
             told += " You are held prisoner."
         } else if !commander.isFree, let line = world.marchLines().first(where: { $0.march.id == commander.march }) {

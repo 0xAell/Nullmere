@@ -1104,6 +1104,16 @@ final class LiveSessionTests: XCTestCase {
         let briefing = counsel.briefing.split(separator: "\n").map(String.init)
         XCTAssertEqual(briefing.first, "You are Corwen, outrider of level 4, 200 of 1,600 seen toward the next. You are in the city.")
         XCTAssertEqual(counsel.yourselfLook, briefing.first, "a look at themself tells them as the briefing did")
+        // One of the realm's own knows their renown and their gift.
+        var known = rows
+        known["person"] = [[n(3), .string("Corwen"), n(3), n(1), n(2), .string("Mercy"),
+                            .string("12 in a hundred of their army's dead are carried home wounded after all.\n16 in a hundred of their army's dead are carried home wounded after all.")]]
+        known["my_commanders"] = known["my_commanders"]?.map { row in row[0] == n(11) ? row + [n(3), n(2), n(0)] : row }
+        let theirs = self.session(StandInLine(rows: known))
+        await theirs.open()
+        let told = try XCTUnwrap(theirs.counsel(of: 11)).yourselfLook
+        XCTAssertTrue(told.hasPrefix("You are Corwen, outrider of level 4, 200 of 1,600 seen toward the next. You are steady among the realm's commanders, "
+                                     + "and your gift is Mercy, at level 2: 16 in a hundred of their army's dead are carried home wounded after all. You are in the city."), told)
         XCTAssertTrue(briefing.contains("Your lord's city: Keep level 3, power 1,000."))
         XCTAssertTrue(briefing.contains { $0.hasPrefix("Armies out: ") && $0.contains("40 soldiers") }, "her army at the grove")
         let deeds = try XCTUnwrap(briefing.last)
