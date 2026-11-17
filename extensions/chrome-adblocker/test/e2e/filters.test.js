@@ -293,6 +293,34 @@ test('filters that pick an element by its words hide it: plain, by expression, i
   await page.close();
 });
 
+test('filters that find an element by an XPath, or by the styles the page gives it, hide it', async () => {
+  let { page } = await visit(
+    'paths.test',
+    `<div class="box" id="promoted"><img alt="Promoted"> A thing to buy.</div><div class="box" id="photo"><img alt="Photo"> A story.</div>
+    <aside id="aside-ad" data-kind="ad">ad</aside><aside id="aside-note" data-kind="note">A note.</aside>`,
+  );
+  const paths = ['promoted', 'photo', 'aside-ad', 'aside-note'];
+  await until(async () => (await hidden(page, paths)).length >= 2, 'the elements the expressions find to be hidden');
+  assert.deepEqual(await hidden(page, paths), ['promoted', 'aside-ad']);
+  await page.close();
+
+  // One style sheet in the page, one it links to on its own site, read once
+  // it has come; one from another site, which no extension may read.
+  server.page('styled.test', '/late.css', '.late { width: 315px; }', { type: 'text/css' });
+  server.page('cdn.test', '/far.css', '.far { width: 315px; }', { type: 'text/css' });
+  ({ page } = await visit(
+    'styled.test',
+    `<style>.slot { height: 300px; width: 315px; } .badge::before { content: ""; background: url(data:image/gif;base64,R0lGODlhAQABAAAAACw=) } .wide { width: 316px; }</style>
+    <link rel="stylesheet" href="/late.css"><link rel="stylesheet" href="${server.url('cdn.test', '/far.css')}">
+    <div id="slot" class="slot">ad</div><div id="badge" class="badge">ad</div><div id="late" class="late">ad</div><div id="far" class="far">ad</div><div id="wide" class="wide">kept</div>`,
+  ));
+  const styled = ['slot', 'badge', 'late', 'far', 'wide'];
+  await until(async () => (await hidden(page, styled)).length >= 3, 'the elements so styled to be hidden');
+  await page.waitForTimeout(500);
+  assert.deepEqual(await hidden(page, styled), ['slot', 'badge', 'late'], 'not the one styled from another site, nor one of another width');
+  await page.close();
+});
+
 test('a restyling filter restyles what is left, over the page\'s own style', async () => {
   const { page } = await visit('words.test', WORDS);
   await until(() => page.evaluate(() => getComputedStyle(document.getElementById('page')).paddingTop === '0px'), 'the page\'s padding to be taken away');

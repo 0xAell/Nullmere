@@ -141,7 +141,7 @@ function cosmetic(domains, separator, body) {
   if (separator.includes('?') || selector.includes(':-abp-')) selector = selector.replaceAll(':-abp-has(', ':has(');
   if (/[{}]|\/\*/.test(selector) || !isBalanced(selector)) return unsupported('malformed');
   if (isProcedural(selector)) {
-    const steps = PROCEDURAL.test(selector.replaceAll(/:(?:has-text|contains|-abp-contains)\(/g, ':x(')) ? null : planFor(selector);
+    const steps = PROCEDURAL.test(selector.replaceAll(/:(?:has-text|contains|-abp-contains|xpath|-abp-properties)\(/g, ':x(')) ? null : planFor(selector);
     if (!steps) return unsupported('procedural');
     if (list.bad.length) return unsupported('domain');
     // An exception takes a filter back by its own words, wherever it is named.

@@ -69,7 +69,7 @@ export function limitWords(lists) {
   const others = leftOut(lists, '') - scripted;
   return [
     ['Chrome applies the rules, not Stillwater.', 'Under Manifest V3 an extension can no longer look at each request and decide. It hands Chrome rules made ahead of time, so the lists are as new as this version of Stillwater, not refreshed each day.'],
-    ['Some filters have no rule to become.', `Left out of this build: ${grouped(scripted)} that need a script to find or restyle an element, and ${grouped(others)} more that Chrome's rules can't say or Chrome refuses.`],
+    ['Some filters have no rule to become.', `Left out of this build: ${grouped(scripted)} that would need a script Stillwater has not written or a page rewritten as it arrives, and ${grouped(others)} more that Chrome's rules can't say or Chrome refuses.`],
     ['A pop-up is closed, not prevented.', 'Chrome\'s rules can\'t stop a page opening a window. Stillwater closes one as soon as it sees where it is going, so it may show for a moment.'],
     ['YouTube is the hardest.', 'Its ads come from the same hosts as its videos, and it changes often. Stillwater hides and skips what it can there; expect that part to break first.'],
     ['An ad written into the page itself can only be hidden,', 'and only where a list names it. Nothing an extension does can tell it from the page\'s own words otherwise.'],

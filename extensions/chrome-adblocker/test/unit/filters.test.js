@@ -125,8 +125,8 @@ test('cosmetic filters: :-abp-has becomes :has; what neither CSS nor a plan can 
   assert.deepEqual(parseLine('example.com#?#div:-abp-has(> .label)').selectors, ['div:has(> .label)']);
   const reasons = {
     'example.com##div:upward(2)': 'cosmetic:procedural',
-    'example.com##div:xpath(//a)': 'cosmetic:procedural',
-    'example.com#?#div:-abp-properties(width: 300px)': 'cosmetic:procedural',
+    'example.com##div:matches-css(width: 300px)': 'cosmetic:procedural',
+    'example.com#?#div:upward(2)': 'cosmetic:procedural',
     'example.com##div:has-text(Sponsored):upward(1)': 'cosmetic:procedural',
     '##div:has-text(Sponsored)': 'cosmetic:procedural',
     'example.com##+js(aopr, ads)': 'cosmetic:scriptlet',
@@ -171,6 +171,16 @@ test('cosmetic filters that pick an element by its words become plans', () => {
   assert.deepEqual(plan('example.com##.card:has-text(/ad/y)').steps, [{ css: '.card' }, { re: 'ad', flags: '' }]);
   assert.equal(parseLine('example.com##.card:has-text(/(unclosed/)').kind, 'unsupported', 'an expression that does not compile');
   assert.equal(parseLine('example.com##:has-text(Sponsored)').kind, 'unsupported', 'nothing to find before narrowing');
+  // By an XPath expression, from the document or from what was found.
+  assert.deepEqual(plan('example.com##:xpath(//aside[@data-kind="ad"])').steps, [{ xpath: '//aside[@data-kind="ad"]' }]);
+  assert.deepEqual(plan('example.com##.box:xpath(self::*[.//img[@alt="Promoted"]])').steps, [{ css: '.box' }, { xpath: 'self::*[.//img[@alt="Promoted"]]' }]);
+  // By what the page's own style sheets give an element: words in which `*` is anything, or an expression.
+  assert.deepEqual(plan('example.com##:-abp-properties(*data:image*)').steps, [{ props: { re: '.*data:image.*', flags: '' } }]);
+  assert.deepEqual(plan('example.com##:-abp-properties(width: 50%; height: 1.5em;)').steps, [{ props: { re: 'width: 50%; height: 1\\.5em;', flags: '' } }]);
+  assert.deepEqual(plan('example.com##:-abp-properties(/width: \\d+px/i)').steps, [{ props: { re: 'width: \\d+px', flags: 'i' } }]);
+  for (const line of ['example.com##:-abp-properties(*)', 'example.com##:xpath()', '##:xpath(//div)', 'example.com##:-abp-properties(/(/)']) {
+    assert.equal(parseLine(line).kind, 'unsupported', line);
+  }
   const taken = parseLine('example.com#@#.card:has-text(Sponsored)');
   assert.deepEqual([taken.exception, taken.procedural[0].raw], [true, '.card:has-text(Sponsored)']);
 });

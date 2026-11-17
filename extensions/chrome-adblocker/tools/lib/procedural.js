@@ -1,18 +1,26 @@
 // Cosmetic filters plain CSS can't say: those that pick an element by the
-// words in it (`:has-text(Sponsored)`), on their own or inside `:has()`.
-// A filter is turned here into a short plan the content script follows
-// (src/content/cosmetic.js): a list of steps, each narrowing the elements
-// found so far.
+// words in it (`:has-text(Sponsored)`), on their own or inside `:has()`;
+// by an XPath expression (`:xpath()`); or by the declarations the page's
+// own style sheets give it (`:-abp-properties()`). A filter is turned here
+// into a short plan the content script follows (src/content/cosmetic.js):
+// a list of steps, each narrowing the elements found so far.
 //
 //   { css }          elements the selector finds, from the document or
 //                    from each element so far
 //   { text }         keep those whose text holds these words
 //   { re, flags }    keep those whose text matches the expression
 //   { has: [steps] } keep those in which the steps find something
+//   { xpath }        the elements the expression finds, from the
+//                    document or from each element so far
+//   { props: { re, flags } }
+//                    the elements the page's own style rules apply to,
+//                    of those rules whose declarations match; or of the
+//                    elements so far, those such a rule applies to
 
 import { isContained, splitSelectors } from './selectors.js';
 
 const TEXT = [':has-text(', ':-abp-contains(', ':contains('];
+const FINDING = [':xpath(', ':-abp-properties('];
 
 /** The end of the parenthesis that opens at `open`, or -1. */
 function closing(text, open) {
@@ -40,7 +48,25 @@ function closing(text, open) {
 
 /** Whether a selector needs a plan: it uses a text operator somewhere. */
 export function isProcedural(selector) {
-  return TEXT.some((operator) => selector.includes(operator));
+  return [...TEXT, ...FINDING].some((operator) => selector.includes(operator));
+}
+
+/**
+ * The declarations `:-abp-properties()` looks for, as a step: an
+ * expression, or words in which `*` is anything; null if they can't be read.
+ */
+function propertiesStep(argument) {
+  const regex = /^\/(.+)\/([a-z]*)$/s.exec(argument);
+  if (regex) {
+    try {
+      new RegExp(regex[1], regex[2]);
+    } catch {
+      return null;
+    }
+    return { props: { re: regex[1], flags: [...new Set(regex[2])].filter((flag) => 'imsu'.includes(flag)).join('') } };
+  }
+  if (!argument.replaceAll('*', '').trim()) return null;
+  return { props: { re: argument.replace(/[.+?^${}()|[\]\\/]/g, '\\$&').replaceAll('*', '.*'), flags: '' } };
 }
 
 /** The words or expression a text operator was given, as a step; null if they can't be read. */
@@ -101,6 +127,18 @@ export function planFor(selector) {
     else if (c === '[') depth++;
     else if (c === ']') depth--;
     if (depth === 0 && c === ':') {
+      const finding = FINDING.find((name) => selector.startsWith(name, i));
+      if (finding) {
+        const close = closing(selector, i + finding.length - 1);
+        if (close === -1) return null;
+        const argument = selector.slice(i + finding.length, close).trim();
+        const step = finding === ':xpath(' ? (argument ? { xpath: argument } : null) : propertiesStep(argument);
+        if (!step) return null;
+        flush(true);
+        steps.push(step);
+        i = close + 1;
+        continue;
+      }
       const operator = TEXT.find((name) => selector.startsWith(name, i));
       const has = selector.startsWith(':has(', i);
       if (operator || has) {
@@ -146,7 +184,7 @@ export function planFor(selector) {
   flush();
   if (!steps.length || isProcedural(steps.map((step) => step.css ?? '').join(' '))) return null;
   // Something must be found before it can be narrowed.
-  if (steps[0].css === undefined) return null;
+  if (steps[0].css === undefined && steps[0].xpath === undefined && steps[0].props === undefined) return null;
   return steps;
 }
 

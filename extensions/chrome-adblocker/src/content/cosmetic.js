@@ -49,6 +49,8 @@
   const textOf = getter(Node.prototype, 'textContent');
   const styleOf = { html: getter(HTMLElement.prototype, 'style'), svg: getter(SVGElement.prototype, 'style') };
   const setProperty = bound(CSSStyleDeclaration.prototype.setProperty);
+  const evaluate = bound(Document.prototype.evaluate);
+  const sheetsOf = getter(Document.prototype, 'styleSheets');
 
   /** Hides an element by its own style, which outranks the page's style sheets. */
   function conceal(element) {
@@ -163,6 +165,59 @@
     return found;
   }
 
+  /** The elements an XPath expression finds from `context`; what is not an element is passed over. */
+  function byPath(expression, context) {
+    const result = evaluate(document, expression, context, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+    const found = [];
+    for (let i = 0; i < result.snapshotLength; i++) {
+      const node = result.snapshotItem(i);
+      if (node instanceof Element) found.push(node);
+    }
+    return found;
+  }
+
+  /** A rule's declarations as `:-abp-properties()` reads them: `name: value;` each, in order of name. */
+  function declarationsOf(style) {
+    const all = [];
+    for (let i = 0; i < style.length; i++) {
+      const name = style.item(i);
+      const priority = style.getPropertyPriority(name);
+      all.push(`${name}: ${style.getPropertyValue(name)}${priority ? ` !${priority}` : ''};`);
+    }
+    return all.sort().join(' ');
+  }
+
+  /**
+   * The selectors of the page's own style rules whose declarations match,
+   * a pseudo-element taken off so that the element it belongs to is found.
+   * A style sheet from another site can't be read, and is passed over.
+   */
+  function styledBy(expression) {
+    const selectors = [];
+    const read = (rules) => {
+      for (const rule of rules) {
+        if (rule instanceof CSSStyleRule) {
+          if (expression.test(declarationsOf(rule.style))) {
+            const selector = rule.selectorText.replace(/::?(?:before|after|first-line|first-letter|marker|placeholder)\b/gi, '').trim();
+            if (selector) selectors.push(selector);
+          }
+        } else if (rule.cssRules) {
+          read(rule.cssRules);
+        }
+      }
+    };
+    for (const sheet of sheetsOf(document)) {
+      let rules;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      read(rules);
+    }
+    return selectors;
+  }
+
   /** The elements a plan's steps find, in the document or going on from `root`. */
   function follow(steps, root) {
     let found = null;
@@ -188,6 +243,32 @@
         found = found.filter((element) => expression.test(textOf(element)));
       } else if (step.has) {
         found = found.filter((element) => follow(step.has, element).length > 0);
+      } else if (step.xpath !== undefined) {
+        const next = new Set();
+        for (const context of found ?? [root ?? document]) for (const reached of byPath(step.xpath, context)) next.add(reached);
+        found = [...next];
+      } else if (step.props !== undefined) {
+        const selectors = styledBy(new RegExp(step.props.re, String(step.props.flags ?? '').replace(/[gy]/g, '')));
+        const fits = (element, selector) => {
+          try {
+            return matches(element, selector);
+          } catch {
+            return false;
+          }
+        };
+        if (found === null) {
+          const next = new Set();
+          for (const selector of selectors) {
+            try {
+              for (const element of root ? allIn(root, selector) : allInDocument(document, selector)) next.add(element);
+            } catch {
+              // A selector this Chromium can't read finds nothing.
+            }
+          }
+          found = [...next];
+        } else {
+          found = found.filter((element) => selectors.some((selector) => fits(element, selector)));
+        }
       }
       if (!found || !found.length) return [];
     }
@@ -228,6 +309,8 @@
     if (plans.length) {
       if (stateOf(document) === 'loading') listen(document, 'DOMContentLoaded', sweep, { once: true });
       else sweep();
+      // Style sheets a page links to are read only once they have come.
+      listen(window, 'load', sweepSoon, { once: true });
     }
     observer = new MutationObserver((changes) => {
       if (generic) {
