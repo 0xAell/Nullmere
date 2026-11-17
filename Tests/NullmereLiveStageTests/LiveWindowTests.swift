@@ -240,7 +240,6 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(TileTexture.terrain(tiles[((0 + 12) * side + 2 + 12) * 4]), Terrain.greyfield.code)
     }
 
-    @MainActor
     /// The ways of the armies on the move, from where each is now along the
     /// rest of its way, in its side's hue, the player's own with where it is
     /// bound; none for an army that stands at its work or in a fight.
@@ -267,6 +266,7 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertGreaterThan(lights.count, 10)
     }
 
+    @MainActor
     func testGatesAndWardstonesStandAsHoldsAndEnvoysWaitAtTheGate() {
         var rows = LiveWindowTests.rows()
         func n(_ value: Double) -> JSONValue { .number(value) }
