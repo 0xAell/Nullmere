@@ -65,3 +65,6 @@ Blender-authored unit models landed through the day: spearman, archer, lantern-b
 - Claude kept pushing realm work through Nov 16 (tip e79d2ab, ~11:49 PM): contest standings and laurels in the Mac realm panel and commander counsel, meadow swards carried from the land's corners, and Mac CI runs 1079 and 1080 recorded in the plan.
 - CI: the Realm rules run on 454929b is green; a CI run on that commit failed, and the run on e79d2ab was still in progress at time of writing.
 - Still open: the ad blocker is not yet called done; on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
+
+- Update ~8 PM: Claude kept shipping through Nov 17 (tip 73905cd, ~8:04 PM): ad blocker element picker and own-filter syntax, realm panel/UI wording and frame-staging fixes, NullmereKit coverage floor 93.5, and a Realm rules check that fails unless a publish is live.
+- CI: Realm rules green on 37ed62c; the CI run on that commit and the Realm rules run on 73905cd were still in progress at time of writing.
