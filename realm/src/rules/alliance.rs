@@ -170,11 +170,17 @@ fn put_out(db: &mut impl Db, member: &Member) {
 pub fn leave_alliance(db: &mut impl Db, player: u64) -> Result<(), Refusal> {
     asking(db, player)?;
     let member = member_of(db, player).ok_or(Refusal::NotAllied)?;
+    quit(db, &member)
+}
+
+/// Takes a member out of their alliance as they ask it: its leader only
+/// if they are its last member.
+pub(super) fn quit(db: &mut impl Db, member: &Member) -> Result<(), Refusal> {
     let alone = Table::<Alliance>::get(db, member.alliance).is_none_or(|alliance| alliance.members <= 1);
     if member.rank == Member::LEADER && !alone {
         return Err(Refusal::LeaderMustHandOver);
     }
-    put_out(db, &member);
+    put_out(db, member);
     Ok(())
 }
 

@@ -381,4 +381,15 @@ public final class LiveClient: @unchecked Sendable {
     /// Takes a code another device of a player's shows, as typed: this
     /// client, which plays as no one yet, plays as them from now on.
     public func takeLink(_ code: String) async throws { try await ask("take_link", [.string(code)]) }
+
+    /// Names the device this client runs on, as the player's devices show
+    /// it ("Mac", "iPhone").
+    public func nameDevice(_ name: String) async throws { try await ask("name_device", [.string(name)]) }
+
+    /// Lets go another of the player's devices, by its number: it plays as
+    /// them no more.
+    public func letGo(device: UInt64) async throws { try await ask("let_go", [.integer(device)]) }
+
+    /// Leaves the realm for good, the player's own name typed to be sure.
+    public func leaveRealm(name: String) async throws { try await ask("leave_realm", [.string(name)]) }
 }

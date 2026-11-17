@@ -205,6 +205,30 @@ public struct LiveLink: Equatable, Sendable {
     public var shown: String { letters.count == 10 ? "\(letters.prefix(5)) \(letters.suffix(5))" : letters }
 }
 
+/// One of the player's devices, each that plays as them: the number the
+/// realm lets it go by, what its client calls it, whether it is here now
+/// and whether it is this one.
+public struct LiveDevice: Equatable, Sendable, Identifiable {
+    public let number: UInt64
+    public let name: String
+    public let here: Bool
+    public let current: Bool
+    public var id: UInt64 { number }
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let number = cells.unsigned(0) else { return nil }
+        (self.number, self.name, self.here, self.current) = (number, cells.text(1) ?? "", cells.flag(2) ?? false, cells.flag(3) ?? false)
+    }
+
+    /// Its name as the player reads it: what its client called it, or
+    /// what it is to them when it was called nothing.
+    public var shown: String {
+        if !name.isEmpty { return name }
+        return current ? "This device" : "Another device"
+    }
+}
+
 /// What a place among the first three of a contest's round gives once it
 /// is over.
 public struct LiveLaurel: Equatable, Sendable, Identifiable {

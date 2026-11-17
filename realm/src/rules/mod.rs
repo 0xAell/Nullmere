@@ -342,6 +342,12 @@ pub enum Refusal {
     /// The longest bar, in hours.
     BarTooLong(u64),
     ForgottenAlready,
+    /// A player leaving the realm types their name as it knows it.
+    NotYourName,
+    /// No device of the player's is the one named.
+    NoSuchDevice,
+    /// The device a player asks from is not one to let go from itself.
+    ThisDevice,
     /// No army gathers at the site named.
     NoOneGathering,
     OwnArmy,
@@ -534,6 +540,9 @@ impl fmt::Display for Refusal {
             Refusal::ReportedAlready => "You have reported that line already.",
             Refusal::NoSuchComplaint => "No such report is waiting.",
             Refusal::ForgottenAlready => "That player is forgotten already.",
+            Refusal::NotYourName => "Type your name as the realm knows it to leave.",
+            Refusal::NoSuchDevice => "No device of yours is that one.",
+            Refusal::ThisDevice => "That is the device you are on. Let it go from another of yours.",
             Refusal::NoOneGathering => "No army is gathering there.",
             Refusal::OwnArmy => "That is your own army.",
             Refusal::AllysArmy => "That army is your ally's.",

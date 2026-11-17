@@ -309,6 +309,18 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertNil(LiveWorld(snapshot: [:]).link)
     }
 
+    func testThePlayersDevicesAreReadThisOneFirst() {
+        let world = LiveWorld(snapshot: ["my_devices": [[n(41), .string("iPhone"), .bool(false), .bool(false)],
+                                                        [n(97), .string(""), .bool(true), .bool(true)],
+                                                        [n(12), .string(""), .bool(true), .bool(false)],
+                                                        [.string("not a number"), .string("Broken"), .bool(true), .bool(false)]]])
+        XCTAssertEqual(world.devices.map(\.number), [97, 12, 41], "this one first, then the others in order")
+        XCTAssertEqual(world.devices.map(\.shown), ["This device", "Another device", "iPhone"])
+        XCTAssertEqual(world.devices.map(\.here), [true, true, false])
+        XCTAssertEqual(world.devices.first?.id, 97)
+        XCTAssertEqual(LiveWorld(snapshot: [:]).devices, [])
+    }
+
     func testAlliancesAndWhatIsSaidAreRead() throws {
         let world = LiveWorld(snapshot: [
             "player": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)],

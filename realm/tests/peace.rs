@@ -1,9 +1,10 @@
 //! Keeping the peace over a store kept in memory: lines of chat reported
 //! with what was said about them, taken away, players barred from
-//! speaking, reports let go, and a player forgotten on asking.
+//! speaking, reports let go, a player forgotten on asking, and a player
+//! leaving the realm of their own accord.
 
 use realm::catalog::Building as Kind;
-use realm::rows::{AllianceChat, Building, City, Complaint, Letter, Player, RealmChat};
+use realm::rows::{Alliance, AllianceChat, Applicant, Building, City, Complaint, Letter, Player, RealmChat};
 use realm::rules::{self, Refusal};
 use realm::store::{Mem, Seconds, Table};
 
@@ -197,4 +198,48 @@ fn a_report_names_a_forgotten_speaker_after_their_alliances_tag() {
     let name = rules::forget(&mut db, ada).unwrap();
     // The speaker renamed, after their tag; their words as they were.
     assert_eq!(Table::<Complaint>::get(&db, kept.id).unwrap().around, format!("> [MERE] {name}: Ada speaks of Ada"));
+}
+
+#[test]
+fn a_player_leaves_the_realm_their_own_name_typed() {
+    let (mut db, players) = realm_of(&["Ada", "Bryn", "Cato", "Dara"]);
+    let (ada, bryn, cato, dara) = (players[0], players[1], players[2], players[3]);
+    for founder in [ada, dara] {
+        let city = rules::city_of(&db, founder).unwrap();
+        db.insert(Building { id: 0, city: city.id, kind: Kind::Embassy as u8, level: 1 });
+    }
+    let keepers = db.call(|db| rules::found_alliance(db, ada, "Keepers", "MERE")).unwrap();
+    db.call(|db| rules::set_alliance(db, ada, true, "")).unwrap();
+    assert_eq!(db.call(|db| rules::join_alliance(db, bryn, keepers.id)), Ok(true));
+    let lone = db.call(|db| rules::found_alliance(db, dara, "Lone Keep", "LONE")).unwrap();
+    db.call(|db| rules::set_alliance(db, dara, false, "")).unwrap();
+    assert_eq!(db.call(|db| rules::join_alliance(db, cato, lone.id)), Ok(false), "Cato asks to be let in");
+    later(&mut db, 10);
+
+    // Their own name, as the realm knows it, and nothing else.
+    for typed in ["Ada", "Bry", "Bryn the Bold", ""] {
+        assert_eq!(db.call(|db| rules::leave_realm(db, bryn, typed)), Err(Refusal::NotYourName), "{typed:?}");
+    }
+    assert_eq!(Refusal::NotYourName.to_string(), "Type your name as the realm knows it to leave.");
+    // An alliance's leader hands it over first, while others are in it.
+    assert_eq!(db.call(|db| rules::leave_realm(db, ada, "ada")), Err(Refusal::LeaderMustHandOver));
+    assert_eq!(Table::<Player>::get(&db, ada).unwrap().name, "Ada", "nothing of it done");
+
+    // Typed in any case, spaces let be: out of the alliance, forgotten.
+    let name = db.call(|db| rules::leave_realm(db, bryn, "  bryn ")).unwrap();
+    assert_eq!(name, format!("Forgotten #{bryn}"));
+    assert_eq!(Table::<Player>::get(&db, bryn).unwrap().name, name);
+    assert!(rules::member_of(&db, bryn).is_none());
+    assert_eq!(Table::<Alliance>::get(&db, keepers.id).unwrap().members, 1);
+    assert!(!rules::name_taken(&db, "Bryn"), "their name free for another");
+    assert_eq!(db.call(|db| rules::leave_realm(db, bryn, &name)), Err(Refusal::ForgottenAlready));
+
+    // Their asking to be let in goes with them.
+    db.call(|db| rules::leave_realm(db, cato, "Cato")).unwrap();
+    assert!(Table::<Applicant>::get(&db, cato).is_none());
+    // A leader alone in their alliance leaves it to end.
+    db.call(|db| rules::leave_realm(db, dara, "Dara")).unwrap();
+    assert!(Table::<Alliance>::get(&db, lone.id).is_none());
+    // Their cities stand where they stood, under the names they are given.
+    assert_eq!(Table::<City>::by(&db, 0, dara)[0].name, format!("Forgotten #{dara}"));
 }

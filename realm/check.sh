@@ -280,6 +280,18 @@ check("and plays as its player", [p["name"] for p in rows(phone, "SELECT * FROM 
 check("the code is used up", (call(someone(), "take_link", link[0]["letters"] if link else ""), rows(ada, "SELECT * FROM my_link")), ("No code of yours reads so, or it has been used. Ask your other device for a new one.", []))
 check("a device that plays already takes no code", call(bryn, "take_link", "ABCDEFGHJK"), "You have already joined the realm.")
 
+# Each of a player's devices named as its client calls it, seen among
+# theirs, and one let go from another: a phone lost.
+check("each device is named as its client calls it", (call(ada, "name_device", "  Mac "), call(phone, "name_device", "iPhone of a name longer than any device's")), (None, None))
+devices = rows(ada, "SELECT * FROM my_devices")
+check("and its player sees them, the one looking first", [(d["name"], d["current"]) for d in devices] if isinstance(devices, list) else devices, [("Mac", True), ("iPhone of a name longer", False)])
+others = rows(bryn, "SELECT * FROM my_devices")
+check("another player sees their own alone", [(d["name"], d["current"]) for d in others] if isinstance(others, list) else others, [("", True)])
+check("a device is not let go from itself", call(ada, "let_go", devices[0]["number"] if devices else 0), "That is the device you are on. Let it go from another of yours.")
+check("nor is another's", call(ada, "let_go", others[0]["number"] if others else 0), "No device of yours is that one.")
+check("another of theirs is let go", (call(ada, "let_go", devices[1]["number"] if len(devices) > 1 else 0), [d["name"] for d in rows(ada, "SELECT * FROM my_devices")]), (None, ["Mac"]))
+check("and plays as them no more", (rows(phone, "SELECT * FROM me"), call(phone, "name_device", "Mine")), ([], "Join the realm first."))
+
 # The day's work: five deeds and three chests, the same for everyone.
 duties = rows(nobody, "SELECT * FROM duty")
 chests = rows(nobody, "SELECT * FROM chest")
@@ -482,6 +494,14 @@ if wounded:
     check("the wounded are healed for goods", call(bryn, "heal", 1, 1, wounded), None)
     until("and stand ready again", lambda: [(t["ready"], t["wounded"]) for t in rows(bryn, "SELECT * FROM my_troops")] == [(70, 0)], 60)
 check("the report is thrown away", (call(bryn, "forget_report", told[0]["id"]), rows(bryn, "SELECT * FROM my_reports")), (None, []))
+
+# A player leaves the realm for good, their own name typed to be sure.
+leaver = someone()
+check("a player who would leave", call(leaver, "join", "Lea Leaving"), None)
+check("types their own name to", call(leaver, "leave_realm", "Ada of the Lake"), "Type your name as the realm knows it to leave.")
+check("and leaves, forgotten, their device let go", (call(leaver, "leave_realm", " lea  leaving"), rows(leaver, "SELECT * FROM me"), rows(leaver, "SELECT * FROM my_devices")), (None, [], []))
+check("their city stands under the name they are given", sorted(c["name"] for c in rows(nobody, "SELECT * FROM city") if c["name"].startswith("Forgotten #")), sorted(p["name"] for p in rows(nobody, "SELECT id, name FROM player") if p["name"].startswith("Forgotten #")))
+check("and whoever comes back on that device joins anew", call(leaver, "join", "Lea Leaving"), None)
 
 if failures:
     print(f"{len(failures)} of the realm's checks failed")

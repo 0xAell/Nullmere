@@ -53,6 +53,18 @@ final class LiveSchemaTests: XCTestCase {
         return tables
     }
 
+    /// The shape of the rows a view of the module's returns where they are
+    /// of a type the module declares beside it, no table's: its fields in
+    /// order.
+    private func shown(_ view: String, in module: String) -> (type: String, columns: [String])? {
+        guard let returns = module.range(of: "fn \(view)(ctx: &ViewContext) -> Vec<") else { return nil }
+        let type = String(module[returns.upperBound...].prefix { $0.isLetter })
+        guard let body = module.range(of: "#[derive(SpacetimeType)]\npub struct \(type) {\n") else { return nil }
+        let fields = module[body.upperBound...].prefix { $0 != "}" }.components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { $0.hasPrefix("pub ") }
+        return (type, fields.compactMap { field in field.firstIndex(of: ":").map { String(field[field.index(field.startIndex, offsetBy: 4)..<$0]) } })
+    }
+
     func testEveryTableIsListedAsTheModuleDeclaresIt() throws {
         let rows = declared(in: try source("rows.rs"))
         XCTAssertGreaterThanOrEqual(rows.count, 15, "The module's tables were read")
@@ -69,6 +81,11 @@ final class LiveSchemaTests: XCTestCase {
                 declared = try XCTUnwrap(rows.first { $0.table == table }, "\(name) shows rows of \(table)")
                 let returns = module.range(of: "fn \(name)(ctx: &ViewContext) -> ").map { module[$0.upperBound...].prefix { $0 != "{" } } ?? ""
                 XCTAssertTrue(returns.contains("<\(declared.type)>"), "\(name) returns \(declared.type) rows: \(returns)")
+            } else if let shape = shown(name, in: module) {
+                // A view of the module's own making, of rows no table
+                // holds: keyed by its first column.
+                XCTAssertTrue(module.contains("#[view(accessor = \(name), public)]"), "\(name) is a public view of the module's")
+                declared = (name, shape.type, shape.columns, shape.columns.first ?? "")
             } else {
                 declared = try XCTUnwrap(rows.first { $0.table == name }, "\(name) is a table of the module's")
                 XCTAssertTrue(try source("rows.rs").contains("table(accessor = \(name), public)"), "\(name) is public: a client may read it")
@@ -77,7 +94,7 @@ final class LiveSchemaTests: XCTestCase {
             XCTAssertEqual(listed.key, declared.key, "\(name)'s key")
             checked += 1
         }
-        XCTAssertEqual(checked, 70)
+        XCTAssertEqual(checked, 71)
         XCTAssertNotNil(byType["Player"])
 
         // What is a player's alone stays closed: read only through a view.
@@ -87,7 +104,7 @@ final class LiveSchemaTests: XCTestCase {
             XCTAssertNil(LiveSchema.tables[table], "\(table) is not a client's to read")
             XCTAssertTrue(try source("rows.rs").contains("table(accessor = \(table))"), "\(table) is private in the module")
         }
-        XCTAssertEqual(LiveSchema.queries.count, 70)
+        XCTAssertEqual(LiveSchema.queries.count, 71)
         XCTAssertTrue(LiveSchema.queries.contains("SELECT * FROM my_stock"))
     }
 
@@ -114,7 +131,7 @@ final class LiveSchemaTests: XCTestCase {
                                       ("answer_applicant", 2), ("expel", 1), ("set_rank", 2), ("set_alliance", 2), ("say", 2), ("report_line", 2), ("claim_task", 0), ("learn", 1),
                                       ("call_rally", 4), ("join_rally", 3), ("ask_help", 1), ("help", 1), ("raise_ward", 2), ("move_city", 2), ("raze_ward", 1),
                                       ("give_to_learning", 4), ("give_to_spire", 4), ("learn_talent", 2), ("forget_talents", 1), ("pair", 2),
-                                      ("keep_city", 1), ("speed_up", 1), ("use_item", 2), ("use_peace", 1), ("forge", 1), ("equip", 2), ("unequip", 1), ("claim_boons", 0), ("buy", 2), ("read_tome", 3), ("open_chest", 1), ("claim_prize", 2), ("claim_place", 1), ("offer_link", 0), ("take_link", 1), ("send_envoy", 3),
+                                      ("keep_city", 1), ("speed_up", 1), ("use_item", 2), ("use_peace", 1), ("forge", 1), ("equip", 2), ("unequip", 1), ("claim_boons", 0), ("buy", 2), ("read_tome", 3), ("open_chest", 1), ("claim_prize", 2), ("claim_place", 1), ("offer_link", 0), ("take_link", 1), ("name_device", 1), ("let_go", 1), ("leave_realm", 1), ("send_envoy", 3),
                                       ("answer_envoy", 2), ("break_pact", 1), ("ransom", 1), ("release_prisoner", 1), ("petition_alliance", 4),
                                       ("answer_petition", 5), ("withdraw_petition", 0), ("bestow_title", 2), ("take_title", 1), ("send_letter", 2),
                                       ("send_alliance_letter", 1), ("read_letter", 1), ("forget_letter", 1)] {

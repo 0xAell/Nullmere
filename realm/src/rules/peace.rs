@@ -209,6 +209,27 @@ pub fn forget(db: &mut impl Db, player: u64) -> Result<String, Refusal> {
     Ok(name)
 }
 
+/// A player leaves the realm for good, their own name typed to be sure
+/// they mean it: out of their alliance, which its leader may leave only
+/// as its last member, their asking to join one let go, and forgotten as
+/// the realm's owner forgets a player who asks it. Their city stays where
+/// it stands, under the name they are given. The name. Their devices are
+/// let go by the module, which alone knows them.
+pub fn leave_realm(db: &mut impl Db, player: u64, typed: &str) -> Result<String, Refusal> {
+    let row = super::asking(db, player)?;
+    let typed = super::tidy(typed);
+    if super::name_key(&typed) != row.name_key || typed.to_lowercase() != row.name.to_lowercase() {
+        return Err(Refusal::NotYourName);
+    }
+    if let Some(member) = super::member_of(db, player) {
+        super::quit(db, &member)?;
+    }
+    if Table::<Applicant>::get(db, player).is_some() {
+        Table::<Applicant>::delete(db, player);
+    }
+    forget(db, player)
+}
+
 /// The lines a report keeps, with every line a speaker of one name said
 /// put under another: the name after its mark and its alliance's tag, if
 /// it had one, never within the words.

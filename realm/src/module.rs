@@ -42,6 +42,15 @@ pub struct Presence {
     pub connections: u32,
 }
 
+/// What a player's client calls the device it runs on ("Mac", "iPhone"),
+/// shown among their devices to them alone.
+#[table(accessor = device_name)]
+pub struct DeviceName {
+    #[primary_key]
+    pub identity: Identity,
+    pub name: String,
+}
+
 /// Who published the module: the realm's owner, who alone sets its pace.
 #[table(accessor = owner)]
 pub struct Owner {
@@ -313,6 +322,81 @@ pub fn take_link(ctx: &ReducerContext, code: String) -> Result<(), String> {
         }
     });
     said(taken)
+}
+
+/// The longest name a device is given, in letters.
+const DEVICE_LETTERS: usize = 24;
+
+/// Name the device the caller plays from, as their client calls it, to be
+/// told from their others; a name of nothing lets its name go.
+#[reducer]
+pub fn name_device(ctx: &ReducerContext, name: String) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::asking(&mut Stdb(ctx), player)))?;
+    let name = rules::tidy(&rules::tidy(&name).chars().take(DEVICE_LETTERS).collect::<String>());
+    let had = ctx.db.device_name().identity().find(ctx.sender()).is_some();
+    match (had, name.is_empty()) {
+        (true, true) => {
+            ctx.db.device_name().identity().delete(ctx.sender());
+        }
+        (true, false) => {
+            ctx.db.device_name().identity().update(DeviceName { identity: ctx.sender(), name });
+        }
+        (false, false) => {
+            ctx.db.device_name().insert(DeviceName { identity: ctx.sender(), name });
+        }
+        (false, true) => {}
+    }
+    Ok(())
+}
+
+/// The number a device of a player's is shown and let go by: one for
+/// each identity, never the identity itself, small enough for any
+/// client's numbers.
+fn device_number(identity: Identity) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in identity.to_byte_array() {
+        hash ^= byte as u64;
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash & ((1 << 48) - 1)
+}
+
+/// Let go another of the caller's devices, by the number they see it
+/// under: a phone lost, or a Mac given away. It plays as them no more,
+/// and whoever has it would join anew. The device asked from is not let
+/// go from itself, so a player never lets go of the last of theirs.
+#[reducer]
+pub fn let_go(ctx: &ReducerContext, device: u64) -> Result<(), String> {
+    let player = caller(ctx).map_err(|refusal| refusal.to_string())?;
+    said(rules::asking(&mut Stdb(ctx), player))?;
+    let account = ctx.db.account().player().filter(player).find(|account| device_number(account.identity) == device);
+    let account = account.ok_or(Refusal::NoSuchDevice).map_err(|refusal| refusal.to_string())?;
+    if account.identity == ctx.sender() {
+        return said::<()>(Err(Refusal::ThisDevice));
+    }
+    ctx.db.account().identity().delete(account.identity);
+    ctx.db.device_name().identity().delete(account.identity);
+    Ok(())
+}
+
+/// Leave the realm for good, the caller's own name typed to be sure they
+/// mean it: out of their alliance, forgotten as the realm's owner forgets
+/// a player who asks it, and every device of theirs let go, so whoever
+/// comes back on one joins anew.
+#[reducer]
+pub fn leave_realm(ctx: &ReducerContext, name: String) -> Result<(), String> {
+    let player = caller(ctx).map_err(|refusal| refusal.to_string())?;
+    said(rules::leave_realm(&mut Stdb(ctx), player, &name))?;
+    let_all_go(ctx, player);
+    Ok(())
+}
+
+/// Every device of a player's let go, and their names with them.
+fn let_all_go(ctx: &ReducerContext, player: u64) {
+    for account in ctx.db.account().player().filter(player).collect::<Vec<_>>() {
+        ctx.db.device_name().identity().delete(account.identity);
+    }
+    ctx.db.account().player().delete(player);
 }
 
 /// Build a building the caller's city has not got, by its kind's number.
@@ -688,7 +772,7 @@ pub fn dismiss_report(ctx: &ReducerContext, complaint: u64) -> Result<(), String
 pub fn forget_player(ctx: &ReducerContext, player: u64) -> Result<(), String> {
     owning(ctx).map_err(|refusal| refusal.to_string())?;
     said(rules::forget(&mut Stdb(ctx), player))?;
-    ctx.db.account().player().delete(player);
+    let_all_go(ctx, player);
     Ok(())
 }
 
@@ -955,6 +1039,33 @@ fn my_musters(ctx: &ViewContext) -> Vec<Muster> {
 #[view(accessor = my_link, public)]
 fn my_link(ctx: &ViewContext) -> Vec<Link> {
     viewer(ctx).map(|player| ctx.db.link().player().filter(player).collect()).unwrap_or_default()
+}
+
+/// One of a player's devices as they see it among theirs: the number it is
+/// let go by, what its client calls it, whether it is here now, and
+/// whether it is the one looking.
+#[derive(SpacetimeType)]
+pub struct Device {
+    pub number: u64,
+    pub name: String,
+    pub here: bool,
+    pub current: bool,
+}
+
+/// The caller's devices, each that plays as them.
+#[view(accessor = my_devices, public)]
+fn my_devices(ctx: &ViewContext) -> Vec<Device> {
+    let Some(player) = viewer(ctx) else { return Vec::new() };
+    let mut devices: Vec<Device> = ctx.db.account().player().filter(player)
+        .map(|account| Device {
+            number: device_number(account.identity),
+            name: ctx.db.device_name().identity().find(account.identity).map(|named| named.name).unwrap_or_default(),
+            here: ctx.db.presence().identity().find(account.identity).is_some(),
+            current: account.identity == ctx.sender(),
+        })
+        .collect();
+    devices.sort_by_key(|device| (!device.current, device.number));
+    devices
 }
 
 /// Which of their first tasks the caller is on.

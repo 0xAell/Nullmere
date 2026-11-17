@@ -773,6 +773,55 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertTrue(later.contains("Your lord was 1st in The Long Hunt when its last round ended, and may claim 60,000 grain, 60,000 timber, 30,000 stone and 900 moonsalt"), later)
     }
 
+    /// The player's account: this device named once, another let go, and
+    /// the realm left, whoever comes back on this device joining anew and
+    /// shown their new city first.
+    func testThisDeviceIsNamedOnceAnotherLetGoAndTheRealmLeft() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["my_devices"] = [[n(97), .string(""), .bool(true), .bool(true)], [n(41), .string("iPhone"), .bool(false), .bool(false)]]
+        let line = StandInLine(rows: rows)
+        let session = self.session(line)
+        await session.open()
+        line.clear()
+        await session.nameDevice("Mac")
+        XCTAssertEqual(line.asked, ["name this device Mac"])
+        line.change { $0["my_devices"]?[0][1] = .string("Mac") }
+        session.refresh()
+        line.clear()
+        await session.nameDevice("Mac")
+        XCTAssertEqual(line.asked, [], "named once")
+        let phone = try XCTUnwrap(session.world.devices.last)
+        await session.letGo(phone)
+        XCTAssertEqual(line.asked, ["let go device 41"])
+
+        // Leaving, the name refused as the realm refuses it; then left.
+        let first = session.look
+        line.refuse("Type your name as the realm knows it to leave.")
+        await session.leaveRealm(name: "Bryn")
+        XCTAssertEqual(session.said, "Type your name as the realm knows it to leave.")
+        line.refuse(nil)
+        await session.leaveRealm(name: "Ada")
+        XCTAssertEqual(line.asked.last, "leave the realm as Ada")
+        line.change { $0["me"] = []; $0["my_city"] = []; $0["my_devices"] = [] }
+        session.refresh()
+        XCTAssertEqual(session.phase, .naming, "this device joins anew")
+        let me = try XCTUnwrap(rows["me"]?.first)
+        let anew = LiveHex(q: 2, r: 3)
+        line.change {
+            $0["me"] = [me]
+            $0["my_city"] = [[self.n(99), self.n(1), self.n(anew.packed), .string("Ada Again"), self.n(1), self.n(0), self.n(2_000), self.n(1), self.n(0)]]
+        }
+        session.refresh()
+        XCTAssertNotEqual(first, anew)
+        XCTAssertEqual(session.look, anew, "and is shown their new city first")
+        // Nothing to name for one who is no one in the realm.
+        let empty = StandInLine(rows: [:])
+        let nobody = self.session(empty)
+        await nobody.open()
+        await nobody.nameDevice("Mac")
+        XCTAssertFalse(empty.asked.contains { $0.hasPrefix("name this device") })
+    }
+
     func testRalliesGatesAndWardstonesAreCalledFromTheirCards() async throws {
         var rows = LiveWindowTests.rows()
         rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]

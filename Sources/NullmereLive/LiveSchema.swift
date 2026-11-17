@@ -74,6 +74,7 @@ public enum LiveSchema {
         "my_satchel": .init(columns: ["id", "player", "item", "count"], key: "id"),
         "my_tallies": .init(columns: ["id", "player", "trial", "round", "points", "claimed"], key: "id"),
         "my_link": .init(columns: ["code", "player", "letters", "expires"], key: "code"),
+        "my_devices": .init(columns: ["number", "name", "here", "current"], key: "number"),
         "my_rallies": .init(columns: ["id", "alliance", "caller", "name", "barrow", "city", "hex", "level", "sets_out", "state", "armies",
                                       "soldiers"], key: "id"),
         "my_musters": .init(columns: ["march", "rally", "player", "arrived"], key: "march"),
