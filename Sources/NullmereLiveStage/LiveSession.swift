@@ -121,6 +121,8 @@ public struct LiveNews: Equatable, Identifiable, Sendable {
     public let id: Int
     public let words: String
     public let at: Double
+    /// What it is, for the sound that tells it.
+    public let kind: LiveTold
 }
 
 /// A player in the realm: their line to it, the world as it stands, where
@@ -263,9 +265,9 @@ public final class LiveSession {
     public func refresh() {
         guard let latest = line?.world else { return }
         guard latest != world || phase == .opening else { return }
-        for words in LiveWorld.news(from: world, to: latest, at: now) {
+        for item in LiveWorld.told(from: world, to: latest, at: now) {
             told += 1
-            news.append(LiveNews(id: told, words: words, at: now))
+            news.append(LiveNews(id: told, words: item.words, at: now, kind: item.kind))
         }
         if news.count > LiveSession.newsKept { news.removeFirst(news.count - LiveSession.newsKept) }
         world = latest

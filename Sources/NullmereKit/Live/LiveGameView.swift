@@ -440,6 +440,20 @@ struct LiveHUD: View {
                     }
                 }
             }
+            // The world about where the player looks heard each second.
+            .task(id: proxy.size) { await LiveSounds.listen(to: session, in: proxy.size) }
+        }
+        // Each piece of news told by its cue as it comes; what is chosen,
+        // and what the realm refuses, each by its own.
+        .onChange(of: session.news.last?.id) { last, _ in
+            guard let ambience = RealmSound.current?.ambience else { return }
+            for cue in LiveSounds.cues(for: session.news, after: last) { ambience.play(cue) }
+        }
+        .onChange(of: session.selected) { _, chosen in
+            if chosen != nil { RealmSound.current?.ambience.play(.select) }
+        }
+        .onChange(of: session.said) { _, words in
+            if words != nil { RealmSound.current?.ambience.play(.refusal) }
         }
     }
 }

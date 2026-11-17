@@ -251,6 +251,8 @@ final class LiveBookTests: XCTestCase {
                               "A report: Your army cleared a level 2 barrow.", "A letter from Bryn.", "2 allies helped with your building.",
                               "[MERE] Bryn's rally against a level 12 barrow: 1 army, 3,000 soldiers; sets out in 5 minutes.",
                               "A gift from Bryn's barrow: 800 grain, 800 timber and 800 stone.", "Bryn's army of 300 reaches your city in 1:10."])
+        XCTAssertEqual(LiveWorld.told(from: before, to: LiveWorld(snapshot: later), at: 2_030).map(\.kind),
+                       [.raised, .trained, .won, .letter, .helped, .rally, .gift, .threat], "each told as what it is")
         let gifted = LiveWorld(snapshot: later)
         XCTAssertEqual(gifted.boons.map { [Int($0.giver), $0.level, $0.expires] }, [[2, 4, 90_000]])
         XCTAssertEqual(gifted.boonGoods, LiveGoods(grain: 800, timber: 800, stone: 800))

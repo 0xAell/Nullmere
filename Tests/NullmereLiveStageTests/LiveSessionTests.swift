@@ -553,6 +553,28 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertTrue(session.armyLabels(in: CGSize(width: 1, height: 1)).isEmpty, "none hangs outside the view")
     }
 
+    /// What is heard about her city: its town and Bryn's, their works in
+    /// shares, Bryn's army fighting at the barrow and the barrow itself;
+    /// the lake's edge, twenty hexes west, out of hearing. Nothing in a
+    /// view of no size.
+    func testWhatIsHeardAboutWhereThePlayerLooks() async throws {
+        let session = session(StandInLine(rows: LiveWindowTests.rows()))
+        await session.open()
+        XCTAssertEqual(session.soundscape(in: .zero), LiveSoundscape())
+        let heard = session.soundscape(in: CGSize(width: 1280, height: 800))
+        XCTAssertGreaterThan(heard.town.level, 0.5, "her city, about the middle of the view")
+        XCTAssertGreaterThan(heard.share(.granary), 0, "her Farm among the works heard")
+        XCTAssertEqual(heard.share(.walls), 0, "walls make no sound of work")
+        XCTAssertEqual(heard.works.values.reduce(0, +), 1, accuracy: 1e-4)
+        XCTAssertEqual(heard.shore, LiveSoundscape.Heard.none, "the lake far to the west")
+        XCTAssertGreaterThan(heard.din.level, 0, "Bryn's army fighting at the barrow")
+        XCTAssertGreaterThan(heard.host, 0)
+        XCTAssertGreaterThan(heard.keening.level, 0, "the barrow of the Unquiet")
+        for layer in [heard.town, heard.din, heard.keening] {
+            XCTAssertTrue((0...1).contains(layer.level) && (-1...1).contains(layer.pan), "\(layer)")
+        }
+    }
+
     /// Every kind of building has a symbol of its own.
     func testEachBuildingHasASymbolOfItsOwn() {
         let symbols = (1...19).map { LiveIcons.building($0) }
@@ -574,6 +596,7 @@ final class LiveSessionTests: XCTestCase {
         line.change { $0["my_jobs"] = [] }
         session.refresh()
         XCTAssertEqual(session.news.map(\.words), ["The Farm stands at level 3."])
+        XCTAssertEqual(session.news.map(\.kind), [.raised], "told as a building raised, for its sound")
         XCTAssertEqual(session.news.first?.at, 2_015)
         for index in 0..<50 {
             // In typed steps, as a Mac's compiler types them in time.
