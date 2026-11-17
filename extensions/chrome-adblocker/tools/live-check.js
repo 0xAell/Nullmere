@@ -40,6 +40,9 @@ export const PAGES = [
   { name: 'Wikipedia (no ads)', url: 'https://en.wikipedia.org/wiki/Lake' },
   { name: 'GitHub (no ads)', url: 'https://github.com/' },
   { name: 'YouTube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', youtube: true },
+  // Two of the most watched music videos, where an advertiser's ad before the video is likeliest.
+  { name: 'YouTube, a music video', url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk', youtube: true },
+  { name: 'YouTube, another music video', url: 'https://www.youtube.com/watch?v=JGwWNGJdvx8', youtube: true },
   { name: 'YouTube, embedded', url: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1', youtube: true },
 ];
 
@@ -67,20 +70,37 @@ function under(hosts, host) {
   return false;
 }
 
-/** Chromium with the extension in `directory` loaded, or with none. */
+/**
+ * The browser: Playwright's Chromium, or with STILLWATER_CHROME=1 Google
+ * Chrome as installed (its codecs those of the Chrome people use, which
+ * Chromium lacks), handed the extension over the DevTools protocol, as it
+ * takes none named on its command line. LIVE_HEADED=1 shows its windows,
+ * on whatever display there is (a virtual one on a runner), not headless.
+ */
+export const inChrome = process.env.STILLWATER_CHROME === '1';
+const headed = process.env.LIVE_HEADED === '1';
+
+/** The browser with the extension in `directory` loaded, or with none. */
 async function start(directory) {
   const profile = mkdtempSync(join(tmpdir(), 'stillwater-live-'));
   // Videos may start without a click, as on a page a person has pressed play on: the same with the extension and without.
-  const args = ['--headless=new', '--lang=en-GB', '--autoplay-policy=no-user-gesture-required'];
-  if (directory) args.push(`--disable-extensions-except=${directory}`, `--load-extension=${directory}`);
+  const args = [...(headed ? [] : ['--headless=new']), '--lang=en-GB', '--autoplay-policy=no-user-gesture-required'];
+  if (directory && inChrome) args.push('--enable-unsafe-extension-debugging');
+  else if (directory) args.push(`--disable-extensions-except=${directory}`, `--load-extension=${directory}`);
   const context = await chromium.launchPersistentContext(profile, {
     headless: false,
+    channel: inChrome ? 'chrome' : undefined,
+    ignoreDefaultArgs: inChrome ? ['--disable-extensions'] : undefined,
     args,
     viewport: { width: 1366, height: 900 },
     locale: 'en-GB',
   });
   let worker = null;
-  if (directory) worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker', { timeout: 15_000 }));
+  if (directory) {
+    const handed = inChrome ? (await (await context.browser().newBrowserCDPSession()).send('Extensions.loadUnpacked', { path: directory })).id : null;
+    const ours = (candidate) => !handed || new URL(candidate.url()).host === handed;
+    worker = context.serviceWorkers().find(ours) ?? (await context.waitForEvent('serviceworker', { predicate: ours, timeout: 15_000 }));
+  }
   return {
     context,
     worker,
@@ -339,7 +359,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const report = [
     `## Stillwater on the live web, ${day}`,
     '',
-    `Chromium ${version || '(version not reported)'}, headless, ${process.env.GITHUB_ACTIONS ? 'from a GitHub runner' : 'from the machine it was run on'}. Each page was loaded once without the extension and once with it, and given ${SETTLE / 1000} seconds after loading.`,
+    `${inChrome ? 'Google Chrome' : 'Chromium'} ${version || '(version not reported)'}, ${headed ? 'its windows shown on a virtual display' : 'headless'}, ${process.env.GITHUB_ACTIONS ? 'from a GitHub runner' : 'from the machine it was run on'}. Each page was loaded once without the extension and once with it, and given ${SETTLE / 1000} seconds after loading.`,
     '',
     table(withExtension, without),
     '',

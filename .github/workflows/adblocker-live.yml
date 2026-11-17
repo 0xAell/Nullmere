@@ -7,6 +7,20 @@ name: Ad blocker, on the live web
 
 on:
   workflow_dispatch:
+    inputs:
+      browser:
+        description: "chromium (Playwright's) or chrome (Google Chrome as the runner has it, with the codecs people's Chrome has)"
+        default: chromium
+        type: choice
+        options: [chromium, chrome]
+      headed:
+        description: "Show the browser's windows on a virtual display, not headless"
+        default: false
+        type: boolean
+      only:
+        description: "Visit only the pages whose names begin so, comma-separated (YouTube, BBC); every page if empty"
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -32,16 +46,21 @@ jobs:
           cache: npm
           cache-dependency-path: extensions/chrome-adblocker/package-lock.json
 
-      - name: Install Playwright and its Chromium
+      - name: Install Playwright, and its Chromium where that is the browser
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          if [ "${{ inputs.browser }}" = chrome ]; then google-chrome --version; else npx playwright install --with-deps chromium; fi
 
       - name: Build from the pinned lists
         run: npm run build
 
       - name: Visit the pages
-        run: node tools/live-check.js
+        env:
+          STILLWATER_CHROME: ${{ inputs.browser == 'chrome' && '1' || '' }}
+          LIVE_HEADED: ${{ inputs.headed && '1' || '' }}
+          LIVE_ONLY: ${{ inputs.only }}
+        run: |
+          if [ "$LIVE_HEADED" = 1 ]; then xvfb-run -a --server-args="-screen 0 1920x1080x24" node tools/live-check.js; else node tools/live-check.js; fi
 
       - name: Keep the report
         if: always()
