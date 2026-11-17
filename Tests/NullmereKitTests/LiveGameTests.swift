@@ -109,6 +109,8 @@ final class LiveGameTests: XCTestCase {
                           [n(258), n(1), n(2), n(40_000), n(40_000), n(20_000), n(600), n(0), n(0), n(2), n(0)]]
         // A code asked for to link her phone, good until 2,600.
         rows["my_link"] = [[n(77), n(1), .string("ABCDE23456"), n(2_600)]]
+        // Her devices: this Mac, and the phone she linked, away.
+        rows["my_devices"] = [[n(97), .string("Mac"), .bool(true), .bool(true)], [n(41), .string("iPhone"), .bool(false), .bool(false)]]
         rows["my_skills"] = [[n(12 << 8 | 6), n(12), n(1), n(6), n(2)]]
         rows["my_bonds"] = [[n(12), n(1), n(11)]]
         rows["my_keeper"] = [[n(1), n(11)]]
@@ -212,6 +214,31 @@ final class LiveGameTests: XCTestCase {
         for _ in 0..<100 where line.asked.isEmpty { try await Task.sleep(nanoseconds: 10_000_000) }
         XCTAssertTrue(line.asked.contains { $0.hasPrefix("speed up") }, "\(line.asked)")
         XCTAssertEqual(panel, .troops, "asking the realm opens nothing")
+    }
+
+    /// Who the player is in Today: their name and city, their devices, the
+    /// phone away to let go, and the realm left only on their own name.
+    func testTheAccountSaysWhoThePlayerIsAndLeavesOnlyOnTheirName() async throws {
+        XCTAssertTrue(LiveAccount.matches("  ada ", "Ada"))
+        XCTAssertTrue(LiveAccount.matches("ada  of the LAKE", "Ada of the Lake"))
+        XCTAssertFalse(LiveAccount.matches("Ad", "Ada"))
+        XCTAssertFalse(LiveAccount.matches("", ""))
+        let (session, line) = await playing()
+        let me = try XCTUnwrap(session.world.me)
+        let city = try XCTUnwrap(session.world.city)
+        XCTAssertEqual(LiveAccount.who(me, city: nil), "\(me.name), with no city yet.")
+        XCTAssertEqual(LiveAccount.who(me, city: city),
+                       "\(me.name), of the city at \(city.hex.q), \(city.hex.r), of \(LiveWords.grouped(city.power)) power.")
+        XCTAssertEqual(session.world.devices.map(\.shown), ["Mac", "iPhone"])
+        XCTAssertEqual(session.world.devices.map { LiveAccount.state(of: $0) }, ["This one", "Away"])
+        XCTAssertGreaterThan(try drawn(VStack(alignment: .leading, spacing: 6) { LiveAccount(session: session, seconds: 2_015) }
+            .frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 900, as: "live-account.png"), 300)
+        // The phone let go from here; the Mac, named already, not named again.
+        let phone = try XCTUnwrap(session.world.devices.last)
+        line.clear()
+        await session.letGo(phone)
+        await session.nameDevice("Mac")
+        XCTAssertEqual(line.asked, ["let go device 41"])
     }
 
     /// The world is the screen in the rebuilt realm too: whatever is open,

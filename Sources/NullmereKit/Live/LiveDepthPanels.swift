@@ -102,7 +102,77 @@ struct LiveDayPanel: View {
         if let favour = world.favour {
             LiveSmall(words: "Favour: level \(favour.level), \(LiveWords.grouped(favour.points)) points.")
         }
+        LiveAccount(session: session, seconds: seconds)
+    }
+}
+
+/// Who the player is in the realm: their name and city, each device that
+/// plays as them, every one but this to let go, a code to bring their
+/// phone in, and the way to leave the realm for good, their own name
+/// typed to be sure.
+struct LiveAccount: View {
+    let session: LiveSession
+    let seconds: Double
+    @State private var typed = ""
+
+    var body: some View {
+        let world = session.world
+        Caps("You", size: LiveType.small)
+            .foregroundStyle(LiveEmphasis.secondary)
+        if let me = world.me {
+            LiveSmall(words: LiveAccount.who(me, city: world.city))
+        }
+        ForEach(world.devices) { device in
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(verbatim: device.shown)
+                    .font(.nm(LiveType.body, weight: device.current ? .medium : .regular))
+                    .foregroundStyle(LiveEmphasis.primary)
+                LiveSmall(words: LiveAccount.state(of: device), dim: true)
+                Spacer(minLength: 0)
+                if !device.current {
+                    QuietButton(title: "Let go", enabled: session.asking == 0, name: "Let go \(device.shown): it plays as you no more") {
+                        Task { await session.letGo(device) }
+                    }
+                }
+            }
+        }
         LiveLinkPhone(session: session, seconds: seconds)
+        if let me = world.me {
+            Caps("Leave the realm", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
+            LiveSmall(words: "Your name leaves the realm and every device of yours is let go. Your city stays where it stands, under no name of yours. Type your name to leave for good.")
+            HStack(spacing: 8) {
+                LiveField(prompt: "Your name, to leave", text: $typed, width: nil, submit: leave)
+                QuietButton(title: "Leave", enabled: LiveAccount.matches(typed, me.name) && session.asking == 0, name: "Leave the realm for good",
+                            why: LiveAccount.matches(typed, me.name) ? nil : "Type your name as the realm knows it.", action: leave)
+            }
+        }
+    }
+
+    /// The player as the realm knows them: their name, and their city's
+    /// place and power where they have one.
+    static func who(_ me: LivePlayer, city: LiveCity?) -> String {
+        guard let city else { return "\(me.name), with no city yet." }
+        return "\(me.name), of the city at \(city.hex.q), \(city.hex.r), of \(LiveWords.grouped(city.power)) power."
+    }
+
+    /// Where a device of the player's is: this one, here now or away.
+    static func state(of device: LiveDevice) -> String {
+        device.current ? "This one" : device.here ? "Here now" : "Away"
+    }
+
+    /// Whether what is typed is the player's name, as the realm reads it:
+    /// in any case, spaces let be.
+    static func matches(_ typed: String, _ name: String) -> Bool {
+        let tidy = { (words: String) in words.split(whereSeparator: \.isWhitespace).joined(separator: " ").lowercased() }
+        return !name.isEmpty && tidy(typed) == tidy(name)
+    }
+
+    private func leave() {
+        guard let me = session.world.me, LiveAccount.matches(typed, me.name) else { return }
+        let typed = self.typed
+        self.typed = ""
+        Task { await session.leaveRealm(name: typed) }
     }
 }
 

@@ -3,6 +3,9 @@ import NullmereLand
 import NullmereLive
 import NullmereLiveStage
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// The phone's one screen, by where the session stands: reaching the
 /// realm, a code from the player's Mac wanted, or their realm.
@@ -39,7 +42,22 @@ struct CompanionView: View {
                 await session.takeLink(code)
             }
             #endif
+            // This phone named among the player's devices, once it plays.
+            if session.phase == .playing {
+                await session.nameDevice(CompanionView.deviceName)
+            }
         }
+    }
+
+    /// What this device is called among the player's: the kind of device
+    /// it is, never its owner's own name for it.
+    @MainActor
+    static var deviceName: String {
+        #if os(iOS)
+        return UIDevice.current.model
+        #else
+        return "Mac"
+        #endif
     }
 }
 
@@ -184,6 +202,25 @@ struct CompanionHome: View {
                                 } else {
                                     Button("Open") { Task { await session.openChest(chest.id) } }
                                         .disabled(!chest.ready || session.asking > 0)
+                                }
+                            }
+                        }
+                    }
+                }
+                // Each device that plays as the player, and a way to let
+                // another go: a Mac given away, an old phone.
+                if world.devices.count > 1 {
+                    Section("Your devices") {
+                        ForEach(world.devices) { device in
+                            HStack {
+                                Text(verbatim: device.shown)
+                                Text(verbatim: device.current ? "This one" : device.here ? "Here now" : "Away")
+                                    .font(.footnote).foregroundStyle(.secondary)
+                                Spacer()
+                                if !device.current {
+                                    Button("Let go") { Task { await session.letGo(device) } }
+                                        .buttonStyle(.borderless)
+                                        .disabled(session.asking > 0)
                                 }
                             }
                         }

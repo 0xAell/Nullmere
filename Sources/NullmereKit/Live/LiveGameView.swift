@@ -443,6 +443,8 @@ struct LiveHUD: View {
             // The world about where the player looks heard each second.
             .task(id: proxy.size) { await LiveSounds.listen(to: session, in: proxy.size) }
         }
+        // This device named among the player's, once the realm has it.
+        .task(id: session.world.devices.count) { await session.nameDevice("Mac") }
         // Each piece of news told by its cue as it comes; what is chosen,
         // and what the realm refuses, each by its own.
         .onChange(of: session.news.last?.id) { last, _ in
