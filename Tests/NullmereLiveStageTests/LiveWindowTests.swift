@@ -241,6 +241,32 @@ final class LiveWindowTests: XCTestCase {
     }
 
     @MainActor
+    /// The ways of the armies on the move, from where each is now along the
+    /// rest of its way, in its side's hue, the player's own with where it is
+    /// bound; none for an army that stands at its work or in a fight.
+    func testTheArmiesOnTheMoveHaveTheirWaysLit() throws {
+        let world = world()
+        let window = LiveWindow(world: world, centre: LiveHex(q: 10, r: -4), radius: 12)
+        // At 2,015 Ada's army is halfway between 11, -3 and 11, -2 on its
+        // way to the grove; Bryn's two stand, one gathering, one fighting.
+        let ways = window.marchWays(in: world, at: 2_015)
+        XCTAssertEqual(ways.count, 1)
+        let way = try XCTUnwrap(ways.first)
+        XCTAssertEqual(way.side, .own)
+        XCTAssertEqual(way.route, [Hex(1, 2), Hex(2, 2)], "11, -2 and the grove, in the window's own land")
+        XCTAssertEqual(way.bound, Hex(2, 2))
+        let at = window.local(x: (LiveHex(q: 11, r: -3).centre.x + LiveHex(q: 11, r: -2).centre.x) / 2,
+                              y: (LiveHex(q: 11, r: -3).centre.y + LiveHex(q: 11, r: -2).centre.y) / 2)
+        XCTAssertEqual(way.from.x, at.x, accuracy: 1e-4)
+        XCTAssertEqual(way.from.z, at.z, accuracy: 1e-4)
+        // Come to the grove, but not yet at work there: only where it is bound.
+        XCTAssertEqual(window.marchWays(in: world, at: 2_030).first?.route, [Hex(2, 2)])
+        // Lit by the stage: lights along it and a ring where it is bound.
+        let relief = Relief(map: window.map)
+        let lights = WorldStage(map: window.map, relief: relief).marchLines(ways, time: 1)
+        XCTAssertGreaterThan(lights.count, 10)
+    }
+
     func testGatesAndWardstonesStandAsHoldsAndEnvoysWaitAtTheGate() {
         var rows = LiveWindowTests.rows()
         func n(_ value: Double) -> JSONValue { .number(value) }

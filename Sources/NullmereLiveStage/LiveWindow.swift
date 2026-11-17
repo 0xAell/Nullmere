@@ -222,6 +222,38 @@ public struct LiveWindow: Sendable {
         }
     }
 
+    /// The ways of the armies in the window still on the move, as the stage
+    /// lights them on the land: from where each is now along the rest of
+    /// its way, as far as the window holds it, in its side's hue (the
+    /// player's own; an ally's; a foe's, marching on the player's city; or
+    /// another's), with where the player's own is bound.
+    public func marchWays(in world: LiveWorld, at seconds: Double) -> [(from: Vec3, route: [Hex], side: WorldStage.MarchSide, bound: Hex?)] {
+        world.marches.values.sorted { $0.id < $1.id }.compactMap { march in
+            guard !march.stands, march.route.count > 1 else { return nil }
+            let along = march.progress(at: seconds) * Double(march.route.count - 1)
+            let next = min(Int(along) + 1, march.route.count - 1)
+            var route: [Hex] = []
+            for hex in march.route[next...] {
+                guard let here = local(hex) else { break }
+                route.append(here)
+            }
+            guard !route.isEmpty else { return nil }
+            let at = march.position(at: seconds)
+            let from = local(x: at.x, y: at.y)
+            let side: WorldStage.MarchSide
+            if march.owner == world.me?.id {
+                side = .own
+            } else if world.isAlly(march.owner) {
+                side = .ally
+            } else if [LiveMarch.attack, LiveMarch.scout, LiveMarch.rally].contains(march.kind), march.to == world.city?.hex {
+                side = .foe
+            } else {
+                side = .other
+            }
+            return (Vec3(from.x, 0, from.z), route, side, side == .own ? local(march.to) : nil)
+        }
+    }
+
     /// The armies in the window as the stage's companies, each where it is
     /// at a moment: along its way, facing the way it goes, marching; or
     /// standing where it came to, at work on its site or striking at the

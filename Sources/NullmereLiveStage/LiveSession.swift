@@ -466,6 +466,8 @@ public final class LiveSession {
         frame.batches = holds + stage.sites(sites.filter { seen($0.hex, within: 1) }) + stage.lairs(barrows.filter { seen($0.hex, within: 1) }).batches
             + stage.finds(cairns.filter { seen($0.hex, within: 1) }).batches
             + stage.companies(poses, houses: LiveSession.colours, into: &frame)
+        // The ways the armies on the move still have to go, lit on the land.
+        frame.motes += stage.marchLines(window.marchWays(in: world, at: seconds), time: Float(time))
         return frame
     }
 
