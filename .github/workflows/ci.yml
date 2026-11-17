@@ -368,6 +368,9 @@ jobs:
     name: Accessibility audit
     runs-on: macos-26
     timeout-minutes: 40
+    # Write only to keep the phone's screenshot on the ci-shots branch.
+    permissions:
+      contents: write
     defaults:
       run:
         shell: bash
@@ -397,6 +400,7 @@ jobs:
       # in this job, which ends well before the Mac's long one. Its errors
       # are raised as annotations too, readable however long the log.
       - name: Build the companion for the iOS Simulator
+        id: companion
         if: ${{ !cancelled() }}
         timeout-minutes: 20
         run: |
@@ -408,6 +412,26 @@ jobs:
             exit 1
           fi
           tail -n 3 build/companion-build.log
+
+      # Then the phone in the Simulator, on the realm the audit played into:
+      # a player joins and asks for a code as their Mac would, the phone is
+      # launched with it and comes in as them, and the realm finds the code
+      # used and the player here.
+      - name: The phone in the Simulator, on the realm
+        if: ${{ !cancelled() && steps.companion.outcome == 'success' }}
+        timeout-minutes: 15
+        env:
+          NULLMERE_REALM: http://127.0.0.1:3000/nullmere-ui
+        run: scripts/smoke-test-companion.sh 2>&1 | tee build/smoke-companion.log
+
+      # Its screenshot beside the run's others on the ci-shots branch.
+      - name: Keep the phone's screenshot
+        if: ${{ !cancelled() && github.event_name == 'push' && steps.companion.outcome == 'success' }}
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN: ${{ github.run_number }}
+          SHA: ${{ github.sha }}
+        run: scripts/push-ci-shots.sh build/companion-shots
 
       # Last, so a short read of the log holds it: what the audit and the
       # walk found, and how the tests ended.

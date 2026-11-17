@@ -6,6 +6,8 @@ import SwiftUI
 /// realm, a code from the player's Mac wanted, or their realm.
 struct CompanionView: View {
     let session: LiveSession
+    /// Whether a code given at launch has been taken.
+    @State private var tried = false
 
     var body: some View {
         NavigationStack {
@@ -25,6 +27,16 @@ struct CompanionView: View {
                 }
             }
             .navigationTitle("Nullmere")
+        }
+        .task(id: session.phase) {
+            #if DEBUG
+            // A debug build launched with NULLMERE_LINK_CODE takes it as
+            // typed while it plays as no one: how CI brings the phone in.
+            if session.phase == .naming, !tried, let code = ProcessInfo.processInfo.environment["NULLMERE_LINK_CODE"], !code.isEmpty {
+                tried = true
+                await session.takeLink(code)
+            }
+            #endif
         }
     }
 }

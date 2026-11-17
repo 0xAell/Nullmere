@@ -56,7 +56,11 @@ threats, what stands idle, armies out and the day's chests.
 
 A debug build goes to the realm `NULLMERE_REALM` names, as the Mac's
 does; in the Simulator, launch it with `SIMCTL_CHILD_NULLMERE_REALM` set.
-CI builds it for the Simulator in the accessibility job.
+CI builds it for the Simulator in the accessibility job, then plays it
+there on the realm that job serves (`scripts/smoke-test-companion.sh`):
+a player asks for a code, the phone is launched with it
+(`SIMCTL_CHILD_NULLMERE_LINK_CODE`, which a debug build takes as typed)
+and comes in as them.
 
 ## Releasing
 
