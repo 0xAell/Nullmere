@@ -102,6 +102,20 @@ struct CompanionHome: View {
                             .disabled(!world.isDone(task) || session.asking > 0)
                     }
                 }
+                // The city's buildings, each with its level and a way to raise
+                // it, or how long the work on it has left; then those it
+                // could build now. The builders at work said once.
+                let buildings = world.buildingLines(at: seconds).filter { $0.building != nil || $0.block == nil }
+                if !buildings.isEmpty {
+                    Section("Buildings") {
+                        if buildings.contains(where: { $0.block == .buildersBusy }) {
+                            Text(verbatim: LiveBlock.buildersBusy.words).font(.footnote).foregroundStyle(.secondary)
+                        }
+                        ForEach(buildings) { line in
+                            CompanionBuilding(session: session, line: line, seconds: seconds)
+                        }
+                    }
+                }
                 let idle = world.idle(at: seconds)
                 if !idle.isEmpty {
                     Section("Standing idle") {
@@ -136,6 +150,46 @@ struct CompanionHome: View {
                 if let said = session.said {
                     Section { Text(verbatim: said).foregroundStyle(.red) }
                 }
+            }
+        }
+    }
+}
+
+/// One building of the player's city on the phone: its name and level,
+/// and a way to raise it, or how long the work on it has left; why it
+/// can't be raised yet beneath.
+struct CompanionBuilding: View {
+    let session: LiveSession
+    let line: LiveBuildingLine
+    let seconds: Double
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(verbatim: line.building == nil ? line.name : "\(line.name), level \(line.level)")
+                Spacer()
+                if let job = line.job {
+                    Text(verbatim: LiveWords.clock(Int(job.left(at: seconds).rounded(.up))))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                } else if line.next != nil {
+                    Button(line.building == nil ? "Build" : "Upgrade") {
+                        Task {
+                            if let building = line.building {
+                                await session.upgrade(building: building.id)
+                            } else {
+                                await session.build(line.kind)
+                            }
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(line.block != nil || session.asking > 0)
+                }
+            }
+            if line.job == nil, let next = line.next, line.block == nil {
+                Text(verbatim: "\(next.cost.sentence), \(LiveWords.spoken(next.seconds))").font(.footnote).foregroundStyle(.secondary)
+            } else if line.job == nil, let block = line.block, block != .buildersBusy {
+                Text(verbatim: block.words).font(.footnote).foregroundStyle(.secondary)
             }
         }
     }
