@@ -210,7 +210,7 @@ public enum WorldShaders {
     // The ground's own grain: broad patches of richer and poorer earth, and
     // a fine speckle over them, darker and lighter about the land's colour
     // and never changing its mean.
-    float3 nm_grain(float2 p, float3 albedo, float pixel) {
+    float3 nm_grainTint(float2 p, float pixel) {
         // Patches the size of a hex, swinging the shade by half, were the
         // lake view's grey banks: seen low across the shore they drew out
         // into streaks of cloud (run 540 without the land's light lost
@@ -242,23 +242,26 @@ public enum WorldShaders {
             speckle = mix(0.5, nm_noise(p * 11.0 + float2(11.0, 5.0)), speckled);
         }
         float shade = 0.88 + 0.14 * patches + 0.1 * speckle;
-        // The poorer patches lean a little toward earth, the richer toward moss.
-        float3 earth = albedo * float3(1.06, 0.98, 0.9);
-        float3 moss = albedo * float3(0.94, 1.04, 0.98);
-        return mix(earth, moss, smoothstep(0.35, 0.65, patches)) * shade;
+        // The poorer patches lean a little toward earth, the richer toward
+        // moss: the tint a colour is laid over with, near one.
+        return mix(float3(1.06, 0.98, 0.9), float3(0.94, 1.04, 0.98), smoothstep(0.35, 0.65, patches)) * shade;
     }
 
-    // The country a point of the land lies in by day, slow enough to be
-    // worked out at the land's corners, a third of a unit apart, and
-    // carried between them: whole reaches lusher or drier than the rest,
-    // several hexes across, and swards half a hex across in them, some
-    // yellower and some bluer, so a meadow under the sun is never one
-    // green (rgb, the tint of both); and glades of paler grass in rounds a
-    // hex or so across (a, how much of a glade). At every pixel these were
-    // the day's dearest work (CI run 1074: the land by day took four
-    // milliseconds more than by night, the most of it this; run 1078, the
-    // reaches and glades carried, still 2.3).
-    float4 nm_dayCountry(float2 p) {
+    // The land's colour by day at a point, deepened, `albedo` its own
+    // colour there: all of it slow enough to be worked out at the land's
+    // corners, a third of a unit apart, and carried between them; the
+    // grain is laid over it at each pixel (nm_ground). At every pixel this was the
+    // day's dearest work (CI run 1074: the land by day took four
+    // milliseconds more than by night, the most of it this; run 1082, all
+    // but its deepening carried, still 1.1).
+    float3 nm_dayGround(float2 p, float3 albedo) {
+        // How much of the ground is growth, by its own colour: green
+        // stands over red and blue.
+        float growth = clamp((albedo.g - max(albedo.r, albedo.b)) * 7.0, 0.0, 1.0);
+        // Whole reaches of the growth lusher or drier than the rest,
+        // several hexes across, and swards half a hex across in them,
+        // some yellower and some bluer, so a meadow under the sun is never
+        // one green; and glades, paler grass in rounds a hex or so across.
         float country = nm_fbm2(p * 0.23 + float2(17.3, 5.1));
         float3 lush = float3(0.80, 0.96, 0.78);
         float3 dry = float3(0.98, 0.97, 0.80);
@@ -266,21 +269,28 @@ public enum WorldShaders {
         float3 reach = mix(dry, lush, smoothstep(0.3, 0.7, country))
             * mix(float3(1.07, 1.03, 0.82), float3(0.86, 1.0, 0.98), smoothstep(0.3, 0.7, sward));
         float glade = smoothstep(0.6, 0.8, nm_noise(p * 0.9 + float2(41.0, 8.0)));
-        return float4(reach, glade);
+        reach = mix(reach, float3(1.05, 1.03, 0.86), glade * 0.55);
+        float3 shown = albedo * mix(float3(1.0), reach, growth);
+        // The land's colours were chosen to be read by the moon, whose
+        // light is a tenth of the sun's: in full sun they stand at the top
+        // of the picture, every green a pale lime. Under the sun they are
+        // set deeper, the darker the more, so a meadow is a deep green and
+        // snow and salt stay bright.
+        return pow(max(shown, float3(0.0)), float3(1.45));
     }
 
-    // The ground by day, over its grain: the country it lies in (`country`,
-    // as nm_dayCountry gives it at the land's corners), and the stone of
-    // its slopes. Whole reaches of the land are lusher or drier than the
-    // rest, several hexes across, so no plain is one flat green; where the
-    // ground is bare stone and steep, it shows its beds, darker in the
-    // clefts; and the finest grain of all, blades and grit, shows close to
-    // and fades before it is smaller than a pixel. `day` is how much of
-    // this the hour shows: all of it under the sun, none of it by the moon,
-    // whose land is drawn as it always was.
-    float3 nm_ground(float3 world, float3 n, float3 albedo, float pixel, float day, float4 country) {
+    // The ground at a point, over its grain; and by day its colour as the
+    // land's corners give it (`dayGround`, nm_dayGround), the grain laid
+    // over that, and the stone of its slopes: where the ground is bare
+    // stone and steep, it shows its beds, darker in the clefts; and the
+    // finest grain of all, blades and grit, shows close to and fades
+    // before it is smaller than a pixel. `day` is how much of this the
+    // hour shows: all of it under the sun, none of it by the moon, whose
+    // land is drawn as it always was.
+    float3 nm_ground(float3 world, float3 n, float3 albedo, float pixel, float day, float3 dayGround) {
         float2 p = world.xz;
-        float3 c = nm_grain(p, albedo, pixel);
+        float3 grain = nm_grainTint(p, pixel);
+        float3 c = albedo * grain;
         if (day <= 0.0) {
             return c;
         }
@@ -290,20 +300,10 @@ public enum WorldShaders {
         // its own colour: green stands over red and blue; stone is grey.
         float growth = clamp((albedo.g - max(albedo.r, albedo.b)) * 7.0, 0.0, 1.0);
         float stone = 1.0 - clamp((most - least) * 9.0, 0.0, 1.0);
-        // The country and the glades tell only on growth: worked out only
-        // where there is some.
-        float3 shown = c;
-        if (growth > 0.0) {
-            // The country's reaches and swards, and its glades of paler grass.
-            float3 reach = mix(country.rgb, float3(1.05, 1.03, 0.86), country.a * 0.55);
-            shown = c * mix(float3(1.0), reach, growth);
-        }
-        // The land's colours were chosen to be read by the moon, whose
-        // light is a tenth of the sun's: in full sun they stand at the top
-        // of the picture, every green a pale lime. Under the sun they are
-        // set deeper, the darker the more, so a meadow is a deep green and
-        // snow and salt stay bright.
-        shown = pow(max(shown, float3(0.0)), float3(1.45));
+        // The colour from the corners, deepened, and the grain over it,
+        // its swing deepened as the colour was (near one, a straight line
+        // is the deepening's own to a hundredth).
+        float3 shown = dayGround * (1.0 + 1.45 * (grain - 1.0));
         // Deepening raises the colours' strength with their depth: the
         // plains stood a hard lime under the sun (run 991's pictures: grass
         // at 95, 166, 29). A quarter of the way back toward its own grey,
@@ -869,7 +869,7 @@ public enum WorldShaders {
     // nm_dayCountry gives it. `detail`: the day's relief, the sun finding
     // the grass's tussocks; a constant where it is called, so a function
     // that passes false holds none of it.
-    float4 nm_landShade(float3 world, float3 normal, float3 colour, float2 knows, float4 country, bool detail
+    float4 nm_landShade(float3 world, float3 normal, float3 colour, float2 knows, float3 dayGround, bool detail
                         NM_FRAME_ARGUMENT NM_TEXTURE_ARGUMENT NM_SHADOW_ARGUMENT NM_PALETTE_ARGUMENT NM_HEIGHTS_ARGUMENT) {
         float time = frame.eye.w;
         float radius = frame.world.x;
@@ -909,7 +909,7 @@ public enum WorldShaders {
             // Its pattern is the world's: the same wherever the window lies.
             float day = frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0);
             float3 grounded = world + float3(frame.origin.x, 0.0, frame.origin.y);
-            float3 albedo = nm_ground(grounded, n, colour, pixel, day, country);
+            float3 albedo = nm_ground(grounded, n, colour, pixel, day, dayGround);
             if (detail) {
                 // Tussocks: under the sun a meadow's grass has a small relief
                 // of its own, a third of a hex or so across, that the light
@@ -1316,8 +1316,8 @@ public enum WorldShaders {
         float3 colour;
         float known;
         float watched;
-        // The country it lies in by day (nm_dayCountry).
-        float4 country;
+        // Its colour by day (nm_dayGround).
+        float3 dayGround;
     };
 
     vertex LandOut nm_land_vertex(uint vid [[vertex_id]],
@@ -1340,7 +1340,7 @@ public enum WorldShaders {
         out.colour = nm_linear(float3(packedColour.xyz) / 255.0);
         out.known = knowledge.x;
         out.watched = knowledge.y;
-        out.country = nm_dayCountry(p.xz + frame.origin.xy);
+        out.dayGround = nm_dayGround(p.xz + frame.origin.xy, out.colour);
         return out;
     }
 
@@ -1350,7 +1350,7 @@ public enum WorldShaders {
                                      texture2d<float> heights [[texture(1)]],
                                      depth2d<float> shadows [[texture(2)]],
                                      texture2d<float, access::read> housePalette [[texture(3)]]) {
-        return nm_landShade(in.world, in.normal, in.colour, float2(in.known, in.watched), in.country, false, frame, tiles, shadows, housePalette, heights);
+        return nm_landShade(in.world, in.normal, in.colour, float2(in.known, in.watched), in.dayGround, false, frame, tiles, shadows, housePalette, heights);
     }
 
     fragment float4 nm_land_day_fragment(LandOut in [[stage_in]],
@@ -1359,7 +1359,7 @@ public enum WorldShaders {
                                          texture2d<float> heights [[texture(1)]],
                                          depth2d<float> shadows [[texture(2)]],
                                          texture2d<float, access::read> housePalette [[texture(3)]]) {
-        return nm_landShade(in.world, in.normal, in.colour, float2(in.known, in.watched), in.country, true, frame, tiles, shadows, housePalette, heights);
+        return nm_landShade(in.world, in.normal, in.colour, float2(in.known, in.watched), in.dayGround, true, frame, tiles, shadows, housePalette, heights);
     }
 
     // MARK: The still water

@@ -77,7 +77,7 @@ ${scene}
 const fragmentHeader = header + shading;
 const landVertex = header + `
 in vec3 position; in vec3 normal; in vec3 colour;
-out vec3 vWorld; out vec3 vNormal; out vec3 vColour; out vec2 vKnows; out vec4 vCountry;
+out vec3 vWorld; out vec3 vNormal; out vec3 vColour; out vec2 vKnows; out vec3 vDayGround;
 void main() {
   vec3 p = position;
   vec2 knowledge = nm_knowledgeAround(p.xz, frame.world.x);
@@ -88,13 +88,13 @@ void main() {
   vNormal = normalize(mix(vec3(0.0, 1.0, 0.0), normal, known));
   vColour = nm_linear(colour);
   vKnows = knowledge;
-  vCountry = nm_dayCountry(p.xz + frame.origin.xy);
+  vDayGround = nm_dayGround(p.xz + frame.origin.xy, vColour);
 }`;
 const landFragment = fragmentHeader + `
-in vec3 vWorld; in vec3 vNormal; in vec3 vColour; in vec2 vKnows; in vec4 vCountry;
+in vec3 vWorld; in vec3 vNormal; in vec3 vColour; in vec2 vKnows; in vec3 vDayGround;
 out vec4 outColour;
 void main() {
-  outColour = nm_landShade(vWorld, vNormal, vColour, vKnows, vCountry, true);
+  outColour = nm_landShade(vWorld, vNormal, vColour, vKnows, vDayGround, true);
 }`;
 const waterVertex = header + `
 out vec3 vWorld;
