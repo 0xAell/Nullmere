@@ -329,7 +329,7 @@ final class LiveGameTests: XCTestCase {
         XCTAssertGreaterThan(try drawn(LiveArmies(session: session, seconds: 2_015), width: 400, height: 80), 60)
 
         XCTAssertGreaterThan(try drawn(LiveTaskChip(session: session), width: 420, height: 70), 60)
-        // The whole realm small: its grounds a pixel to a hex, the cities on it, where the view looks.
+        // The whole realm small: its grounds three pixels to a hex, the cities on it, where the view looks.
         let small = try XCTUnwrap(session.minimap)
         let image = try XCTUnwrap(LiveMiniMap.image(of: small))
         XCTAssertEqual([image.width, image.height], [small.width, small.height])
@@ -341,7 +341,11 @@ final class LiveGameTests: XCTestCase {
         toldLine.change { $0["my_reports"] = ($0["my_reports"] ?? []) + [report] }
         toldOf.refresh()
         XCTAssertEqual(toldOf.news.last?.words, "A report: Your army cleared a level 2 barrow.")
-        XCTAssertGreaterThan(try drawn(LiveToasts(session: toldOf, seconds: 2_015), width: 600, height: 120, as: "live-toasts.png"), 100)
+        // And allies' help with her own works, as it comes: two allies have helped raise her building.
+        toldLine.change { $0["my_pleas"] = ($0["my_pleas"] ?? []) + [[n(4), n(5), n(1), .string("[MERE] Ada"), n(LiveJob.raise), n(2), n(5)]] }
+        toldOf.refresh()
+        XCTAssertEqual(toldOf.news.last?.words, "2 allies helped with your building.")
+        XCTAssertGreaterThan(try drawn(LiveToasts(session: toldOf, seconds: 2_015), width: 600, height: 160, as: "live-toasts.png"), 100)
         XCTAssertEqual(try drawn(LiveToasts(session: toldOf, seconds: 2_015 + LiveToasts.shown), width: 600, height: 120), 0, "and then gone")
         // What stands idle is reminded of, each kind by a symbol of its own.
         let kinds: [LiveIdle.Kind] = [.builders, .academy, .training, .chest]
