@@ -61,7 +61,8 @@ struct LiveDayPanel: View {
                     Text(verbatim: "At \(chest.marks) marks")
                         .font(.nm(LiveType.body, weight: .medium))
                         .foregroundStyle(LiveEmphasis.primary)
-                    LiveSmall(words: chest.holds, dim: true)
+                    // A line of its own, so it begins as a line does.
+                    LiveSmall(words: chest.holds.prefix(1).uppercased() + chest.holds.dropFirst(), dim: true)
                 }
                 Spacer(minLength: 0)
                 if chest.opened {

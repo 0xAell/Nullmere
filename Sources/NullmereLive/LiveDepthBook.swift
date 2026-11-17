@@ -88,9 +88,7 @@ extension LiveWorld {
                 let summons = chest.summonses == 1 ? name : "\(name) ×\(chest.summonses)"
                 holds = holds == "nothing" ? summons : "\(holds), \(summons)"
             }
-            // A line of its own, so it begins as a line does.
-            return LiveChestLine(id: chest.id, marks: chest.marks, holds: holds.prefix(1).uppercased() + holds.dropFirst(), opened: opened,
-                                 ready: !opened && marks >= chest.marks)
+            return LiveChestLine(id: chest.id, marks: chest.marks, holds: holds, opened: opened, ready: !opened && marks >= chest.marks)
         }
     }
 

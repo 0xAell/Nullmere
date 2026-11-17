@@ -469,8 +469,8 @@ final class LiveBookTests: XCTestCase {
         ]
         var world = LiveWorld(snapshot: snapshot)
         let chests = world.chestLines(at: 90_000)
-        XCTAssertEqual(chests[0].holds, "An hour's haste ×2, eight hours' haste, eight hours' peace, summons to the Tavern")
-        XCTAssertEqual(chests[1].holds, "Summons to the Tavern ×2", "a summons alone, and two")
+        XCTAssertEqual(chests[0].holds, "an hour's haste ×2, eight hours' haste, eight hours' peace, summons to the Tavern", "as it reads within a sentence")
+        XCTAssertEqual(chests[1].holds, "summons to the Tavern ×2", "a summons alone, and two")
         XCTAssertEqual(world.drawBlock(at: 90_000), "Raise your Tavern to level 1 first.")
         XCTAssertEqual(LiveWorld(snapshot: [:]).drawBlock(at: 90_000), "Join the realm first.")
         snapshot["my_buildings"] = [[n(90), n(9), n(16), n(1)]]
