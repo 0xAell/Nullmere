@@ -156,7 +156,19 @@ struct CompanionHome: View {
                 if !armies.isEmpty {
                     Section("Armies out") {
                         ForEach(armies) { line in
-                            Text(verbatim: "\(line.doing), \(LiveWords.grouped(line.soldiers)) soldiers")
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(verbatim: "\(line.doing), \(LiveWords.grouped(line.soldiers)) soldiers")
+                                    Text(verbatim: LiveWords.clock(line.march.arrives - Int(seconds)))
+                                        .font(.footnote).monospacedDigit().foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if line.canRecall {
+                                    Button("Call home") { Task { await session.recall(march: line.march.id) } }
+                                        .buttonStyle(.borderless)
+                                        .disabled(session.asking > 0)
+                                }
+                            }
                         }
                     }
                 }
