@@ -739,6 +739,55 @@ final class LiveSessionTests: XCTestCase {
                                     "claim boons", "help 0"])
     }
 
+    /// The task set, not yet done, shows the way to where it is done: the
+    /// part of a destination that does it, or the nearest place on the map;
+    /// once done, or with nowhere to go, none.
+    func testATaskNotYetDoneShowsTheWayToIt() async throws {
+        var rows = LiveWindowTests.rows()
+        // A barrow of the first level no one fights at, the nearest she may attack.
+        rows["barrow"]?.append([n(11), n(LiveHex(q: 6, r: 0).packed), n(1), n(0)])
+        rows["place"]?.append([n(LiveHex(q: 6, r: 0).packed), n(3), n(11)])
+        func task(_ step: Int, _ goal: Int, _ amount: Int, _ words: String) -> [JSONValue] {
+            [n(step), n(goal), n(amount), n(0), .string(words), n(1_000), n(1_000), n(0), n(0)]
+        }
+        rows["task"] = [task(1, LiveTask.keep, 2, "Raise your Keep to level 2."), task(2, LiveTask.keep, 4, "Raise your Keep to level 4."),
+                        task(3, LiveTask.soldiers, 5_000, "Have 5,000 soldiers."), task(4, LiveTask.allied, 0, "Join an alliance."),
+                        task(5, LiveTask.cleared, 1, "Clear a barrow."), task(6, LiveTask.found, 1, "Find a cairn."), task(7, LiveTask.power, 9_000, "Reach 9,000 power.")]
+        rows["my_progress"] = [[n(1), n(1)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        var ways: [LiveCommand?] = []
+        for step in 1...7 {
+            line.change { $0["my_progress"] = [[n(1), n(step)]] }
+            session.refresh()
+            XCTAssertEqual(session.world.task?.step, step)
+            ways.append(session.taskWay)
+        }
+        XCTAssertEqual(ways, [nil, // her Keep stands at the third level: done, to be claimed
+                              LiveCommand(title: "Go to your buildings", act: .open("city")),
+                              LiveCommand(title: "Go to your troops", act: .open("troops")),
+                              LiveCommand(title: "Go to the alliances", act: .open("alliance")),
+                              LiveCommand(title: "Go to the nearest barrow you may attack", act: .go(LiveHex(q: 6, r: 0))),
+                              nil, // no cairn known: nowhere to go
+                              LiveCommand(title: "Go to your buildings", act: .open("city"))])
+        XCTAssertEqual(session.nearestBarrowToAttack?.hex, LiveHex(q: 6, r: 0), "the barrow at 8, -2 being of the second level, and fought at")
+        // Gone along: the barrow's hex looked at and chosen, and nothing asked of the realm.
+        line.change { $0["my_progress"] = [[n(1), n(5)]] }
+        session.refresh()
+        line.clear()
+        await session.perform(try XCTUnwrap(session.taskWay))
+        XCTAssertEqual(session.selected, LiveHex(q: 6, r: 0))
+        XCTAssertTrue(line.asked.isEmpty)
+        // With a cairn about, the task to find one goes to it.
+        line.change {
+            $0["cairn"] = [[n(1), n(LiveHex(q: 13, r: -6).packed), n(2)]]
+            $0["my_progress"] = [[n(1), n(6)]]
+        }
+        session.refresh()
+        XCTAssertEqual(session.taskWay, LiveCommand(title: "Go to the nearest cairn your scouts have not found", act: .go(LiveHex(q: 13, r: -6))))
+    }
+
     func testThePaletteOffersWhatAPlaceInAContestGave() async throws {
         // Ada first in the Long Hunt's first round, which runs the realm's
         // first three days (it opened at 1,000, a day to every 86,400).

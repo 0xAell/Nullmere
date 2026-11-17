@@ -174,11 +174,10 @@ extension LiveSession {
             func nearest<T>(_ things: [T], _ hex: (T) -> LiveHex) -> T? {
                 things.min { (hex($0).distance(to: home), hex($0).packed) < (hex($1).distance(to: home), hex($1).packed) }
             }
-            let may = world.hunt?.mayAttack ?? 1
-            if let barrow = nearest(world.barrows.values.filter { $0.level <= may && $0.fighter == 0 }, \.hex) {
+            if let barrow = nearestBarrowToAttack {
                 all.append(LiveCommand(title: "Go to the nearest barrow you may attack, of level \(barrow.level)", act: .go(barrow.hex)))
             }
-            if let cairn = nearest(world.cairns.values.filter { !world.hasFound($0) }, \.hex) {
+            if let cairn = nearestUnfoundCairn {
                 all.append(LiveCommand(title: "Go to the nearest cairn your scouts have not found, of level \(cairn.level)", act: .go(cairn.hex)))
             }
             for (index, good) in LiveSession.goods.enumerated() {
@@ -188,6 +187,46 @@ extension LiveSession {
             }
         }
         return all
+    }
+
+    /// Of things on the map, the nearest to the player's city, the lowest
+    /// hex number first where two lie as near.
+    private func nearestHome<T>(_ things: [T], _ hex: (T) -> LiveHex) -> T? {
+        guard let home = world.city?.hex else { return nil }
+        return things.min { (hex($0).distance(to: home), hex($0).packed) < (hex($1).distance(to: home), hex($1).packed) }
+    }
+
+    /// The barrow nearest the player's city that they may attack and no
+    /// one is fighting.
+    public var nearestBarrowToAttack: LiveBarrow? {
+        let may = world.hunt?.mayAttack ?? 1
+        return nearestHome(world.barrows.values.filter { $0.level <= may && $0.fighter == 0 }, \.hex)
+    }
+
+    /// The cairn nearest the player's city that their scouts have not found.
+    public var nearestUnfoundCairn: LiveCairn? {
+        nearestHome(world.cairns.values.filter { !world.hasFound($0) }, \.hex)
+    }
+
+    /// Where the task set now is done, as a command to go there: the part
+    /// of a destination that does it, or the nearest place on the map it
+    /// is done at. Nil once it is done, or where there is no task.
+    public var taskWay: LiveCommand? {
+        guard let task = world.task, !world.isDone(task) else { return nil }
+        switch task.goal {
+        case LiveTask.keep, LiveTask.raised, LiveTask.power:
+            return LiveCommand(title: "Go to your buildings", act: .open("city"))
+        case LiveTask.soldiers:
+            return LiveCommand(title: "Go to your troops", act: .open("troops"))
+        case LiveTask.allied:
+            return LiveCommand(title: "Go to the alliances", act: .open("alliance"))
+        case LiveTask.cleared:
+            return nearestBarrowToAttack.map { LiveCommand(title: "Go to the nearest barrow you may attack", act: .go($0.hex)) }
+        case LiveTask.found:
+            return nearestUnfoundCairn.map { LiveCommand(title: "Go to the nearest cairn your scouts have not found", act: .go($0.hex)) }
+        default:
+            return nil
+        }
     }
 
     /// The commands whose words hold every word searched for, whatever

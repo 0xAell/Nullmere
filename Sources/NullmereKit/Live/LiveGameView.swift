@@ -337,7 +337,7 @@ struct LiveHUD: View {
                             .chrome("live-minimap")
                     }
                     HStack(alignment: .top, spacing: 12) {
-                        LiveTaskChip(session: session)
+                        LiveTaskChip(session: session, panel: $panel)
                             .chrome("live-task")
                         Spacer(minLength: 0)
                     }
@@ -636,6 +636,8 @@ struct LiveIdleChips: View {
 
 struct LiveTaskChip: View {
     let session: LiveSession
+    /// The part of a destination open, for Go to open where the task is done.
+    var panel: Binding<LiveGameView.Panel?> = .constant(nil)
 
     var body: some View {
         if let task = session.world.task {
@@ -649,15 +651,28 @@ struct LiveTaskChip: View {
                         .font(.nm(LiveType.small))
                         .foregroundStyle(LiveEmphasis.secondary)
                 }
-                QuietButton(title: "Claim", prominent: done, enabled: done && session.asking == 0, name: "Claim what the task gives",
-                            why: "Not done yet: \(task.words)") {
-                    Task { await session.claimTask() }
+                if !done, let way = session.taskWay {
+                    // Not done yet: the way to where it is done.
+                    QuietButton(title: "Go", prominent: true, name: way.title) { go(way) }
+                } else {
+                    QuietButton(title: "Claim", prominent: done, enabled: done && session.asking == 0, name: "Claim what the task gives",
+                                why: "Not done yet: \(task.words)") {
+                        Task { await session.claimTask() }
+                    }
                 }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .panelBackground()
             .accessibilityElement(children: .contain)
+        }
+    }
+
+    /// Goes where the task is done: opens the part of a destination that
+    /// does it, or looks at the place on the map and chooses it.
+    private func go(_ way: LiveCommand) {
+        Task {
+            if let part = await session.perform(way), let opened = LiveGameView.Panel(part: part) { panel.wrappedValue = opened }
         }
     }
 }

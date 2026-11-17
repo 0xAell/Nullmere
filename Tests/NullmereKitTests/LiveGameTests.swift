@@ -521,6 +521,24 @@ final class LiveGameTests: XCTestCase {
         XCTAssertGreaterThan(try drawn(LiveHUD(session: under, panel: binding, palette: .constant(false)), width: 1280, height: 800), three,
                              "the warning over the world with the rest")
         XCTAssertTrue(line.asked.isEmpty, "Drawing asks the realm nothing")
+
+        // A task not yet done offers Go, which opens the House at its buildings.
+        var tasked = LiveSample.rows()
+        tasked["task"] = [[n(1), n(LiveTask.keep), n(5), n(0), .string("Raise your Keep to level 5."), n(1_000), n(1_000), n(0), n(0)]]
+        tasked["my_progress"] = [[n(1), n(1)]]
+        let (going, goingLine) = await playing(tasked)
+        XCTAssertEqual(going.taskWay?.act, .open("city"))
+        var opened: LiveGameView.Panel?
+        let opens = Binding(get: { opened }, set: { opened = $0 })
+        defer { PressableButtons.isListening = false }
+        PressableButtons.isListening = true
+        XCTAssertGreaterThan(try drawn(LiveTaskChip(session: going, panel: opens), width: 420, height: 70, as: "live-task-go.png"), 60)
+        XCTAssertTrue(PressableButtons.press("Go"), "Go drawn, and pressable")
+        XCTAssertFalse(PressableButtons.press("Claim"), "and no Claim beside it")
+        for _ in 0..<20 { await Task.yield() }
+        spin(0.05)
+        XCTAssertEqual(opened, .city)
+        XCTAssertTrue(goingLine.asked.isEmpty, "Going asks the realm nothing")
     }
 
     func testTheRealmsMapLivesInAWindowAndAnswersThePointer() async throws {
