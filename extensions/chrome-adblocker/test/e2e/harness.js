@@ -121,6 +121,17 @@ export async function startServer({ secure = false } = {}) {
 }
 
 /**
+ * Which browser the tests run in: Playwright's Chromium (the default), or
+ * with STILLWATER_CHROME=1 Google Chrome as installed on the machine.
+ * Google Chrome takes no extension named on its command line
+ * (`--load-extension`, which Chromium still takes); it is handed one over
+ * the DevTools protocol, which STILLWATER_INSTALL=devtools also asks of
+ * Chromium, so that way is tested where Google Chrome is not at hand.
+ */
+export const inChrome = process.env.STILLWATER_CHROME === '1';
+const byDevTools = inChrome || process.env.STILLWATER_INSTALL === 'devtools';
+
+/**
  * Starts Chromium with the extension in `directory` loaded unpacked.
  * Returns { context, worker, id, extensionUrl, ask, close }: `worker` is
  * the extension's service worker, `ask` sends it a message as one of the
@@ -134,12 +145,13 @@ export async function launch(directory = join(root, 'build'), { insecure = false
     // The new headless mode is the one that loads extensions; Playwright's
     // own headless shell does not.
     headless: false,
-    executablePath: process.env.CHROMIUM_PATH || undefined,
+    channel: inChrome ? 'chrome' : undefined,
+    executablePath: inChrome ? undefined : process.env.CHROMIUM_PATH || undefined,
     deviceScaleFactor: scale,
+    ignoreDefaultArgs: byDevTools ? ['--disable-extensions'] : undefined,
     args: [
       '--headless=new',
-      `--disable-extensions-except=${directory}`,
-      `--load-extension=${directory}`,
+      ...(byDevTools ? ['--enable-unsafe-extension-debugging'] : [`--disable-extensions-except=${directory}`, `--load-extension=${directory}`]),
       // Every name is the stand-in server, asked directly: nothing here
       // goes out to the network, whatever proxy the machine is set to use.
       '--host-resolver-rules=MAP * 127.0.0.1',
@@ -151,7 +163,12 @@ export async function launch(directory = join(root, 'build'), { insecure = false
       ...(insecure ? [`--ignore-certificate-errors-spki-list=${keyOf(certificate().cert)}`] : []),
     ],
   });
-  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  // Handed over the DevTools protocol, as Google Chrome takes an unpacked
+  // extension from automation; it is not kept across a restart, so it is
+  // handed again on each, under the same id, its storage as it was left.
+  const handed = byDevTools ? (await (await context.browser().newBrowserCDPSession()).send('Extensions.loadUnpacked', { path: directory })).id : null;
+  const ours = (candidate) => !handed || new URL(candidate.url()).host === handed;
+  const worker = context.serviceWorkers().find(ours) ?? (await context.waitForEvent('serviceworker', { predicate: ours }));
   const id = new URL(worker.url()).host;
   const extensionUrl = (path) => `chrome-extension://${id}/${path}`;
 

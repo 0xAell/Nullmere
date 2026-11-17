@@ -1,8 +1,8 @@
 # Nullmere Stillwater, the ad blocker for Chrome in
 # extensions/chrome-adblocker: its unit tests, its build from the pinned
 # filter lists, and the browser tests that load the unpacked extension in
-# Chromium and check that ads are blocked and their slots hidden on
-# fixture pages. The packed extension kept in dist/ is held to a fresh
+# Chromium, and again in Google Chrome, and check that ads are blocked and
+# their slots hidden on fixture pages. The packed extension kept in dist/ is held to a fresh
 # build, and kept from every run.
 name: Ad blocker
 
@@ -68,3 +68,36 @@ jobs:
           name: nullmere-stillwater
           path: extensions/chrome-adblocker/dist/*.zip
           if-no-files-found: error
+
+  # The same browser tests in Google Chrome as GitHub's machines have it
+  # installed, not Playwright's Chromium: Google Chrome takes no extension
+  # named on its command line, so the tests hand it the unpacked extension
+  # over the DevTools protocol, as automation may.
+  chrome:
+    name: Test in Google Chrome
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: extensions/chrome-adblocker
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extensions/chrome-adblocker/package-lock.json
+
+      - name: Install Playwright, and say which Google Chrome this is
+        run: |
+          npm ci
+          google-chrome --version
+
+      - name: Build from the pinned lists
+        run: npm run build
+
+      - name: Browser tests in Google Chrome
+        env:
+          STILLWATER_CHROME: "1"
+        run: npm run test:e2e
