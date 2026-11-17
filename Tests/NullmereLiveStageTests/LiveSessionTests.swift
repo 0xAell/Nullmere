@@ -508,15 +508,15 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(card(500, 0).title, "Unknown land")
     }
 
-    /// The whole realm small, for the map in the corner: its grounds a
-    /// pixel to a hex across, and where any hex falls on it.
+    /// The whole realm small, for the map in the corner: its grounds three
+    /// pixels to a hex across, and where any hex falls on it.
     func testTheWholeRealmIsSmallInTheCorner() async throws {
         let session = session(StandInLine(rows: LiveWindowTests.rows()))
         XCTAssertNil(session.minimap, "none before the land is told")
         await session.open()
         let map = try XCTUnwrap(session.minimap)
-        XCTAssertEqual([map.width, map.height, map.radius], [81, 70, 40], "the realm forty hexes from heart to rim")
-        XCTAssertEqual(map.grounds.count, 81 * 70)
+        XCTAssertEqual([map.width, map.height, map.radius], [243, 210, 40], "the realm forty hexes from heart to rim, three pixels to a hex")
+        XCTAssertEqual(map.grounds.count, 243 * 210)
         func ground(_ at: (u: Double, v: Double)) -> UInt8 { map.grounds[Int(at.v * Double(map.height)) * map.width + Int(at.u * Double(map.width))] }
         let heart = map.place(of: LiveHex(q: 0, r: 0))
         XCTAssertEqual(heart.u, 0.5, accuracy: 0.001)

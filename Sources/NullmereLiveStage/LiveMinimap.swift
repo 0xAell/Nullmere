@@ -2,9 +2,9 @@ import Foundation
 import NullmereLand
 import NullmereLive
 
-/// The whole realm small: its grounds a pixel to each hex across, the lake
-/// at its heart, for a map in the corner to be drawn from; and where any
-/// hex of the realm falls on it, from 0 to 1 either way.
+/// The whole realm small: its grounds three pixels to each hex across, the
+/// lake at its heart, for a map in the corner to be drawn from; and where
+/// any hex of the realm falls on it, from 0 to 1 either way.
 public struct LiveMinimap: Equatable, Sendable {
     /// How many pixels across and down.
     public let width: Int
@@ -16,13 +16,17 @@ public struct LiveMinimap: Equatable, Sendable {
     public let radius: Int
 
     public static let unknown: UInt8 = 255
+    /// Pixels to a hex across. At one, the rim's hexes, each row half a hex
+    /// along from the last, stood out as teeth a pixel deep, as large as a
+    /// city's mark once the map was drawn to fill a phone's width.
+    public static let fineness = 3
 
-    /// The realm's grounds sampled a pixel to each hex across: the map is
-    /// as wide as the realm's diameter in hexes, and as tall as its rows'
-    /// spacing makes it.
+    /// The realm's grounds sampled three pixels to each hex across: the map
+    /// is three times as wide as the realm's diameter in hexes, and as tall
+    /// as its rows' spacing makes it.
     public init(world: LiveWorld) {
         let radius = max(world.realm?.radius ?? 0, 1)
-        let width = 2 * radius + 1
+        let width = LiveMinimap.fineness * (2 * radius + 1)
         let height = Int((Double(width) * 1.5 / 3.0.squareRoot()).rounded())
         let layout = HexLayout(size: 1)
         var grounds = [UInt8](repeating: LiveMinimap.unknown, count: width * height)
