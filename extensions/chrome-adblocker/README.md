@@ -146,14 +146,17 @@ too, as it is by other blockers using these lists. An ad that takes over the tab
 you were in, having moved the page you wanted into a new one, is not
 caught.
 
-**YouTube is the hardest, and this part is not verified against YouTube.**
+**YouTube is the hardest, and only part of it is verified against YouTube.**
 Its ads come from the same hosts as its videos, so no rule can block
 them. What Stillwater does there is tested against a stand-in page shaped
 like YouTube's where it matters (see `test/e2e/youtube.test.js`). Run on
-the live web, YouTube answered GitHub's machines with a refusal (429) or
-an empty player, with the extension or without, so even that check never
-saw a real watch page. Whether YouTube still has the stand-in's shape
-today is unverified. YouTube changes its player often and works against ad
+the live web, YouTube at first answered GitHub's machines with a refusal
+(429) or an empty player. On 17 November 2026 it served a real watch
+page: without the extension the player's response in the page carried
+two ad lists (`adPlacements`, `adBreakHeartbeatParams`), and with it the
+page read none, the video playable either way and no error thrown. No
+ad showed in either run, and the video was not started, so that an ad
+YouTube means to play does not is still unverified. YouTube changes its player often and works against ad
 blockers; expect this part to break first, and to need the *YouTube*
 switch turned off, or `youtube.com` let through, if YouTube objects. It
 does not hide what it does: a page that looks can tell that the functions

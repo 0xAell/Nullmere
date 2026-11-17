@@ -70,7 +70,8 @@ function under(hosts, host) {
 /** Chromium with the extension in `directory` loaded, or with none. */
 async function start(directory) {
   const profile = mkdtempSync(join(tmpdir(), 'stillwater-live-'));
-  const args = ['--headless=new', '--lang=en-GB'];
+  // Videos may start without a click, as on a page a person has pressed play on: the same with the extension and without.
+  const args = ['--headless=new', '--lang=en-GB', '--autoplay-policy=no-user-gesture-required'];
   if (directory) args.push(`--disable-extensions-except=${directory}`, `--load-extension=${directory}`);
   const context = await chromium.launchPersistentContext(profile, {
     headless: false,
@@ -185,7 +186,7 @@ async function visit(browser, page, hosts) {
 }
 
 /** On a YouTube watch page: what the player was told, and whether an ad showed. */
-async function youtube(tab) {
+export async function youtube(tab) {
   await tab.waitForFunction(() => window.ytInitialPlayerResponse || document.querySelector('#movie_player'), null, { timeout: 15_000 }).catch(() => {});
   const told = await tab.evaluate((keys) => {
     const response = window.ytInitialPlayerResponse;
@@ -201,15 +202,33 @@ async function youtube(tab) {
       written,
     };
   }, AD_KEYS);
-  // Ten seconds of the player, looking for an ad showing in it.
+  // Press play, muted, as a person would; then fifteen seconds of the
+  // player, looking for an ad showing in it and for the video going on.
+  await tab
+    .evaluate(() => {
+      const player = document.getElementById('movie_player');
+      player?.mute?.();
+      const video = document.querySelector('#movie_player video');
+      if (video) video.muted = true;
+      player?.playVideo?.();
+    })
+    .catch(() => {});
   let adShowing = false;
-  for (let i = 0; i < 20 && !adShowing; i++) {
-    adShowing = await tab.evaluate(() => Boolean(document.querySelector('#movie_player.ad-showing, #movie_player.ad-interrupting')));
-    if (!adShowing) await tab.waitForTimeout(500);
+  for (let i = 0; i < 30; i++) {
+    adShowing ||= await tab.evaluate(() => Boolean(document.querySelector('#movie_player.ad-showing, #movie_player.ad-interrupting'))).catch(() => false);
+    await tab.waitForTimeout(500);
   }
   const player = await tab.evaluate(() => {
+    const element = document.getElementById('movie_player');
     const video = document.querySelector('#movie_player video');
-    return { player: Boolean(document.querySelector('#movie_player')), video: Boolean(video), playing: video ? video.currentTime > 0 || !video.paused : false };
+    const own = element?.getCurrentTime?.();
+    return {
+      player: Boolean(element),
+      video: Boolean(video),
+      playing: video ? !video.paused && !element.classList.contains('ad-showing') : false,
+      // How far into the video itself the player says it is: an ad's time is not counted.
+      seconds: typeof own === 'number' ? Math.round(own * 10) / 10 : null,
+    };
   });
   return { ...told, adShowing, ...player };
 }
@@ -254,14 +273,17 @@ function errorWords(withExtension, without) {
   return lines.length ? `Pages that threw more errors with the extension than without:\n\n${lines.join('\n')}` : 'No page threw more errors with the extension than without it.';
 }
 
-function youtubeWords(one, other) {
-  if (!one.youtube || !other.youtube) return `${one.name ?? 'YouTube'}: the page did not load in one of the two runs.`;
+/** What the YouTube page was told and did, without the extension and with it, in words. */
+export function youtubeWords(one, other) {
+  if (!one?.youtube || !other?.youtube) return `${one?.name ?? 'YouTube'}: the page did not load in one of the two runs.`;
+  const video = (run) => (run.video ? (run.playing ? `playing${run.seconds !== null && run.seconds !== undefined ? `, ${run.seconds} seconds in` : ''}` : 'present, not playing') : 'absent');
   const say = (run) =>
     run.response
-      ? `the player's response came through (${run.playable ?? 'no status'}), with ${run.adKeys.length ? `its ad lists: ${run.adKeys.join(', ')}` : 'no ad lists in it'}; an ad ${run.adShowing ? 'showed' : 'did not show'} in ten seconds; video ${run.video ? (run.playing ? 'playing' : 'present, not playing') : 'absent'}`
-      : `no player response was found on the page (${run.written ? 'though the page as sent had one' : 'nor in the page as sent'}; player ${run.player ? 'present' : 'absent'})`;
+      ? `the player's response came through (${run.playable ?? 'no status'}), with ${run.adKeys.length ? `its ad lists: ${run.adKeys.join(', ')}` : 'no ad lists in it'}; an ad ${run.adShowing ? 'showed' : 'did not show'} in fifteen seconds; video ${video(run)}`
+      : `no player response was found on the page (${run.written ? 'though the page as sent had one' : 'nor in the page as sent'}; player ${run.player ? 'present' : 'absent'}); an ad ${run.adShowing ? 'showed' : 'did not show'} in fifteen seconds; video ${video(run)}`;
   const wire = (run) => (run.fetched ? `the player fetched its data, which came ${run.fetchedAdKeys.length ? `with ad lists (${run.fetchedAdKeys.join(', ')})` : 'with no ad lists'}` : 'the player fetched no data');
-  return `${one.name}, without the extension: ${say(other)}; ${wire(other)}; titled "${other.title ?? ''}".\n\n${one.name}, with it: ${say(one)}; ${wire(one)}; titled "${one.title ?? ''}".`;
+  // What was found is in each run's `youtube`; the page's own title beside it.
+  return `${one.name}, without the extension: ${say(other.youtube)}; ${wire(other.youtube)}; titled "${other.title ?? ''}".\n\n${one.name}, with it: ${say(one.youtube)}; ${wire(one.youtube)}; titled "${one.title ?? ''}".`;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
