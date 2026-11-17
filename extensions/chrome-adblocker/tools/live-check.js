@@ -267,19 +267,19 @@ function table(withExtension, without) {
 
 /** Where a page threw more errors with the extension than without: what they said, and its title both ways. */
 /**
- * For each page with a tenth less text with the extension than without,
+ * For each page with a twentieth less text with the extension than without,
  * the lines it had without and not with: an ad's words, or the page's own.
  */
 export function lostWords(withExtension, without) {
   const lines = [];
   for (const one of withExtension) {
     const other = without.find((page) => page.name === one.name);
-    if (!other?.lines || !one.lines || !(one.words < other.words * 0.9)) continue;
+    if (!other?.lines || !one.lines || !(one.words < other.words * 0.95)) continue;
     const kept = new Set(one.lines);
     const lost = other.lines.filter((line) => !kept.has(line));
     lines.push(`- ${one.name}, ${other.words - one.words} fewer letters; ${lost.length} lines not seen with it${lost.length ? `: ${lost.slice(0, 15).map((line) => `"${line.replaceAll('"', "'")}"`).join(', ')}${lost.length > 15 ? ', ...' : ''}` : ''}`);
   }
-  return lines.length ? `Pages with a tenth less text with the extension, and the lines they had without it:\n\n${lines.join('\n')}` : 'No page had a tenth less text with the extension.';
+  return lines.length ? `Pages with a twentieth less text with the extension, and the lines they had without it:\n\n${lines.join('\n')}` : 'No page had a twentieth less text with the extension.';
 }
 
 function errorWords(withExtension, without) {

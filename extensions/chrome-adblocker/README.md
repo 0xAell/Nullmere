@@ -83,32 +83,54 @@ The tests above meet stand-ins: the machines Stillwater was written on
 cannot reach the web. So the *Ad blocker, on the live web* workflow
 loads it on real pages from one of GitHub's machines, each page once
 without the extension and once with it (Chromium 153, headless, six
-seconds after each page loaded). Its third run, on 16 November 2026:
+seconds after each page loaded). Its fifth run, on 17 November 2026:
 
 | Page | Requests | Kept back | Ad-sized frames showing | Letters of text | Page errors |
 |---|---|---|---|---|---|
-| The Guardian | 584 → 137 | 28 | 0 → 0 | 17,731 → 17,489 | 0 → 19 |
-| Speedtest | 3,402 → 36 | 8 | 5 → 0 | 909 → 909 | 0 → 0 |
-| BBC News | 102 → 103 | 10 | 1 → 1 | 7,996 → 7,989 | 0 → 0 |
-| The Independent | 245 → 80 | 26 | 1 → 0 | 9,730 → 8,774 | 0 → 0 |
-| IGN | 570 → 158 | 18 | 2 → 0 | 6,422 → 6,465 | 0 → 0 |
-| Wikipedia (no ads) | 45 → 45 | 2 | 0 → 0 | 67,856 → 67,856 | 0 → 0 |
-| GitHub (no ads) | 118 → 119 | 5 | 0 → 0 | 3,449 → 3,523 | 0 → 0 |
+| The Guardian | 183 → 136 | 21 | 0 → 0 | 20,609 → 20,617 | 0 → 19 |
+| Speedtest | 3,153 → 40 | 8 | 5 → 0 | 905 → 904 | 0 → 0 |
+| BBC News | 264 → 162 | 41 | 2 → 1 | 8,268 → 8,058 | 1 → 0 |
+| The Independent | 416 → 82 | 25 | 1 → 0 | 9,413 → 8,528 | 0 → 0 |
+| IGN | 459 → 152 | 17 | 2 → 0 | 5,177 → 5,211 | 0 → 0 |
+| USA Today | 473 → 62 | 28 | 3 → 0 | 4,120 → 2,499 | 0 → 4 |
+| TechCrunch | 501 → 91 | 6 | 3 → 0 | 11,158 → 11,158 | 0 → 0 |
+| YouTube | 194 → 195 | 10 | 0 → 0 | 3,076 → 3,106 | 0 → 0 |
+| Wikipedia (no ads) | 43 → 43 | 1 | 0 → 0 | 66,038 → 66,038 | 0 → 0 |
+| GitHub (no ads) | 118 → 119 | 6 | 0 → 0 | 3,488 → 3,510 | 0 → 0 |
 
 *Without → with.* What a page asks for falls by as much as the ads it no
-longer loads would have asked; what Chrome kept back is the number on
-the icon, which matched on every page. The frame left on the BBC is its
-consent dialog, there either way. Everything kept back from a site's own
-hosts was a filter of EasyPrivacy's written for that address: analytics
-beacons, telemetry and cookie syncing. The Guardian's nineteen errors
-are all *Failed to fetch*, its own code finding its analytics refused,
-and its text reads the same; the Independent's thousand fewer letters
-are its ad and recommendation slots, hidden. Chromium held nothing
-against the extension.
+longer loads would have asked. The count on the icon matched what the
+check saw kept back, or was one more (the BBC, the Independent, IGN).
+Everything kept back from a site's own hosts was named by a filter
+written for that address: analytics beacons, telemetry and cookie
+syncing (EasyPrivacy's), and on USA Today its own copy of an ad
+auction's script (EasyList's `/pbjsandwichdirecta9-`). The Guardian's
+nineteen errors and USA Today's four are all *Failed to fetch*: a
+request the page's own code made, refused, and not caught by it. The
+Guardian's text reads the same. The Independent's 885 fewer letters and USA Today's
+1,621 are not yet accounted for: the check now lists the lines a page
+loses with the extension, and in the sixth run USA Today turned the
+machine away (402) with the extension and without. The frame left on the
+BBC is from `buy-eu.piano.io`, which no filter names. Chromium held
+nothing against the extension.
+
+The scriptlets were seen at work on the sites they are for. On
+TechCrunch the page has Admiral's `admiral` function without the
+extension and none with it, its loader stopped by the scriptlets
+EasyPrivacy writes against it. On USA Today, `admiral` is the harmless
+function the scriptlet gives it.
+
+YouTube served a real watch page, and the check pressed play (muted).
+Without the extension the player's response in the page carried two ad
+lists (`adPlacements`, `adBreakHeartbeatParams`); with it, none. The
+video played either way, 22 and 21.1 seconds in after fifteen seconds,
+the same in the sixth run. No ad showed in either run, with the
+extension or without.
 
 Some sites turn a headless browser away whatever it carries (Stack
-Overflow, AccuWeather, the Daily Mail and Fandom answered 403, CNN an
-empty page), and could not be judged. YouTube is one of them: see below.
+Overflow and AccuWeather answered 403, USA Today sometimes 402, the
+Daily Mail and Fandom 403 in earlier runs, CNN an empty page), and could
+not be judged.
 
 ## What it cannot do
 
@@ -151,12 +173,12 @@ Its ads come from the same hosts as its videos, so no rule can block
 them. What Stillwater does there is tested against a stand-in page shaped
 like YouTube's where it matters (see `test/e2e/youtube.test.js`). Run on
 the live web, YouTube at first answered GitHub's machines with a refusal
-(429) or an empty player. On 17 November 2026 it served a real watch
-page: without the extension the player's response in the page carried
-two ad lists (`adPlacements`, `adBreakHeartbeatParams`), and with it the
-page read none, the video playable either way and no error thrown. No
-ad showed in either run, and the video was not started, so that an ad
-YouTube means to play does not is still unverified. YouTube changes its player often and works against ad
+(429) or an empty player. Since 17 November 2026 it has served a real
+watch page: the ad lists the page carried without the extension were
+gone with it, and the video played (see *On the live web*). No ad showed
+without the extension either, so that an ad YouTube means to play is
+kept from playing is still unverified; so is a page the player has to
+fetch its data for, which none of these runs did. YouTube changes its player often and works against ad
 blockers; expect this part to break first, and to need the *YouTube*
 switch turned off, or `youtube.com` let through, if YouTube objects. It
 does not hide what it does: a page that looks can tell that the functions

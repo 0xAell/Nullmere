@@ -23,17 +23,17 @@ test('a page with no player response is said to have none, and one not reached i
   assert.equal(youtubeWords({ name: 'YouTube' }, without), 'YouTube: the page did not load in one of the two runs.');
 });
 
-test('a page with a tenth less text is named, with the lines it had only without the extension', () => {
+test('a page with a twentieth less text is named, with the lines it had only without the extension', () => {
   const without = [
     { name: 'News', words: 4000, lines: ['Top stories', 'Sponsored: Buy a boat', 'Recommended for you', 'Weather'] },
     { name: 'Wiki', words: 1000, lines: ['Lake'] },
   ];
   const withIt = [
     { name: 'News', words: 2500, lines: ['Top stories', 'Weather'] },
-    { name: 'Wiki', words: 950, lines: [] },
+    { name: 'Wiki', words: 960, lines: [] },
   ];
   const words = lostWords(withIt, without);
   assert.match(words, /- News, 1500 fewer letters; 2 lines not seen with it: "Sponsored: Buy a boat", "Recommended for you"/);
-  assert.doesNotMatch(words, /Wiki/, 'five in a hundred fewer is not a tenth');
-  assert.equal(lostWords([{ name: 'Wiki', words: 1000, lines: [] }], [{ name: 'Wiki', words: 1000, lines: [] }]), 'No page had a tenth less text with the extension.');
+  assert.doesNotMatch(words, /Wiki/, 'four in a hundred fewer is not a twentieth');
+  assert.equal(lostWords([{ name: 'Wiki', words: 1000, lines: [] }], [{ name: 'Wiki', words: 1000, lines: [] }]), 'No page had a twentieth less text with the extension.');
 });
