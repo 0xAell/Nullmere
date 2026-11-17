@@ -66,6 +66,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func claimPrize(contest: Int, place: Int) async throws
     func claimPlace(contest: Int) async throws
     func offerLink() async throws
+    func takeLink(_ code: String) async throws
     func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async throws
     func answerEnvoy(_ envoy: UInt64, accept: Bool) async throws
     func breakPact(_ pact: UInt64) async throws
@@ -536,6 +537,9 @@ public final class LiveSession {
     public func claimPlace(contest: Int) async { await ask { try await $0.claimPlace(contest: contest) } }
     /// Asks the realm for a code to bring another device of the player's in.
     public func offerLink() async { await ask { try await $0.offerLink() } }
+    /// Takes a code another device of a player's shows, as typed: this
+    /// device, playing as no one yet, plays as them from now on.
+    public func takeLink(_ code: String) async { await ask { try await $0.takeLink(code) } }
     public func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async { await ask { try await $0.sendEnvoy(to: alliance, terms: terms, days: days) } }
     public func answerEnvoy(_ envoy: UInt64, accept: Bool) async { await ask { try await $0.answerEnvoy(envoy, accept: accept) } }
     public func breakPact(_ pact: UInt64) async { await ask { try await $0.breakPact(pact) } }

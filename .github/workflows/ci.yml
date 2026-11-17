@@ -392,6 +392,23 @@ jobs:
       - name: Audit every screen
         run: scripts/ui-test.sh
 
+      # Nullmere Companion, a player's iPhone app on the realm's client (plan
+      # 3.5), built for the iOS Simulator from the same package and bundled:
+      # in this job, which ends well before the Mac's long one. Its errors
+      # are raised as annotations too, readable however long the log.
+      - name: Build the companion for the iOS Simulator
+        if: ${{ !cancelled() }}
+        timeout-minutes: 20
+        run: |
+          mkdir -p build
+          if ! scripts/build-companion.sh 2>&1 | tee build/companion-build.log; then
+            grep -E "error:|fatal error|ld: " build/companion-build.log | awk '!seen[$0]++' | head -20 | while IFS= read -r line; do
+              echo "::error title=Companion for iOS::${line}"
+            done
+            exit 1
+          fi
+          tail -n 3 build/companion-build.log
+
       # Last, so a short read of the log holds it: what the audit and the
       # walk found, and how the tests ended.
       - name: Summary

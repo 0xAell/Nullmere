@@ -44,9 +44,19 @@ secure timestamp, ready to notarize. `VERSION` sets the marketing version
 
 ### The phone
 
-Nullmere Companion, the keeper's iPhone app, paired only with the
-turn-based game; it was deleted with that game on 16 November, and is to
-be rebuilt on the rebuilt realm's client (docs/rework-plan.md, 3.5).
+Nullmere Companion, a player's iPhone app, is being rebuilt on the
+realm's client (docs/rework-plan.md, 3.5); the turn-based game's went
+with that game on 16 November. It comes into the realm as the player by
+the ten-letter code their Mac asks for (`offer_link`), keeping a key of
+its own in the phone's keychain, and shows their city, the task in hand,
+threats, what stands idle, armies out and the day's chests.
+
+    scripts/build-companion.sh            # for the iOS Simulator: build/companion/Nullmere Companion.app
+    scripts/build-companion.sh --device   # for an iPhone, unsigned: a developer team signs it in Xcode
+
+A debug build goes to the realm `NULLMERE_REALM` names, as the Mac's
+does; in the Simulator, launch it with `SIMCTL_CHILD_NULLMERE_REALM` set.
+CI builds it for the Simulator in the accessibility job.
 
 ## Releasing
 

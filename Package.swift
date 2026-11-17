@@ -74,6 +74,11 @@ targets += [
                                                 "NullmereLive", "NullmereLiveStage", "LauncherCore", "LauncherKit"]),
     // The "Nullmere Online" app: the launcher, and through Play, the realm.
     .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherCore", "LauncherKit", "NullmereKit"]),
+    // Nullmere Companion, a player's iPhone app on the realm's client,
+    // brought in as them by the code their Mac shows. Built for iOS by
+    // scripts/build-companion.sh, which bundles it; on the Mac it builds
+    // too, to be checked as the rest is.
+    .executableTarget(name: "NullmereCompanion", dependencies: ["NullmereLive", "NullmereLiveStage", "NullmereRealm"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
     .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereLive", "NullmereLiveStage", "NullmereLand", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
@@ -97,6 +102,8 @@ let package = Package(
     // built for Apple silicon only.
     platforms: [
         .macOS("26.0"),
+        // The companion on a player's iPhone.
+        .iOS("26.0"),
     ],
     products: products,
     targets: targets
