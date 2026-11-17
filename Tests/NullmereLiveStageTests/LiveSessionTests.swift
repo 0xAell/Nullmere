@@ -623,6 +623,19 @@ final class LiveSessionTests: XCTestCase {
         await session.perform(claim)
         XCTAssertEqual(line.asked, ["claim place in 1"])
 
+        // A phone linked from the palette: a code asked for while none is good.
+        let link = LiveCommand(title: "Link a phone: ask for a code", act: .offerLink)
+        XCTAssertTrue(session.commands(at: 2_015).contains(link))
+        line.clear()
+        await session.perform(link)
+        XCTAssertEqual(line.asked, ["offer a link"])
+        var linked = rows
+        linked["my_link"] = [[n(77), n(1), .string("ABCDE23456"), n(2_600)]]
+        let holding = self.session(StandInLine(rows: linked))
+        await holding.open()
+        XCTAssertFalse(holding.commands(at: 2_015).contains(link), "not while a code is good")
+        XCTAssertTrue(holding.commands(at: 2_601).contains(link), "and again once it is not")
+
         // A commander's counsel knows it: where she stands while the round
         // runs, and what she may claim once it is over.
         rows["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(3), n(4), n(200), n(0)]]

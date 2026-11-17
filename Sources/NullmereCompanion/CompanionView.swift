@@ -38,7 +38,7 @@ struct CompanionLink: View {
     var body: some View {
         Form {
             Section {
-                Text("On your Mac, open House and choose Link a phone. Type the ten letters it shows.")
+                Text("On your Mac, open House, then Today, and choose Link a phone. Type the ten letters it shows.")
                 TextField("Code", text: $code)
                     .font(.system(.title2, design: .monospaced))
                     #if os(iOS)

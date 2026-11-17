@@ -47,7 +47,7 @@ secure timestamp, ready to notarize. `VERSION` sets the marketing version
 Nullmere Companion, a player's iPhone app, is being rebuilt on the
 realm's client (docs/rework-plan.md, 3.5); the turn-based game's went
 with that game on 16 November. It comes into the realm as the player by
-the ten-letter code their Mac asks for (`offer_link`), keeping a key of
+the ten-letter code their Mac asks for (House, Today, Link a phone), keeping a key of
 its own in the phone's keychain, and shows their city, the task in hand,
 threats, what stands idle, armies out and the day's chests.
 

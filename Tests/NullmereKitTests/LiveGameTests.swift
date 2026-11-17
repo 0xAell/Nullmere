@@ -101,6 +101,8 @@ final class LiveGameTests: XCTestCase {
                             [n(2 << 24 | 1), n(1), n(2), n(1), n(0), n(90), n(1_800), .bool(false)]]
         rows["laurel"] = [[n(257), n(1), n(1), n(60_000), n(60_000), n(30_000), n(900), n(0), n(0), n(3), n(0)],
                           [n(258), n(1), n(2), n(40_000), n(40_000), n(20_000), n(600), n(0), n(0), n(2), n(0)]]
+        // A code asked for to link her phone, good until 2,600.
+        rows["my_link"] = [[n(77), n(1), .string("ABCDE23456"), n(2_600)]]
         rows["my_skills"] = [[n(12 << 8 | 6), n(12), n(1), n(6), n(2)]]
         rows["my_bonds"] = [[n(12), n(1), n(11)]]
         rows["my_keeper"] = [[n(1), n(11)]]

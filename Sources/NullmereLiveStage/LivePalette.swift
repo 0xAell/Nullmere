@@ -19,6 +19,7 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case hire
         case claimPrize(contest: Int, place: Int)
         case claimPlace(contest: Int)
+        case offerLink
         case promote(building: UInt64, from: Int, to: Int, count: UInt64)
         case claimBoons
         case helpAll
@@ -134,6 +135,9 @@ extension LiveSession {
             let name = world.trials[prize.trial]?.name ?? "the contest"
             all.append(LiveCommand(title: "Claim the prize of \(name) at \(prize.points) points", act: .claimPrize(contest: prize.trial, place: prize.place)))
         }
+        if world.me != nil, !(world.link?.isGood(at: seconds) ?? false) {
+            all.append(LiveCommand(title: "Link a phone: ask for a code", act: .offerLink))
+        }
         let day = world.today(at: seconds)
         for trial in world.trials.values.sorted(by: { $0.id < $1.id }) {
             guard let laurel = world.laurelToClaim(of: trial, day: day) else { continue }
@@ -188,6 +192,7 @@ extension LiveSession {
         case .hire: await hire()
         case .claimPrize(let contest, let place): await claimPrize(contest: contest, place: place)
         case .claimPlace(let contest): await claimPlace(contest: contest)
+        case .offerLink: await offerLink()
         case .promote(let building, let from, let to, let count): await promote(building: building, from: from, to: to, count: count)
         case .claimBoons: await claimBoons()
         case .helpAll: await helpAll()

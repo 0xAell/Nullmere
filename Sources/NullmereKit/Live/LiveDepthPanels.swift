@@ -102,6 +102,36 @@ struct LiveDayPanel: View {
         if let favour = world.favour {
             LiveSmall(words: "Favour: level \(favour.level), \(LiveWords.grouped(favour.points)) points.")
         }
+        LiveLinkPhone(session: session, seconds: seconds)
+    }
+}
+
+/// The player's phone, brought into the realm as them by a code asked for
+/// here and typed in Nullmere Companion there: the ten letters while they
+/// are good, and the way to ask for them.
+struct LiveLinkPhone: View {
+    let session: LiveSession
+    let seconds: Double
+
+    var body: some View {
+        let world = session.world
+        Caps("Your phone", size: LiveType.small)
+            .foregroundStyle(LiveEmphasis.secondary)
+        if let link = world.link, link.isGood(at: seconds) {
+            Text(verbatim: link.shown)
+                .font(.system(size: 22, weight: .semibold, design: .monospaced))
+                .foregroundStyle(LiveEmphasis.primary)
+                .textSelection(.enabled)
+            LiveSmall(words: "Type these letters in Nullmere Companion on your phone within \(LiveWords.clock(max(link.expires - Int(seconds), 0))). They bring it in as you, once.")
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                LiveSmall(words: "Bring your phone into the realm as you: ask for a code here, and type it there.")
+                Spacer(minLength: 0)
+                QuietButton(title: "Link a phone", prominent: true, enabled: session.asking == 0, name: "Ask for a code to link a phone") {
+                    Task { await session.offerLink() }
+                }
+            }
+        }
     }
 }
 
