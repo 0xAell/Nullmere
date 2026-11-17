@@ -40,6 +40,8 @@ async function keptFrom(browser, site) {
 /** What Chrome holds for the extension, asked of whichever worker is running now. */
 async function held(worker) {
   return worker.evaluate(async () => ({
+    // The worker's own mark that it has put everything into effect.
+    awake: (await chrome.storage.session.get('awake')).awake === true,
     background: await chrome.action.getBadgeBackgroundColor({}),
     dynamic: (await chrome.declarativeNetRequest.getDynamicRules()).map((rule) => rule.id).sort(),
     lists: (await chrome.declarativeNetRequest.getEnabledRulesets()).sort(),
@@ -105,11 +107,14 @@ test('switched off and on again in chrome://extensions, the extension is as it w
     const worker = await started;
 
     // Chrome told the worker of nothing (no install, no browser start):
-    // it has to see for itself that it was started anew.
+    // it has to see for itself that it was started anew. The badge has its
+    // colours before the scripts are registered, so what is asked after is
+    // asked once the worker says it is done.
     const now = await until(async () => {
       const state = await held(worker).catch(() => null);
-      return state && state.background.join() === BADGE.shown.join() ? state : null;
-    }, 'the badge to have its colours again');
+      return state?.awake ? state : null;
+    }, 'the worker to put the settings into effect again');
+    assert.deepEqual(now.background, BADGE.shown, 'the badge has its colours again');
     assert.deepEqual(now.dynamic, [1, 3]);
     assert.deepEqual(now.scripts.filter((id) => id.startsWith('youtube')).sort(), ['youtube', 'youtube-main']);
     // And every scriptlet of the lists, registered again.
