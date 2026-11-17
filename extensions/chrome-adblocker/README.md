@@ -249,11 +249,12 @@ tools/        refresh-lists.js, build.js, validate.js, package.js, make-icons.js
               live-check.js (real pages, from a machine that can reach the web)
   lib/        filters.js (reads the lists)   dnr.js (makes Chrome's rules)
               redirects.js (the stand-ins, by every name the lists give them)
+              scriptlets.js (the eleven scriptlets, by the lists' names for them)
               cosmetic.js, procedural.js, selectors.js (what to hide)
               popups.js (which pop-ups to close)   zip.js, png.js
 src/          the extension as written: manifest, service worker, content scripts, pages, icons,
               and redirects/, the stand-ins a request may be given instead
-build/        the extension as Chrome loads it: src/ plus rules/, cosmetic/ and popups/ (not kept in git)
+build/        the extension as Chrome loads it: src/ plus rules/, cosmetic/, popups/ and scriptlets/ (not kept in git)
 dist/         the packed build
 test/unit/    the converter, the cosmetic and pop-up data, sites, wording, the zip
 test/e2e/     the unpacked extension in Chromium against a stand-in for every host
@@ -269,11 +270,18 @@ test/e2e/     the unpacked extension in Chromium against a stand-in for every ho
   blocks and below the exceptions. The files are open to the pages they
   are given to only at an address Chrome makes afresh each session, so a
   page can't look for them to tell that Stillwater is there.
+- A scriptlet filter (`site##+js(name, arguments)`) becomes a file of
+  its own in `build/scriptlets/`: its scriptlet from
+  `tools/lib/scriptlets.js`, called with its arguments inside a function
+  of its own. The service worker registers each with Chrome for the hosts
+  its filter names, in the page's own world before its first script, and
+  takes them away for a site let through, a list switched off, or a pause.
 - `tools/lib/popups.js` turns pop-up filters into a set of hosts and a few
   hundred expressions; `src/shared/popups.js` judges an address by them.
 - `src/background/service-worker.js` keeps three dynamic rules (the sites
-  let through, and the pause), chooses what each frame hides, closes the
-  pop-ups, and answers the pages. Chrome stops it when idle, so it holds
+  let through, and the pause), chooses what each frame hides (by its host
+  and its address), registers the scriptlets, closes the pop-ups, and
+  answers the pages. Chrome stops it when idle, so it holds
   nothing it can't make again, but for which tabs pages have opened in
   the last ten seconds.
 - The icons are drawn by `tools/make-icons.js` from a few shapes: nothing
