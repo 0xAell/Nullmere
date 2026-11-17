@@ -1304,6 +1304,24 @@ pub struct Link {
 }
 row!(Link in link, by code, player);
 
+/// One of the realm's commanders, for clients to show: their name, way
+/// of war, renown (`catalog::Renown`) and gift (`catalog::Gift`), its
+/// name, and what it does at each of its levels, a line for each. Keyed
+/// by their number, from 1.
+#[spacetimedb::table(accessor = person, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Person {
+    #[primary_key]
+    pub number: u64,
+    pub name: String,
+    pub way: u8,
+    pub renown: u8,
+    pub gift: u8,
+    pub gift_name: String,
+    pub gift_words: String,
+}
+row!(Person in person, by number);
+
 /// An item, for clients to show: its name, what it does, the time it
 /// takes off a work or the peace it keeps as written (in a realm that
 /// runs faster, as much less as everything there takes less), and which
@@ -1618,6 +1636,7 @@ pub trait Db:
     + Table<Honour>
     + Table<Price>
     + Table<Ware>
+    + Table<Person>
     + Table<Satchel>
     + Table<Trial>
     + Table<Prize>
@@ -1694,6 +1713,7 @@ impl<
             + Table<Honour>
             + Table<Price>
             + Table<Ware>
+            + Table<Person>
             + Table<Satchel>
             + Table<Trial>
             + Table<Prize>

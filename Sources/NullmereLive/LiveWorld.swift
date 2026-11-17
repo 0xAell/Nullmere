@@ -32,6 +32,8 @@ public struct LiveWorld: Equatable, Sendable {
     public var chests: [LiveChest] = []
     public var graces: [LiveGrace] = []
     public var wares: [Int: LiveWare] = [:]
+    /// The realm's commanders, by number: who each is, their renown and gift.
+    public var people: [Int: LivePerson] = [:]
     public var trials: [Int: LiveTrial] = [:]
     public var prizes: [LivePrize] = []
     /// Where every player stands in the contests' rounds, and what the
@@ -172,6 +174,7 @@ public struct LiveWorld: Equatable, Sendable {
         chests = rows("chest", LiveChest.init).sorted { $0.id < $1.id }
         graces = rows("grace", LiveGrace.init).sorted { $0.level < $1.level }
         wares = Dictionary(rows("ware", LiveWare.init).map { ($0.item, $0) }, uniquingKeysWith: { _, new in new })
+        people = Dictionary(rows("person", LivePerson.init).map { ($0.number, $0) }, uniquingKeysWith: { _, new in new })
         trials = Dictionary(rows("trial", LiveTrial.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         prizes = rows("prize", LivePrize.init).sorted { ($0.trial, $0.place) < ($1.trial, $1.place) }
         standings = rows("standing", LiveStanding.init)

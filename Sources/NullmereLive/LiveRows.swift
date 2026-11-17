@@ -732,6 +732,41 @@ public struct LiveStudy: Equatable, Sendable {
 }
 
 /// Someone who leads the player's armies.
+/// One of the realm's commanders as the realm writes them out: their name,
+/// way of war, renown and gift, and what the gift does at each level.
+public struct LivePerson: Equatable, Sendable, Identifiable {
+    /// The renowns, as the module's catalogue numbers and names them.
+    public static let renowns: [Int: String] = [1: "Steady", 2: "Famed", 3: "Storied"]
+
+    public let number: Int
+    public let name: String
+    public let way: Int
+    public let renown: Int
+    public let gift: Int
+    public let giftName: String
+    /// What the gift does at each level, the first first.
+    public let giftWords: [String]
+    public var id: Int { number }
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let number = cells.whole(0), let name = cells.text(1), let way = cells.whole(2), let renown = cells.whole(3),
+              let gift = cells.whole(4), let giftName = cells.text(5) else { return nil }
+        (self.number, self.name, self.way, self.renown, self.gift, self.giftName) = (number, name, way, renown, gift, giftName)
+        giftWords = (cells.text(6) ?? "").split(separator: "\n").map(String.init)
+    }
+
+    /// Their renown in a word.
+    public var renownName: String { LivePerson.renowns[renown] ?? "Steady" }
+
+    /// What their gift does at a level, from the first; at the last for one
+    /// past it.
+    public func giftWords(at level: Int) -> String {
+        guard !giftWords.isEmpty else { return "" }
+        return giftWords[min(max(level, 1), giftWords.count) - 1]
+    }
+}
+
 public struct LiveCommander: Equatable, Sendable, Identifiable {
     /// The ways of war, as the module's catalogue numbers and names them,
     /// with what each is best at.
@@ -767,6 +802,17 @@ public struct LiveCommander: Equatable, Sendable, Identifiable {
               let seen = cells.unsigned(5), let march = cells.unsigned(6) else { return nil }
         (self.id, self.name, self.way, self.level, self.seen, self.march) = (id, name, way, level, seen, march)
         (self.person, self.gift, self.sigils) = (cells.whole(7) ?? 0, cells.whole(8) ?? 0, cells.whole(9) ?? 0)
+    }
+
+    /// Who they are among the realm's commanders, of those it has written
+    /// out; none for one of no renown.
+    public func person(in people: [Int: LivePerson]) -> LivePerson? { person == 0 ? nil : people[person] }
+
+    /// Their renown, way and gift as a player reads them: "Storied
+    /// Vanguard. Quick, level 1: …"; their way alone for one of no renown.
+    public func told(in people: [Int: LivePerson]) -> (title: String, gift: String?) {
+        guard let known = person(in: people) else { return (wayName, nil) }
+        return ("\(known.renownName) \(wayName)", "\(known.giftName), level \(max(gift, 1)): \(known.giftWords(at: gift))")
     }
 
     /// Their way of war in a word, and what it is best at.

@@ -309,6 +309,29 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertNil(LiveWorld(snapshot: [:]).link)
     }
 
+    func testTheRealmsCommandersAreReadAndEachOfAPlayersIsTold() throws {
+        let words = (1...5).map { "\(8 + 4 * $0) in a hundred of their army's dead are carried home wounded after all." }.joined(separator: "\n")
+        let world = LiveWorld(snapshot: [
+            "person": [[n(17), .string("Maren of the Black Glass"), n(5), n(3), n(2), .string("Mercy"), .string(words)],
+                       [n(3), .string("Corran Ash"), n(1), n(1), n(2), .string("Mercy"), .string("")]],
+            "my_commanders": [[n(11), n(1), .string("Maren of the Black Glass"), n(5), n(4), n(0), n(0), n(17), n(2), n(3)],
+                              [n(12), n(1), .string("Halen"), n(3), n(1), n(0), n(0)]],
+        ])
+        let maren = try XCTUnwrap(world.people[17])
+        XCTAssertEqual((maren.name, maren.renownName, maren.giftName, maren.giftWords.count), ("Maren of the Black Glass", "Storied", "Mercy", 5))
+        XCTAssertEqual(maren.giftWords(at: 9), maren.giftWords(at: 5), "past the last, the last")
+        XCTAssertEqual(world.people[3]?.giftWords(at: 1), "")
+        let theirs = world.commanders.sorted { $0.id < $1.id }
+        XCTAssertEqual((theirs[0].person, theirs[0].gift, theirs[0].sigils), (17, 2, 3))
+        let told = theirs[0].told(in: world.people)
+        XCTAssertEqual(told.title, "Storied Warden")
+        XCTAssertEqual(told.gift, "Mercy, level 2: 16 in a hundred of their army's dead are carried home wounded after all.")
+        // One of no renown, as commanders were before: their way alone.
+        XCTAssertNil(theirs[1].person(in: world.people))
+        XCTAssertEqual(theirs[1].told(in: world.people).title, "Outrider")
+        XCTAssertNil(theirs[1].told(in: world.people).gift)
+    }
+
     func testThePlayersDevicesAreReadThisOneFirst() {
         let world = LiveWorld(snapshot: ["my_devices": [[n(41), .string("iPhone"), .bool(false), .bool(false)],
                                                         [n(97), .string(""), .bool(true), .bool(true)],

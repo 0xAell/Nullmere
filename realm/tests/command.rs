@@ -4,7 +4,7 @@
 use realm::catalog::{self, Building as Kind, Gift, Goods, Item, Leading, Renown, Troops, Way};
 use realm::hex::Hex;
 use realm::land;
-use realm::rows::{Barrow, Building, City, Commander, Haul, March, Report, Site, Stock, Troop};
+use realm::rows::{Barrow, Building, City, Commander, Haul, March, Person, Report, Site, Stock, Troop};
 use realm::rules::{self, Asked, Refusal};
 use realm::store::{Mem, Seconds, Table};
 
@@ -375,4 +375,19 @@ fn the_tavern_brings_the_realms_own_commanders_by_their_renown() {
     ways.sort();
     ways.dedup();
     assert_eq!(ways.len(), 6, "a commander of every way");
+}
+
+#[test]
+fn the_realms_commanders_are_written_out_for_clients() {
+    let mut db = Mem::new(START, 5);
+    rules::open(&mut db, SEED, 1, RADIUS);
+    let mut people = Table::<Person>::all(&db);
+    people.sort_by_key(|person| person.number);
+    assert_eq!(people.len(), 24);
+    let first = &people[0];
+    assert_eq!((first.number, first.name.as_str(), first.way, first.renown, first.gift, first.gift_name.as_str()), (1, "Hallam Ironsworn", Way::Vanguard as u8, Renown::Storied as u8, Gift::Quick as u8, "Quick"));
+    let lines: Vec<&str> = people[2].gift_words.lines().collect();
+    assert_eq!(lines.len(), 5, "a line for each of the gift's levels");
+    assert_eq!(lines[0], "12 in a hundred of their army's dead are carried home wounded after all.");
+    assert_eq!(lines[4], "28 in a hundred of their army's dead are carried home wounded after all.");
 }

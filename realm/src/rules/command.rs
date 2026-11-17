@@ -16,6 +16,23 @@ const FIRST: [&str; 24] = [
 ];
 const LAST: [&str; 12] = ["a", "en", "ic", "is", "or", "wen", "eth", "ald", "ine", "ar", "us", "ry"];
 
+/// Writes the realm's commanders out as rows for clients: who each is,
+/// their way, renown and gift, and what it does at each level.
+pub fn write_people(db: &mut impl Db) {
+    for (at, person) in PEOPLE.iter().enumerate() {
+        let gift_words = (1..=catalog::TOP_GIFT).map(|level| person.gift.words(level)).collect::<Vec<_>>().join("\n");
+        db.insert(crate::rows::Person {
+            number: at as u64 + 1,
+            name: person.name.to_string(),
+            way: person.way as u8,
+            renown: person.renown as u8,
+            gift: person.gift as u8,
+            gift_name: person.gift.name().to_string(),
+            gift_words,
+        });
+    }
+}
+
 /// A player's commanders, in the order they came.
 pub fn commanders_of(db: &impl Db, player: u64) -> Vec<Commander> {
     let mut all = Table::<Commander>::by(db, 0, player);

@@ -170,7 +170,7 @@ struct LiveCommanders: View {
                     Text(verbatim: commander.name)
                         .font(.nm(LiveType.body, weight: .medium))
                         .foregroundStyle(LiveEmphasis.primary)
-                    Text(verbatim: "\(commander.wayName), level \(commander.level)")
+                    Text(verbatim: "\(commander.told(in: world.people).title), level \(commander.level)")
                         .font(.nm(LiveType.small))
                         .foregroundStyle(LiveEmphasis.tertiary)
                     Spacer(minLength: 0)
@@ -188,6 +188,10 @@ struct LiveCommanders: View {
                     LiveCounselView(counsel: counsel, session: session)
                 }
                 LiveSmall(words: commander.wayWords)
+                // Their gift, for one of the realm's own.
+                if let gift = commander.told(in: world.people).gift {
+                    LiveSmall(words: gift)
+                }
                 // What they wear from the Forge, if anything.
                 let worn = world.wornGear(of: commander.id).compactMap { world.patterns[$0.piece]?.name }
                 if !worn.isEmpty {
