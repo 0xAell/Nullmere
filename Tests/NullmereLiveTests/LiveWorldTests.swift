@@ -318,11 +318,12 @@ final class LiveWorldTests: XCTestCase {
                               [n(12), n(1), .string("Halen"), n(3), n(1), n(0), n(0)]],
         ])
         let maren = try XCTUnwrap(world.people[17])
-        XCTAssertEqual((maren.name, maren.renownName, maren.giftName, maren.giftWords.count), ("Maren of the Black Glass", "Storied", "Mercy", 5))
+        XCTAssertEqual([maren.name, maren.renownName, maren.giftName], ["Maren of the Black Glass", "Storied", "Mercy"])
+        XCTAssertEqual(maren.giftWords.count, 5)
         XCTAssertEqual(maren.giftWords(at: 9), maren.giftWords(at: 5), "past the last, the last")
         XCTAssertEqual(world.people[3]?.giftWords(at: 1), "")
         let theirs = world.commanders.sorted { $0.id < $1.id }
-        XCTAssertEqual((theirs[0].person, theirs[0].gift, theirs[0].sigils), (17, 2, 3))
+        XCTAssertEqual([theirs[0].person, theirs[0].gift, theirs[0].sigils], [17, 2, 3])
         let told = theirs[0].told(in: world.people)
         XCTAssertEqual(told.title, "Storied Warden")
         XCTAssertEqual(told.gift, "Mercy, level 2: 16 in a hundred of their army's dead are carried home wounded after all.")
