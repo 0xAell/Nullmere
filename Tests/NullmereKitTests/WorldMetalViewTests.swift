@@ -128,6 +128,68 @@ final class WorldMetalViewTests: XCTestCase {
         XCTAssertEqual(told.count, 2)
     }
 
+    /// The pointer over the map: a hover told with its hex and the cursor
+    /// set, leaving told as none; a click told with its hex, a drag panning
+    /// the view instead and told no click, an Option-drag turning it; a
+    /// right click told; and the wheel, a trackpad's scroll and Option's,
+    /// each moving the view and telling it. What is hovered, chosen and the
+    /// night's exposure redraw it as they change.
+    func testThePointerAndTheWheelDriveTheMap() throws {
+        let view = WorldMetalView()
+        view.setFrameSize(NSSize(width: 800, height: 500))
+        view.radius = 12
+        var hovered: [Hex?] = [], clicked: [Hex] = [], secondary: [Hex] = [], told = 0
+        view.onHover = { hovered.append($0) }
+        view.onClick = { hex, _ in clicked.append(hex) }
+        view.onSecondaryClick = { secondary.append($0) }
+        view.onCameraChange = { _ in told += 1 }
+        view.cursor = { _ in .pointingHand }
+        func mouse(_ type: NSEvent.EventType, _ x: CGFloat, _ y: CGFloat, flags: NSEvent.ModifierFlags = []) throws -> NSEvent {
+            try XCTUnwrap(NSEvent.mouseEvent(with: type, location: NSPoint(x: x, y: y), modifierFlags: flags, timestamp: 0, windowNumber: 0,
+                                             context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+        }
+        view.mouseMoved(with: try mouse(.mouseMoved, 400, 250))
+        XCTAssertNotNil(hovered.last ?? nil, "a hex under the pointer")
+        let exit = try XCTUnwrap(NSEvent.enterExitEvent(with: .mouseExited, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: 0,
+                                                        context: nil, eventNumber: 0, trackingNumber: 0, userData: nil))
+        view.mouseExited(with: exit)
+        XCTAssertNil(hovered.last ?? nil, "none once the pointer leaves")
+
+        view.mouseDown(with: try mouse(.leftMouseDown, 400, 250))
+        view.mouseUp(with: try mouse(.leftMouseUp, 400, 250))
+        XCTAssertEqual(clicked.count, 1, "a click")
+        let before = view.camera
+        view.mouseDown(with: try mouse(.leftMouseDown, 400, 250))
+        view.mouseDragged(with: try mouse(.leftMouseDragged, 430, 265))
+        view.mouseDragged(with: try mouse(.leftMouseDragged, 460, 280))
+        view.mouseUp(with: try mouse(.leftMouseUp, 460, 280))
+        XCTAssertEqual(clicked.count, 1, "a drag is no click")
+        XCTAssertNotEqual(view.camera, before, "the drag pans the view")
+        XCTAssertEqual(told, 2)
+        view.mouseDown(with: try mouse(.leftMouseDown, 400, 250, flags: .option))
+        view.mouseDragged(with: try mouse(.leftMouseDragged, 440, 250, flags: .option))
+        view.mouseUp(with: try mouse(.leftMouseUp, 440, 250, flags: .option))
+        XCTAssertEqual(told, 3, "an Option-drag turns it, and tells it")
+        view.rightMouseDown(with: try mouse(.rightMouseDown, 400, 250))
+        XCTAssertEqual(secondary.count, 1)
+
+        func wheel(_ units: CGScrollEventUnit, _ amount: Int32, flags: CGEventFlags = []) throws -> NSEvent {
+            let event = try XCTUnwrap(CGEvent(scrollWheelEvent2Source: nil, units: units, wheelCount: 2, wheel1: amount, wheel2: 0, wheel3: 0))
+            event.flags = flags
+            return try XCTUnwrap(NSEvent(cgEvent: event))
+        }
+        for event in [try wheel(.line, 3), try wheel(.pixel, 12), try wheel(.pixel, 12, flags: .maskAlternate)] {
+            view.scrollWheel(with: event)
+        }
+        XCTAssertEqual(told, 6, "each turn of the wheel moves the view and tells it")
+
+        view.hovered = Hex(1, 1)
+        view.selected = Hex(2, 2)
+        view.exposure = 0.8
+        XCTAssertEqual([view.hovered, view.selected], [Hex(1, 1), Hex(2, 2)])
+        XCTAssertEqual(view.exposure, 0.8)
+    }
+
     func testInAWindowItListensAndLetsGoWhenItLeaves() throws {
         guard WorldMetalView.systemDevice != nil else { throw XCTSkip("No Metal device available") }
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.titled], backing: .buffered, defer: false)
