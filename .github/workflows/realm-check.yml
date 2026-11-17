@@ -75,6 +75,17 @@ jobs:
       - name: Check the realm
         run: realm/check.sh
 
+      # The check a publish to maincloud ends with (plan 9.1), run as it is
+      # there on the realm just published here: it passes where the realm
+      # answers, and fails where none stands.
+      - name: The realm answers, and one not published fails
+        run: |
+          REALM_ADDRESS=http://127.0.0.1:3000/nullmere-check scripts/go-live-status.sh --expect-realm
+          if REALM_ADDRESS=http://127.0.0.1:3000/no-such-realm scripts/go-live-status.sh --expect-realm; then
+            echo "::error::go-live-status.sh --expect-realm passed on a realm that was never published"
+            exit 1
+          fi
+
       # Then on the same server, the module published afresh: a hundred
       # players joining at once and asking, each three times a second for
       # half a minute, what players ask most; each ask's time from asking

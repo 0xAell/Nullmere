@@ -52,3 +52,15 @@ jobs:
           spacetime login --token "$SPACETIME_TOKEN"
           spacetime publish --server maincloud --bin-path realm/target/wasm32-unknown-unknown/release/realm.wasm --yes "$DATABASE"
           echo "Published https://maincloud.spacetimedb.com/$DATABASE"
+
+      # Published is live, or the run fails (plan 9.1): the realm is read
+      # as any client reads it, given a minute to answer after publishing.
+      - name: The realm answers
+        env:
+          DATABASE: ${{ inputs.database }}
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            REALM_ADDRESS="https://maincloud.spacetimedb.com/$DATABASE" scripts/go-live-status.sh --expect-realm && exit 0
+            sleep 10
+          done
+          exit 1
