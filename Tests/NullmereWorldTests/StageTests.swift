@@ -202,6 +202,30 @@ final class StageTests: XCTestCase {
         XCTAssertEqual(unsmoked.batches, stage().holds(sights(red), time: 3, into: &afresh).batches)
     }
 
+    /// A pose is worked out once and kept: asked again, by any frame, it
+    /// is the same matrices, and nothing is worked out for it.
+    func testAPoseWorkedOutOnceIsKeptForEveryFrame() {
+        let key = ModelKey.folk(variant: 1)
+        let model = Library.model(key)
+        XCTAssertGreaterThan(model.rig.count, 1, "the folk are posed")
+        for time: Float in [0.2, 1.37, 2.9] {
+            var first = SceneFrame(), second = SceneFrame()
+            var one: [WorldStage.PoseKey: UInt32] = [:], other: [WorldStage.PoseKey: UInt32] = [:]
+            let a = WorldStage.pose(key, .gather, at: time, shared: &one, into: &first)
+            let b = WorldStage.pose(key, .gather, at: time, shared: &other, into: &second)
+            let worked = model.pose(.gather, at: Float(WorldStage.frame(of: .gather, at: time)) / 30)
+            XCTAssertEqual(Array(first.palette[Int(a)..<Int(a) + worked.count]), worked, "at \(time), as the model poses it")
+            XCTAssertEqual(Array(second.palette[Int(b)..<Int(b) + worked.count]), worked, "and the same asked again")
+        }
+        let name = WorldStage.PoseKey(key: key.canonical, clip: .gather, frame: 7)
+        var made = 0
+        let kept = WorldStage.poses.pose(name) { made += 1; return [.identity, .identity] }
+        let again = WorldStage.poses.pose(name) { made += 1; return [] }
+        XCTAssertEqual(kept, again)
+        XCTAssertLessThanOrEqual(made, 1, "worked out at most once")
+        XCTAssertLessThanOrEqual(WorldStage.poses.count, WorldStage.PoseMemo.most)
+    }
+
     func testHoldsStandInTheirHousesColoursWithTheirWorksRising() throws {
         let stage = stage()
         var hold = try XCTUnwrap(Self.state.holds.first { $0.isSeat })

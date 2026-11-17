@@ -1740,10 +1740,44 @@ public final class WorldStage: @unchecked Sendable {
                                                 from: CompanyPose.Blend(clip: from, time: Float(name.fromFrame) / 30,
                                                                         weight: Float(weight) / 10)))
         } else {
-            start = frame.add(pose: Library.model(key).pose(clip, at: Float(moment) / 30))
+            start = frame.add(pose: poses.pose(name) { Library.model(key).pose(clip, at: Float(moment) / 30) })
         }
         shared[name] = start
         return start
+    }
+
+    /// Poses already worked out, by model, clip and moment: one is the same
+    /// whenever it is asked, and frame after frame the same few are asked
+    /// again. Eased poses, of which there are many more, are worked out
+    /// each time.
+    static let poses = PoseMemo()
+
+    final class PoseMemo: @unchecked Sendable {
+        private let lock = NSLock()
+        private var kept: [PoseKey: [Mat4]] = [:]
+        /// The most kept; past it they are let go and kept afresh.
+        static let most = 20_000
+
+        func pose(_ name: PoseKey, _ make: () -> [Mat4]) -> [Mat4] {
+            lock.lock()
+            if let pose = kept[name] {
+                lock.unlock()
+                return pose
+            }
+            lock.unlock()
+            let made = make()
+            lock.lock()
+            if kept.count >= PoseMemo.most { kept.removeAll(keepingCapacity: true) }
+            kept[name] = made
+            lock.unlock()
+            return made
+        }
+
+        var count: Int {
+            lock.lock()
+            defer { lock.unlock() }
+            return kept.count
+        }
     }
 
     /// The land under a point, or the water's face over the lake.
