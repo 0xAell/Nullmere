@@ -198,6 +198,11 @@ public struct LiveWindow: Sendable {
         case .beacon: return 13
         case .infirmary: return 11
         case .archive: return 14
+        // The smiths' Forge; the Wayhouse, with its horses, the Stable; the
+        // masons' Lodge, where works are drawn out, the Workshop's engines.
+        case .forge: return 19
+        case .wayhouse: return 9
+        case .lodge: return 10
         default: return nil
         }
     }
@@ -208,9 +213,11 @@ public struct LiveWindow: Sendable {
         case 2, 3: return 1
         case 4, 7: return 2
         case 11, 12: return 3
-        case 14: return 5
+        case 14, 19: return 5
+        case 9: return 6
         case 5: return 7
         case 13: return 8
+        case 10: return 10
         default: return 99
         }
     }

@@ -125,6 +125,8 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(other.level(.walls), 2, "what a city of Keep 8 has most likely raised")
         XCTAssertEqual(other.level(.beacon), 2)
         XCTAssertEqual(other.level(.archive), 2)
+        XCTAssertEqual([other.level(.forge), other.level(.wayhouse), other.level(.lodge)], [2, 2, 0],
+                       "its Forge and Stable, open by Keep 8; its Workshop not till Keep 10")
         XCTAssertEqual(holds[0].colour, colours[1])
         XCTAssertEqual(holds[1].colour, colours[2])
         XCTAssertEqual([1, 5, 6, 10, 11, 25, 99].map(LiveWindow.shown), [1, 1, 2, 2, 3, 5, 5])
