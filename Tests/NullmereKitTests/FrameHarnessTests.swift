@@ -31,17 +31,22 @@ final class FrameHarnessTests: XCTestCase {
 
         // Two hundred and forty frames once warm, so the slowest twentieth is
         // a dozen frames, not the few a shared runner's hiccup can spoil.
-        // Three passes of them: a shared runner's GPU is sometimes busy with
-        // other work for seconds on end, and that lands in one pass, while
-        // a slower frame of the game's own is slower in every pass. Each
-        // figure is the steadiest pass's.
+        // Four passes of them, three seconds apart: a shared runner's GPU is
+        // sometimes busy with other work for seconds on end (CI run 1139: the
+        // slowest twentieth over 31 ms in all three passes then, on the code
+        // run 1138 read at 10.8; run 1074 read 33.8, where the forty runs
+        // about them read 8.5 to 14.6), and that
+        // lands in some passes, while a slower frame of the game's own is
+        // slower in every pass, whenever it runs. Each figure is the
+        // steadiest pass's.
         func percentile(_ values: [Double], _ p: Double) -> Double {
             let sorted = values.sorted()
             return sorted[min(sorted.count - 1, Int(Double(sorted.count) * p))]
         }
         struct Pass { let frames: [Double], gpu: [Double] }
         var passes: [Pass] = []
-        for _ in 0..<3 {
+        for pass in 0..<4 {
+            if pass > 0 { Thread.sleep(forTimeInterval: 3) }
             var frames: [Double] = [], gpu: [Double] = []
             for frame in 0..<250 {
                 // A slow pan across the lake, as a keeper drags the map.
@@ -68,8 +73,9 @@ final class FrameHarnessTests: XCTestCase {
             print("PERFMETRIC pan.\(name).p50 \(String(format: "%.3f", steadiest(values, 0.5)))")
             print("PERFMETRIC pan.\(name).p95 \(String(format: "%.3f", steadiest(values, 0.95)))")
         }
-        let each = passes.map { String(format: "%.2f", percentile($0.frames, 0.95)) }.joined(separator: ", ")
-        print("PERF a panning frame \(width)x\(height) on \(device.name): whole p50 \(String(format: "%.2f", steadiest({ $0.frames }, 0.5))) ms, p95 \(String(format: "%.2f", steadiest({ $0.frames }, 0.95))) ms (passes \(each)); GPU p50 \(String(format: "%.2f", steadiest({ $0.gpu }, 0.5))) ms")
+        let each = passes.map { String(format: "%.2f", percentile($0.frames, 0.95)) + "/" + String(format: "%.2f", percentile($0.gpu, 0.95)) }
+            .joined(separator: ", ")
+        print("PERF a panning frame \(width)x\(height) on \(device.name): whole p50 \(String(format: "%.2f", steadiest({ $0.frames }, 0.5))) ms, p95 \(String(format: "%.2f", steadiest({ $0.frames }, 0.95))) ms (each pass's whole/GPU p95: \(each)); GPU p50 \(String(format: "%.2f", steadiest({ $0.gpu }, 0.5))) ms")
         // The GPU's time is within the whole frame's.
         XCTAssertLessThanOrEqual(steadiest({ $0.gpu }, 0.5), steadiest({ $0.frames }, 0.5) + 0.5)
     }
