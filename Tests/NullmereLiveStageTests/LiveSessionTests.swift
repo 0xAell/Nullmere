@@ -794,6 +794,25 @@ final class LiveSessionTests: XCTestCase {
         await session.letGo(phone)
         XCTAssertEqual(line.asked, ["let go device 41"])
 
+        // From the palette: Today opened at the devices, and each other
+        // device let go, two alike told apart.
+        line.change {
+            $0["my_devices"] = [[self.n(97), .string("Mac"), .bool(true), .bool(true)], [self.n(41), .string("iPhone"), .bool(false), .bool(false)],
+                                [self.n(42), .string("iPhone"), .bool(false), .bool(false)], [self.n(43), .string(""), .bool(true), .bool(false)]]
+        }
+        session.refresh()
+        let titles = session.commands(at: 2_015).map(\.title)
+        for title in ["Your devices, and leaving the realm", "Let go iPhone, away", "Let go iPhone, away (2)", "Let go another device, here now"] {
+            XCTAssertTrue(titles.contains(title), title)
+        }
+        XCTAssertFalse(titles.contains { $0.hasPrefix("Let go Mac") }, "not this one")
+        let opened = await session.perform(LiveCommand(title: "Your devices, and leaving the realm", act: .open("day")))
+        XCTAssertEqual(opened, "day")
+        line.clear()
+        await session.perform(LiveCommand(title: "Let go iPhone, away (2)", act: .letGo(42)))
+        await session.perform(LiveCommand(title: "Let go a device no longer here", act: .letGo(5)))
+        XCTAssertEqual(line.asked, ["let go device 42"], "one no longer among them asks nothing")
+
         // Leaving, the name refused as the realm refuses it; then left.
         let first = session.look
         line.refuse("Type your name as the realm knows it to leave.")

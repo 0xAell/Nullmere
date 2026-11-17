@@ -30,6 +30,8 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         /// Hasten a work by a quarter for goods, or use a haste on it.
         case speedUp(UInt64)
         case useHaste(item: Int, job: UInt64)
+        /// Let go another of the player's devices, by its number.
+        case letGo(UInt64)
     }
 
     public let title: String
@@ -58,7 +60,8 @@ extension LiveSession {
     /// be opened, the soldiers each training building may raise a tier,
     /// each piece the Forge may make, each thing the alliance's stores
     /// sell that the player's honour buys, another commander to take
-    /// on and each contest's prize reached, now; and the nearest barrow the
+    /// on and each contest's prize reached, now; the player's devices to
+    /// see, and each other one to let go; and the nearest barrow the
     /// player may attack, the nearest cairn their scouts have not found,
     /// and the nearest site of each good no one works, to go to.
     public func commands(at seconds: Double) -> [LiveCommand] {
@@ -138,6 +141,18 @@ extension LiveSession {
         if world.me != nil, !(world.link?.isGood(at: seconds) ?? false) {
             all.append(LiveCommand(title: "Link a phone: ask for a code", act: .offerLink))
         }
+        if world.me != nil {
+            all.append(LiveCommand(title: "Your devices, and leaving the realm", act: .open("day")))
+        }
+        // Each other device by its name and where it is; two alike told
+        // apart by a count, each command's words being its own.
+        var alike: [String: Int] = [:]
+        for device in world.devices where !device.current {
+            let words = "Let go \(device.name.isEmpty ? "another device" : device.name), \(device.here ? "here now" : "away")"
+            alike[words, default: 0] += 1
+            let count = alike[words] ?? 1
+            all.append(LiveCommand(title: count > 1 ? "\(words) (\(count))" : words, act: .letGo(device.number)))
+        }
         let day = world.today(at: seconds)
         for trial in world.trials.values.sorted(by: { $0.id < $1.id }) {
             guard let laurel = world.laurelToClaim(of: trial, day: day) else { continue }
@@ -193,6 +208,8 @@ extension LiveSession {
         case .claimPrize(let contest, let place): await claimPrize(contest: contest, place: place)
         case .claimPlace(let contest): await claimPlace(contest: contest)
         case .offerLink: await offerLink()
+        case .letGo(let number):
+            if let device = world.devices.first(where: { $0.number == number }) { await letGo(device) }
         case .promote(let building, let from, let to, let count): await promote(building: building, from: from, to: to, count: count)
         case .claimBoons: await claimBoons()
         case .helpAll: await helpAll()
