@@ -510,7 +510,7 @@ struct LiveMere: View {
         Caps("The Mere", size: LiveType.small)
             .foregroundStyle(LiveEmphasis.secondary)
         let lord = world.lord.flatMap { world.shownName(of: $0) }
-        LiveSmall(words: lord.map { "The Lord of the Mere is \($0), whose alliance won the last season won." } ?? "No season has been won: the Mere has no Lord.", dim: lord == nil)
+        LiveSmall(words: lord.map { "The Lord of the Mere is \($0), whose alliance won the last season." } ?? "No season has been won: the Mere has no Lord.", dim: lord == nil)
         let players = world.players.values.sorted { $0.id < $1.id }
         ForEach(LiveTitle.names.keys.sorted(), id: \.self) { title in
             let named = LiveTitle.names[title]
