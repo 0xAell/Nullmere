@@ -112,6 +112,8 @@ export function buildCosmetic(filters, hide = { elemhide: [], generichide: [] })
     never: sorted(neverHide),
     noGeneric: [...new Set(hide.generichide)].sort(),
     noCosmetic: [...new Set(hide.elemhide)].sort(),
+    noGenericAt: hide.generichideAt ?? [],
+    noCosmeticAt: hide.elemhideAt ?? [],
   };
   const count = (object) => Object.values(object).reduce((sum, list) => sum + list.length, 0);
   const counts = {

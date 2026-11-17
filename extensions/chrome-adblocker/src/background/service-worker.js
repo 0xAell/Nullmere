@@ -243,8 +243,9 @@ async function cosmeticFor(host, top, sender) {
   const page = pageOf(top, sender) || host;
   if (settings.paused || !settings.cosmetic || isAllowed(settings.allowlist, page)) return { active: false, generic: false };
   const lookup = await cosmeticIndex();
-  const own = lookup.switches(host);
-  const whole = lookup.switches(page);
+  // By host, and by address: the frame's own, and the page's it is in.
+  const own = lookup.switches(host, sender?.url);
+  const whole = lookup.switches(page, sender?.frameId === 0 ? sender.url : sender?.tab?.url);
   return { active: own.cosmetic && whole.cosmetic, generic: own.generic && whole.generic, lookup };
 }
 

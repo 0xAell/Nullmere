@@ -24,6 +24,9 @@ $csp=script-src 'none',domain=cspsite.test
 @@||trusted.test^$document
 @@||quiet.test^$generichide
 @@||nohide.test^$elemhide
+! (Hiding taken back for part of a site, by its address.)
+@@||news.test^*/live/$generichide
+@@||news.test^*/print/$elemhide
 ||popup-only.test^$popup
 ! (A pop-up filter for one site's pages; one taken back for some addresses; one for other sites' pop-ups only.)
 /pop.php?zone=$popup,domain=news.test

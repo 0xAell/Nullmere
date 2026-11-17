@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { CosmeticIndex, covers, hidingCSS, merged, namesOf } from '../../src/shared/cosmetic-lookup.js';
 import { buildCosmetic, keyToken } from '../../tools/lib/cosmetic.js';
 import { parseLine } from '../../tools/lib/filters.js';
+import { patternSource } from '../../tools/lib/dnr.js';
 
 const build = (lines, hide) => buildCosmetic(lines.map((line) => parseLine(line)), hide);
 
@@ -82,6 +83,20 @@ test('the switches for a host', () => {
   assert.deepEqual(index.switches('www.shop.example'), { cosmetic: false, generic: false });
   assert.deepEqual(index.switches('news.example'), { cosmetic: true, generic: false });
   assert.deepEqual(index.switches('other.example'), { cosmetic: true, generic: true });
+});
+
+test('the switches for a page by its address', () => {
+  const at = (pattern) => [{ source: patternSource(pattern), caseSensitive: false }];
+  const index = new CosmeticIndex(build(['##.ad'], { elemhide: [], generichide: [], generichideAt: at('||www.google.*/search?'), elemhideAt: at('|http://localhost:') }).data);
+  assert.deepEqual(index.switches('www.google.com', 'https://www.google.com/search?q=boats'), { cosmetic: true, generic: false }, 'the results');
+  assert.deepEqual(index.switches('www.google.com', 'https://www.google.com/maps'), { cosmetic: true, generic: true }, 'another part of the site');
+  assert.deepEqual(index.switches('www.google.com'), { cosmetic: true, generic: true }, 'with no address, by host alone');
+  assert.deepEqual(index.switches('localhost', 'http://localhost:8080/admin'), { cosmetic: false, generic: false });
+  assert.deepEqual(index.switches('localhost', 'https://localhost:8080/admin'), { cosmetic: true, generic: true }, 'the anchor holds the scheme to its word');
+  // Through the merge of several lists, as the worker reads them.
+  const both = new CosmeticIndex(merged([build(['##.a']).data, build(['##.b'], { elemhide: [], generichide: [], generichideAt: at('||news.example/live/') }).data]));
+  assert.equal(both.switches('news.example', 'https://news.example/live/now').generic, false);
+  assert.equal(both.switches('news.example', 'https://news.example/today').generic, true);
 });
 
 test('the style sheet hides in rules of a few selectors each', () => {

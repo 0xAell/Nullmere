@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PRIORITY, problemsWith, regexLooksSupported, toRules } from '../../tools/lib/dnr.js';
+import { patternSource, PRIORITY, problemsWith, regexLooksSupported, toRules } from '../../tools/lib/dnr.js';
 import { parseLine } from '../../tools/lib/filters.js';
 
 /** Rules from filter lines, each checked against Chrome's requirements. */
@@ -181,11 +181,36 @@ test('csp with third-party is for frames of another site, and says nothing of a 
 });
 
 test('exceptions that only turn hiding off make no rule, and name their hosts', () => {
-  const result = rules(['@@||news.example^$generichide', '@@||shop.example^$elemhide', '@@||both.example^$elemhide,generichide', '@@$generichide,domain=by-domain.example', '@@||path.example/page$generichide', '@@||doc.example^$generichide,document']);
+  const result = rules([
+    '@@||news.example^$generichide',
+    '@@||shop.example^$elemhide',
+    '@@||both.example^$elemhide,generichide',
+    '@@$generichide,domain=by-domain.example',
+    '@@||path.example/page$generichide',
+    '@@://localhost:$elemhide',
+    '@@||path.example/other$generichide,domain=elsewhere.example',
+    '@@||doc.example^$generichide,document',
+  ]);
   // The last excepts its whole document as well, and with it all hiding there, as Adblock Plus does.
-  assert.deepEqual(result.hide, { elemhide: ['both.example', 'doc.example', 'shop.example'], generichide: ['both.example', 'by-domain.example', 'doc.example', 'news.example'] });
+  const { elemhideAt, generichideAt, ...byHost } = result.hide;
+  assert.deepEqual(byHost, { elemhide: ['both.example', 'doc.example', 'shop.example'], generichide: ['both.example', 'by-domain.example', 'doc.example', 'news.example'] });
+  // Part of a site, by the page's address.
+  assert.deepEqual(generichideAt.map(({ source }) => new RegExp(source, 'i').test('https://www.path.example/page?x=1')), [true]);
+  assert.deepEqual(elemhideAt.map(({ source }) => [new RegExp(source, 'i').test('http://localhost:8080/'), new RegExp(source, 'i').test('http://localhost/')]), [[true, false]]);
   assert.deepEqual(result.rules.map((rule) => [rule.action.type, rule.condition.requestDomains ?? rule.condition.initiatorDomains]), [['allowAllRequests', ['doc.example']], ['allow', ['doc.example']]]);
+  // Only part of a site on some pages can't be said by address alone.
   assert.deepEqual([...result.dropped], [['hide-exception:pattern', 1]]);
+});
+
+test('an address pattern means as a regular expression what it means to Adblock Plus', () => {
+  const matches = (pattern, url) => new RegExp(patternSource(pattern), 'i').test(url);
+  assert.ok(matches('||www.google.*/search?', 'https://www.google.co.uk/search?q=lake'));
+  assert.ok(!matches('||www.google.*/search?', 'https://www.google.co.uk/maps'));
+  assert.ok(matches('||bing.com/search?', 'https://www.bing.com/search?q=1'));
+  assert.ok(!matches('||bing.com/search?', 'https://notbing.com/search?q=1'), '|| is the start of a host or a dot in it');
+  assert.ok(matches('://192.168.', 'http://192.168.1.1/'));
+  assert.ok(matches('|https://a.example^', 'https://a.example/x') && !matches('|https://a.example^', 'https://a.example.evil/'));
+  assert.ok(matches('/end.html|', 'https://x.example/end.html') && !matches('/end.html|', 'https://x.example/end.html?x'));
 });
 
 test('regular expressions: kept when RE2 can take them, dropped when not or when Chrome refused them', () => {

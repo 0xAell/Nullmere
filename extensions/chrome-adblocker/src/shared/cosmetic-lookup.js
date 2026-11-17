@@ -16,6 +16,11 @@
 //   never            selectors a list says are never to be hidden anywhere
 //   noGeneric        hosts where the generic selectors are off
 //   noCosmetic       hosts where nothing is hidden
+//   noGenericAt, noCosmeticAt
+//                    the same for pages by their address: [{ source,
+//                    caseSensitive }] of regular expressions, for an
+//                    exception to part of a site (search results, a
+//                    router's own pages)
 
 // Labels that with a country's two letters after them make a public
 // suffix (`co.uk`, `com.au`). The whole suffix list is thousands of lines;
@@ -79,7 +84,7 @@ export function hidingCSS(selectors, perRule = 20) {
  * exceptions held against all the others' selectors too.
  */
 export function merged(lists) {
-  const data = { generic: { always: [], simple: [], keyed: {} }, specific: {}, procedural: {}, styles: {}, exceptions: {}, never: [], noGeneric: [], noCosmetic: [] };
+  const data = { generic: { always: [], simple: [], keyed: {} }, specific: {}, procedural: {}, styles: {}, exceptions: {}, never: [], noGeneric: [], noCosmetic: [], noGenericAt: [], noCosmeticAt: [] };
   const into = (target, source) => {
     for (const [key, selectors] of Object.entries(source ?? {})) target[key] = [...(target[key] ?? []), ...selectors];
   };
@@ -94,6 +99,8 @@ export function merged(lists) {
     data.never.push(...(list.never ?? []));
     data.noGeneric.push(...(list.noGeneric ?? []));
     data.noCosmetic.push(...(list.noCosmetic ?? []));
+    data.noGenericAt.push(...(list.noGenericAt ?? []));
+    data.noCosmeticAt.push(...(list.noCosmeticAt ?? []));
   }
   if (data.never.length) {
     const never = new Set(data.never);
@@ -113,6 +120,9 @@ export class CosmeticIndex {
     this.data = data;
     this.noGeneric = new Set(data.noGeneric ?? []);
     this.noCosmetic = new Set(data.noCosmetic ?? []);
+    const compiled = (list) => (list ?? []).map(({ source, caseSensitive }) => new RegExp(source, caseSensitive ? '' : 'i'));
+    this.noGenericAt = compiled(data.noGenericAt);
+    this.noCosmeticAt = compiled(data.noCosmeticAt);
     this.byToken = new Map();
     for (const selector of data.generic.simple) this.add(selector.toLowerCase(), selector);
     for (const [token, selectors] of Object.entries(data.generic.keyed)) {
@@ -126,10 +136,11 @@ export class CosmeticIndex {
     else this.byToken.set(token, [selector]);
   }
 
-  /** What is off on a host's pages. */
-  switches(host) {
-    const off = covers(this.noCosmetic, host);
-    return { cosmetic: !off, generic: !off && !covers(this.noGeneric, host) };
+  /** What is off on a host's pages; and on the page at `url`, where it is known. */
+  switches(host, url = '') {
+    const at = (list) => typeof url === 'string' && url !== '' && list.some((pattern) => pattern.test(url));
+    const off = covers(this.noCosmetic, host) || at(this.noCosmeticAt);
+    return { cosmetic: !off, generic: !off && !covers(this.noGeneric, host) && !at(this.noGenericAt) };
   }
 
   /** The selectors not to hide on a host. */

@@ -36,13 +36,13 @@ test('the README\'s numbers are the build\'s', (t) => {
   says(`| **Gives stand-ins** | ${grouped(totals.standIns)} filters keep a request back`);
   says(`| **Runs scriptlets** | ${grouped(totals.scriptlets)} filters name a site`);
   assert.equal(left('option:popup', 'popup:'), 0, 'no pop-up filter is left out, so the README has no row for them');
+  assert.equal(left('hide-exception:'), 0, 'every hiding exception is followed, for a host or for an address, so the README has no row for them');
 
   // What was left out, by the README's own rows.
   const rows = [
     ['Exceptions that take back only a stand-in (`$redirect-rule`)', left('option:redirect', 'option:rewrite')],
     ['Scriptlets Stillwater has not written, HTML filtering, procedural filters beyond `:has-text`', left('cosmetic:scriptlet', 'cosmetic:procedural', 'cosmetic:snippet')],
     ['Regular expressions Chrome refuses', left('regex:')],
-    ['Hiding exceptions for part of a site', left('hide-exception:')],
   ];
   for (const [name, count] of rows) says(`| ${name} | ${grouped(count)} |`);
   const all = lists.reduce((sum, list) => sum + Object.values(list.dropped).reduce((n, count) => n + count, 0), 0);

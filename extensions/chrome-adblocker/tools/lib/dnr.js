@@ -88,6 +88,33 @@ export function regexLooksSupported(source) {
   return true;
 }
 
+/**
+ * An address pattern as Adblock Plus writes it, as a regular expression's
+ * source: `||` the start of a host or a dot within it, `|` the start or
+ * end of the address, `^` a separator (anything but a letter, digit or
+ * `_ - . %`, or the end), `*` anything; the rest as itself. For matching
+ * an address in the extension's own code, where Chrome's rules don't reach.
+ */
+export function patternSource(pattern) {
+  let source = '';
+  let rest = pattern;
+  if (rest.startsWith('||')) {
+    source = '^[a-z][a-z0-9+.-]*:\\/\\/(?:[^/?#]*\\.)?';
+    rest = rest.slice(2);
+  } else if (rest.startsWith('|')) {
+    source = '^';
+    rest = rest.slice(1);
+  }
+  const end = rest.endsWith('|') ? '$' : '';
+  if (end) rest = rest.slice(0, -1);
+  for (const c of rest) {
+    if (c === '*') source += '.*';
+    else if (c === '^') source += '(?:[^\\w.%-]|$)';
+    else source += c.replace(/[.+?${}()|[\]\\/]/g, '\\$&');
+  }
+  return source + end;
+}
+
 /** The part of a filter that says which URLs it matches. */
 function urlPart(filter, rejected) {
   if (filter.regex) {
@@ -234,7 +261,7 @@ export function toRules(filters, options = {}) {
   const drop = (reason) => dropped.set(reason, (dropped.get(reason) ?? 0) + 1);
   const grouped = new Map();
   const single = [];
-  const hide = { elemhide: new Set(), generichide: new Set() };
+  const hide = { elemhide: new Set(), generichide: new Set(), elemhideAt: [], generichideAt: [] };
   // Hosts whose every page is excepted, by the priority of the exception.
   const excepted = new Map();
 
@@ -255,10 +282,19 @@ export function toRules(filters, options = {}) {
     const base = baseCondition(filter);
 
     if (filter.exception && (filter.elemhide || filter.generichide)) {
-      // Only a filter for a whole host, or for named pages' domains, can
-      // be looked up when a page's selectors are chosen.
+      // A filter for a whole host, or for named pages' domains, is looked
+      // up by host when a page's selectors are chosen; one for part of a
+      // site (search results, a router's own pages) by the page's address.
       const hosts = url.host ? [url.host] : !filter.pattern && base.initiatorDomains ? base.initiatorDomains : [];
-      if (!hosts.length) drop('hide-exception:pattern');
+      if (!hosts.length) {
+        if (filter.pattern && !filter.regex && !base.initiatorDomains && !base.excludedInitiatorDomains) {
+          const at = { source: patternSource(filter.pattern), caseSensitive: filter.matchCase };
+          if (filter.elemhide) hide.elemhideAt.push(at);
+          if (filter.generichide) hide.generichideAt.push(at);
+        } else {
+          drop('hide-exception:pattern');
+        }
+      }
       for (const host of hosts) {
         if (filter.elemhide) hide.elemhide.add(host);
         if (filter.generichide) hide.generichide.add(host);
@@ -324,7 +360,7 @@ export function toRules(filters, options = {}) {
     seen.add(key);
     rules.push({ id: id++, ...rule });
   }
-  return { rules, hide: { elemhide: [...hide.elemhide].sort(), generichide: [...hide.generichide].sort() }, dropped };
+  return { rules, hide: { elemhide: [...hide.elemhide].sort(), generichide: [...hide.generichide].sort(), elemhideAt: hide.elemhideAt, generichideAt: hide.generichideAt }, dropped };
 }
 
 const DOMAIN = /^(?:[a-z0-9_-]+\.)*[a-z0-9-]+$/;

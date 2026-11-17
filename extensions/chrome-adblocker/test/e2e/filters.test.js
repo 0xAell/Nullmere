@@ -184,6 +184,30 @@ test('generichide leaves a site its generic slots; elemhide leaves it everything
   }
 });
 
+test('an exception for part of a site, by its address, leaves the rest of the site as it was', async () => {
+  // generichide for the live pages: the site's own selectors still hide.
+  let { page } = await visit('news.test', SLOTS, '/live/today');
+  await until(async () => (await hidden(page, ALL)).length >= 3, 'the site\'s own slots to be hidden');
+  await page.waitForTimeout(700);
+  assert.deepEqual(await hidden(page, ALL), ['story', 'rail', 'labelled'], 'none of the generic ones');
+  await page.close();
+
+  // elemhide for the print pages: nothing, in the page or in a frame of it.
+  server.page('other.test', '/framed', `<!doctype html><body>${SLOTS}</body>`);
+  ({ page } = await visit('news.test', `${SLOTS}<iframe id="framed" src="${server.url('other.test', '/framed')}"></iframe>`, '/print/1'));
+  await page.waitForTimeout(700);
+  assert.deepEqual(await hidden(page, ALL), []);
+  const frame = await (await page.$('#framed')).contentFrame();
+  assert.equal(await frame.evaluate(() => getComputedStyle(document.getElementById('banner')).display), 'block');
+  await page.close();
+
+  // The rest of the site as ever.
+  ({ page } = await visit('news.test', SLOTS, '/today'));
+  await until(async () => (await hidden(page, ALL)).length >= 9, 'the slots to be hidden');
+  assert.deepEqual(await hidden(page, ALL), [...GENERIC.slice(0, 5), 'story', 'rail', 'pixel', 'labelled']);
+  await page.close();
+});
+
 test('slots added after the page loads are hidden as they come', async () => {
   const { page } = await visit('other.test', '<main id="main"><p>Words</p></main>');
   await page.evaluate(() => {
