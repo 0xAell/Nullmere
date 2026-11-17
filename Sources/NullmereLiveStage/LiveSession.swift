@@ -461,21 +461,38 @@ public final class LiveSession {
         let seconds = now
         let view = size.flatMap { $0.width > 0 && $0.height > 0 ? ViewFrustum(viewProjection: camera.viewProjection(in: $0)) : nil }
         func seen(_ hex: Hex, within reach: Float) -> Bool { view?.sees(hex, within: reach) ?? true }
-        let sights = window.holds(in: world, colours: LiveSession.colours, at: seconds)
-        let sites = window.sites(in: world), barrows = window.barrows(in: world), cairns = window.cairns(in: world)
+        let sights = timed("cities read") { window.holds(in: world, colours: LiveSession.colours, at: seconds) }
+        let (sites, barrows, cairns) = timed("places read") { (window.sites(in: world), window.barrows(in: world), window.cairns(in: world)) }
         if fixed.isEmpty {
             fixed = stage.furnish(occupied: Set(sites.map(\.hex) + barrows.map(\.hex) + cairns.map(\.hex)), holds: Set(sights.map(\.hold.position)))
         }
         frame.fixed = fixed
         frame.fixedVersion = windowVersion * 100_000 + standingVersion
-        let (holds, _) = stage.holds(sights.filter { seen($0.hold.position, within: Self.holdReach) }, time: Float(time), into: &frame)
-        let poses = window.companies(in: world, relief: land.relief, at: seconds).filter { seen($0.hex, within: Self.companyReach) }
-        frame.batches = holds + stage.sites(sites.filter { seen($0.hex, within: 1) }) + stage.lairs(barrows.filter { seen($0.hex, within: 1) }).batches
-            + stage.finds(cairns.filter { seen($0.hex, within: 1) }).batches
-            + stage.companies(poses, houses: LiveSession.colours, into: &frame)
+        let (holds, _) = timed("cities staged") { stage.holds(sights.filter { seen($0.hold.position, within: Self.holdReach) }, time: Float(time), into: &frame) }
+        let poses = timed("armies read") { window.companies(in: world, relief: land.relief, at: seconds).filter { seen($0.hex, within: Self.companyReach) } }
+        let places = timed("places staged") {
+            stage.sites(sites.filter { seen($0.hex, within: 1) }) + stage.lairs(barrows.filter { seen($0.hex, within: 1) }).batches
+                + stage.finds(cairns.filter { seen($0.hex, within: 1) }).batches
+        }
+        let armies = timed("armies staged") { stage.companies(poses, houses: LiveSession.colours, into: &frame) }
+        frame.batches = holds + places + armies
         // The ways the armies on the move still have to go, lit on the land.
-        frame.motes += stage.marchLines(window.marchWays(in: world, at: seconds), time: Float(time))
+        frame.motes += timed("ways") { stage.marchLines(window.marchWays(in: world, at: seconds), time: Float(time)) }
         return frame
+    }
+
+    /// Where frames' staging has gone, part by part, in milliseconds
+    /// summed over the frames since it was set; nil, and nothing is timed.
+    /// The staging test sets it to say which part costs what.
+    @ObservationIgnored public var stagingParts: [String: Double]?
+
+    /// Does a part of a frame's staging, timed into `stagingParts` where asked.
+    private func timed<T>(_ part: String, _ work: () -> T) -> T {
+        guard stagingParts != nil else { return work() }
+        let started = DispatchTime.now().uptimeNanoseconds
+        let done = work()
+        stagingParts?[part, default: 0] += Double(DispatchTime.now().uptimeNanoseconds - started) / 1_000_000
+        return done
     }
 
     // MARK: Choosing
