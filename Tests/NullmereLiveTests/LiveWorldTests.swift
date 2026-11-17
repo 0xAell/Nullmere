@@ -230,7 +230,7 @@ final class LiveWorldTests: XCTestCase {
         // What it gives besides, by the item's number less one: two five
         // minutes' hastes and a tome of war; none where a row tells none.
         XCTAssertEqual(on.items, [2, 0, 0, 0, 0, 0, 0, 0, 1])
-        XCTAssertEqual(world.holdings(on.gives, on.items), "1,000 grain and 1,500 timber, Five minutes' haste ×2, Tome of war")
+        XCTAssertEqual(world.holdings(on.gives, on.items), "1,000 grain and 1,500 timber, five minutes' haste ×2, tome of war")
         XCTAssertEqual(world.tasks[1]?.items, [UInt64](repeating: 0, count: 9))
         XCTAssertEqual(world.holdings(world.tasks[1]!.gives, world.tasks[1]!.items), "1,000 grain and 1,500 timber")
         XCTAssertEqual([on.goal, Int(on.amount), on.level], [LiveTask.raised, 7, 1])
@@ -433,7 +433,7 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertEqual(world.chests[1].goods, LiveGoods(stone: 10_000, moonsalt: 50))
         XCTAssertEqual(world.chests[0].hastes, [2, 0, 0, 0], "an older row's peace is none")
         XCTAssertEqual(world.chests[1].hastes, [0, 1, 0, 1])
-        XCTAssertEqual(world.holdings(world.chests[1].goods, world.chests[1].hastes), "10,000 stone and 50 moonsalt, haste, Eight hours' peace")
+        XCTAssertEqual(world.holdings(world.chests[1].goods, world.chests[1].hastes), "10,000 stone and 50 moonsalt, haste, eight hours' peace")
         XCTAssertEqual(world.graces.map(\.points), [0, 100])
         XCTAssertEqual(world.daily?.did(LiveDuty.gather), 1_200)
         XCTAssertEqual(world.daily?.did(LiveDuty.begin), 1)

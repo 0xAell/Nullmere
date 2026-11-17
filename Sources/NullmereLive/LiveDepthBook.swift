@@ -84,11 +84,13 @@ extension LiveWorld {
             let opened = row?.hasOpened(chest.id) ?? false
             var holds = holdings(chest.goods, chest.hastes)
             if chest.summonses > 0 {
-                let name = wares[LiveWorld.summons]?.name ?? "Summons to the Tavern"
+                let name = LiveWorld.inLine(wares[LiveWorld.summons]?.name ?? "Summons to the Tavern")
                 let summons = chest.summonses == 1 ? name : "\(name) ×\(chest.summonses)"
                 holds = holds == "nothing" ? summons : "\(holds), \(summons)"
             }
-            return LiveChestLine(id: chest.id, marks: chest.marks, holds: holds, opened: opened, ready: !opened && marks >= chest.marks)
+            // A line of its own, so it begins as a line does.
+            return LiveChestLine(id: chest.id, marks: chest.marks, holds: holds.prefix(1).uppercased() + holds.dropFirst(), opened: opened,
+                                 ready: !opened && marks >= chest.marks)
         }
     }
 
@@ -129,14 +131,21 @@ extension LiveWorld {
         return nil
     }
 
-    /// Goods and hastes in words: "5,000 grain and 5,000 timber, Five minutes' haste ×2".
+    /// Goods and hastes in words, to go in a sentence: "5,000 grain and
+    /// 5,000 timber, five minutes' haste ×2".
     public func holdings(_ goods: LiveGoods, _ hastes: LiveHastes) -> String {
         var parts: [String] = goods.isNone ? [] : [goods.words]
         for (index, count) in hastes.enumerated() where count > 0 {
-            let name = wares[index + 1]?.name ?? "haste"
+            let name = LiveWorld.inLine(wares[index + 1]?.name ?? "haste")
             parts.append(count == 1 ? name : "\(name) ×\(count)")
         }
         return parts.isEmpty ? "nothing" : parts.joined(separator: ", ")
+    }
+
+    /// An item's name as it reads within a sentence: "An hour's haste" is
+    /// "an hour's haste", "Summons to the Tavern" "summons to the Tavern".
+    public static func inLine(_ name: String) -> String {
+        name.prefix(1).lowercased() + name.dropFirst()
     }
 
     /// A commander's talents, each with its points and whether another may

@@ -469,7 +469,7 @@ final class LiveBookTests: XCTestCase {
         ]
         var world = LiveWorld(snapshot: snapshot)
         let chests = world.chestLines(at: 90_000)
-        XCTAssertEqual(chests[0].holds, "An hour's haste ×2, Eight hours' haste, Eight hours' peace, Summons to the Tavern")
+        XCTAssertEqual(chests[0].holds, "An hour's haste ×2, eight hours' haste, eight hours' peace, summons to the Tavern")
         XCTAssertEqual(chests[1].holds, "Summons to the Tavern ×2", "a summons alone, and two")
         XCTAssertEqual(world.drawBlock(at: 90_000), "Raise your Tavern to level 1 first.")
         XCTAssertEqual(LiveWorld(snapshot: [:]).drawBlock(at: 90_000), "Join the realm first.")
@@ -540,8 +540,8 @@ final class LiveBookTests: XCTestCase {
         let chests = world.chestLines(at: 90_000)
         XCTAssertEqual(chests.map(\.opened), [true, false, false])
         XCTAssertEqual(chests.map(\.ready), [false, true, false], "the first opened, the second's marks reached, not the third's")
-        XCTAssertEqual(chests[0].holds, "5,000 grain and 5,000 timber, Five minutes' haste ×2")
-        XCTAssertEqual(chests[1].holds, "10,000 stone, An hour's haste")
+        XCTAssertEqual(chests[0].holds, "5,000 grain and 5,000 timber, five minutes' haste ×2")
+        XCTAssertEqual(chests[1].holds, "10,000 stone, an hour's haste")
         XCTAssertEqual(chests[2].holds, "nothing")
         // What was done on an earlier day counts for nothing today.
         XCTAssertEqual(world.deedLines(at: 200_000).map(\.done), [0, 0, 0])
