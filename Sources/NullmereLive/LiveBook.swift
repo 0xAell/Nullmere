@@ -528,3 +528,33 @@ extension LiveWorld {
     public var isOfficer: Bool { (myMembership?.rank ?? 0) >= LiveMember.officer }
     public var isLeader: Bool { myMembership?.rank == LiveMember.leader }
 }
+
+extension LiveWorld {
+    /// What a building does, in a few plain words, by its number in the
+    /// module's catalogue, as the realm's rules have it; nil for a number
+    /// the catalogue has not.
+    public static func buildingWords(_ kind: Int) -> String? {
+        switch kind {
+        case 1: return "The city's heart: no other building rises past its level."
+        case 2: return "Brings in grain."
+        case 3: return "Brings in timber."
+        case 4: return "Brings in stone."
+        case 5: return "Brings in moonsalt."
+        case 6: return "Holds the city's goods, and keeps some of each safe from plunder."
+        case 7: return "Trains spearmen."
+        case 8: return "Trains archers."
+        case 9: return "Trains riders."
+        case 10: return "Builds mangonels."
+        case 11: return "Tends the city's wounded, to be healed rather than lost."
+        case 12: return "Shelters the city's defenders when it is stormed."
+        case 13: return "Its archers loose with the city's defenders when it is stormed."
+        case 14: return "Studies what makes the city stronger, one topic at a time."
+        case 15: return "Opens the city to alliances, and draws more of their help."
+        case 16: return "Takes on commanders to lead the city's armies."
+        case 17: return "Its carters lose less on the road of what is sent to allies."
+        case 18: return "Sends scouts to see other cities and to explore cairns."
+        case 19: return "Makes commanders' gear from what the barrows yield."
+        default: return nil
+        }
+    }
+}

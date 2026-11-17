@@ -148,11 +148,13 @@ extension LiveSession {
             guard let building = line.building else {
                 // Its plot: what building it costs, or why it can't be yet.
                 var lines = ["Not built yet."]
+                if let does = LiveWorld.buildingWords(kind) { lines.append(does) }
                 if let first = line.next { lines.append("Building it takes \(first.cost.words), \(LiveWords.spoken(first.seconds)).") }
                 return LiveCard(title: line.name, lines: lines,
                                 buttons: [.init(title: "Build", act: .build(kind), why: line.block?.words), .init(title: "Buildings", act: .city, why: nil)])
             }
             var lines = [line.level > 0 ? "Level \(line.level)." : "Being built."]
+            if let does = LiveWorld.buildingWords(kind) { lines.append(does) }
             var buttons: [LiveCard.Button] = []
             if let job = line.job {
                 lines.append("To level \(job.level): \(LiveWords.clock(Int(job.left(at: seconds).rounded(.up))))")
