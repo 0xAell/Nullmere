@@ -525,6 +525,17 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(ground(map.place(of: LiveHex(q: -30, r: 0))), 0, "deep water to the west")
         XCTAssertEqual(ground(map.place(of: LiveHex(q: 30, r: 0))), 5, "wood to the east")
         XCTAssertEqual(map.grounds[map.width - 1], LiveMinimap.unknown, "beyond the land told, at the top right corner")
+        // Nothing past the rim, though the land is told in chunks that reach past it.
+        var past = 0
+        for row in 0..<map.height {
+            for column in 0..<map.width {
+                let hex = map.hex(atU: (Double(column) + 0.5) / Double(map.width), v: (Double(row) + 0.5) / Double(map.height))
+                guard hex.distance(to: LiveHex(q: 0, r: 0)) > map.radius else { continue }
+                past += 1
+                XCTAssertEqual(map.grounds[row * map.width + column], LiveMinimap.unknown, "\(hex) is past the rim")
+            }
+        }
+        XCTAssertGreaterThan(past, 1_000, "the map's corners lie past the rim")
         // A place on it is the hex there, and back again.
         XCTAssertEqual(map.hex(atU: heart.u, v: heart.v), LiveHex(q: 0, r: 0))
         let home = map.place(of: LiveHex(q: 10, r: -4))

@@ -34,7 +34,12 @@ public struct LiveMinimap: Equatable, Sendable {
             for column in 0..<width {
                 let (x, y) = LiveMinimap.worldPoint(u: (Double(column) + 0.5) / Double(width), v: (Double(row) + 0.5) / Double(height), radius: radius)
                 let hex = layout.hex(atX: x, y: y)
-                if let ground = world.ground(at: LiveHex(q: hex.q, r: hex.r)) {
+                // The realm ends at its rim: the land is told in chunks of
+                // sixteen hexes a side, whose corners past the rim drew a
+                // stair of teeth down either flank.
+                let at = LiveHex(q: hex.q, r: hex.r)
+                guard at.distance(to: LiveHex(q: 0, r: 0)) <= radius else { continue }
+                if let ground = world.ground(at: at) {
                     grounds[row * width + column] = ground
                 }
             }
