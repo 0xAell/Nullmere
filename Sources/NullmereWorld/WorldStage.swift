@@ -954,28 +954,113 @@ public final class WorldStage: @unchecked Sendable {
     /// The holds in sight, their keeps, walls and works each in its House's
     /// colour and its people's way, a work rising under its scaffold; and
     /// where their hearths smoke.
-    public func holds(_ sights: [HoldSight], time: Float, into frame: inout SceneFrame) -> (batches: [ModelBatch], hearths: [Hearth]) {
-        var placed: [(ModelKey, ModelInstance)] = []
+    ///
+    /// Staged every frame, so each hold's pieces are gathered once, by
+    /// their model, and those that stand still kept as instances while the
+    /// hold's pieces, colour and people are as they were; only what moves,
+    /// the folk at their work, is posed each frame. Where the hearths are
+    /// not wanted (`smoke` false) none are worked out.
+    public func holds(_ sights: [HoldSight], time: Float, into frame: inout SceneFrame, smoke: Bool = true) -> (batches: [ModelBatch], hearths: [Hearth]) {
+        var order: [ModelKey] = []
+        var slots: [ModelKey: Int] = [:]
+        var instances: [[ModelInstance]] = []
         var hearths: [Hearth] = []
         var poses: [PoseKey: UInt32] = [:]
         for sight in sights {
             let phase = WorldStage.phase(of: sight.hold.position, salt: sight.hold.id)
             let people = WorldStage.peopleFlags(sight.heritage)
-            for piece in drawn(sight) {
-                let model = Library.model(piece.key)
+            let pieces = drawn(sight)
+            let kept = gathered(sight, pieces: pieces, phase: phase, people: people)
+            // What moves is posed first, in the pieces' own order, as it always was.
+            var palettes: [Int: UInt32] = [:]
+            for index in kept.posed {
+                let piece = pieces[index]
                 // A work turns and burns as it stands; the folk set about it work.
                 let clip: Clip = if case .folk = piece.key { .gather } else { .idle }
-                let palette = model.rig.count > 1
-                    ? WorldStage.pose(piece.key, clip, at: time + phase, shared: &poses, into: &frame) : 0
-                placed.append((piece.key, ModelInstance(model: piece.transform, colour: sight.colour, rise: piece.risen ?? WorldStage.whole,
-                                                        phase: phase, hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)),
-                                                        palette: palette, flags: WorldStage.isPeoples(piece.key) ? people : 0)))
-                if piece.progress >= 1 {
+                palettes[index] = WorldStage.pose(piece.key, clip, at: time + phase, shared: &poses, into: &frame)
+            }
+            for (number, group) in kept.groups.enumerated() {
+                let slot: Int
+                if let found = slots[group.key] {
+                    slot = found
+                } else {
+                    slot = instances.count
+                    slots[group.key] = slot
+                    order.append(group.key)
+                    instances.append([])
+                }
+                if group.posed {
+                    for index in group.pieces {
+                        instances[slot].append(WorldStage.instance(of: pieces[index], sight: sight, phase: phase, people: people, palette: palettes[index] ?? 0))
+                    }
+                } else {
+                    instances[slot] += kept.still[number]
+                }
+            }
+            if smoke {
+                for piece in pieces where piece.progress >= 1 {
                     hearths += piece.smoke.map { Hearth(point: $0, hex: piece.hex) }
                 }
             }
         }
-        return (WorldStage.batches(placed), hearths)
+        return (zip(order, instances).map { ModelBatch(key: $0, instances: $1) }, hearths)
+    }
+
+    /// A hold's piece as the renderer takes it, in the hold's colour and
+    /// its people's way.
+    static func instance(of piece: Piece, sight: HoldSight, phase: Float, people: UInt32, palette: UInt32) -> ModelInstance {
+        ModelInstance(model: piece.transform, colour: sight.colour, rise: piece.risen ?? WorldStage.whole, phase: phase,
+                      hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)), palette: palette, flags: WorldStage.isPeoples(piece.key) ? people : 0)
+    }
+
+    /// A hold's pieces gathered for staging: by model, in the order each
+    /// model first comes among them; which are posed each frame; and the
+    /// instances of the rest, standing as they are.
+    struct Gathered {
+        var pieces: [Piece]
+        var colour: Vec4
+        var people: UInt32
+        var phase: Float
+        var groups: [(key: ModelKey, pieces: [Int], posed: Bool)]
+        /// The pieces posed each frame, in their own order.
+        var posed: [Int]
+        /// Each group's instances where it stands still; empty where posed.
+        var still: [[ModelInstance]]
+    }
+    private var gatherings: [Int: Gathered] = [:]
+
+    /// A hold's pieces gathered, again only when its pieces, colour or people change.
+    func gathered(_ sight: HoldSight, pieces: [Piece], phase: Float, people: UInt32) -> Gathered {
+        if let kept = gatherings[sight.hold.id], kept.colour == sight.colour, kept.people == people, kept.phase == phase, kept.pieces == pieces {
+            return kept
+        }
+        var groups: [(key: ModelKey, pieces: [Int], posed: Bool)] = []
+        var slots: [ModelKey: Int] = [:]
+        var posed: [Int] = []
+        var rigged: [ModelKey: Bool] = [:]
+        for (index, piece) in pieces.enumerated() {
+            let key = piece.key.canonical
+            let moves: Bool
+            if let known = rigged[key] {
+                moves = known
+            } else {
+                moves = Library.model(piece.key).rig.count > 1
+                rigged[key] = moves
+            }
+            if moves { posed.append(index) }
+            if let slot = slots[key] {
+                groups[slot].pieces.append(index)
+            } else {
+                slots[key] = groups.count
+                groups.append((key, [index], moves))
+            }
+        }
+        let still = groups.map { group in
+            group.posed ? [] : group.pieces.map { WorldStage.instance(of: pieces[$0], sight: sight, phase: phase, people: people, palette: 0) }
+        }
+        let made = Gathered(pieces: pieces, colour: sight.colour, people: people, phase: phase, groups: groups, posed: posed, still: still)
+        gatherings[sight.hold.id] = made
+        return made
     }
 
     // MARK: Townsfolk

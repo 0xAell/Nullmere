@@ -171,6 +171,37 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.forgeFires(near: Vec3(heart.x + 40, 0, heart.z), time: 1).isEmpty, "none far off")
     }
 
+    /// Holds staged frame after frame by one stage, which keeps each hold's
+    /// still pieces, come out as a fresh stage stages them: the folk posed
+    /// as the time moves, and a House's colour taken at once.
+    func testHoldsStagedAgainAreAsAFreshStageStagesThem() throws {
+        let kept = stage()
+        var seat = try XCTUnwrap(Self.state.holds.first { $0.isSeat })
+        seat.levels[.walls] = 2
+        seat.levels[.granary] = 1
+        seat.levels[.forge] = 3
+        let holds = [seat] + Self.state.holds.filter { !$0.isSeat }.prefix(3)
+        func sights(_ colour: Vec4) -> [HoldSight] { holds.map { HoldSight(hold: $0, colour: colour) } }
+        let red = Vec4(0.8, 0.1, 0.1, 1), blue = Vec4(0.1, 0.2, 0.8, 1)
+        let moments: [(time: Float, colour: Vec4)] = [(3, red), (3.4, red), (7.9, red), (7.9, blue)]
+        var posed = 0
+        for moment in moments {
+            var again = SceneFrame(), afresh = SceneFrame()
+            let staged = kept.holds(sights(moment.colour), time: moment.time, into: &again)
+            let fresh = stage().holds(sights(moment.colour), time: moment.time, into: &afresh)
+            XCTAssertEqual(staged.batches, fresh.batches, "at \(moment.time)")
+            XCTAssertEqual(again.palette, afresh.palette, "the same poses, in the same places")
+            XCTAssertEqual(staged.hearths, fresh.hearths)
+            posed = max(posed, again.palette.count)
+        }
+        XCTAssertGreaterThan(posed, 1, "some pieces posed: the folk at their work")
+        // Where the hearths are not wanted, the same pieces and none of them.
+        var quiet = SceneFrame(), afresh = SceneFrame()
+        let unsmoked = kept.holds(sights(red), time: 3, into: &quiet, smoke: false)
+        XCTAssertTrue(unsmoked.hearths.isEmpty)
+        XCTAssertEqual(unsmoked.batches, stage().holds(sights(red), time: 3, into: &afresh).batches)
+    }
+
     func testHoldsStandInTheirHousesColoursWithTheirWorksRising() throws {
         let stage = stage()
         var hold = try XCTUnwrap(Self.state.holds.first { $0.isSeat })

@@ -468,7 +468,7 @@ public final class LiveSession {
         }
         frame.fixed = fixed
         frame.fixedVersion = windowVersion * 100_000 + standingVersion
-        let (holds, _) = timed("cities staged") { stage.holds(sights.filter { seen($0.hold.position, within: Self.holdReach) }, time: Float(time), into: &frame) }
+        let (holds, _) = timed("cities staged") { stage.holds(sights.filter { seen($0.hold.position, within: Self.holdReach) }, time: Float(time), into: &frame, smoke: false) }
         let poses = timed("armies read") { window.companies(in: world, relief: land.relief, at: seconds).filter { seen($0.hex, within: Self.companyReach) } }
         let places = timed("places staged") {
             stage.sites(sites.filter { seen($0.hex, within: 1) }) + stage.lairs(barrows.filter { seen($0.hex, within: 1) }).batches
