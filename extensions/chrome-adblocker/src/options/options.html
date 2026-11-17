@@ -34,6 +34,17 @@
         <p class="fine bad" id="site-error" role="alert"></p>
       </section>
 
+      <section aria-labelledby="own-title">
+        <h2 class="caps" id="own-title">Your own filters</h2>
+        <p class="note">One to a line, written as the lists write them, and read as their lines are: <code>||ads.example^</code> blocks a host, <code>example.com##.promo</code> hides what a selector finds on a site, <code>@@||example.com^$script</code> lets a site's scripts through.</p>
+        <textarea id="own-input" rows="6" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Your own filters, one to a line" aria-describedby="own-said" placeholder="||ads.example^"></textarea>
+        <div class="own-foot">
+          <p class="fine" id="own-said" role="status"></p>
+          <button class="caps act" id="own-save" type="button">Keep these filters</button>
+        </div>
+        <ul class="plain own-refused" id="own-refused" aria-label="Filters not taken"></ul>
+      </section>
+
       <section aria-labelledby="switches-title">
         <h2 class="caps" id="switches-title">Switches</h2>
         <ul class="rows" id="switches"></ul>

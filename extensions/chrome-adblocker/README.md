@@ -70,6 +70,7 @@ front. Press it for the popup:
 | **Follows worded filters** | 291 filters pick an element by the words in it (*hide the card whose label says Sponsored*), by an XPath expression, or by the declarations the page's own style sheets give it. No style sheet can; the content script follows them as short plans. A style sheet from another site can't be read by any extension, so what only it gives is not seen. |
 | **Closes pop-up ads** | 2,977 filters name the addresses of pop-up ads. A tab or window a page opens to one is closed: at once if it is opened straight there, or as it gets there if it is opened empty or by way of another address. A tab you open yourself (a new tab, a bookmark, an address you type) is never touched. |
 | **Lets sites through** | Per site, from the popup or the options page, subdomains included. |
+| **Takes your own filters** | Written on the options page, one to a line, in the lists' own syntax, and read by the same reader the build uses, so a line of your own blocks, hides or lets through as the same line in EasyList would. Each line not taken is listed with why: a scriptlet of your own can't be run (Chrome runs only the extension's own scripts), and pop-up filters of your own aren't followed. A selector this browser can't read is said to do nothing, and is kept in a style rule of its own so it takes no other with it. |
 | **YouTube** | Takes the ad lists out of the data YouTube's player reads, skips or runs out an ad that plays anyway, and hides promoted tiles. Best effort: see below. |
 | **Sends nothing anywhere** | The extension makes no request of its own. No account, no telemetry, no remote code, no "acceptable ads". |
 
@@ -254,7 +255,7 @@ tools/        refresh-lists.js, build.js, validate.js, package.js, make-icons.js
               popups.js (which pop-ups to close)   zip.js, png.js
 src/          the extension as written: manifest, service worker, content scripts, pages, icons,
               and redirects/, the stand-ins a request may be given instead
-build/        the extension as Chrome loads it: src/ plus rules/, cosmetic/, popups/ and scriptlets/ (not kept in git)
+build/        the extension as Chrome loads it: src/ plus rules/, cosmetic/, popups/, scriptlets/ and lib/ (not kept in git)
 dist/         the packed build
 test/unit/    the converter, the cosmetic and pop-up data, sites, wording, the zip
 test/e2e/     the unpacked extension in Chromium against a stand-in for every host
@@ -278,8 +279,13 @@ test/e2e/     the unpacked extension in Chromium against a stand-in for every ho
   takes them away for a site let through, a list switched off, or a pause.
 - `tools/lib/popups.js` turns pop-up filters into a set of hosts and a few
   hundred expressions; `src/shared/popups.js` judges an address by them.
+- Your own filters are read in the service worker by the build's own
+  reader: the build ships `tools/lib/own.js` and the modules it imports
+  (none of them Node's) as `lib/`. Their rules are dynamic rules numbered
+  from 1000, at the priorities a list's would have; what they hide joins
+  the lists' data.
 - `src/background/service-worker.js` keeps three dynamic rules (the sites
-  let through, and the pause), chooses what each frame hides (by its host
+  let through, and the pause) and those of your own filters, chooses what each frame hides (by its host
   and its address), registers the scriptlets, closes the pop-ups, and
   answers the pages. Chrome stops it when idle, so it holds
   nothing it can't make again, but for which tabs pages have opened in

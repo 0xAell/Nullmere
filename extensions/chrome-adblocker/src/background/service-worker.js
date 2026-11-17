@@ -3,6 +3,7 @@
 // options page. It holds nothing that can't be made again: Chrome stops it
 // when idle and starts it afresh for the next event.
 
+import { OWN_FIRST_ID, OWN_MOST_LETTERS, readOwn } from '../lib/own.js';
 import { CosmeticIndex, hidingCSS, merged } from '../shared/cosmetic-lookup.js';
 import { Popups } from '../shared/popups.js';
 import { DEFAULTS, readSettings, writeSettings } from '../shared/settings.js';
@@ -15,8 +16,10 @@ const ICONS = {
   off: { 16: '/icons/off-16.png', 32: '/icons/off-32.png', 48: '/icons/off-48.png' },
 };
 
-/** What the enabled lists hide, once it has been read; null whenever the enabled lists change. */
+/** What the enabled lists and one's own filters hide, once it has been read; null whenever either changes. */
 let index = null;
+/** One's own filters as last read, by their text. */
+let own = null;
 /** The pop-ups the enabled lists name, likewise. */
 let popups = null;
 
@@ -44,9 +47,31 @@ async function applyLists(settings) {
   popups = null;
 }
 
+/**
+ * One's own filters, read as the build reads a list (lib/own.js), each
+ * regular expression in them first asked of Chrome, which alone knows
+ * which it can use.
+ */
+async function ownFilters(text) {
+  if (own?.text === text) return own.value;
+  let value = readOwn(text);
+  const refused = [];
+  for (const rule of value.rules) {
+    const regex = rule.condition.regexFilter;
+    if (!regex) continue;
+    const { isSupported } = await dnr.isRegexSupported({ regex, isCaseSensitive: Boolean(rule.condition.isUrlFilterCaseSensitive) });
+    if (!isSupported) refused.push(regex);
+  }
+  if (refused.length) value = readOwn(text, { rejectedRegex: refused });
+  own = { text, value };
+  return value;
+}
+
 /** Makes Chrome's rules, lists and the badge follow the settings. */
 async function apply(settings) {
-  await dnr.updateDynamicRules({ removeRuleIds: Object.values(RULE), addRules: userRules(settings) });
+  const mine = await ownFilters(settings.own);
+  const kept = (await dnr.getDynamicRules()).map((rule) => rule.id).filter((id) => id >= OWN_FIRST_ID);
+  await dnr.updateDynamicRules({ removeRuleIds: [...Object.values(RULE), ...kept], addRules: [...userRules(settings), ...mine.rules] });
   await applyLists(settings);
   // Chrome counts what it blocked on each tab's page and writes it on the
   // icon. With the badge off the count is still kept (the popup reads it)
@@ -201,12 +226,15 @@ chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
 // ---------------------------------------------------------------------------
 // Cosmetic filtering: which elements a page hides.
 
-/** The cosmetic data of the lists now enabled, read once for as long as the worker lives. */
+/** The cosmetic data of the lists now enabled and of one's own filters, read once for as long as the worker lives. */
 function cosmeticIndex() {
   index ??= (async () => {
     const enabled = await dnr.getEnabledRulesets();
     const lists = await Promise.all(enabled.map(async (id) => (await fetch(chrome.runtime.getURL(`cosmetic/${id}.json`))).json()));
-    return new CosmeticIndex(merged(lists));
+    const mine = await ownFilters((await readSettings()).own);
+    const lookup = new CosmeticIndex(merged([...lists, mine.cosmetic]));
+    lookup.own = mine.selectors;
+    return lookup;
   })().catch((error) => {
     index = null;
     throw error;
@@ -214,9 +242,14 @@ function cosmeticIndex() {
   return index;
 }
 
-/** Adds a style sheet to the document that asked. As the user's own, so a page's `!important` can't undo it. */
-async function hide(sender, selectors, more = '') {
-  const css = hidingCSS(selectors) + more;
+/**
+ * Adds a style sheet to the document that asked. As the user's own, so a
+ * page's `!important` can't undo it. The selectors of one's own filters,
+ * which no Chromium has read before, are each written in a rule of their
+ * own: one Chrome can't read loses only itself.
+ */
+async function hide(sender, selectors, more = '', own = new Set()) {
+  const css = hidingCSS(selectors.filter((selector) => !own.has(selector))) + hidingCSS(selectors.filter((selector) => own.has(selector)), 1) + more;
   if (!css || !sender.tab) return;
   const target = { tabId: sender.tab.id };
   if (sender.documentId) target.documentIds = [sender.documentId];
@@ -357,7 +390,7 @@ const fromPage = {
   async 'cosmetic:start'({ host, top }, sender) {
     const { active, generic, lookup } = await cosmeticFor(String(host), top, sender);
     if (!active) return { active: false, generic: false };
-    await hide(sender, lookup.selectorsFor(String(host), { generic }), lookup.stylesFor(String(host)));
+    await hide(sender, lookup.selectorsFor(String(host), { generic }), lookup.stylesFor(String(host)), lookup.own);
     return { active, generic, procedural: lookup.proceduralFor(String(host)) };
   },
 
@@ -372,7 +405,7 @@ const fromPage = {
   async 'cosmetic:tokens'({ host, top, tokens }, sender) {
     if (!Array.isArray(tokens) || tokens.length > 20_000) return {};
     const { generic, lookup } = await cosmeticFor(String(host), top, sender);
-    if (generic) await hide(sender, lookup.selectorsForTokens(String(host), tokens));
+    if (generic) await hide(sender, lookup.selectorsForTokens(String(host), tokens), '', lookup.own);
     return {};
   },
 };
@@ -416,7 +449,15 @@ async function overview() {
     dnr.getAvailableStaticRuleCount(),
     fetch(chrome.runtime.getURL('lists.json')).then((response) => response.json()),
   ]);
-  return { settings, enabled, available, lists, version: chrome.runtime.getManifest().version };
+  const mine = await ownFilters(settings.own);
+  return {
+    settings,
+    enabled,
+    available,
+    lists,
+    version: chrome.runtime.getManifest().version,
+    own: { taken: mine.taken, rules: mine.rules.length, hidden: mine.selectors.size, refused: mine.refused },
+  };
 }
 
 const fromExtension = {
@@ -462,6 +503,19 @@ const fromExtension = {
     return { settings };
   },
 
+  /** Keeps one's own filters, and puts them into effect. */
+  async 'own:set'({ text }) {
+    if (typeof text !== 'string') return { error: 'There are no filters to keep.' };
+    if (text.length > OWN_MOST_LETTERS) return { error: `That is more than ${OWN_MOST_LETTERS.toLocaleString('en-US')} letters of filters.` };
+    return inTurn(async () => {
+      const kept = await readSettings();
+      kept.own = text;
+      await save(kept);
+      index = null;
+      return overview();
+    });
+  },
+
   /** Turns a filter list on or off. */
   async 'ruleset:set'({ id, enabled }) {
     if (!listIds().includes(id)) return { error: 'There is no such list.' };
@@ -477,6 +531,7 @@ const fromExtension = {
   async reset() {
     return inTurn(async () => {
       await save({ ...DEFAULTS, allowlist: [], listsOff: [] });
+      index = null;
       return overview();
     });
   },

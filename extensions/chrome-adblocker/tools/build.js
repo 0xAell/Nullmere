@@ -18,6 +18,9 @@ import { patternsFor, scriptletSource } from './lib/scriptlets.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
+/** The modules of tools/lib/ the service worker reads one's own filters with: own.js and what it imports, none of them Node's. */
+export const OWN_READER = ['own.js', 'filters.js', 'dnr.js', 'cosmetic.js', 'procedural.js', 'selectors.js', 'redirects.js', 'scriptlets.js'];
+
 /** Chrome's limits that a build is held to (declarativeNetRequest, Chrome 121 and later). */
 export const LIMITS = {
   /** Static rules Chrome guarantees an extension, whatever else is installed. */
@@ -52,6 +55,10 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
   mkdirSync(join(out, 'popups'), { recursive: true });
   mkdirSync(join(out, 'scriptlets'), { recursive: true });
   cpSync(join(root, 'src'), out, { recursive: true });
+  // The worker reads one's own filters with the build's own reader, so a
+  // line of one's own does what the same line in a list would (lib/own.js).
+  mkdirSync(join(out, 'lib'), { recursive: true });
+  for (const file of OWN_READER) cpSync(join(root, 'tools', 'lib', file), join(out, 'lib', file));
   for (const file of ['THIRD-PARTY-NOTICES.md', 'licences']) {
     if (existsSync(join(root, file))) cpSync(join(root, file), join(out, file), { recursive: true });
   }

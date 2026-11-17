@@ -21,6 +21,8 @@ export const DEFAULTS = Object.freeze({
    * then goes back to the manifest's; this is what the user chose.
    */
   listsOff: [],
+  /** One's own filters, as written on the options page, a filter to a line. */
+  own: '',
 });
 
 const KEY = 'settings';
@@ -31,6 +33,7 @@ export async function readSettings() {
   for (const key of ['allowlist', 'listsOff']) {
     settings[key] = Array.isArray(settings[key]) ? settings[key].filter((item) => typeof item === 'string') : [];
   }
+  if (typeof settings.own !== 'string') settings.own = '';
   return settings;
 }
 

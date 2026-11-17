@@ -1,9 +1,10 @@
 // The options page: the lists, the sites let through, the switches, and
 // what Stillwater cannot do, said plainly.
 
+import { parseLine } from '../lib/filters.js';
 import { ask } from '../shared/ask.js';
 import { siteFromInput } from '../shared/sites.js';
-import { limitWords, listDetail, sourceWords, SWITCHES } from '../shared/words.js';
+import { limitWords, listDetail, ownWords, sourceWords, SWITCHES } from '../shared/words.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -67,6 +68,50 @@ function lay() {
   );
   $('limits').replaceChildren(...limitWords(lists).map(([lead, rest]) => make('li', {}, [make('strong', { text: lead }), ` ${rest}`])));
   $('about').textContent = `Nullmere Stillwater ${version}.`;
+  $('own-input').value = overview.settings.own;
+  placed = overview.settings.own;
+}
+
+/** One's own filters as last put in the field, to tell an edit not yet kept from a change made elsewhere. */
+let placed = '';
+
+/**
+ * The selectors of one's own filters that this browser can't read, by
+ * line: the worker can't ask (it has no page), so the page does. Each is
+ * kept in a style rule of its own, so it hides nothing but harms nothing.
+ */
+function unreadable(text) {
+  const found = [];
+  String(text).split(/\r?\n/).forEach((line, index) => {
+    const filter = parseLine(line);
+    for (const selector of filter.kind === 'cosmetic' ? filter.selectors : []) {
+      try {
+        document.createDocumentFragment().querySelector(selector);
+      } catch {
+        found.push({ line: index + 1, text: line.trim(), why: `This browser can't read the selector ${selector}, so it hides nothing.` });
+      }
+    }
+  });
+  return found;
+}
+
+/** What became of one's own filters: the count in use, and each line not taken with why. */
+function showOwn() {
+  // The field follows what is kept (put back as installed, kept in another
+  // window), unless something not yet kept has been written in it.
+  const field = $('own-input');
+  if (overview.settings.own !== placed) {
+    if (field.value === placed || field.value === overview.settings.own) field.value = overview.settings.own;
+    placed = overview.settings.own;
+  }
+  const own = overview.own ?? { taken: 0, rules: 0, hidden: 0, refused: [] };
+  // A selector this browser can't read is in Chrome's hands but hides nothing: said with the lines that do nothing.
+  const bad = unreadable(overview.settings.own);
+  const notes = [...own.refused, ...bad].sort((a, b) => a.line - b.line);
+  $('own-said').textContent = ownWords({ ...own, taken: own.taken - new Set(bad.map((note) => note.line)).size, hidden: own.hidden - bad.length, refused: notes });
+  $('own-refused').replaceChildren(
+    ...notes.map((note) => make('li', {}, note.line ? [`Line ${note.line}, `, make('code', { text: note.text }), `: ${note.why}`] : [note.why])),
+  );
 }
 
 function show() {
@@ -74,6 +119,7 @@ function show() {
   for (const [id, control] of switches.lists) control.setAttribute('aria-checked', String(enabled.includes(id)));
   for (const [key, control] of switches.settings) control.setAttribute('aria-checked', String(settings[key]));
   $('lists-foot').textContent = sourceWords(lists, enabled);
+  showOwn();
 
   // The sites: laid out afresh only when they have changed.
   const listed = [...$('sites').querySelectorAll('.title')].map((title) => title.textContent);
@@ -102,6 +148,10 @@ $('site-form').addEventListener('submit', async (event) => {
   $('site-error').textContent = '';
   $('site-input').value = '';
   await change({ type: 'site:set', site, allowed: true });
+});
+
+$('own-save').addEventListener('click', async () => {
+  await change({ type: 'own:set', text: $('own-input').value });
 });
 
 $('site-input').addEventListener('input', () => {

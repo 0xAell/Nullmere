@@ -3,7 +3,6 @@
 // conversion to declarativeNetRequest rules is in dnr.js, and the cosmetic
 // data is built in cosmetic.js.
 
-import { domainToASCII } from 'node:url';
 import { isProcedural, planFor, styleOperator, styleRule } from './procedural.js';
 import { redirectFile } from './redirects.js';
 import { readScriptlet } from './scriptlets.js';
@@ -51,10 +50,19 @@ const UNMATCHABLE_TYPES = new Set(['webrtc']);
 const PROCEDURAL = /:(?:has-text|contains|-abp-contains|-abp-properties|matches-css(?:-before|-after)?|matches-attr|matches-path|matches-media|matches-prop|min-text-length|upward|xpath|remove|remove-attr|remove-class|style|watch-attr|others|shadow|spath|nth-ancestor|if|if-not)\(/;
 
 /** A hostname in lower case ASCII (punycode), or '' if it is not one. */
+/** A name in letters other than ASCII's as DNS writes it (punycode); '' if it isn't a name. The WHATWG URL does it alike in Node and in the extension. */
+function toASCII(domain) {
+  try {
+    return new URL(`http://${domain}/`).hostname;
+  } catch {
+    return '';
+  }
+}
+
 export function hostname(text) {
   const lower = text.trim().toLowerCase();
   if (!lower) return '';
-  const ascii = /^[\x00-\x7f]*$/.test(lower) ? lower : domainToASCII(lower);
+  const ascii = /^[\x00-\x7f]*$/.test(lower) ? lower : toASCII(lower);
   return /^(?:[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?\.)*[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(ascii) ? ascii : '';
 }
 

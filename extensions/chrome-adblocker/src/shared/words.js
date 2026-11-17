@@ -76,3 +76,13 @@ export function limitWords(lists) {
     ['Chrome\'s own pages, the Web Store and other extensions', 'are closed to every extension, this one included.'],
   ];
 }
+
+/** What became of one's own filters, said under them: how many are in use, and as what. */
+export function ownWords(own) {
+  if (!own || (!own.taken && !own.refused?.length)) return 'None yet.';
+  const plural = (n, one, many) => `${grouped(n)} ${n === 1 ? one : many}`;
+  const kept = own.taken ? `${plural(own.taken, 'filter', 'filters')} in use: ${plural(own.rules, 'rule', 'rules')} for Chrome, ${plural(own.hidden, 'selector', 'selectors')} to hide.` : 'No filter in use.';
+  const idle = own.refused?.length ?? 0;
+  const left = idle ? ` ${grouped(idle)} ${idle === 1 ? 'line does' : 'lines do'} nothing; why is below.` : '';
+  return kept + left;
+}

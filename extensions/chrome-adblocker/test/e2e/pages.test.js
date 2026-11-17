@@ -217,6 +217,7 @@ test('a change Chrome refuses is not kept: the rules and the page stay as they w
 test('putting everything back as installed is asked twice, and does it', async () => {
   await browser.ask({ type: 'site:set', site: 'kept.test', allowed: true });
   await browser.ask({ type: 'ruleset:set', id: 'easyprivacy', enabled: false });
+  await browser.ask({ type: 'own:set', text: '||kept-own.test^\nkept.test##.promo' });
   const page = await optionsPage();
   await page.click('#reset');
   assert.equal(await page.textContent('#reset'), 'Press again to put everything back');
@@ -224,7 +225,9 @@ test('putting everything back as installed is asked twice, and does it', async (
   await page.click('#reset');
   await until(async () => (await switches(page, 'switches')).map((item) => item[1]).join() === 'true,true,true,true,false', 'the switches to go back');
   const state = await browser.ask({ type: 'overview' });
-  assert.deepEqual(state.settings, { allowlist: [], paused: false, cosmetic: true, popups: true, youtube: true, badge: true, listsOff: [] });
+  assert.deepEqual(state.settings, { allowlist: [], paused: false, cosmetic: true, popups: true, youtube: true, badge: true, listsOff: [], own: '' });
+  assert.equal(state.own.taken, 0, 'one\'s own filters gone too');
+  assert.equal(await page.inputValue('#own-input'), '', 'and the field emptied');
   assert.deepEqual(state.enabled.sort(), ['easylist', 'easyprivacy', 'stillwater']);
   assert.deepEqual(await browser.worker.evaluate(() => chrome.declarativeNetRequest.getDynamicRules()), []);
   await page.close();
