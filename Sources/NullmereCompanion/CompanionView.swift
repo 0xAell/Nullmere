@@ -127,6 +127,16 @@ struct CompanionHome: View {
                         }
                     }
                 }
+                // The Academy: the topic it studies and how long it has left, or
+                // each it could take up now, with a way to.
+                let studies = world.studyLines(at: seconds).filter { $0.job != nil || ($0.block == nil && $0.next != nil) }
+                if !studies.isEmpty {
+                    Section("Studies") {
+                        ForEach(studies) { line in
+                            CompanionStudy(session: session, line: line, seconds: seconds)
+                        }
+                    }
+                }
                 let idle = world.idle(at: seconds)
                 if !idle.isEmpty {
                     Section("Standing idle") {
@@ -242,6 +252,37 @@ struct CompanionTraining: View {
                 if let block = tier.block {
                     Text(verbatim: block.words).font(.footnote).foregroundStyle(.secondary)
                 }
+            }
+        }
+    }
+}
+
+/// A topic the player's Academy studies, or could take up now, on the
+/// phone: its name and level so far, and the time left, or what the next
+/// level costs with a way to study it.
+struct CompanionStudy: View {
+    let session: LiveSession
+    let line: LiveStudyLine
+    let seconds: Double
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(verbatim: "\(line.name), \(line.soFar)")
+                Spacer()
+                if let job = line.job {
+                    Text(verbatim: LiveWords.clock(Int(job.left(at: seconds).rounded(.up))))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                } else {
+                    Button("Study") { Task { await session.learn(topic: line.topic) } }
+                        .buttonStyle(.borderless)
+                        .disabled(line.block != nil || session.asking > 0)
+                }
+            }
+            Text(verbatim: line.words).font(.footnote).foregroundStyle(.secondary)
+            if line.job == nil, let next = line.next {
+                Text(verbatim: "\(next.cost.sentence), \(LiveWords.spoken(next.seconds))").font(.footnote).foregroundStyle(.secondary)
             }
         }
     }
