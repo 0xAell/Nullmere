@@ -162,6 +162,8 @@ async function visit(browser, page, hosts) {
     result.frames = shown.length;
     result.frameHosts = shown;
     result.words = await tab.evaluate(() => (document.body?.innerText ?? '').length);
+    // The page's lines of text, to say which a page lost with the extension.
+    result.lines = await tab.evaluate(() => [...new Set((document.body?.innerText ?? '').split('\n').map((line) => line.trim()).filter((line) => line.length >= 4 && line.length <= 90))].slice(0, 800));
     if (page.probe) result.probe = await tab.evaluate(page.probe).catch((error) => `(${String(error.message ?? error).slice(0, 60)})`);
     if (page.youtube) {
       result.youtube = await youtube(tab);
@@ -181,7 +183,8 @@ async function visit(browser, page, hosts) {
   result.topBlocked = [...seen.blockedHosts].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([host, count]) => `${host} ${count}`);
   await Promise.race([tab.close(), new Promise((done) => setTimeout(done, 5_000))]);
   // As it goes, so that a run cut short still says what it saw.
-  console.error(`${browser.worker ? 'with' : 'without'}  ${JSON.stringify(result)}`);
+  const { lines, ...said } = result;
+  console.error(`${browser.worker ? 'with' : 'without'}  ${JSON.stringify(said)}`);
   return result;
 }
 
@@ -263,6 +266,22 @@ function table(withExtension, without) {
 }
 
 /** Where a page threw more errors with the extension than without: what they said, and its title both ways. */
+/**
+ * For each page with a tenth less text with the extension than without,
+ * the lines it had without and not with: an ad's words, or the page's own.
+ */
+export function lostWords(withExtension, without) {
+  const lines = [];
+  for (const one of withExtension) {
+    const other = without.find((page) => page.name === one.name);
+    if (!other?.lines || !one.lines || !(one.words < other.words * 0.9)) continue;
+    const kept = new Set(one.lines);
+    const lost = other.lines.filter((line) => !kept.has(line));
+    lines.push(`- ${one.name}, ${other.words - one.words} fewer letters; ${lost.length} lines not seen with it${lost.length ? `: ${lost.slice(0, 15).map((line) => `"${line.replaceAll('"', "'")}"`).join(', ')}${lost.length > 15 ? ', ...' : ''}` : ''}`);
+  }
+  return lines.length ? `Pages with a tenth less text with the extension, and the lines they had without it:\n\n${lines.join('\n')}` : 'No page had a tenth less text with the extension.';
+}
+
 function errorWords(withExtension, without) {
   const lines = [];
   for (const [index, one] of withExtension.entries()) {
@@ -325,6 +344,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     table(withExtension, without),
     '',
     errorWords(withExtension, without),
+    '',
+    lostWords(withExtension, without),
     '',
     ...withExtension.flatMap((one, index) => (one.youtube !== undefined || PAGES.find((page) => page.name === one.name)?.youtube ? [youtubeWords(one, without[index]), ''] : [])),
     '',
