@@ -354,6 +354,15 @@ final class LiveGameTests: XCTestCase {
         for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
             _ = try drawn(whole(side, of: allied).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600)
         }
+        // A Barracks of the fifth level, its first tier's spearmen to be
+        // raised to the second: the Troops panel offers the raising.
+        var raising = rows()
+        raising["my_buildings"]?.removeAll { $0.first == n(24) }
+        raising["my_buildings"]?.append([n(24), n(7), n(7), n(5)])
+        let (promoting, _) = await playing(raising)
+        let barracks = try XCTUnwrap(promoting.world.trainLines(at: 2_015).first { $0.building.id == 24 })
+        XCTAssertNotNil(promoting.world.promotion(barracks, at: 2_015), "tier 1 to be raised to tier 2")
+        XCTAssertGreaterThan(try drawn(whole(.troops, of: promoting).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800)
         // And each panel's whole content, as long as it runs, with no
         // scrolling to leave what lies below a panel's fold unbuilt.
         for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
