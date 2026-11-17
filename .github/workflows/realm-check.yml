@@ -180,6 +180,12 @@ jobs:
             exit 1
           }
 
+      # The figures the tests printed (frame staging, part by part, among
+      # them), gathered at the foot of the log, where its tail reads them.
+      - name: The figures
+        if: ${{ !cancelled() }}
+        run: grep -hE "^(PERF|LOAD|RENDER|SOUND)" realm-client.log realm-stage.log pure-swift.log 2>/dev/null || true
+
       - name: The server's log, if it failed
         if: failure()
         run: |
