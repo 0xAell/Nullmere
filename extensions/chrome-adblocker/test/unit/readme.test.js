@@ -33,11 +33,12 @@ test('the README\'s numbers are the build\'s', (t) => {
   says(`The ${grouped(generic)} generic ones`);
   says(`| ${grouped(worded.size)} filters pick an element`);
   says(`| ${grouped(totals.popups)} filters name the addresses of pop-up ads.`);
+  says(`| **Gives stand-ins** | ${grouped(totals.standIns)} filters keep a request back`);
   assert.equal(left('option:popup', 'popup:'), 0, 'no pop-up filter is left out, so the README has no row for them');
 
   // What was left out, by the README's own rows.
   const rows = [
-    ['Redirects and rewrites (`$redirect`, `$rewrite`)', left('option:redirect', 'option:rewrite')],
+    ['Exceptions that take back only a stand-in (`$redirect-rule`)', left('option:redirect', 'option:rewrite')],
     ['Scriptlets and procedural filters beyond `:has-text`', left('cosmetic:scriptlet', 'cosmetic:procedural', 'cosmetic:snippet')],
     ['Regular expressions Chrome refuses', left('regex:')],
     ['Hiding exceptions for part of a site', left('hide-exception:')],

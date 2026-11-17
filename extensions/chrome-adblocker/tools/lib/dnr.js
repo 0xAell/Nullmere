@@ -5,6 +5,7 @@
 // approximated in a way that would block more than the filter does.
 
 import { hostname } from './filters.js';
+import { REDIRECT_DIRECTORY } from './redirects.js';
 
 const FRAMES = ['main_frame', 'sub_frame'];
 
@@ -28,16 +29,21 @@ export const RESOURCE_TYPES = [
 ];
 
 /**
- * Priorities. At one priority Chrome lets `allow` win over `block`, which
- * is how an exception filter beats a blocking one. `$important` blocks sit
+ * Priorities. Of rules that match one request Chrome takes the highest;
+ * at one priority, `allow` over `block` over `redirect`. A filter that
+ * gives a request a stand-in (`$redirect`) is meant to win over one that
+ * only blocks it, so it sits above the blocks; an exception sits above
+ * both, so it takes back either; `$important` blocks and stand-ins sit
  * above the exceptions, and the user's own allowlist above everything.
+ * (An exception that is itself `$important` sits with the `$important`
+ * blocks, which it takes back, as `allow` wins at one priority.)
  *
  * `$csp` filters sit below all of them. Chrome leaves out a header rule
  * when an `allow` of its priority or higher matches, which is the only
  * way to say `@@...$csp`; down here that `allow` takes the policy back and
  * is outranked by every blocking rule, so it lets nothing else through.
  */
-export const PRIORITY = { csp: 1, normal: 2, important: 3, user: 1000 };
+export const PRIORITY = { csp: 1, normal: 2, redirect: 3, exception: 4, important: 5, importantRedirect: 6, user: 1000 };
 
 const unique = (list) => [...new Set(list)].sort();
 
@@ -166,7 +172,11 @@ function byDocument(filter) {
  * for the types named with it.
  */
 function actionsOf(filter) {
-  const priority = filter.important ? PRIORITY.important : PRIORITY.normal;
+  if (filter.redirect && !filter.exception && filter.csp === undefined) {
+    const action = { type: 'redirect', redirect: { extensionPath: `${REDIRECT_DIRECTORY}${filter.redirect}` } };
+    return [{ action, priority: filter.important ? PRIORITY.importantRedirect : PRIORITY.redirect, types: typesOf(filter.types, filter.notTypes) }];
+  }
+  const priority = filter.important ? PRIORITY.important : filter.exception ? PRIORITY.exception : PRIORITY.normal;
   if (filter.csp !== undefined) {
     const types = { resourceTypes: framesOf(filter) };
     if (filter.exception) return [{ action: { type: 'allow' }, priority: PRIORITY.csp, types }];
@@ -342,7 +352,13 @@ export function problemsWith(rule) {
   const { condition = {}, action = {} } = rule;
   if (!Number.isInteger(rule.id) || rule.id < 1) problems.push('id is not a positive whole number');
   if (rule.priority !== undefined && (!Number.isInteger(rule.priority) || rule.priority < 1)) problems.push('priority is not a positive whole number');
-  if (!['block', 'allow', 'allowAllRequests', 'modifyHeaders'].includes(action.type)) problems.push(`action ${action.type} is not one this extension makes`);
+  if (!['block', 'allow', 'allowAllRequests', 'modifyHeaders', 'redirect'].includes(action.type)) problems.push(`action ${action.type} is not one this extension makes`);
+  if (action.type === 'redirect') {
+    const path = action.redirect?.extensionPath;
+    if (typeof path !== 'string' || !path.startsWith(REDIRECT_DIRECTORY) || path.includes('..') || Object.keys(action.redirect).length !== 1) {
+      problems.push('action redirect gives no stand-in of the extension\'s own');
+    }
+  }
   for (const key of Object.keys(condition)) {
     if (!CONDITION_KEYS.has(key)) problems.push(`condition has an unknown key ${key}`);
   }

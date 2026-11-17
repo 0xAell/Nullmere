@@ -61,8 +61,13 @@ test('csp, and the exceptions that turn hiding off', () => {
 test('what Chrome cannot express is refused with its reason', () => {
   const reasons = {
     '||ads.example^$webrtc': 'option:webrtc',
-    '||ads.example^$rewrite=abp-resource:blank-js': 'option:rewrite',
-    '||ads.example^$redirect=noop.js': 'option:redirect',
+    '||ads.example^$rewrite=abp-resource:no-such-thing': 'option:rewrite-unknown',
+    '||ads.example^$rewrite=/ads/blank/': 'option:rewrite-unknown',
+    '||ads.example^$redirect=no-such-thing.js': 'option:redirect-unknown',
+    '||ads.example^$redirect-rule=noop.js': 'option:redirect-rule',
+    '@@||ads.example^$redirect-rule,script': 'option:redirect-rule',
+    '@@||ads.example^$redirect=noop.js': 'option:redirect-exception',
+    '||ads.example^$popup,redirect=noop.js': 'option:redirect-with',
     '||ads.example^$removeparam=utm_source': 'option:removeparam',
     '@@||ads.example^$genericblock': 'option:genericblock',
     '||ads.example^$sitekey=abc': 'option:sitekey',
@@ -239,4 +244,23 @@ test('a list is read whole, and what was dropped is counted by reason', () => {
   assert.equal(list.cosmetic.length, 1);
   assert.deepEqual(list.popups.map((filter) => filter.pattern), ['||pop.example^', '||pop2.example^']);
   assert.deepEqual([...list.dropped], [['cosmetic:scriptlet', 1], ['option:webrtc', 1]]);
+});
+
+test('a filter that gives a stand-in names its file, by every name the lists use', () => {
+  for (const [line, file] of [
+    ['||ads.example^$redirect=noop.js,script', 'noop.js'],
+    ['||ads.example^$redirect=noopjs', 'noop.js'],
+    ['||ads.example^$redirect=noop.js:10', 'noop.js'],
+    ['||ads.example^$rewrite=abp-resource:blank-js', 'noop.js'],
+    ['||ads.example^$redirect=nooptext', 'noop.txt'],
+    ['||ads.example^$redirect=noopjson,xmlhttprequest', 'noop.json'],
+    ['||ads.example^$image,redirect=1x1.gif', '1x1.gif'],
+    ['||ads.example^$rewrite=abp-resource:blank-mp4', 'noop.mp4'],
+    ['||ads.example^$redirect=googletagmanager_gtm.js', 'googletagmanager_gtm.js'],
+    ['||ads.example^$redirect=fingerprint2.js', 'fingerprint2.js'],
+  ]) {
+    const filter = parseLine(line);
+    assert.deepEqual([filter.kind, filter.redirect], ['network', file], line);
+  }
+  assert.equal(parseLine('||ads.example^').redirect, null);
 });

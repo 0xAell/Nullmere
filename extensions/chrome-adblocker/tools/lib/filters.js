@@ -5,6 +5,7 @@
 
 import { domainToASCII } from 'node:url';
 import { isProcedural, planFor, styleRule } from './procedural.js';
+import { redirectFile } from './redirects.js';
 import { isBalanced, isContained, splitSelectors } from './selectors.js';
 
 export { isBalanced, isContained, splitSelectors };
@@ -146,6 +147,8 @@ function cosmetic(domains, separator, body) {
  *   elemhide, generichide   an exception that turns cosmetic filtering off
  *   important    outranks exceptions
  *   popup        it is (also) for windows and tabs a page opens
+ *   redirect     the file in src/redirects/ the request is given instead
+ *                of being refused (redirects.js), or null
  * or the same with kind: 'popup', for a filter that is for those alone;
  * or { kind: 'unsupported', reason }.
  */
@@ -169,6 +172,7 @@ function network(text) {
     generichide: false,
     important: false,
     popup: false,
+    redirect: null,
   };
   if (rest.startsWith('@@')) {
     filter.exception = true;
@@ -230,11 +234,24 @@ function network(text) {
       filter.generichide = true;
     } else if (key === 'important') {
       filter.important = true;
+    } else if ((key === 'redirect' || key === 'rewrite') && !negated) {
+      // The request is given a stand-in of the extension's own instead.
+      const file = redirectFile(key, value);
+      if (!file) return unsupported(`option:${key}-unknown`);
+      filter.redirect = file;
+    } else if (key === 'redirect-rule') {
+      // A stand-in only where another filter blocks: no rule says "only if".
+      return unsupported('option:redirect-rule');
     } else {
       return unsupported(`option:${key}`);
     }
   }
   if ((filter.elemhide || filter.generichide) && !filter.exception) return unsupported('option:hide-in-block');
+  // An exception that takes back only a stand-in, leaving the block: an
+  // allow rule would take back both. And a stand-in for a pop-up or a
+  // policy is nothing a request can be given.
+  if (filter.redirect && filter.exception) return unsupported('option:redirect-exception');
+  if (filter.redirect && (filter.popup || filter.csp !== undefined)) return unsupported('option:redirect-with');
   if (unmatchable && types.size === 0 && filter.csp === undefined && !filter.elemhide && !filter.generichide) {
     return unsupported(`option:${unmatchable}`);
   }

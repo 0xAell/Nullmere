@@ -74,8 +74,45 @@ test('a document exception narrowed by anything else is not widened to all its d
 test('important blocks outrank exceptions', () => {
   const { rules: out } = rules(['||ads.example^$important', '@@||ads.example^']);
   assert.equal(out.find((rule) => rule.action.type === 'block').priority, PRIORITY.important);
-  assert.equal(out.find((rule) => rule.action.type === 'allow').priority, PRIORITY.normal);
-  assert.ok(PRIORITY.user > PRIORITY.important && PRIORITY.important > PRIORITY.normal && PRIORITY.normal > PRIORITY.csp);
+  assert.equal(out.find((rule) => rule.action.type === 'allow').priority, PRIORITY.exception);
+  // Each above the one before: the csp's, the blocks, the stand-ins, the
+  // exceptions, the important blocks and stand-ins, the user's own.
+  const order = ['csp', 'normal', 'redirect', 'exception', 'important', 'importantRedirect', 'user'].map((name) => PRIORITY[name]);
+  assert.deepEqual([...order].sort((a, b) => a - b), order);
+  assert.equal(new Set(order).size, order.length);
+  // An exception marked important takes back an important block, as allow wins at one priority.
+  const { rules: both } = rules(['||ads.example^$important', '@@||ads.example^$important']);
+  assert.deepEqual(both.map((rule) => [rule.action.type, rule.priority]).sort(), [['allow', PRIORITY.important], ['block', PRIORITY.important]]);
+});
+
+test('a stand-in is given for a request in place of refusing it, above the blocks and below the exceptions', () => {
+  const { rules: out, dropped } = rules([
+    '||chartbeat.example/js/chartbeat.js$redirect=chartbeat.js,script',
+    '||tracker.example^$redirect=noopjs,script',
+    '||pixels.example^$image,important,redirect=1x1.gif,domain=shop.example',
+    '||video.example/*.mp4$rewrite=abp-resource:blank-mp4,domain=news.example',
+    '||tracker.example^',
+    '@@||tracker.example^*/kept.js$script',
+  ]);
+  assert.equal(dropped.size, 0);
+  const given = (path) => out.find((rule) => rule.action.redirect?.extensionPath === path);
+  const chartbeat = given('/redirects/chartbeat.js');
+  assert.deepEqual(chartbeat, {
+    id: chartbeat.id,
+    priority: PRIORITY.redirect,
+    action: { type: 'redirect', redirect: { extensionPath: '/redirects/chartbeat.js' } },
+    condition: { urlFilter: '||chartbeat.example/js/chartbeat.js', resourceTypes: ['script'] },
+  });
+  // A whole host's stand-in is grouped by host as blocks are.
+  assert.deepEqual(given('/redirects/noop.js').condition, { requestDomains: ['tracker.example'], resourceTypes: ['script'] });
+  const pixel = given('/redirects/1x1.gif');
+  assert.equal(pixel.priority, PRIORITY.importantRedirect);
+  assert.deepEqual(pixel.condition, { requestDomains: ['pixels.example'], initiatorDomains: ['shop.example'], resourceTypes: ['image'] });
+  assert.equal(given('/redirects/noop.mp4').condition.urlFilter, '||video.example/*.mp4');
+  // The host's block sits below its stand-in, its exception above.
+  const block = out.find((rule) => rule.action.type === 'block');
+  const allow = out.find((rule) => rule.action.type === 'allow');
+  assert.ok(block.priority < given('/redirects/noop.js').priority && given('/redirects/noop.js').priority < allow.priority);
 });
 
 test('csp adds a response header on documents and frames; its exception allows them', () => {
@@ -193,6 +230,8 @@ test('problemsWith names what Chrome would refuse', () => {
     [{ id: 1, action: { type: 'allowAllRequests' }, condition: { urlFilter: '/a/', resourceTypes: ['script'] } }, 'allowAllRequests'],
     [{ id: 1, action: { type: 'modifyHeaders' }, condition: { urlFilter: '/a/' } }, 'modifyHeaders'],
     [{ id: 1, action: { type: 'redirect' }, condition: { urlFilter: '/a/' } }, 'action redirect'],
+    [{ id: 1, action: { type: 'redirect', redirect: { url: 'https://elsewhere.example/' } }, condition: { urlFilter: '/a/' } }, 'action redirect'],
+    [{ id: 1, action: { type: 'redirect', redirect: { extensionPath: '/redirects/../manifest.json' } }, condition: { urlFilter: '/a/' } }, 'action redirect'],
   ];
   for (const [rule, words] of cases) {
     assert.ok(problemsWith(rule).some((problem) => problem.includes(words)), `${words}: ${problemsWith(rule)}`);

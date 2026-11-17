@@ -264,9 +264,11 @@ test('the options page says what it cannot do with the build\'s own numbers, and
   const page = await optionsPage();
   const limits = await page.evaluate(() => [...document.querySelectorAll('#limits li')].map((item) => item.textContent));
   assert.equal(limits.length, 6);
-  const rewrites = lists.lists.reduce((sum, list) => sum + Object.entries(list.dropped).reduce((n, [reason, count]) => n + (/^option:(rewrite|redirect|removeparam)/.test(reason) ? count : 0), 0), 0);
-  assert.ok(rewrites > 10);
-  assert.match(limits[1], new RegExp(`${rewrites.toLocaleString('en-US')} that redirect or rewrite a request`));
+  const left = (test) => lists.lists.reduce((sum, list) => sum + Object.entries(list.dropped).reduce((n, [reason, count]) => n + (test(reason) ? count : 0), 0), 0);
+  const scripted = left((reason) => /^cosmetic:(procedural|scriptlet|snippet|style)/.test(reason));
+  const others = left(() => true) - scripted;
+  assert.ok(scripted > 10 && others > 10);
+  assert.match(limits[1], new RegExp(`${scripted.toLocaleString('en-US')} that need a script to find or restyle an element, and ${others.toLocaleString('en-US')} more that Chrome's rules can't say`));
   assert.match(limits[2], /A pop-up is closed, not prevented/);
   // The list that names pop-ups says how many.
   const popups = lists.lists.find((list) => list.id === 'easylist').popups;

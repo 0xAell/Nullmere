@@ -64,6 +64,9 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
     for (const rule of rules) {
       const problems = problemsWith(rule);
       if (problems.length) throw new Error(`${list.id}: rule ${rule.id} is not one Chrome takes (${problems.join('; ')}): ${JSON.stringify(rule)}`);
+      // A stand-in a rule gives is one the build holds.
+      const path = rule.action.redirect?.extensionPath;
+      if (path && !existsSync(join(out, path))) throw new Error(`${list.id}: rule ${rule.id} gives ${path}, which the build has not got`);
     }
     for (const [reason, n] of parsed.dropped) dropped.set(reason, (dropped.get(reason) ?? 0) + n);
 
@@ -100,6 +103,7 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
       cosmetic: cosmetic.counts.generic + cosmetic.counts.specific + cosmetic.counts.procedural + cosmetic.counts.styles,
       procedural: cosmetic.counts.procedural,
       popups: popups.count,
+      standIns: parsed.network.filter((filter) => filter.redirect).length,
       dropped: count(dropped),
     });
   }
@@ -110,6 +114,7 @@ export function build({ lists = join(root, 'lists'), out = join(root, 'build'), 
     regexRules: built.reduce((sum, list) => sum + list.regexRules, 0),
     cosmetic: built.reduce((sum, list) => sum + list.cosmetic, 0),
     popups: built.reduce((sum, list) => sum + list.popups, 0),
+    standIns: built.reduce((sum, list) => sum + list.standIns, 0),
   };
   if (totals.regexRules > LIMITS.regexRules) throw new Error(`${totals.regexRules} regular-expression rules: Chrome takes ${LIMITS.regexRules}`);
 

@@ -319,3 +319,51 @@ test('after all of that, Chromium holds nothing against the extension', async (t
   if (!held) return t.skip('this Chromium has no extensions page to ask');
   assert.deepEqual(held, { state: 'ENABLED', warnings: [], manifest: [], errors: [] });
 });
+
+test('a stand-in is given in place of what a filter keeps back, and the page goes on', async () => {
+  server.forget();
+  const on = (name) => `onload="loaded.push('${name}')" onerror="failed.push('${name}')"`;
+  const { page } = await visit(
+    'news.test',
+    `<script>window.loaded = []; window.failed = []; window.dataLayer = [{ event: 'early', eventCallback: () => loaded.push('called back') }];</script>
+    <script src="${server.url('standin.test', '/ad.js')}" ${on('script')}></script>
+    <img src="${server.url('standin.test', '/ad.gif')}" ${on('image')}>
+    <script src="${server.url('blockhost.test', '/given.js')}" ${on('over a block')}></script>
+    <script src="${server.url('blockhost.test', '/other.js')}" ${on('blocked')}></script>
+    <script src="${server.url('standin.test', '/kept.js')}" ${on('excepted')}></script>
+    <script src="${server.url('tags.test', '/gtm.js')}" ${on('tag manager')}></script>
+    <video id="clip" preload="metadata" src="${server.url('standin.test', '/ad.mp4')}"></video>`,
+    '/stand-ins',
+  );
+  await until(() => page.evaluate(() => loaded.length + failed.length >= 7), 'the scripts and the image to load or fail, and the tag manager to call back');
+  const { loaded, failed, ran } = await page.evaluate(() => ({ loaded: [...window.loaded], failed: [...window.failed], ran: window.ran ?? [] }));
+  // Each kept back is given its stand-in, which loads: a stand-in wins over
+  // a block of the same request, an exception over a stand-in.
+  assert.deepEqual(failed, ['blocked']);
+  for (const name of ['script', 'image', 'over a block', 'excepted', 'tag manager', 'called back']) assert.ok(loaded.includes(name), `${name}: ${loaded}`);
+  assert.deepEqual(ran.filter((hit) => hit.includes('test/')), ['standin.test/kept.js'], 'only the excepted script came from its host');
+  for (const path of ['/ad.js', '/ad.gif', '/ad.mp4']) assert.ok(!server.reached('standin.test', path), `${path} went nowhere`);
+  assert.ok(!server.reached('blockhost.test') && !server.reached('tags.test'));
+  // The pixel is one pixel, the video a second long, the data nothing.
+  assert.equal(await page.evaluate(() => document.querySelector('img').naturalWidth), 1);
+  await until(() => page.evaluate(() => document.getElementById('clip').readyState >= 1), 'the video to read its length');
+  assert.equal(Math.round(await page.evaluate(() => document.getElementById('clip').duration)), 1);
+  const data = await page.evaluate(async (url) => (await fetch(url)).text(), server.url('standin.test', '/ad.json'));
+  assert.equal(data, '{}');
+  assert.ok(!server.reached('standin.test', '/ad.json'));
+  // A page can't find the stand-ins at the extension's fixed address, so
+  // can't tell from them that Stillwater is there.
+  const probed = await page.evaluate(async (url) => {
+    try {
+      await fetch(url);
+      return 'read';
+    } catch {
+      return 'refused';
+    }
+  }, browser.extensionUrl('redirects/noop.js'));
+  assert.equal(probed, 'refused');
+  // And Chromium holds nothing against the stand-ins or their rules.
+  const held = await complaints(browser);
+  if (held) assert.deepEqual([held.warnings, held.manifest, held.errors], [[], [], []]);
+  await page.close();
+});

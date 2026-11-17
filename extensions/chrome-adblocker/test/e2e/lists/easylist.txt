@@ -29,6 +29,16 @@ $csp=script-src 'none',domain=cspsite.test
 /pop.php?zone=$popup,domain=news.test
 @@||popup-only.test^*/account/$popup
 ||popthird.test^$popup,third-party
+! --- stand-ins in place of what is kept back ---
+||standin.test^$script,redirect=noop.js
+||standin.test^$image,redirect=1x1.gif
+||standin.test^$xmlhttprequest,redirect=noopjson
+||standin.test^$media,rewrite=abp-resource:blank-mp4
+||tags.test^*/gtm.js$script,redirect=googletagmanager_gtm.js
+! (A host blocked, and one script of it given a stand-in instead; one kept back by no stand-in at all.)
+||blockhost.test^
+||blockhost.test^*/given.js$script,redirect=noopjs
+@@||standin.test^*/kept.js$script
 ! --- cosmetic ---
 ##.ad-banner
 ###ad_top

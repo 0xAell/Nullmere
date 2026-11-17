@@ -60,7 +60,8 @@ front. Press it for the popup:
 
 | | |
 |---|---|
-| **Blocks requests** | 135,154 filters from EasyList, EasyPrivacy and a short list of Stillwater's own become 12,977 rules for Chrome's `declarativeNetRequest`, inside the 30,000 Chrome guarantees every extension. Filters for whole hosts are merged, so 94,309 hosts are blocked by 184 of those rules. |
+| **Blocks requests** | 135,154 filters from EasyList, EasyPrivacy and a short list of Stillwater's own become 12,997 rules for Chrome's `declarativeNetRequest`, inside the 30,000 Chrome guarantees every extension. Filters for whole hosts are merged, so 94,309 hosts are blocked by 184 of those rules. |
+| **Gives stand-ins** | 37 filters keep a request back by giving the page something harmless of Stillwater's own in its place, where refusing it outright would leave the page waiting on it: an empty script, text or JSON, a one-pixel image, a second of silent video, or a few lines that answer as Google's tag manager, Chartbeat or fingerprintjs2 would and send nothing. Chrome serves them from the extension; nothing is fetched. |
 | **Hides ad slots** | 30,934 selectors. A site's own are applied as its pages begin. The 13,637 generic ones are not thrown at every page: a content script tells the extension which classes and ids a page has, and only the selectors that could match are added. They are added as the user's own style, so a page's `!important` can't undo them. |
 | **Follows worded filters** | 283 filters pick an element by the words in it (*hide the card whose label says Sponsored*). No style sheet can; the content script follows them as short plans. |
 | **Closes pop-up ads** | 2,977 filters name the addresses of pop-up ads. A tab or window a page opens to one is closed: at once if it is opened straight there, or as it gets there if it is opened empty or by way of another address. A tab you open yourself (a new tab, a bookmark, an address you type) is never touched. |
@@ -120,13 +121,13 @@ rules made ahead of time. So:
 
   | Left out | How many | Why |
   |---|---|---|
-  | Redirects and rewrites (`$redirect`, `$rewrite`) | 38 | They swap a request for a harmless stand-in; these rules can only block or allow. |
+  | Exceptions that take back only a stand-in (`$redirect-rule`) | 1 | They leave the block standing; Chrome's `allow` would take back both. |
   | Scriptlets and procedural filters beyond `:has-text` | 43 | They need a script run in the page (`+js(...)`, `:xpath`, `:-abp-properties`). |
   | Regular expressions Chrome refuses | 15 | Chrome's engine has no lookahead and refuses expressions that compile too large. `tools/validate.js` asks a real Chromium which. |
   | Hiding exceptions for part of a site | 13 | Only an exception for a whole host can be looked up when a page's selectors are chosen. |
   | Others | 7 | Four selectors Chromium can't read, two filters for addresses that are not hosts, and one that would match every request. |
 
-  That is 116 of 135,154 filters, 0.1%. Nothing is approximated in a
+  That is 79 of 135,154 filters, 0.1%. Nothing is approximated in a
   way that blocks more than the filter meant.
 
 **A pop-up is closed, not prevented.** No rule of Chrome's can stop a page
@@ -206,9 +207,11 @@ lists/        EasyList and EasyPrivacy at a named commit, and Stillwater's own s
 tools/        refresh-lists.js, build.js, validate.js, package.js, make-icons.js, shots.js,
               live-check.js (real pages, from a machine that can reach the web)
   lib/        filters.js (reads the lists)   dnr.js (makes Chrome's rules)
+              redirects.js (the stand-ins, by every name the lists give them)
               cosmetic.js, procedural.js, selectors.js (what to hide)
               popups.js (which pop-ups to close)   zip.js, png.js
-src/          the extension as written: manifest, service worker, content scripts, pages, icons
+src/          the extension as written: manifest, service worker, content scripts, pages, icons,
+              and redirects/, the stand-ins a request may be given instead
 build/        the extension as Chrome loads it: src/ plus rules/, cosmetic/ and popups/ (not kept in git)
 dist/         the packed build
 test/unit/    the converter, the cosmetic and pop-up data, sites, wording, the zip
@@ -219,6 +222,12 @@ test/e2e/     the unpacked extension in Chromium against a stand-in for every ho
   turns network filters into rules and checks each against what Chrome
   requires. `tools/lib/cosmetic.js` sorts selectors into those for named
   sites, generic ones keyed by the class or id they need, and exceptions.
+- A filter that gives a stand-in (`$redirect=`, `$rewrite=abp-resource:`)
+  becomes a rule that sends the request to a file in `src/redirects/`,
+  every one written for Stillwater. Chrome ranks such a rule above the
+  blocks and below the exceptions. The files are open to the pages they
+  are given to only at an address Chrome makes afresh each session, so a
+  page can't look for them to tell that Stillwater is there.
 - `tools/lib/popups.js` turns pop-up filters into a set of hosts and a few
   hundred expressions; `src/shared/popups.js` judges an address by them.
 - `src/background/service-worker.js` keeps three dynamic rules (the sites

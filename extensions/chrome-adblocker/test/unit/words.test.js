@@ -56,8 +56,8 @@ test('what it cannot do is said with the build\'s own numbers', () => {
   const numbers = words[1][1];
   assert.doesNotMatch(numbers, /pop-up/, 'pop-up filters are no longer left out');
   assert.match(words[2][0], /A pop-up is closed, not prevented/);
-  assert.match(numbers, /38 that redirect or rewrite/, '7 + 29 + 1 + 1');
   assert.match(numbers, /365 that need a script/, '294 + 40 + 31');
+  assert.match(numbers, /and 51 more that Chrome's rules can't say/, '7 + 13 + 29 + 1 + 1, every other reason');
   for (const [lead, rest] of words) assert.ok(lead.length > 10 && rest.length > 20);
 });
 
