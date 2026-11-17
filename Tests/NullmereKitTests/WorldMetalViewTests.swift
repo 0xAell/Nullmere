@@ -44,7 +44,7 @@ final class WorldMetalViewTests: XCTestCase {
         guard let device = WorldMetalView.systemDevice else { throw XCTSkip("No Metal device available") }
         let state = TestWorld(seedText: "waiting tiles", houses: 3, radius: 16)
         let side = TileTexture.side(for: state.map)
-        let bytes = state.tiles { $0.distance(to: state.holds[0].position) <= 5 }
+        let bytes = state.tiles(watched: { $0.distance(to: state.holds[0].position) <= 5 })
 
         // Tiles first, the shader after: the tiles are kept, then taken.
         let view = WorldMetalView()

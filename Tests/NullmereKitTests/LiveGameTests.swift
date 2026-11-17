@@ -346,10 +346,10 @@ final class LiveGameTests: XCTestCase {
         }
         // In an alliance with nothing yet in it, each panel's whole content:
         // no rallies called, no help asked, no pacts, no petition of her own.
-        var bare = LiveSample.rows()
-        bare["alliance"] = rows()["alliance"]
-        bare["member"] = rows()["member"]
-        let (allied, _) = await playing(bare)
+        var unrallied = LiveSample.rows()
+        unrallied["alliance"] = rows()["alliance"]
+        unrallied["member"] = rows()["member"]
+        let (allied, _) = await playing(unrallied)
         XCTAssertNotNil(allied.world.myMembership)
         for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
             _ = try drawn(whole(side, of: allied).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600)
