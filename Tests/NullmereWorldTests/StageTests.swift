@@ -788,6 +788,29 @@ final class StageTests: XCTestCase {
         XCTAssertNil(stage.work(of: sight, hitBy: heart + Vec3(9, 10, 0), toward: Vec3(0, -1, 0)), "nothing far from the hold")
     }
 
+    /// A work not yet raised has its plot where it will stand once raised,
+    /// carried out from the hold's middle as the hold is drawn.
+    func testAPlotIsWhereItsWorkWillBeDrawn() throws {
+        let stage = stage()
+        var hold = try XCTUnwrap(Self.state.holds.first { $0.isSeat })
+        hold.project = nil
+        hold.levels[.sawpit] = 0
+        let before = HoldSight(hold: hold, colour: Vec4(1, 1, 1, 1))
+        let plots = stage.plots(of: before, for: [.building(.sawpit)])
+        guard let plot = plots.first else {
+            // A hold whose ground has too few slots keeps none.
+            return XCTAssertTrue(plots.isEmpty)
+        }
+        XCTAssertEqual(plot.work, .building(.sawpit))
+        hold.levels[.sawpit] = 1
+        let after = HoldSight(hold: hold, colour: Vec4(1, 1, 1, 1))
+        XCTAssertTrue(stage.plots(of: after, for: [.building(.sawpit)]).isEmpty, "none once it stands")
+        var frame = SceneFrame()
+        let drawn = try XCTUnwrap(stage.holds([after], time: 3, into: &frame).batches.first { $0.key == .work(.sawpit, level: 1) }?.instances.first)
+        XCTAssertEqual(plot.foot.x, drawn.model.c3.x, accuracy: 1e-4)
+        XCTAssertEqual(plot.foot.z, drawn.model.c3.z, accuracy: 1e-4)
+    }
+
     /// An upright is met where a ray passes through it, from the side or
     /// from above, and not where it passes beside it, over it, or behind
     /// the ray's start.

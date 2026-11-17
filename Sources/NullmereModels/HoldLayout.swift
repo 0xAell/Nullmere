@@ -273,6 +273,24 @@ public enum HoldLayout {
         var place: Int
     }
 
+    /// Where each of `works` not yet standing in a hold would stand once
+    /// raised, on the land, in its plan: the slot kept for it while it is
+    /// not there. None where the hold's ground has too few slots for every
+    /// work it could raise, so that slots are shared and none kept.
+    public static func plots(_ plan: Plan, relief: Relief, for works: Set<Work>) -> [(work: Work, position: Vec3)] {
+        let possible = Work.order.filter { $0 != .building(.moonspire) || plan.isSeat }
+        guard slots(plan, relief: relief).count >= possible.count else { return [] }
+        var full = plan
+        full.levels = Dictionary(uniqueKeysWithValues: possible.map { ($0, max(plan.levels[$0] ?? 0, 1)) })
+        full.rising = nil
+        let present = Set(plan.levels.filter { $0.value > 0 }.map(\.key) + (plan.rising.map { [$0.work] } ?? []))
+        return assign(full, relief: relief).compactMap { work, slot in
+            guard works.contains(work), !present.contains(work) else { return nil }
+            let y = lowest(relief, around: slot.position, radius: workRadius)
+            return (work, Vec3(slot.position.x, y, slot.position.z))
+        }
+    }
+
     /// Each place round a hold whose ground is the hold's: where it lies on
     /// the land, and the work standing there, if one does.
     public static func places(_ plan: Plan, relief: Relief) -> [(place: Int, position: Vec3, work: Work?)] {

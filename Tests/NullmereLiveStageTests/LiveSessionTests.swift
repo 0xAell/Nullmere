@@ -283,7 +283,7 @@ final class LiveSessionTests: XCTestCase {
             [n(kind << 32 | level), n(kind), n(level), .string(name), n(0), n(100 * level), n(0), n(0), n(10 * level), n(0), n(0), n(0), n(0),
              n(1), n(0), n(0), n(20 * level)]
         }
-        rows["blueprint"] = [blueprint(2, 1, "Farm"), blueprint(2, 3, "Farm")]
+        rows["blueprint"] = [blueprint(2, 1, "Farm"), blueprint(2, 3, "Farm"), blueprint(7, 1, "Barracks")]
         let line = StandInLine(rows: rows)
         let session = session(line)
         await session.open()
@@ -316,6 +316,23 @@ final class LiveSessionTests: XCTestCase {
         line.clear()
         await session.press(ready.buttons[0])
         XCTAssertTrue(line.asked.contains("upgrade 22"), "\(line.asked)")
+
+        // A plot of her city: the Barracks she has not built, where it
+        // would stand; the Farm, standing, has none. Chosen, its card asks
+        // it built.
+        let plots = session.plots()
+        let barracks = try XCTUnwrap(plots.first { $0.kind == 7 }, "\(plots)")
+        XCTAssertFalse(plots.contains { $0.kind == 2 }, "the Farm stands already")
+        session.choose(barracks)
+        XCTAssertEqual(session.selection, .work(7, in: city))
+        let plot = session.card(for: try XCTUnwrap(session.selection))
+        XCTAssertEqual(plot.title, "Barracks")
+        XCTAssertEqual(plot.lines, ["Not built yet.", "Building it takes 100 timber, 10 seconds."])
+        XCTAssertEqual(plot.buttons.map(\.title), ["Build", "Buildings"])
+        XCTAssertEqual(plot.buttons[0].icon, "hammer")
+        line.clear()
+        await session.press(plot.buttons[0])
+        XCTAssertTrue(line.asked.contains("build 7"), "\(line.asked)")
 
         // The keep, at the city's heart, chooses the city itself.
         let heart = Relief.centre(of: local)

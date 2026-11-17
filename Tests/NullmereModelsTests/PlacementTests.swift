@@ -420,6 +420,36 @@ final class PlacementTests: XCTestCase {
         XCTAssertEqual(HoldLayout.affinity(.beacon, terrain: .barrow, feature: nil), 0)
     }
 
+    /// A work not yet raised has its plot where it will stand once raised,
+    /// among all the others; a work standing has none; and where a hold's
+    /// ground has too few slots for every work, none is kept.
+    func testAWorkNotYetRaisedHasItsPlotWhereItWillStand() {
+        var checked = 0
+        for state in PlacementTests.worlds {
+            let relief = Relief(map: state.map)
+            for hold in state.holds {
+                let grand = PlacementTests.grandPlan(hold.position)
+                let works = Set(grand.levels.keys.filter { $0 != .building(.walls) })
+                let sparse = HoldLayout.Plan(hex: hold.position, isSeat: true, levels: [.building(.granary): 2])
+                let plots = HoldLayout.plots(sparse, relief: relief, for: works)
+                guard HoldLayout.slots(grand, relief: relief).count >= HoldLayout.Work.order.count else {
+                    XCTAssertTrue(plots.isEmpty, "no slot kept where they are shared")
+                    continue
+                }
+                checked += 1
+                let everything = HoldLayout.pieces(grand, relief: relief)
+                XCTAssertFalse(plots.contains { $0.work == .building(.granary) }, "the granary stands already")
+                XCTAssertEqual(plots.count, works.count - 1)
+                for plot in plots {
+                    let level = grand.levels[plot.work] ?? 1
+                    XCTAssertEqual(plot.position, everything.first { $0.key == plot.work.key(level: level) }?.position,
+                                   "\(plot.work)'s plot where it will stand")
+                }
+            }
+        }
+        XCTAssertGreaterThan(checked, 0)
+    }
+
     /// A work its keeper has set stands in its place; one that stood there
     /// moves to where its ground suits it, every piece still clear of the
     /// rest; a hold with none set stands as it always did.

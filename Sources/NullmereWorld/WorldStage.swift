@@ -856,6 +856,18 @@ public final class WorldStage: @unchecked Sendable {
         return best.map { ($0.work, $0.foot) }
     }
 
+    /// Where each of `works` not yet standing in a hold would stand once
+    /// raised, as the hold is drawn: its plot carried out from the hold's
+    /// middle as its works are, on the land there (`HoldLayout.plots`).
+    public func plots(of sight: HoldSight, for works: Set<HoldLayout.Work>) -> [(work: HoldLayout.Work, foot: Vec3)] {
+        let plan = WorldStage.plan(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
+        let middle = Relief.centre(of: sight.hold.position)
+        return HoldLayout.plots(plan, relief: relief, for: works).map { plot in
+            let out = WorldStage.grand(plot.position, about: middle)
+            return (plot.work, Vec3(out.x, relief.height(atX: out.x, z: out.z), out.z))
+        }
+    }
+
     /// How far along a ray it first meets an upright standing on `foot`,
     /// `radius` round and `height` tall, its own middle included; nil where
     /// it passes it, or where it lies behind the ray's start.

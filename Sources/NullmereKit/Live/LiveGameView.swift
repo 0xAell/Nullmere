@@ -398,6 +398,13 @@ struct LiveHUD: View {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
                 }
+                // While the player's city is chosen, its plots: where each building
+                // it has not built would stand, to be chosen and built.
+                .overlay {
+                    if session.choosesHome {
+                        LivePlots(session: session, size: proxy.size)
+                    }
+                }
                 .overlay {
                     // What is chosen, shown about it on the map: its ring and its callout,
                     // the callout to the ring's left where an open destination would cover it.
@@ -780,6 +787,33 @@ struct LiveArmies: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .panelBackground()
+        }
+    }
+}
+
+/// The plots of the player's city while it is chosen: each building it
+/// has not built but its Keep has opened, a small hammer where it would
+/// stand among the city's works, to be chosen, its card saying what
+/// building it takes.
+struct LivePlots: View {
+    let session: LiveSession
+    let size: CGSize
+
+    var body: some View {
+        ForEach(session.plots(), id: \.kind) { plot in
+            let point = session.camera.viewPoint(worldX: Double(plot.foot.x), worldY: Double(plot.foot.z), height: Double(plot.foot.y), in: size)
+            let name = session.world.blueprint(plot.kind, level: 1)?.name ?? "building"
+            Button { session.choose(plot) } label: {
+                Image(systemName: "hammer")
+                    .font(.nm(LiveType.small, weight: .medium))
+                    .foregroundStyle(session.chosenWork?.kind == plot.kind ? LiveEmphasis.primary : LiveEmphasis.secondary)
+                    .frame(width: 24, height: 24)
+                    .background(Palette.panel.opacity(0.75), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help("Build a \(name) here")
+            .accessibilityLabel("Build a \(name) here")
+            .position(point)
         }
     }
 }

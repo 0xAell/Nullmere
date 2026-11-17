@@ -33,8 +33,10 @@ public struct LiveCard: Equatable, Sendable {
         case hasten(UInt64)
         /// Move the player's city to the ground chosen.
         case moveCity
-        /// Raise a building of the city a level.
+        /// Raise a building of the city a level, or build one it has not,
+        /// by its number in the module's catalogue.
         case upgrade(UInt64)
+        case build(Int)
     }
 
     public struct Button: Equatable, Sendable {
@@ -61,6 +63,7 @@ public struct LiveCard: Equatable, Sendable {
             case .hasten: return "forward.fill"
             case .moveCity: return "arrow.up.and.down.and.arrow.left.and.right"
             case .upgrade: return "arrow.up.circle"
+            case .build: return "hammer"
             }
         }
     }
@@ -141,8 +144,13 @@ extension LiveSession {
             return LiveCard(title: city.name, lines: lines, buttons: buttons)
 
         case .work(let kind, let city):
-            guard let line = world.buildingLines(at: seconds).first(where: { $0.kind == kind }), let building = line.building else {
-                return card(for: .home(city))
+            guard let line = world.buildingLines(at: seconds).first(where: { $0.kind == kind }) else { return card(for: .home(city)) }
+            guard let building = line.building else {
+                // Its plot: what building it costs, or why it can't be yet.
+                var lines = ["Not built yet."]
+                if let first = line.next { lines.append("Building it takes \(first.cost.words), \(LiveWords.spoken(first.seconds)).") }
+                return LiveCard(title: line.name, lines: lines,
+                                buttons: [.init(title: "Build", act: .build(kind), why: line.block?.words), .init(title: "Buildings", act: .city, why: nil)])
             }
             var lines = [line.level > 0 ? "Level \(line.level)." : "Being built."]
             var buttons: [LiveCard.Button] = []
@@ -340,6 +348,7 @@ extension LiveSession {
         case .moveCity:
             if let selected { await moveCity(to: selected) }
         case .upgrade(let building): await upgrade(building: building)
+        case .build(let kind): await build(kind)
         case .city, .troops: break
         }
     }

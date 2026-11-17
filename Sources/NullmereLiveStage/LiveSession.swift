@@ -351,6 +351,43 @@ public final class LiveSession {
         return LiveChosenWork(kind: number, foot: hit.foot)
     }
 
+    /// Where each building the player's city has not yet built, but its
+    /// Keep has opened, would stand, as the city is drawn in the window, in
+    /// the window's own land: the plot kept for it among the city's works.
+    /// Only buildings the map draws, and none where the city's ground keeps
+    /// no plots.
+    public func plots() -> [LiveChosenWork] {
+        guard let window, let city = world.city, land() != nil, let stage = staged?.stage,
+              let sight = window.holds(in: world, colours: LiveSession.colours, at: now).first(where: { $0.hold.id == Int(city.id) })
+        else { return [] }
+        var works: [HoldLayout.Work: Int] = [:]
+        for line in world.buildingLines(at: now) where line.building == nil && (line.next?.opensAt ?? .max) <= city.keep {
+            guard let kind = BuildingKind.allCases.first(where: { LiveWindow.building(for: $0) == line.kind }) else { continue }
+            works[HoldLayout.Work(kind)] = line.kind
+        }
+        guard !works.isEmpty else { return [] }
+        return stage.plots(of: sight, for: Set(works.keys)).compactMap { plot in
+            works[plot.work].map { LiveChosenWork(kind: $0, foot: plot.foot) }
+        }
+    }
+
+    /// Whether the player's own city, or a building or plot of it, is
+    /// chosen: while it is, its plots are shown.
+    public var choosesHome: Bool {
+        switch selection {
+        case .home, .work: return true
+        default: return false
+        }
+    }
+
+    /// The player chooses a plot of their city, or a building of it, where
+    /// it stands: the building, whether it stands yet or not.
+    public func choose(_ work: LiveChosenWork) {
+        guard let home = world.city?.hex else { return }
+        selected = home
+        chosenWork = work
+    }
+
     /// What the player has chosen, as a hex of the window's own land,
     /// where it lies in the window.
     public var selectedLocal: Hex? { selected.flatMap { window?.local($0) } }
