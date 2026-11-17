@@ -154,6 +154,28 @@ final class LiveClientTests: XCTestCase {
         XCTAssertEqual(Set(reducers.keys).subtracting(asked).sorted(), ["bar_player", "dismiss_report", "fire", "forget_player", "set_pace", "take_away"])
     }
 
+    /// Without a subscription the realm is read table by table, every
+    /// table the client knows, by SQL; and the client is not live.
+    func testTheRealmIsReadTableByTableWithoutASubscription() async throws {
+        let server = StubHTTP.serve { request in
+            // Ada as the realm tells who is asking; every other table empty.
+            request.text == "SELECT * FROM me"
+                ? .init(text: #"[{"schema":{},"rows":[[1,9,"Ada",1000,true,1000]]}]"#)
+                : .init(text: #"[{"schema":{},"rows":[]}]"#)
+        }
+        let client = Self.client(of: server)
+        XCTAssertFalse(client.isLive, "nothing watched yet")
+        XCTAssertNil(client.world.me, "and nothing mirrored")
+        let world = try await client.read()
+        XCTAssertEqual(world.me?.name, "Ada")
+        let asked = server.requests
+        XCTAssertEqual(asked.count, LiveSchema.tables.count)
+        XCTAssertTrue(asked.allSatisfy { $0.method == "POST" && $0.url.path == "/v1/database/nullmere/sql" })
+        XCTAssertEqual(asked.map(\.text), LiveSchema.tables.keys.sorted().map { "SELECT * FROM \($0)" })
+        client.close()
+        XCTAssertFalse(client.isLive)
+    }
+
     func testARefusalIsThrownInTheRealmsOwnWords() async throws {
         let refusing = StubHTTP.serve { _ in .init(status: 530, text: "Your builders are all at work.") }
         do {
