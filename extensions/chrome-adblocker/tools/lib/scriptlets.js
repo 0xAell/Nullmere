@@ -332,7 +332,123 @@ export const SCRIPTLETS = {
       return add.call(this, kind, listener, ...rest);
     };
   },
+
+  /** json-edit: what the page reads with JSON.parse has the parts the query finds taken out. */
+  jsonEdit(kit, query = '') {
+    const steps = kit.readJsonq(query);
+    if (!steps) return;
+    const parse = JSON.parse;
+    const edited = function (...args) {
+      const value = parse.apply(this, args);
+      try {
+        kit.editJson(steps, value);
+      } catch {
+        // What can't be edited is given as it came.
+      }
+      return value;
+    };
+    Object.defineProperty(edited, 'name', { value: 'parse' });
+    edited.toString = () => parse.toString();
+    JSON.parse = edited;
+  },
 };
+
+/**
+ * Reads a json-edit query, the subset of uBlock Origin's the lists use:
+ * `.name` a property, `..name` one at any depth, `.*` and `..*` every
+ * child or descendant, `[n]` an item, and `[?.path op value]` those of
+ * what was found so far whose path holds a value (op `==`, `!=`, `^=`,
+ * `$=`, `*=`; a string, number, true, false or null), or `[?.path]` those
+ * that have it. Returns the steps, or null for anything else.
+ */
+export function readJsonq(query) {
+  const steps = [];
+  const name = /^[A-Za-z_$][\w$-]*/;
+  let rest = String(query).trim();
+  if (!rest) return null;
+  while (rest) {
+    let found;
+    if ((found = /^(\.\.?)(\*|[A-Za-z_$][\w$-]*)/.exec(rest))) {
+      steps.push({ deep: found[1] === '..', key: found[2] });
+    } else if ((found = /^\[(\d+)\]/.exec(rest))) {
+      steps.push({ deep: false, key: found[1] });
+    } else if ((found = /^\[\?((?:\.[A-Za-z_$][\w$-]*)+)(?:\s*(==|!=|\^=|\$=|\*=)\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|-?\d+(?:\.\d+)?|true|false|null))?\]/.exec(rest))) {
+      const path = found[1].slice(1).split('.');
+      if (!path.every((part) => name.test(part))) return null;
+      let value;
+      if (found[3] !== undefined) {
+        const literal = found[3].startsWith("'") ? `"${found[3].slice(1, -1).replaceAll('"', '\\"')}"` : found[3];
+        try {
+          value = JSON.parse(literal);
+        } catch {
+          return null;
+        }
+      }
+      steps.push({ where: path, op: found[2] ?? 'has', value });
+    } else {
+      return null;
+    }
+    rest = rest.slice(found[0].length);
+  }
+  // A query that finds the whole of what was read takes nothing out.
+  return steps.some((step) => step.key !== undefined) ? steps : null;
+}
+
+/** Takes out of `root` what the steps find, from the object or array that holds each. */
+export function editJson(steps, root) {
+  const holds = (node) => node !== null && typeof node === 'object';
+  // Each found thing as [what holds it, its key, itself].
+  let found = [[null, null, root]];
+  const children = (node) => (holds(node) ? Object.keys(node).map((key) => [node, key, node[key]]) : []);
+  const descendants = (node) => {
+    const all = [];
+    const walk = (parent) => {
+      for (const entry of children(parent)) {
+        all.push(entry);
+        if (all.length > 100000) return;
+        walk(entry[2]);
+      }
+    };
+    walk(node);
+    return all;
+  };
+  for (const step of steps) {
+    if (step.where) {
+      found = found.filter(([, , node]) => {
+        let at = node;
+        for (const part of step.where) {
+          if (!holds(at) || !(part in at)) return false;
+          at = at[part];
+        }
+        if (step.op === 'has') return true;
+        if (step.op === '==') return at === step.value;
+        if (step.op === '!=') return at !== step.value;
+        const text = String(at);
+        const wanted = String(step.value);
+        return step.op === '^=' ? text.startsWith(wanted) : step.op === '$=' ? text.endsWith(wanted) : text.includes(wanted);
+      });
+      continue;
+    }
+    const next = [];
+    for (const [, , node] of found) {
+      const among = step.deep ? [[null, null, node], ...descendants(node)].flatMap(([, , inner]) => children(inner)) : children(node);
+      for (const entry of among) if (step.key === '*' || entry[1] === step.key) next.push(entry);
+    }
+    found = [...new Map(next.map((entry) => [entry[2] !== null && typeof entry[2] === 'object' ? entry[2] : entry, entry])).values()];
+  }
+  // Out of each array from its last item back, so the others keep their places.
+  const out = found.filter(([parent]) => parent !== null);
+  const items = new Map();
+  for (const [parent, key] of out) {
+    if (Array.isArray(parent)) items.set(parent, [...(items.get(parent) ?? []), Number(key)]);
+    else delete parent[key];
+  }
+  for (const [array, indices] of items) for (const index of indices.sort((a, b) => b - a)) array.splice(index, 1);
+  return out.length;
+}
+
+/** Helpers only some scriptlets need, written out only into their files. */
+const OWN = { jsonEdit: { readJsonq, editJson } };
 
 /** Each scriptlet by every name a filter may give it. */
 export const NAMES = {
@@ -355,6 +471,7 @@ export const NAMES = {
   'prevent-xhr': 'noXhrIf',
   aeld: 'addEventListenerDefuser',
   'addEventListener-defuser': 'addEventListenerDefuser',
+  'json-edit': 'jsonEdit',
 };
 
 /**
@@ -404,6 +521,7 @@ export function readScriptlet(body) {
   const name = (first ?? '').replace(/\.js$/, '');
   const method = NAMES[name];
   if (!method) return { unknown: name };
+  if (name === 'json-edit' && (args.length !== 1 || !readJsonq(args[0]))) return { unknown: `${name} ${args[0] ?? ''}` };
   if (name === 'set' || name === 'set-constant') {
     if (args.length < 2 || !(SETTABLE.includes(args[1]) || /^-?\d{1,5}$/.test(args[1]))) return { unknown: `${name} ${args[1] ?? ''}` };
   }
@@ -412,8 +530,8 @@ export function readScriptlet(body) {
 
 /** The file a scriptlet filter becomes: its scriptlet run with its arguments, in a function of its own. */
 export function scriptletSource({ method, args, raw }) {
-  const kit = Object.entries(KIT)
-    .map(([key, fn]) => `  ${key}: ${fn.toString().replace(/^(\w+)\(/, 'function (')},`)
+  const kit = Object.entries({ ...KIT, ...(OWN[method] ?? {}) })
+    .map(([key, fn]) => `  ${key}: ${fn.toString().replace(/^(?:function\s+)?(\w+)\(/, 'function (')},`)
     .join('\n');
   return `// Nullmere Stillwater: ${raw.replaceAll('\n', ' ')}\n(() => {\nconst kit = {\n${kit}\n};\n(${SCRIPTLETS[method].toString().replace(/^(\w+)\(/, 'function (')})(kit, ...${JSON.stringify(args)});\n})();\n`;
 }

@@ -41,7 +41,7 @@ test('the README\'s numbers are the build\'s', (t) => {
   // What was left out, by the README's own rows.
   const rows = [
     ['Exceptions that take back only a stand-in (`$redirect-rule`)', left('option:redirect', 'option:rewrite')],
-    ['A scriptlet Stillwater has not written, and HTML filtering', left('cosmetic:scriptlet', 'cosmetic:procedural', 'cosmetic:snippet')],
+    ['HTML filtering (`##^`)', left('cosmetic:scriptlet', 'cosmetic:procedural', 'cosmetic:snippet')],
     ['Regular expressions Chrome refuses', left('regex:')],
   ];
   for (const [name, count] of rows) says(`| ${name} | ${grouped(count)} |`);

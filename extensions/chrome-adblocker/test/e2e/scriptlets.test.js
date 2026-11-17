@@ -48,6 +48,7 @@ function trial(host) {
       document.addEventListener('ping', function trackPing() { results.tracked = true; });
       document.addEventListener('ping', function other() { results.other = true; });
       document.dispatchEvent(new Event('ping'));
+      results.parts = JSON.parse('{"props":{"children":[{"key":"head"},{"key":"admiral-script"},{"key":"story"}]}}').props.children.map((part) => part.key).join(',');
     </script>
     <script>/* admiral */ try { document.createElement('div'); results.admiral = 'ran'; } catch { results.admiral = 'stopped'; }</script>
     <script>try { document.createElement('div'); results.plain = 'ran'; } catch { results.plain = 'stopped'; }</script>
@@ -104,6 +105,8 @@ test('each scriptlet does what its filter asks, in the page of the site it names
   // addEventListener-defuser: the listener that holds the needle is never added.
   assert.equal(results.tracked, undefined);
   assert.equal(results.other, true);
+  // json-edit: what the page reads with JSON.parse comes without the wall's part.
+  assert.equal(results.parts, 'head,story');
   // What the page left for next time: the item and the cookie are taken on the next visit.
   await page.close();
   const again = await visit('scripted.test');
@@ -123,6 +126,7 @@ test('a site the filter excepts, a site let through, and a pause are left alone'
   server.forget();
   const through = await visit('scripted.test');
   assert.deepEqual([through.results.detected, through.results.admiral, through.results.inline, through.results.tracked], [true, 'ran', 'ran', true]);
+  assert.equal(through.results.parts, 'head,admiral-script,story');
   assert.equal(through.results.wall, 'v4ac1eiZr0', 'the script that would have been taken out ran');
   assert.ok(server.reached('scripted.test', '/beacon/1'), 'the beacon went out');
   await through.page.close();
