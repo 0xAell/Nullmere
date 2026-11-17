@@ -73,10 +73,12 @@ impl Side {
     /// best first; the rest dead. How many were wounded, and how many died.
     fn bear(&mut self, db: &mut impl Db, march: &mut March, lost: &[u64]) -> (u64, u64) {
         let mut room = room_for_wounded(db, march.city);
+        let mercy = led(db, march).mercy;
         let (mut wounded, mut dead) = (0, 0);
         for (squad, lost) in self.squads.iter_mut().zip(lost) {
-            let saved = (*lost).min(room);
-            room -= saved;
+            let tended = (*lost).min(room);
+            room -= tended;
+            let saved = tended + super::spared(lost - tended, mercy);
             wounded += saved;
             dead += lost - saved;
             squad.count -= lost;

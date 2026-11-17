@@ -117,7 +117,7 @@ pub(super) fn may_raze(db: &impl Db, player: u64, ward: &Ward) -> Result<(), Ref
 pub(super) fn stormed_ward(db: &mut impl Db, marches: &mut [March], rally: &Rally) {
     let Some(ward) = ward_at(db, Hex::unpacked(rally.hex)) else { return };
     let guards = catalog::ward_garrison();
-    let together = fight_as_one(db, marches, &guards, catalog::ward_shelter());
+    let together = fight_as_one(db, marches, &guards, catalog::ward_shelter(), false);
     let stood: u64 = guards.iter().map(|unit| unit.count).sum();
     let fell_there: u64 = together.outcome.defenders_lost.iter().sum();
     let won = together.outcome.won;

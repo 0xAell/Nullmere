@@ -6,7 +6,7 @@
 //! city, adding what they bring to its defence.
 
 use super::{asking, building_of, city_of, goods, held, set_goods, settle, take, Mastery, Refusal};
-use crate::catalog::{self, Building as Kind, Item, Leading, Talent, Way, TOP_COMMAND, TALENT_MOST};
+use crate::catalog::{self, Building as Kind, Item, Leading, Person, Renown, Talent, Way, PEOPLE, TOP_COMMAND, TALENT_MOST};
 use crate::rows::{Bond, Commander, Db, Keeper, March, Prisoner, Skill};
 use crate::store::Table;
 
@@ -23,13 +23,44 @@ pub fn commanders_of(db: &impl Db, player: u64) -> Vec<Commander> {
     all
 }
 
-/// A new commander comes to a player: of a way none of theirs has yet,
-/// where there is one, and under a name none of theirs has.
+/// A new commander comes to a player: one of the realm's they have not
+/// got, of a way none of theirs has yet where there is one, its renown
+/// by the Tavern's odds (most steady, some famed, a few storied); or,
+/// should they have every one, one of no renown under a name of its own.
 pub fn enlist(db: &mut impl Db, player: u64) -> Commander {
     let have = commanders_of(db, player);
+    let unmet: Vec<(u8, Person)> = (1..=PEOPLE.len() as u8)
+        .filter_map(|number| catalog::person_of(number).map(|person| (number, person)))
+        .filter(|(number, _)| !have.iter().any(|commander| commander.person == *number))
+        .collect();
+    let new_way: Vec<(u8, Person)> = unmet.iter().copied().filter(|(_, person)| !have.iter().any(|commander| commander.way == person.way as u8)).collect();
+    let pool = if new_way.is_empty() { unmet } else { new_way };
+    if !pool.is_empty() {
+        let roll = db.chance() % 100;
+        let mut renown = Renown::Steady;
+        let mut upto = 0;
+        for each in [Renown::Storied, Renown::Famed, Renown::Steady] {
+            upto += each.odds();
+            if roll < upto {
+                renown = each;
+                break;
+            }
+        }
+        // Of the renown drawn where there is one such in the pool, and
+        // of the next more common where not.
+        let mut chosen: Vec<(u8, Person)> = Vec::new();
+        for each in [renown, Renown::Famed, Renown::Steady, Renown::Storied] {
+            chosen = pool.iter().copied().filter(|(_, person)| person.renown == each).collect();
+            if !chosen.is_empty() {
+                break;
+            }
+        }
+        let (number, person) = chosen[(db.chance() % chosen.len() as u64) as usize];
+        return db.insert(Commander { id: 0, owner: player, name: person.name.to_string(), way: person.way as u8, level: 1, seen: 0, march: 0, person: number, gift: 1, sigils: 0 });
+    }
     let free: Vec<Way> = Way::ALL.into_iter().filter(|way| !have.iter().any(|commander| commander.way == *way as u8)).collect();
-    let pool = if free.is_empty() { Way::ALL.to_vec() } else { free };
-    let way = pool[(db.chance() % pool.len() as u64) as usize];
+    let ways = if free.is_empty() { Way::ALL.to_vec() } else { free };
+    let way = ways[(db.chance() % ways.len() as u64) as usize];
     let mut name = String::new();
     for _ in 0..40 {
         let (a, b) = (db.chance(), db.chance());
@@ -38,7 +69,7 @@ pub fn enlist(db: &mut impl Db, player: u64) -> Commander {
             break;
         }
     }
-    db.insert(Commander { id: 0, owner: player, name, way: way as u8, level: 1, seen: 0, march: 0 })
+    db.insert(Commander { id: 0, owner: player, name, way: way as u8, level: 1, seen: 0, march: 0, person: 0, gift: 0, sigils: 0 })
 }
 
 /// A player takes on another commander: as many as their Tavern's level
@@ -75,10 +106,20 @@ pub(super) fn leader_for(db: &impl Db, player: u64, commander: u64) -> Result<Co
     Ok(commander)
 }
 
-/// What a commander adds by their way of war, their talents and the gear
-/// they wear.
+/// What a commander's way of war adds at their level, as their renown
+/// makes it.
+pub fn way_of(commander: &Commander) -> Leading {
+    let weight = catalog::person_of(commander.person).map(|person| person.renown.weight()).unwrap_or(100);
+    Way::of(commander.way).map(|way| way.leading(commander.level).scaled(weight)).unwrap_or_default()
+}
+
+/// What a commander adds by their way of war and renown, their gift,
+/// their talents and the gear they wear.
 pub fn commanding(db: &impl Db, commander: &Commander) -> Leading {
-    let mut leading = Way::of(commander.way).map(|way| way.leading(commander.level)).unwrap_or_default().plus(super::worn(db, commander.id));
+    let mut leading = way_of(commander).plus(super::worn(db, commander.id));
+    if let Some(person) = catalog::person_of(commander.person) {
+        leading = leading.plus(person.gift.leading(commander.gift));
+    }
     for skill in Table::<Skill>::by(db, 0, commander.id) {
         if let Some(talent) = Talent::of(skill.talent) {
             leading = leading.plus(talent.leading(skill.points));
@@ -109,9 +150,7 @@ pub fn leading_of(db: &impl Db, march: &March) -> Leading {
     let Some(leader) = Table::<Commander>::get(db, march.leader) else { return Leading::default() };
     let mut leading = commanding(db, &leader);
     if let Some(partner) = beside(db, march) {
-        if let Some(way) = Way::of(partner.way) {
-            leading = leading.plus(way.leading(partner.level).halved());
-        }
+        leading = leading.plus(way_of(&partner).halved());
     }
     leading
 }
@@ -318,6 +357,8 @@ pub fn defence_of(db: &impl Db, city: u64, owner: u64) -> Mastery {
         all.shields += leading.shields;
         all.surge += leading.surge;
         all.stand += leading.stand;
+        all.quick += leading.quick;
+        all.mercy += leading.mercy;
     }
     all
 }

@@ -260,14 +260,16 @@ fn storm(db: &mut impl Db, marches: &mut [March]) {
     let mut rolls: Vec<u64> = (0..2 * MOST_ROUNDS).map(|_| db.chance()).collect();
     // A Wall shelters its city less from an army a wallbreaker leads.
     let shelter = catalog::shelter(wall) * (100 - leading_of(db, &marches[0]).breaches.min(100)) / 100;
-    let outcome = fight_learned(&army, &defenders, [led(db, &marches[0]), super::defence_of(db, city.id, city.owner)], shelter, || rolls.pop().unwrap_or(0));
+    let (attacking, defending) = (led(db, &marches[0]), super::defence_of(db, city.id, city.owner));
+    let outcome = fight_learned(&army, &defenders, [attacking, defending], shelter, || rolls.pop().unwrap_or(0));
 
     // Each army's fallen: half carried home wounded, while its own city has room.
     let mut room: Vec<u64> = marches.iter().map(|march| room_for_wounded(db, march.city)).collect();
     let (mut fought, mut wounded, mut dead) = (vec![0u64; armies], vec![0u64; armies], vec![0u64; armies]);
     for ((index, squad), lost) in own.iter_mut().zip(&outcome.attackers_lost) {
-        let saved = (lost / 2).min(room[*index]);
-        room[*index] -= saved;
+        let tended = (lost / 2).min(room[*index]);
+        room[*index] -= tended;
+        let saved = tended + super::spared(lost - tended, attacking.mercy);
         fought[*index] += squad.count;
         wounded[*index] += saved;
         dead[*index] += lost - saved;
@@ -289,8 +291,9 @@ fn storm(db: &mut impl Db, marches: &mut [March]) {
     let mut room = room_for_wounded(db, city.id);
     let (mut hurt, mut slain) = (0, 0);
     for (row, lost) in garrison.iter_mut().zip(&outcome.defenders_lost) {
-        let saved = (*lost).min(room);
-        room -= saved;
+        let tended = (*lost).min(room);
+        room -= tended;
+        let saved = tended + super::spared(lost - tended, defending.mercy);
         hurt += saved;
         slain += lost - saved;
         row.ready -= lost;

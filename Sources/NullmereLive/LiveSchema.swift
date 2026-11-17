@@ -50,7 +50,7 @@ public enum LiveSchema {
         "my_applicants": .init(columns: ["player", "alliance", "name", "at"], key: "player"),
         "my_progress": .init(columns: ["player", "step"], key: "player"),
         "my_lore": .init(columns: ["id", "city", "topic", "level"], key: "id"),
-        "my_commanders": .init(columns: ["id", "owner", "name", "way", "level", "seen", "march"], key: "id"),
+        "my_commanders": .init(columns: ["id", "owner", "name", "way", "level", "seen", "march", "person", "gift", "sigils"], key: "id"),
         "duty": .init(columns: ["deed", "asks", "marks", "words"], key: "deed"),
         "chest": .init(columns: ["id", "marks", "grain", "timber", "stone", "moonsalt", "brief_hastes", "hour_hastes", "long_hastes", "peaces"], key: "id"),
         "grace": .init(columns: ["level", "points", "sooner"], key: "level"),

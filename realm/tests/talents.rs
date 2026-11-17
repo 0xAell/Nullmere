@@ -38,7 +38,7 @@ fn realm_of(names: &[&str]) -> (Mem, Vec<(u64, City, Commander, Commander)>) {
 /// Gives a commander a way and a level.
 fn make(db: &mut Mem, commander: &Commander, way: Way, level: u32) -> Commander {
     let mut row = Table::<Commander>::get(db, commander.id).unwrap();
-    (row.way, row.level, row.seen) = (way as u8, level, 0);
+    (row.way, row.level, row.seen, row.person, row.gift) = (way as u8, level, 0, 0, 0);
     db.update(row.clone());
     row
 }

@@ -71,8 +71,9 @@ pub fn fight_learned(attackers: &[Unit], defenders: &[Unit], learnt: [Mastery; 2
     let mut rounds = 0;
     while rounds < MOST_ROUNDS && left.iter().all(|side| side.iter().sum::<u64>() > 0) {
         rounds += 1;
-        // Every fourth round each side's commander uses their skill.
-        let skilled = rounds % 4 == 0;
+        // Every fourth round each side's commander uses their skill; a
+        // quick one's, every third.
+        let skilled = [0, 1].map(|side| rounds % if learnt[side].quick > 0 { 3 } else { 4 } == 0);
         let stood = left.clone();
         for striking in 0..2 {
             let struck = 1 - striking;
@@ -84,9 +85,9 @@ pub fn fight_learned(attackers: &[Unit], defenders: &[Unit], learnt: [Mastery; 2
                 let sharper = 100 + learnt[striking].strikes[unit.kind as usize - 1] as u128;
                 blow += *count as u128 * unit.kind.soldier(unit.tier).attack as u128 * sharper / 100 * over / heads / 100;
             }
-            let surge = if skilled { 100 + learnt[striking].surge as u128 } else { 100 };
+            let surge = if skilled[striking] { 100 + learnt[striking].surge as u128 } else { 100 };
             let blow = blow * luck / 100 / 4 * surge / 100;
-            let stand = if skilled { 100 + learnt[struck].stand } else { 100 };
+            let stand = if skilled[struck] { 100 + learnt[struck].stand } else { 100 };
             for (index, unit) in sides[struck].iter().enumerate() {
                 let soldier = unit.kind.soldier(unit.tier);
                 let behind = if struck == 1 { 100 + shelter } else { 100 };
@@ -118,6 +119,9 @@ pub(super) fn led(db: &impl Db, march: &March) -> Mastery {
     all.shields += leading.shields;
     all.surge += leading.surge;
     all.stand += leading.stand;
+    all.quick += leading.quick;
+    all.mercy += leading.mercy;
+    all.bane += leading.bane;
     all
 }
 
@@ -259,13 +263,15 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
     let army: Vec<Unit> = own.iter().filter_map(|squad| Troops::of(squad.kind).map(|kind| Unit { kind, tier: squad.tier, count: squad.count })).collect();
     let unquiet = catalog::barrow(barrow.level);
     let mut rolls: Vec<u64> = (0..2 * MOST_ROUNDS).map(|_| db.chance()).collect();
-    let outcome = fight_learned(&army, &unquiet, [led(db, march), Mastery::default()], 0, || rolls.pop().unwrap_or(0));
+    let learnt = led(db, march);
+    let outcome = fight_learned(&army, &unquiet, [learnt.against_the_unquiet(), Mastery::default()], 0, || rolls.pop().unwrap_or(0));
 
     let mut room = room_for_wounded(db, march.city);
     let (mut wounded, mut dead) = (0, 0);
     for (squad, lost) in own.iter_mut().zip(&outcome.attackers_lost) {
-        let saved = (*lost).min(room);
-        room -= saved;
+        let tended = (*lost).min(room);
+        room -= tended;
+        let saved = tended + super::spared(lost - tended, learnt.mercy);
         wounded += saved;
         dead += lost - saved;
         squad.count -= lost;
@@ -355,7 +361,7 @@ pub(super) struct Together {
 /// first of `marches` is the caller's), every squad of every army the best
 /// first: each army loses what fell of its own soldiers, and carries home
 /// as wounded as many of them as its own city has room to tend.
-pub(super) fn fight_as_one(db: &mut impl Db, marches: &mut [March], foe: &[Unit], shelter: u64) -> Together {
+pub(super) fn fight_as_one(db: &mut impl Db, marches: &mut [March], foe: &[Unit], shelter: u64, unquiet: bool) -> Together {
     // Every squad of every army, the best first, each remembering whose it is.
     let mut all: Vec<(usize, Squad)> = Vec::new();
     for (index, march) in marches.iter().enumerate() {
@@ -368,14 +374,16 @@ pub(super) fn fight_as_one(db: &mut impl Db, marches: &mut [March], foe: &[Unit]
         Some(first) => led(db, first),
         None => Mastery::default(),
     };
-    let outcome = fight_learned(&army, foe, [learnt, Mastery::default()], shelter, || rolls.pop().unwrap_or(0));
+    let striking = if unquiet { learnt.against_the_unquiet() } else { learnt };
+    let outcome = fight_learned(&army, foe, [striking, Mastery::default()], shelter, || rolls.pop().unwrap_or(0));
 
     let armies = marches.len();
     let mut room: Vec<u64> = marches.iter().map(|march| room_for_wounded(db, march.city)).collect();
     let (mut fought, mut wounded, mut dead) = (vec![0u64; armies], vec![0u64; armies], vec![0u64; armies]);
     for ((index, squad), lost) in all.iter_mut().zip(&outcome.attackers_lost) {
-        let saved = (*lost).min(room[*index]);
-        room[*index] -= saved;
+        let tended = (*lost).min(room[*index]);
+        room[*index] -= tended;
+        let saved = tended + super::spared(lost - tended, learnt.mercy);
         fought[*index] += squad.count;
         wounded[*index] += saved;
         dead[*index] += lost - saved;
@@ -405,7 +413,7 @@ pub(super) fn fight_as_one(db: &mut impl Db, marches: &mut [March], foe: &[Unit]
 pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
     let Some(mut barrow) = marches.first().and_then(|first| Table::<Barrow>::get(db, first.target)) else { return };
     let unquiet = catalog::barrow(barrow.level);
-    let Together { outcome, fought, wounded, dead } = fight_as_one(db, marches, &unquiet, 0);
+    let Together { outcome, fought, wounded, dead } = fight_as_one(db, marches, &unquiet, 0, true);
     let armies = marches.len();
 
     let standing: u64 = marches.iter().map(|march| march.soldiers).sum();

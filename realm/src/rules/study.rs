@@ -21,6 +21,25 @@ pub struct Mastery {
     pub shields: u64,
     pub surge: u64,
     pub stand: u64,
+    /// Above nought, the side's skill comes every third round, not every
+    /// fourth; so many hundredths of its dead carried home wounded after
+    /// all; and so many harder it strikes the Unquiet.
+    pub quick: u64,
+    pub mercy: u64,
+    pub bane: u64,
+}
+
+impl Mastery {
+    /// The same, striking the Unquiet: its bane added to every kind's blow.
+    pub fn against_the_unquiet(self) -> Mastery {
+        Mastery { strikes: self.strikes.map(|strike| strike + self.bane), ..self }
+    }
+}
+
+/// Of so many who fell for good, those a commander's mercy carries home
+/// wounded after all.
+pub fn spared(dead: u64, mercy: u64) -> u64 {
+    (dead as u128 * mercy.min(100) as u128 / 100) as u64
 }
 
 /// The level a city has learnt a topic to.

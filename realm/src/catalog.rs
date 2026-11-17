@@ -1475,6 +1475,13 @@ pub struct Leading {
     pub breaches: u64,
     pub surge: u64,
     pub stand: u64,
+    /// Above nought, their army's skill comes every third round of a
+    /// fight, not every fourth.
+    pub quick: u64,
+    /// Hundredths of their army's dead carried home wounded after all.
+    pub mercy: u64,
+    /// Hundredths harder their army strikes the Unquiet.
+    pub bane: u64,
 }
 
 impl Way {
@@ -1560,6 +1567,9 @@ impl Leading {
             breaches: self.breaches + other.breaches,
             surge: self.surge + other.surge,
             stand: self.stand + other.stand,
+            quick: self.quick + other.quick,
+            mercy: self.mercy + other.mercy,
+            bane: self.bane + other.bane,
         }
     }
 
@@ -1574,8 +1584,197 @@ impl Leading {
             breaches: self.breaches / 2,
             surge: self.surge / 2,
             stand: self.stand / 2,
+            quick: self.quick / 2,
+            mercy: self.mercy / 2,
+            bane: self.bane / 2,
         }
     }
+
+    /// So many hundredths of each: a commander's way as their renown
+    /// makes it.
+    pub fn scaled(self, hundredths: u64) -> Leading {
+        let by = |amount: u64| amount * hundredths / 100;
+        Leading {
+            strikes: self.strikes.map(by),
+            shields: by(self.shields),
+            haste: by(self.haste),
+            gathers: by(self.gathers),
+            carries: by(self.carries),
+            breaches: by(self.breaches),
+            surge: by(self.surge),
+            stand: by(self.stand),
+            quick: by(self.quick),
+            mercy: by(self.mercy),
+            bane: by(self.bane),
+        }
+    }
+}
+
+/// How widely a commander is known: most are steady, some famed, a few
+/// storied; the better known lead the better for it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Renown {
+    Steady = 1,
+    Famed = 2,
+    Storied = 3,
+}
+
+impl Renown {
+    pub const ALL: [Renown; 3] = [Renown::Steady, Renown::Famed, Renown::Storied];
+
+    pub fn of(code: u8) -> Option<Renown> {
+        Renown::ALL.into_iter().find(|renown| *renown as u8 == code)
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Renown::Steady => "Steady",
+            Renown::Famed => "Famed",
+            Renown::Storied => "Storied",
+        }
+    }
+
+    /// How much of their way a commander of this renown brings, in
+    /// hundredths of a steady one's.
+    pub fn weight(self) -> u64 {
+        match self {
+            Renown::Steady => 100,
+            Renown::Famed => 110,
+            Renown::Storied => 125,
+        }
+    }
+
+    /// In how many of a hundred the Tavern's next commander is of this
+    /// renown.
+    pub fn odds(self) -> u64 {
+        match self {
+            Renown::Steady => 70,
+            Renown::Famed => 25,
+            Renown::Storied => 5,
+        }
+    }
+}
+
+/// A gift a commander has of their own, beside their way of war.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Gift {
+    /// Their army's skill comes every third round of a fight.
+    Quick = 1,
+    /// Some of their army's dead are carried home wounded after all.
+    Mercy = 2,
+    /// Their army strikes the Unquiet harder.
+    Bane = 3,
+    /// Their army marches faster.
+    Swift = 4,
+    /// Their army carries more home.
+    Hoard = 5,
+    /// Their army is harder to bring down.
+    Bulwark = 6,
+}
+
+/// The highest level a gift rises to.
+pub const TOP_GIFT: u32 = 5;
+
+impl Gift {
+    pub const ALL: [Gift; 6] = [Gift::Quick, Gift::Mercy, Gift::Bane, Gift::Swift, Gift::Hoard, Gift::Bulwark];
+
+    pub fn of(code: u8) -> Option<Gift> {
+        Gift::ALL.into_iter().find(|gift| *gift as u8 == code)
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Gift::Quick => "Quick",
+            Gift::Mercy => "Mercy",
+            Gift::Bane => "Bane of the Unquiet",
+            Gift::Swift => "Swift",
+            Gift::Hoard => "Hoard",
+            Gift::Bulwark => "Bulwark",
+        }
+    }
+
+    /// What the gift adds at a level, 1 to 5: its skill every third round
+    /// and two hundredths a level more to it, for a quick commander; so
+    /// many hundredths for the rest.
+    pub fn leading(self, level: u32) -> Leading {
+        let level = level.clamp(1, TOP_GIFT) as u64;
+        let mut leading = Leading::default();
+        match self {
+            Gift::Quick => {
+                leading.quick = 1;
+                leading.surge = 2 * level;
+                leading.stand = 2 * level;
+            }
+            Gift::Mercy => leading.mercy = 8 + 4 * level,
+            Gift::Bane => leading.bane = 6 + 3 * level,
+            Gift::Swift => leading.haste = 6 + 3 * level,
+            Gift::Hoard => leading.carries = 8 + 4 * level,
+            Gift::Bulwark => leading.shields = 4 + 2 * level,
+        }
+        leading
+    }
+
+    /// What the gift does at a level, in a player's words.
+    pub fn words(self, level: u32) -> String {
+        let at = self.leading(level);
+        match self {
+            Gift::Quick => format!("Their army's skill comes every third round of a fight, not every fourth, and {} hundredths stronger.", at.surge),
+            Gift::Mercy => format!("{} in a hundred of their army's dead are carried home wounded after all.", at.mercy),
+            Gift::Bane => format!("Their army strikes the Unquiet {} hundredths harder.", at.bane),
+            Gift::Swift => format!("Their army marches {} hundredths faster.", at.haste),
+            Gift::Hoard => format!("Their army carries {} hundredths more home.", at.carries),
+            Gift::Bulwark => format!("Their army is {} hundredths harder to bring down.", at.shields),
+        }
+    }
+}
+
+/// One of the realm's commanders: who they are, their way of war, how
+/// widely they are known, and their gift.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Person {
+    pub name: &'static str,
+    pub way: Way,
+    pub renown: Renown,
+    pub gift: Gift,
+}
+
+const fn person(name: &'static str, way: Way, renown: Renown, gift: Gift) -> Person {
+    Person { name, way, renown, gift }
+}
+
+/// The realm's commanders, four of each way: one storied, one famed and
+/// two steady. A player has each at most once; their number is their
+/// place here, from 1.
+pub const PEOPLE: [Person; 24] = [
+    person("Hallam Ironsworn", Way::Vanguard, Renown::Storied, Gift::Quick),
+    person("Bree of the Ford", Way::Vanguard, Renown::Famed, Gift::Bulwark),
+    person("Corran Ash", Way::Vanguard, Renown::Steady, Gift::Mercy),
+    person("Dunmore Hale", Way::Vanguard, Renown::Steady, Gift::Swift),
+    person("Ysolde Lanternhand", Way::Fletcher, Renown::Storied, Gift::Bane),
+    person("Wren Halloway", Way::Fletcher, Renown::Famed, Gift::Quick),
+    person("Tamsin Reedy", Way::Fletcher, Renown::Steady, Gift::Hoard),
+    person("Pell Marsh", Way::Fletcher, Renown::Steady, Gift::Mercy),
+    person("Odric Stormwake", Way::Outrider, Renown::Storied, Gift::Swift),
+    person("Sabine Coldwater", Way::Outrider, Renown::Famed, Gift::Quick),
+    person("Garet Holt", Way::Outrider, Renown::Steady, Gift::Bane),
+    person("Linnet Fell", Way::Outrider, Renown::Steady, Gift::Hoard),
+    person("Brannoc the Mason", Way::Wallbreaker, Renown::Storied, Gift::Bulwark),
+    person("Ilse Cinder", Way::Wallbreaker, Renown::Famed, Gift::Bane),
+    person("Hob Tallow", Way::Wallbreaker, Renown::Steady, Gift::Swift),
+    person("Rook Ashby", Way::Wallbreaker, Renown::Steady, Gift::Mercy),
+    person("Maren of the Black Glass", Way::Warden, Renown::Storied, Gift::Mercy),
+    person("Aldous Thorne", Way::Warden, Renown::Famed, Gift::Bulwark),
+    person("Edda Rush", Way::Warden, Renown::Steady, Gift::Quick),
+    person("Fenn Lowe", Way::Warden, Renown::Steady, Gift::Bane),
+    person("Nan Saltmarsh", Way::Gleaner, Renown::Storied, Gift::Hoard),
+    person("Kestrel Vane", Way::Gleaner, Renown::Famed, Gift::Swift),
+    person("Mabry Field", Way::Gleaner, Renown::Steady, Gift::Hoard),
+    person("Oswin Reed", Way::Gleaner, Renown::Steady, Gift::Mercy),
+];
+
+/// One of the realm's commanders by their number, from 1.
+pub fn person_of(number: u8) -> Option<Person> {
+    (number as usize).checked_sub(1).and_then(|at| PEOPLE.get(at)).copied()
 }
 
 /// Something a commander may be trained in, with the points their levels

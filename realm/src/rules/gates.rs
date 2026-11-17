@@ -89,7 +89,7 @@ pub(super) fn may_storm(db: &impl Db, player: u64, gate: &Gate) -> Result<(), Re
 pub(super) fn stormed_gate(db: &mut impl Db, marches: &mut [crate::rows::March], rally: &Rally) {
     let Some(mut gate) = gate_at(db, Hex::unpacked(rally.hex)) else { return };
     let garrison = catalog::gate_garrison();
-    let together = fight_as_one(db, marches, &garrison, catalog::gate_shelter());
+    let together = fight_as_one(db, marches, &garrison, catalog::gate_shelter(), true);
     let stood: u64 = garrison.iter().map(|unit| unit.count).sum();
     let fell: u64 = together.outcome.defenders_lost.iter().sum();
     let won = together.outcome.won;

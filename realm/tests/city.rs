@@ -546,3 +546,17 @@ fn an_ally_hastens_a_raising_in_another_city_with_their_own_goods() {
     wait(&mut db, 3);
     assert_eq!(building(&db, bryn_city.id, Kind::Keep).level, 2);
 }
+
+#[test]
+fn a_country_keeps_together_whatever_the_realms_seed() {
+    // Each new city settles beside one of those who came just before,
+    // toward the middle of their cities: sixty make one country under any
+    // seed, not a trail across the land.
+    for seed in [3, 7, 11, 19, 23, 42] {
+        let mut db = Mem::new(START, seed);
+        rules::open(&mut db, seed, 1, 128);
+        let cities: Vec<Hex> = (0..60).map(|index| Hex::unpacked(joined(&mut db, &format!("Player {index}")).1.hex)).collect();
+        let widest = cities.iter().flat_map(|a| cities.iter().map(|b| a.distance(*b))).max().unwrap();
+        assert!(widest < 70, "under seed {seed} the sixty lie {widest} hexes across");
+    }
+}

@@ -1566,6 +1566,12 @@ pub struct Commander {
     pub seen: u64,
     /// The march they lead now; 0 while they are in the city.
     pub march: u64,
+    /// Who they are among the realm's commanders (`catalog::PEOPLE`, by
+    /// their number from 1), their gift's level, and the sigils they hold
+    /// toward its next; a person of 0 is one of no renown, with no gift.
+    pub person: u8,
+    pub gift: u32,
+    pub sigils: u32,
 }
 row!(Commander in commander, auto, by id, owner);
 

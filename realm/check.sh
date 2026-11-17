@@ -471,8 +471,17 @@ told = rows(bryn, "SELECT * FROM my_reports")
 check("its player is told how it went", [(r["won"], r["foe"], r["fought"], r["stood"], r["fell"], r["dead"], r["read"]) for r in told], [(True, 1, 70, 25, 25, 0, False)])
 # As much of the barrow's 800 grain and 800 timber as those still standing carry, twelve each,
 # and more by the leader's bonus: a gleaner (way 6) carries five hundredths and one more a level,
-# and this commander is still at level 1. The way is chosen by the realm's seed, so it is read.
-carries = 5 + 1 if captains[0]["way"] == 6 else 0
+# and this commander is still at level 1; their renown makes their way the more (a famed
+# commander's a tenth, a storied one's a quarter), and a hoarder's gift adds twelve hundredths
+# at its first level. Who they are is chance, so it is read.
+renown = {1: 100, 2: 110, 3: 125}
+person = captains[0]["person"]
+people = {number: (renown, gift) for number, renown, gift in [
+    (1, 3, 1), (2, 2, 6), (3, 1, 2), (4, 1, 4), (5, 3, 3), (6, 2, 1), (7, 1, 5), (8, 1, 2), (9, 3, 4), (10, 2, 1), (11, 1, 3), (12, 1, 5),
+    (13, 3, 6), (14, 2, 3), (15, 1, 4), (16, 1, 2), (17, 3, 2), (18, 2, 6), (19, 1, 1), (20, 1, 3), (21, 3, 5), (22, 2, 4), (23, 1, 5), (24, 1, 2)]}
+weight, gift = renown[people[person][0]] if person in people else 100, people[person][1] if person in people else 0
+carries = (5 + 1) * weight // 100 if captains[0]["way"] == 6 else 0
+carries += 12 if gift == 5 else 0
 carried = min(800, (70 - told[0]["wounded"]) * 12 * (100 + carries) // 100 // 2)
 told_words = f"Your army cleared a level 1 barrow of the Unquiet. Of your 70 soldiers, {told[0]['wounded']} {'was' if told[0]['wounded'] == 1 else 'were'} wounded. It is bringing home {carried} grain and {carried} timber. It found 1 "
 check("in plain words, with what it found for the Forge", (told[0]["words"].startswith(told_words), told[0]["words"].endswith(" for the Forge.")), (True, True))

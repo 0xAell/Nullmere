@@ -1,7 +1,7 @@
 //! Commanders over a store kept in memory: who a player has, taking on
 //! more, an army led, and what its leader adds and learns.
 
-use realm::catalog::{self, Building as Kind, Goods, Item, Leading, Troops, Way};
+use realm::catalog::{self, Building as Kind, Gift, Goods, Item, Leading, Renown, Troops, Way};
 use realm::hex::Hex;
 use realm::land;
 use realm::rows::{Barrow, Building, City, Commander, Haul, March, Report, Site, Stock, Troop};
@@ -29,7 +29,7 @@ fn led(spearmen: u64) -> (Mem, u64, City, Commander) {
 /// Gives a commander a way and a level.
 fn make(db: &mut Mem, commander: &Commander, way: Way, level: u32) -> Commander {
     let mut row = Table::<Commander>::get(db, commander.id).unwrap();
-    (row.way, row.level, row.seen) = (way as u8, level, 0);
+    (row.way, row.level, row.seen, row.person, row.gift) = (way as u8, level, 0, 0, 0);
     db.update(row.clone());
     row
 }
@@ -235,7 +235,11 @@ fn a_commander_rises_with_what_they_have_seen() {
     // Ninety and twenty-five more: past the hundred the second level asks.
     let risen = Table::<Commander>::get(&db, commander.id).unwrap();
     assert_eq!((risen.level, risen.seen), (2, 15));
-    assert_eq!(rules::leading_of(&db, &Table::<March>::get(&db, march.id).unwrap()), Way::of(risen.way).unwrap().leading(2));
+    // What they lead with: their way at the second level as their renown
+    // makes it, and their gift.
+    let person = catalog::person_of(risen.person).unwrap();
+    let expected = Way::of(risen.way).unwrap().leading(2).scaled(person.renown.weight()).plus(person.gift.leading(risen.gift));
+    assert_eq!(rules::leading_of(&db, &Table::<March>::get(&db, march.id).unwrap()), expected);
     // Enough seen at once lifts them several levels, and never past the thirtieth.
     let mut much = risen.clone();
     (much.level, much.seen) = (29, 0);
@@ -254,8 +258,10 @@ fn a_commander_rises_with_what_they_have_seen() {
     assert_eq!(last.level, catalog::TOP_COMMAND);
     assert_eq!(last.seen, 24, "what is seen at the last level is only kept");
     // An army lost with no room for its wounded leaves no march, and its
-    // commander comes back to the city all the same.
+    // commander, one of no renown and no gift, comes back to the city all
+    // the same.
     let (mut db, player, city, commander) = led(10);
+    let commander = make(&mut db, &commander, Way::Vanguard, 1);
     let mut full = rules::troop(&db, city.id, Troops::Archers, 1);
     full.wounded = 50;
     rules::keep_troop(&mut db, full);
@@ -296,4 +302,77 @@ fn a_commander_reads_tomes_of_war_and_rises() {
     let refusal = db.call(|db| rules::read_tome(db, player, topped.id, Item::Tome as u8, 1)).unwrap_err();
     assert_eq!(refusal.to_string(), format!("{} has seen all there is to see of war.", topped.name));
     assert_eq!(rules::held(&db, player, Item::Tome), 1, "nothing taken for it");
+}
+
+#[test]
+fn the_realms_commanders_are_people_each_of_their_own() {
+    // Twenty-four, four of each way: one storied, one famed, two steady;
+    // every name their own.
+    let mut names: Vec<&str> = catalog::PEOPLE.iter().map(|person| person.name).collect();
+    names.sort();
+    names.dedup();
+    assert_eq!(names.len(), 24);
+    for way in Way::ALL {
+        let of: Vec<_> = catalog::PEOPLE.iter().filter(|person| person.way == way).collect();
+        let count = |renown: Renown| of.iter().filter(|person| person.renown == renown).count();
+        assert_eq!((of.len(), count(Renown::Storied), count(Renown::Famed), count(Renown::Steady)), (4, 1, 1, 2), "{}", way.name());
+    }
+    assert_eq!(catalog::person_of(0), None);
+    assert_eq!(catalog::person_of(25), None);
+    assert_eq!(catalog::person_of(1).map(|person| person.name), Some("Hallam Ironsworn"));
+    // Each gift grows with its level, to the fifth.
+    for gift in Gift::ALL {
+        assert_ne!(gift.leading(1), gift.leading(5), "{}", gift.name());
+        assert_eq!(gift.leading(5), gift.leading(9), "{} stops at the fifth", gift.name());
+        assert!(gift.words(1).ends_with('.'));
+    }
+    assert_eq!(Gift::Mercy.words(1), "12 in a hundred of their army's dead are carried home wounded after all.");
+    assert_eq!(Gift::Quick.leading(3).quick, 1);
+    // The better known lead the better: a storied commander's way is a
+    // quarter more than a steady one's.
+    assert_eq!(Way::Vanguard.leading(10).scaled(Renown::Storied.weight()).strikes[0], (5 + 10) * 125 / 100);
+}
+
+#[test]
+fn the_tavern_brings_the_realms_own_commanders_by_their_renown() {
+    // Each player's first commander is one of the realm's; over many
+    // players most are steady, some famed, a few storied.
+    let mut db = Mem::new(START, 5);
+    rules::open(&mut db, SEED, 1, 128);
+    let mut renown = [0usize; 4];
+    for index in 0..300 {
+        // No more than the realm lets join in a minute.
+        if index % 100 == 99 {
+            let later = db.clock + 61;
+            until(&mut db, later);
+        }
+        let player = db.call(|db| rules::join(db, &format!("Player {index}"))).unwrap().id;
+        let first = rules::commanders_of(&db, player).remove(0);
+        let person = catalog::person_of(first.person).expect("one of the realm's");
+        assert_eq!((first.name.as_str(), first.way, first.gift, first.sigils), (person.name, person.way as u8, 1, 0));
+        renown[person.renown as usize] += 1;
+    }
+    let (steady, famed, storied) = (renown[1], renown[2], renown[3]);
+    assert!((170..=250).contains(&steady) && (45..=110).contains(&famed) && (3..=30).contains(&storied), "{steady} steady, {famed} famed, {storied} storied");
+
+    // A player's commanders from the Tavern: none twice, of new ways
+    // while there are any.
+    let (mut db, player, city, _) = led(10);
+    let mut tavern = rules::building_of(&db, city.id, Kind::Tavern).unwrap_or(Building { id: 0, city: city.id, kind: Kind::Tavern as u8, level: 0 });
+    tavern.level = 25;
+    if tavern.id == 0 { db.insert(tavern); } else { db.update(tavern); }
+    let mut stock = Table::<Stock>::get(&db, city.id).unwrap();
+    (stock.grain, stock.timber, stock.stone, stock.moonsalt, stock.holds) = (10_000_000, 10_000_000, 10_000_000, 10_000_000, 50_000_000);
+    db.update(stock);
+    while db.call(|db| rules::hire(db, player)).is_ok() {}
+    let all = rules::commanders_of(&db, player);
+    assert_eq!(all.len(), 6);
+    let mut people: Vec<u8> = all.iter().map(|commander| commander.person).collect();
+    people.sort();
+    people.dedup();
+    assert_eq!(people.len(), 6, "none twice");
+    let mut ways: Vec<u8> = all.iter().map(|commander| commander.way).collect();
+    ways.sort();
+    ways.dedup();
+    assert_eq!(ways.len(), 6, "a commander of every way");
 }

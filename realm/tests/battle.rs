@@ -552,3 +552,28 @@ fn a_commanders_skill_tells_every_fourth_round_of_a_fight() {
     // A fight over before the fourth round goes as it would without.
     assert_eq!(fight(100, [charging, Mastery::default()]), fight(100, [Mastery::default(); 2]));
 }
+
+#[test]
+fn a_quick_commanders_skill_comes_every_third_round() {
+    use realm::rules::Mastery;
+    let side = |count| vec![realm::catalog::Unit { kind: realm::catalog::Troops::Spearmen, tier: 1, count }];
+    let fight = |learnt: [Mastery; 2]| rules::fight_learned(&side(5_000), &side(5_000), learnt, 0, || 10);
+    let charging = Mastery { surge: 80, ..Mastery::default() };
+    let quick = Mastery { quick: 1, ..charging };
+    let (slow, fast) = (fight([charging, Mastery::default()]), fight([quick, Mastery::default()]));
+    // More charges in as many rounds: the fight won sooner, for fewer.
+    assert!(fast.won && slow.won);
+    assert!(fast.rounds < slow.rounds && fast.attackers_lost[0] < slow.attackers_lost[0], "{fast:?} against {slow:?}");
+    // Quick with no skill to use is no different.
+    assert_eq!(fight([Mastery { quick: 1, ..Mastery::default() }, Mastery::default()]), fight([Mastery::default(); 2]));
+}
+
+#[test]
+fn mercy_spares_some_of_the_dead_and_bane_strikes_the_unquiet() {
+    use realm::rules::Mastery;
+    assert_eq!(rules::spared(100, 20), 20);
+    assert_eq!(rules::spared(7, 0), 0);
+    assert_eq!(rules::spared(50, 250), 50, "never more than fell");
+    let baned = Mastery { strikes: [3, 0, 0, 0], bane: 12, ..Mastery::default() }.against_the_unquiet();
+    assert_eq!(baned.strikes, [15, 12, 12, 12]);
+}

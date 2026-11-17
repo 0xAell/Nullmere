@@ -754,12 +754,19 @@ public struct LiveCommander: Equatable, Sendable, Identifiable {
     public let seen: UInt64
     /// The march they lead now; 0 while they are in the city.
     public let march: UInt64
+    /// Who they are among the realm's commanders, by number from 1 (0 for
+    /// one of no renown), their gift's level, and the sigils they hold
+    /// toward its next.
+    public let person: Int
+    public let gift: Int
+    public let sigils: Int
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
         guard let id = cells.unsigned(0), let name = cells.text(2), let way = cells.whole(3), let level = cells.whole(4),
               let seen = cells.unsigned(5), let march = cells.unsigned(6) else { return nil }
         (self.id, self.name, self.way, self.level, self.seen, self.march) = (id, name, way, level, seen, march)
+        (self.person, self.gift, self.sigils) = (cells.whole(7) ?? 0, cells.whole(8) ?? 0, cells.whole(9) ?? 0)
     }
 
     /// Their way of war in a word, and what it is best at.

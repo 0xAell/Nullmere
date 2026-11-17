@@ -24,8 +24,11 @@ const LATEST_PLAYERS: u64 = 12;
 ///
 /// First beside the city of one of the players who joined just before, so
 /// that those who come to the realm about the same time are neighbours,
-/// and a country fills before the next is begun. Then, where no room is
-/// left about them or no one came before, somewhere by chance, and the
+/// and a country fills before the next is begun: of a place by each of
+/// several of them, the nearest the middle of their cities, so that it
+/// fills toward its middle rather than trailing away. Then the clear
+/// place nearest that middle and beside one of them. Then, where no room
+/// is left about them or no one came before, somewhere by chance, and the
 /// next neighbours gather there. Then hex by hex, so a place is found if
 /// one is left.
 fn settle_site(db: &mut impl Db, seed: u64, radius: u32, player: u64) -> Option<Hex> {
@@ -39,6 +42,17 @@ fn settle_site(db: &mut impl Db, seed: u64, radius: u32, player: u64) -> Option<
     let across = 2 * reach as u64 + 1;
     // Players are numbered from one as they join: those before this one.
     let before = player.saturating_sub(1).min(LATEST_PLAYERS);
+    // The middle of their cities, which a country fills toward rather
+    // than wandering away from as each settles beside the last.
+    let recent: Vec<Hex> = (1..=before).filter_map(|back| Table::<City>::by(db, 0, player - back).into_iter().next()).map(|city| Hex::unpacked(city.hex)).collect();
+    let middle = (!recent.is_empty()).then(|| {
+        let count = recent.len() as i64;
+        let (q, r) = recent.iter().fold((0i64, 0i64), |(q, r), hex| (q + hex.q as i64, r + hex.r as i64));
+        Hex::new((q as f64 / count as f64).round() as i32, (r as f64 / count as f64).round() as i32)
+    });
+    // A clear place beside each of several of them, and of those the
+    // nearest the middle.
+    let mut best: Option<Hex> = None;
     for _ in 0..(if before > 0 { 8 } else { 0 }) {
         let back = 1 + db.chance() % before;
         let Some(neighbour) = Table::<City>::by(db, 0, player - back).into_iter().next() else { continue };
@@ -47,6 +61,26 @@ fn settle_site(db: &mut impl Db, seed: u64, radius: u32, player: u64) -> Option<
             let (a, b) = (db.chance(), db.chance());
             let hex = Hex::new(heart.q + (a % across) as i32 - reach, heart.r + (b % across) as i32 - reach);
             if heart.distance(hex) <= NEIGHBOUR_REACH && fits(db, hex) {
+                let nearer = match (best, middle) {
+                    (Some(kept), Some(middle)) => hex.distance(middle) < kept.distance(middle),
+                    _ => true,
+                };
+                if nearer {
+                    best = Some(hex);
+                }
+                break;
+            }
+        }
+    }
+    if best.is_some() {
+        return best;
+    }
+    // None found beside them by chance: the clear place nearest the
+    // middle, ring by ring, still beside one of them.
+    if let Some(middle) = middle {
+        for ring in 0..=3 * NEIGHBOUR_REACH {
+            let beside = |hex: &Hex| recent.iter().any(|city| city.distance(*hex) <= NEIGHBOUR_REACH);
+            if let Some(hex) = middle.ring(ring).into_iter().find(|hex| beside(hex) && fits(db, *hex)) {
                 return Some(hex);
             }
         }
