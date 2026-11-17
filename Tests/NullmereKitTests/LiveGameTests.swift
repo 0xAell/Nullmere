@@ -80,9 +80,15 @@ final class LiveGameTests: XCTestCase {
         rows["chest"] = [[n(1), n(20), n(5_000), n(5_000), n(0), n(0), n(2), n(0), n(0)], [n(2), n(60), n(0), n(0), n(10_000), n(50), n(0), n(1), n(0)]]
         rows["ware"] = [[n(1), .string("Five minutes' haste"), .string("Five minutes sooner."), n(300)], [n(2), .string("An hour's haste"), .string("An hour sooner."), n(3_600)],
                         [n(4), .string("Eight hours' peace"), .string("Keeps your city at peace for 8 hours."), n(28_800), n(2)],
-                        [n(5), .string("Iron"), .string("Worked at the Forge into gear."), n(0), n(3)]]
+                        [n(5), .string("Iron"), .string("Worked at the Forge into gear."), n(0), n(3)],
+                        [n(9), .string("A tome of war"), .string("Adds 500 to what a commander has seen."), n(0), n(4)]]
+        // Two tomes held, to read to a commander; the alliance's stores, a
+        // haste she has the honour for and a tome she has not.
+        rows["price"] = [[n(1), n(100)], [n(9), n(250)]]
+        rows["my_honour"] = [[n(1), n(180), n(0), n(0)]]
         rows["my_daily"] = [[n(1), n(0), n(60), n(1_200), n(0), n(1), n(0), n(0)]]
-        rows["my_satchel"] = [[n(1 << 8 | 1), n(1), n(1), n(3)], [n(1 << 8 | 4), n(1), n(4), n(1)], [n(1 << 8 | 5), n(1), n(5), n(6)]]
+        rows["my_satchel"] = [[n(1 << 8 | 1), n(1), n(1), n(3)], [n(1 << 8 | 4), n(1), n(4), n(1)], [n(1 << 8 | 5), n(1), n(5), n(6)],
+                              [n(1 << 8 | 9), n(1), n(9), n(2)]]
         // The Forge: two pieces it makes, a piece worn and one spare.
         rows["pattern"] = [[n(1), .string("Iron sword"), n(1), n(1), .string("Everyone its wearer leads strikes 3% harder."), n(4), n(4), n(0), n(0), n(0), n(5_000), n(5_000),
                             n(0), n(1)],
@@ -316,6 +322,16 @@ final class LiveGameTests: XCTestCase {
         let (empty, _) = await playing(LiveSample.rows())
         for side in [LiveGameView.Panel.troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
             XCTAssertGreaterThan(try drawn(LiveSidePanel(session: empty, seconds: 2_015, panel: side) {}, width: 340, height: 700), 150, "\(side)")
+        }
+        // In an alliance with nothing yet in it, each panel's whole content:
+        // no rallies called, no help asked, no pacts, no petition of her own.
+        var bare = LiveSample.rows()
+        bare["alliance"] = rows()["alliance"]
+        bare["member"] = rows()["member"]
+        let (allied, _) = await playing(bare)
+        XCTAssertNotNil(allied.world.myMembership)
+        for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
+            _ = try drawn(whole(side, of: allied).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600)
         }
         // And each panel's whole content, as long as it runs, with no
         // scrolling to leave what lies below a panel's fold unbuilt.
