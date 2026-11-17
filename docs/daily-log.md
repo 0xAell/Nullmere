@@ -68,3 +68,10 @@ Blender-authored unit models landed through the day: spearman, archer, lantern-b
 
 - Update ~8 PM: Claude kept shipping through Nov 17 (tip 73905cd, ~8:04 PM): ad blocker element picker and own-filter syntax, realm panel/UI wording and frame-staging fixes, NullmereKit coverage floor 93.5, and a Realm rules check that fails unless a publish is live.
 - CI: Realm rules green on 37ed62c; the CI run on that commit and the Realm rules run on 73905cd were still in progress at time of writing.
+
+
+## 2026-11-18
+
+- Late Nov 17 Claude kept to realm performance work (tip d1600a6, ~11:33 PM): the frame's still pieces staged once, worked-out poses kept for every frame, the Mac staging baselines lowered to what Mac run 1140 measured, and a panning frame timed in four passes. Mac run 1140 recorded all jobs green.
+- CI: the run on 1587d77 is green; the run on e0dacdc failed before the baselines were re-timed.
+- Still open: the ad blocker is not yet called done; on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
