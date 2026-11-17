@@ -116,6 +116,17 @@ struct CompanionHome: View {
                         }
                     }
                 }
+                // Each training ground: its batch in training and how long it
+                // has left, or the highest tier it can train now, as many as a
+                // batch holds and the stores pay for.
+                let training = world.trainLines(at: seconds)
+                if !training.isEmpty {
+                    Section("Training") {
+                        ForEach(training) { line in
+                            CompanionTraining(session: session, line: line, seconds: seconds)
+                        }
+                    }
+                }
                 let idle = world.idle(at: seconds)
                 if !idle.isEmpty {
                     Section("Standing idle") {
@@ -190,6 +201,47 @@ struct CompanionBuilding: View {
                 Text(verbatim: "\(next.cost.sentence), \(LiveWords.spoken(next.seconds))").font(.footnote).foregroundStyle(.secondary)
             } else if line.job == nil, let block = line.block, block != .buildersBusy {
                 Text(verbatim: block.words).font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+/// One training ground of the player's city on the phone: its batch in
+/// training, or a way to train the highest tier it can now, as many as a
+/// batch holds and the stores pay for; why not beneath.
+struct CompanionTraining: View {
+    let session: LiveSession
+    let line: LiveTrainLine
+    let seconds: Double
+
+    var body: some View {
+        let world = session.world
+        let open = line.tiers.last { $0.block == nil && world.mostTrainable(line, tier: $0.tier, at: seconds) > 0 }
+        let tier = open ?? line.tiers.first
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(verbatim: "\(line.name), level \(line.building.level)")
+                Spacer()
+                if let job = line.job {
+                    Text(verbatim: LiveWords.clock(Int(job.left(at: seconds).rounded(.up))))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                } else if let tier {
+                    let most = world.mostTrainable(line, tier: tier.tier, at: seconds)
+                    Button(most > 0 ? "Train \(LiveWords.grouped(most))" : "Train") {
+                        Task { await session.train(building: line.building.id, tier: tier.tier, count: most) }
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(tier.block != nil || most == 0 || session.asking > 0)
+                }
+            }
+            if let job = line.job {
+                Text(verbatim: "Training \(LiveWords.grouped(job.amount)) of tier \(job.level)").font(.footnote).foregroundStyle(.secondary)
+            } else if let tier {
+                Text(verbatim: "\(tier.soldier.name), tier \(tier.tier): \(tier.soldier.cost.words) each").font(.footnote).foregroundStyle(.secondary)
+                if let block = tier.block {
+                    Text(verbatim: block.words).font(.footnote).foregroundStyle(.secondary)
+                }
             }
         }
     }
