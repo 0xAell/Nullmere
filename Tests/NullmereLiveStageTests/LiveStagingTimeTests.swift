@@ -117,9 +117,51 @@ final class LiveStagingTimeTests: XCTestCase {
             + "p50 \(String(format: "%.2f", p50)) ms, p95 \(String(format: "%.2f", p95)) ms")
         print("PERFMETRIC live.stage.cpu.p50 \(String(format: "%.3f", p50))")
         print("PERFMETRIC live.stage.cpu.p95 \(String(format: "%.3f", p95))")
+        // The runner's pace beside it: the calibration's plain work, timed
+        // as CalibrationTests times it, against its baseline. A shared
+        // runner twice as slow stages twice as slowly (CI run 1117, the
+        // plain work at 853.6 ms, staged at 17.3 against runs 1111 and
+        // 1116's 11): the frame is held at the pace the game is played at,
+        // the slowness of a runner taken out of it, up to twice, as
+        // scripts/perf-check.py takes it out of every CPU figure.
+        let pace = Self.pace()
+        print("PERF staging paced: the plain work at x\(String(format: "%.2f", pace)) its baseline, p50 \(String(format: "%.2f", p50 / pace)) ms at its pace")
         #if os(macOS)
         // Held on the Mac, where the game is played; elsewhere only told.
-        XCTAssertLessThan(p50, 16.7, "staged within a frame at sixty frames a second")
+        XCTAssertLessThan(p50 / pace, 16.7, "staged within a frame at sixty frames a second")
         #endif
+    }
+
+    /// The calibration's baseline: its plain work's best, in milliseconds,
+    /// on the runners the CPU baselines were set on (perf/baseline.json).
+    static let plainWorkBaseline = 353.0
+
+    /// How much slower than the baseline this runner does the plain work
+    /// now, the best of three, at least one and at most twice.
+    static func pace() -> Double {
+        var best = Double.infinity
+        for _ in 0..<3 {
+            let started = CalibrationTests.threadCPUSeconds()
+            var folded = 0
+            for round in 0..<6 {
+                folded ^= CalibrationTests.plainWork(seed: UInt64(round))
+            }
+            precondition(folded != 0)
+            best = min(best, (CalibrationTests.threadCPUSeconds() - started) * 1000)
+        }
+        return min(max(best / plainWorkBaseline, 1), 2)
+    }
+
+    func testTheRunnersPaceIsTakenOutUpToTwice() {
+        let pace = Self.pace()
+        XCTAssertGreaterThanOrEqual(pace, 1)
+        XCTAssertLessThanOrEqual(pace, 2)
+        // The baseline is the calibration's own, as perf-check holds it.
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        if let baseline = try? String(contentsOf: root.appendingPathComponent("perf/baseline.json"), encoding: .utf8),
+           let at = baseline.range(of: "\"calibration.cpu\": {") {
+            let entry = baseline[at.upperBound...].prefix { $0 != "}" }
+            XCTAssertTrue(entry.contains("\"baseline\": \(Int(Self.plainWorkBaseline)),"), String(entry))
+        }
     }
 }
