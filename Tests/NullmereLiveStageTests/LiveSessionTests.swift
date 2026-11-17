@@ -271,6 +271,65 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(session.everyoneReady.count, 0, "no one stands ready in these rows")
     }
 
+    /// A building of the player's own city is chosen where it stands on the
+    /// map, by a click whose ray meets it: its card tells its level, what
+    /// the next costs and why it can't be had yet, with a way to raise it
+    /// and to open the city's buildings; pressed once it can be, the realm
+    /// is asked. A click on the keep chooses the city, and choosing anything
+    /// else puts the building away.
+    func testABuildingOfTheCityIsChosenWhereItStands() async throws {
+        var rows = LiveWindowTests.rows()
+        func blueprint(_ kind: Int, _ level: Int, _ name: String) -> [JSONValue] {
+            [n(kind << 32 | level), n(kind), n(level), .string(name), n(0), n(100 * level), n(0), n(0), n(10 * level), n(0), n(0), n(0), n(0),
+             n(1), n(0), n(0), n(20 * level)]
+        }
+        rows["blueprint"] = [blueprint(2, 1, "Farm"), blueprint(2, 3, "Farm")]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        // Her Farm, of the second level, drawn as the first of the works' five heights.
+        let frame = session.frame(time: 1)
+        let farm = try XCTUnwrap(frame.batches.first { $0.key == .work(.granary, level: 1) }?.instances.first).model.c3
+        let local = try XCTUnwrap(session.window?.local(LiveHex(q: 10, r: -4)))
+        let down = Vec3(0, -1, 0)
+        session.choose(local: local, ray: (Vec3(farm.x, farm.y + 10, farm.z), down))
+        let city = try XCTUnwrap(session.world.city)
+        XCTAssertEqual(session.selection, .work(2, in: city))
+        XCTAssertEqual(session.selected, LiveHex(q: 10, r: -4), "her city's hex")
+        let chosen = try XCTUnwrap(session.chosenWork)
+        XCTAssertEqual(chosen.foot.x, farm.x, accuracy: 1e-4)
+        XCTAssertEqual(chosen.foot.z, farm.z, accuracy: 1e-4)
+        let card = session.card(for: try XCTUnwrap(session.selection))
+        XCTAssertEqual(card.title, "Farm")
+        XCTAssertEqual(card.lines, ["Level 2.", "Level 3 takes 300 timber, 30 seconds."])
+        XCTAssertEqual(card.buttons.map(\.title), ["Upgrade to level 3", "Buildings"])
+        XCTAssertEqual(card.buttons.first?.why, "You need 300 timber more.")
+        XCTAssertEqual(card.buttons.first?.icon, "arrow.up.circle")
+        XCTAssertEqual(session.mapItems().first?.kind, .home, "the city is still read as hers")
+
+        // With timber enough, pressed, the realm is asked to raise it.
+        let stock: [[JSONValue]] = [[n(7), n(60_000), n(60_000), n(60_000), n(0), n(2_000), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(200_000)]]
+        line.change { $0["my_stock"] = stock }
+        session.refresh()
+        let ready = session.card(for: try XCTUnwrap(session.selection))
+        XCTAssertNil(ready.buttons[0].why)
+        line.clear()
+        await session.press(ready.buttons[0])
+        XCTAssertTrue(line.asked.contains("upgrade 22"), "\(line.asked)")
+
+        // The keep, at the city's heart, chooses the city itself.
+        let heart = Relief.centre(of: local)
+        session.choose(local: local, ray: (Vec3(heart.x, 10, heart.z), down))
+        guard case .home = session.selection else { return XCTFail("the keep chooses her city") }
+        XCTAssertNil(session.chosenWork)
+        // Chosen again, then the grove: the Farm is put away.
+        session.choose(local: local, ray: (Vec3(farm.x, farm.y + 10, farm.z), down))
+        XCTAssertNotNil(session.chosenWork)
+        session.selected = LiveHex(q: 12, r: -2)
+        XCTAssertNil(session.chosenWork)
+        guard case .site = session.selection else { return XCTFail("the grove") }
+    }
+
     func testWhatIsChosenIsToldOnACardWithWhatCanBeDone() async throws {
         var rows = LiveWindowTests.rows()
         rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]

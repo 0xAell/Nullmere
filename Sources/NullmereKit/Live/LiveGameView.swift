@@ -821,8 +821,14 @@ struct LiveRing: View {
     /// edges; nil where it is not in the window drawn, or behind the eye.
     static func place(of session: LiveSession, in size: CGSize) -> CGPoint? {
         guard let local = session.selectedLocal, size.width > 0, size.height > 0 else { return nil }
-        let height = session.land().map { Double($0.relief.height(of: local)) } ?? 0
-        let point = session.camera.viewPoint(of: local, height: height, in: size)
+        let point: CGPoint
+        if let work = session.chosenWork {
+            // A building of the player's city: where it stands.
+            point = session.camera.viewPoint(worldX: Double(work.foot.x), worldY: Double(work.foot.z), height: Double(work.foot.y), in: size)
+        } else {
+            let height = session.land().map { Double($0.relief.height(of: local)) } ?? 0
+            point = session.camera.viewPoint(of: local, height: height, in: size)
+        }
         guard point.x > -radius, point.x < size.width + radius, point.y > -radius, point.y < size.height + radius else { return nil }
         let margin = radius + side
         return CGPoint(x: min(max(point.x, margin), size.width - margin - 300), y: min(max(point.y, margin), size.height - margin - 60))

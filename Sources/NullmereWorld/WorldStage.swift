@@ -834,6 +834,60 @@ public final class WorldStage: @unchecked Sendable {
         return made
     }
 
+    /// The work of a hold a ray from the eye first meets as the hold is
+    /// drawn, and where its foot stands: each work taken as an upright as
+    /// wide as its slot and as tall as its model, both carried out as the
+    /// hold is (`HoldLayout.workRadius`, `HoldLayout.grandeur`); nil where
+    /// the ray passes them all. The keep and the walls are no work of it.
+    public func work(of sight: HoldSight, hitBy origin: Vec3, toward direction: Vec3) -> (work: HoldLayout.Work, foot: Vec3)? {
+        var best: (work: HoldLayout.Work, foot: Vec3, along: Float)?
+        for piece in drawn(sight) {
+            let work: HoldLayout.Work
+            switch piece.key {
+            case .work(let kind, _): work = .building(kind)
+            case .study: work = .study
+            default: continue
+            }
+            let tall = max(Library.model(piece.key).mesh.bounds.max.y, 0.2) * HoldLayout.grandeur
+            guard let along = WorldStage.meets(origin: origin, direction: direction, foot: piece.position,
+                                               radius: HoldLayout.workRadius * HoldLayout.grandeur, height: tall) else { continue }
+            if along < best?.along ?? .infinity { best = (work, piece.position, along) }
+        }
+        return best.map { ($0.work, $0.foot) }
+    }
+
+    /// How far along a ray it first meets an upright standing on `foot`,
+    /// `radius` round and `height` tall, its own middle included; nil where
+    /// it passes it, or where it lies behind the ray's start.
+    static func meets(origin: Vec3, direction: Vec3, foot: Vec3, radius: Float, height: Float) -> Float? {
+        // Where the ray is within `radius` of the upright's axis, seen from
+        // above: all of it, or none, for a ray straight up or down.
+        let ox = origin.x - foot.x, oz = origin.z - foot.z
+        let a = direction.x * direction.x + direction.z * direction.z
+        let b = 2 * (ox * direction.x + oz * direction.z)
+        let c = ox * ox + oz * oz - radius * radius
+        var low = -Float.infinity, high = Float.infinity
+        if a > 1e-9 {
+            let disc = b * b - 4 * a * c
+            guard disc >= 0 else { return nil }
+            let root = disc.squareRoot()
+            low = (-b - root) / (2 * a)
+            high = (-b + root) / (2 * a)
+        } else if c > 0 {
+            return nil
+        }
+        // And where it is between the upright's foot and its top.
+        if abs(direction.y) > 1e-9 {
+            let first = (foot.y - origin.y) / direction.y, second = (foot.y + height - origin.y) / direction.y
+            low = max(low, min(first, second))
+            high = min(high, max(first, second))
+        } else if origin.y < foot.y || origin.y > foot.y + height {
+            return nil
+        }
+        guard low <= high, high >= 0 else { return nil }
+        return max(low, 0)
+    }
+
     /// How a hold is laid out: as the rules keep it, or with the work
     /// `finishing` still rising as the watch's turn eases it up.
     static func plan(of hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?) -> HoldLayout.Plan {

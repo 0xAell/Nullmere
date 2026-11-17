@@ -761,6 +761,48 @@ final class StageTests: XCTestCase {
         XCTAssertEqual(out, plan * HoldLayout.grandeur, accuracy: 1e-3, "as far out as the hold is drawn, not as its plan lies")
     }
 
+    /// A ray from the eye meets a work where it is drawn, carried out from
+    /// the hold's middle, and is told which work it is and where its foot
+    /// stands; a ray down onto the keep, or far from the hold, meets none.
+    func testARayMeetsTheWorkWhereItIsDrawn() throws {
+        let stage = stage()
+        var hold = try XCTUnwrap(Self.state.holds.first { $0.isSeat })
+        hold.levels[.sawpit] = 2
+        hold.project = nil
+        let sight = HoldSight(hold: hold, colour: Vec4(1, 1, 1, 1))
+        var frame = SceneFrame()
+        let drawn = try XCTUnwrap(stage.holds([sight], time: 3, into: &frame).batches.first { $0.key == .work(.sawpit, level: 2) }?.instances.first)
+        let foot = Vec3(drawn.model.c3.x, drawn.model.c3.y, drawn.model.c3.z)
+        // Straight down onto it, and slantwise as the map's camera looks,
+        // from close by, toward its middle.
+        for eye in [foot + Vec3(0, 10, 0), foot + Vec3(0, 0.6, 0.45)] {
+            let middle = foot + Vec3(0, 0.2, 0)
+            let hit = try XCTUnwrap(stage.work(of: sight, hitBy: eye, toward: (middle - eye).normalized), "from \(eye)")
+            XCTAssertEqual(hit.work, .building(.sawpit))
+            XCTAssertEqual(hit.foot.x, foot.x, accuracy: 1e-4)
+            XCTAssertEqual(hit.foot.z, foot.z, accuracy: 1e-4)
+        }
+        let centre = Relief.centre(of: hold.position)
+        let heart = Vec3(centre.x, 0, centre.z)
+        XCTAssertNil(stage.work(of: sight, hitBy: heart + Vec3(0, 10, 0), toward: Vec3(0, -1, 0)), "the keep is no work")
+        XCTAssertNil(stage.work(of: sight, hitBy: heart + Vec3(9, 10, 0), toward: Vec3(0, -1, 0)), "nothing far from the hold")
+    }
+
+    /// An upright is met where a ray passes through it, from the side or
+    /// from above, and not where it passes beside it, over it, or behind
+    /// the ray's start.
+    func testARayMeetsAnUprightOnlyWhereItPassesThroughIt() throws {
+        let foot = Vec3(2, 0.5, -1)
+        let side = try XCTUnwrap(WorldStage.meets(origin: Vec3(-3, 1, -1), direction: Vec3(1, 0, 0), foot: foot, radius: 0.5, height: 1))
+        XCTAssertEqual(side, 4.5, accuracy: 1e-4, "at its near side")
+        let down = try XCTUnwrap(WorldStage.meets(origin: Vec3(2.1, 5, -1), direction: Vec3(0, -1, 0), foot: foot, radius: 0.5, height: 1))
+        XCTAssertEqual(down, 3.5, accuracy: 1e-4, "at its top")
+        XCTAssertNil(WorldStage.meets(origin: Vec3(-3, 1, 0), direction: Vec3(1, 0, 0), foot: foot, radius: 0.5, height: 1), "beside it")
+        XCTAssertNil(WorldStage.meets(origin: Vec3(-3, 2, -1), direction: Vec3(1, 0, 0), foot: foot, radius: 0.5, height: 1), "over it")
+        XCTAssertNil(WorldStage.meets(origin: Vec3(5, 1, -1), direction: Vec3(1, 0, 0), foot: foot, radius: 0.5, height: 1), "behind it")
+        XCTAssertEqual(WorldStage.meets(origin: Vec3(2, 1, -1), direction: Vec3(1, 0, 0), foot: foot, radius: 0.5, height: 1), 0, "from within")
+    }
+
     /// A commander's skill works where it fired: its look's model there
     /// from the moment it fires, seen by every House and drawn whole,
     /// posed anew as it works and fading as it ends; none before, none once

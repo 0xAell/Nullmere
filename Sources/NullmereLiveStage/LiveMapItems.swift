@@ -42,7 +42,7 @@ extension LiveSession {
             let chosen = selection(at: hex)
             let kind: LiveMapItem.Kind
             switch chosen {
-            case .home: kind = .home
+            case .home, .work: kind = .home
             case .city: kind = .city
             case .army(_, let own): kind = own ? .ownArmy : .army
             case .barrow: kind = .barrow

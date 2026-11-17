@@ -102,6 +102,17 @@ public enum LiveSelection: Equatable, Sendable {
     case army(LiveMarch, own: Bool)
     /// Bare land: its ground, as the module numbers it, where it is known.
     case land(LiveHex, ground: UInt8?)
+    /// A building of the player's own city, chosen where it stands on the
+    /// map, by its number in the module's catalogue.
+    case work(Int, in: LiveCity)
+}
+
+/// A building of the player's own city chosen on the map: its number in
+/// the module's catalogue, and where its foot stands as the city is drawn
+/// in the window.
+public struct LiveChosenWork: Equatable, Sendable {
+    public let kind: Int
+    public let foot: Vec3
 }
 
 /// Something that just happened in the player's realm, in a few words,
@@ -154,7 +165,13 @@ public final class LiveSession {
     /// How many things asked are still on their way.
     public private(set) var asking = 0
     /// The hex of the world the player has chosen.
-    public var selected: LiveHex?
+    public var selected: LiveHex? {
+        didSet { if selected != oldValue { chosenWork = nil } }
+    }
+    /// The building of the player's own city chosen where it stands on the
+    /// map, with the city's hex; nil where the city itself, or anything
+    /// else, is chosen.
+    public private(set) var chosenWork: LiveChosenWork?
     /// The hex of the world the player is looking at, and the camera over
     /// the window it is drawn in: in that window's own land, whose heart
     /// is the window's centre.
@@ -302,13 +319,36 @@ public final class LiveSession {
     }
 
     /// The player chooses a hex of the window's own land, or with nil,
-    /// nothing.
-    public func choose(local hex: Hex?) {
+    /// nothing; given the ray from the eye they chose along, a building of
+    /// their own city it meets first, where it stands on the map.
+    public func choose(local hex: Hex?, ray: (origin: Vec3, direction: Vec3)? = nil) {
         guard let hex, let centre = window?.centre else {
             selected = nil
             return
         }
+        if let ray, let work = work(hitBy: ray), let home = world.city?.hex {
+            selected = home
+            chosenWork = work
+            return
+        }
         selected = LiveHex(q: hex.q + centre.q, r: hex.r + centre.r)
+        chosenWork = nil
+    }
+
+    /// The building of the player's own city a ray from the eye first
+    /// meets, as the city is drawn in the window, in the window's own land;
+    /// nil where it meets none, or none the city has.
+    public func work(hitBy ray: (origin: Vec3, direction: Vec3)) -> LiveChosenWork? {
+        guard let window, let city = world.city, land() != nil, let stage = staged?.stage,
+              let sight = window.holds(in: world, colours: LiveSession.colours, at: now).first(where: { $0.hold.id == Int(city.id) }),
+              let hit = stage.work(of: sight, hitBy: ray.origin, toward: ray.direction) else { return nil }
+        let kind: BuildingKind
+        switch hit.work {
+        case .building(let building): kind = building
+        case .study: kind = .archive
+        }
+        guard let number = LiveWindow.building(for: kind), world.building(number) != nil else { return nil }
+        return LiveChosenWork(kind: number, foot: hit.foot)
     }
 
     /// What the player has chosen, as a hex of the window's own land,
@@ -429,8 +469,14 @@ public final class LiveSession {
         return .land(hex, ground: world.ground(at: hex))
     }
 
-    /// What the player has chosen, if anything.
-    public var selection: LiveSelection? { selected.map { selection(at: $0) } }
+    /// What the player has chosen, if anything: a building of their own
+    /// city where one was chosen in it.
+    public var selection: LiveSelection? {
+        guard let selected else { return nil }
+        let found = selection(at: selected)
+        if let chosenWork, case .home(let city) = found { return .work(chosenWork.kind, in: city) }
+        return found
+    }
 
     /// The player's soldiers standing ready, kind by kind and tier by tier:
     /// all of them, for an army sent with everyone.

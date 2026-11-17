@@ -33,6 +33,8 @@ public struct LiveCard: Equatable, Sendable {
         case hasten(UInt64)
         /// Move the player's city to the ground chosen.
         case moveCity
+        /// Raise a building of the city a level.
+        case upgrade(UInt64)
     }
 
     public struct Button: Equatable, Sendable {
@@ -58,6 +60,7 @@ public struct LiveCard: Equatable, Sendable {
             case .raid: return "flame"
             case .hasten: return "forward.fill"
             case .moveCity: return "arrow.up.and.down.and.arrow.left.and.right"
+            case .upgrade: return "arrow.up.circle"
             }
         }
     }
@@ -136,6 +139,26 @@ extension LiveSession {
                 buttons.append(.init(title: "Hasten \(work.words)", act: .hasten(work.job.id), why: why))
             }
             return LiveCard(title: city.name, lines: lines, buttons: buttons)
+
+        case .work(let kind, let city):
+            guard let line = world.buildingLines(at: seconds).first(where: { $0.kind == kind }), let building = line.building else {
+                return card(for: .home(city))
+            }
+            var lines = [line.level > 0 ? "Level \(line.level)." : "Being built."]
+            var buttons: [LiveCard.Button] = []
+            if let job = line.job {
+                lines.append("To level \(job.level): \(LiveWords.clock(Int(job.left(at: seconds).rounded(.up))))")
+                let goods = world.stock?.goods(at: seconds) ?? LiveGoods()
+                let why = goods.covers(LiveWorld.hastening) ? nil : "Hastening takes \(LiveWorld.hastening.words)."
+                buttons.append(.init(title: "Hasten", act: .hasten(job.id), why: why))
+            } else if let next = line.next {
+                lines.append("Level \(line.level + 1) takes \(next.cost.words), \(LiveWords.spoken(next.seconds)).")
+                buttons.append(.init(title: "Upgrade to level \(line.level + 1)", act: .upgrade(building.id), why: line.block?.words))
+            } else {
+                lines.append(line.block?.words ?? "It is at its highest level.")
+            }
+            buttons.append(.init(title: "Buildings", act: .city, why: nil))
+            return LiveCard(title: line.name, lines: lines, buttons: buttons)
 
         case .city(let city, let owner):
             let here = world.players[city.owner]?.online == true ? " They are here now." : ""
@@ -316,6 +339,7 @@ extension LiveSession {
         case .hasten(let job): await speedUp(job: job)
         case .moveCity:
             if let selected { await moveCity(to: selected) }
+        case .upgrade(let building): await upgrade(building: building)
         case .city, .troops: break
         }
     }

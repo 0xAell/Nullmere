@@ -82,7 +82,9 @@ final class WorldMetalView: MTKView {
     private var clock = SceneClock()
 
     var onHover: ((Hex?) -> Void)?
-    var onClick: ((Hex) -> Void)?
+    /// A click: the hex under it, and the ray from the eye through it, for
+    /// what stands up from the land there.
+    var onClick: ((Hex, (origin: Vec3, direction: Vec3)) -> Void)?
     var onSecondaryClick: ((Hex) -> Void)?
     var onCameraChange: ((Camera) -> Void)?
     var onFailure: (() -> Void)?
@@ -431,7 +433,7 @@ final class WorldMetalView: MTKView {
 
     override func mouseUp(with event: NSEvent) {
         if !dragged {
-            onClick?(hex(of: event))
+            onClick?(hex(of: event), camera.ray(through: point(of: event), in: bounds.size))
         }
         dragOrigin = nil
         dragLast = nil

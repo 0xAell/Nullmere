@@ -42,7 +42,7 @@ struct LiveMapView: NSViewRepresentable {
     func makeNSView(context: Context) -> WorldMetalView {
         let view = WorldMetalView()
         view.onFailure = onFailure
-        view.onClick = { [weak session] hex in session?.choose(local: hex) }
+        view.onClick = { [weak session] hex, ray in session?.choose(local: hex, ray: ray) }
         view.onCameraChange = { [weak session] camera in session?.moved(camera) }
         view.cursor = { _ in .pointingHand }
         // What stands and moves in the window, posed afresh for every frame.
