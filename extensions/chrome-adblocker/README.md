@@ -146,7 +146,11 @@ registered (see *YouTube is the hardest*). The check now waits for that,
 and goes on from the watch page to another video in it, as a person
 clicking one does, to see what the player is given when it fetches a
 video's data itself; in the ninth run the player did not take the next
-video up.
+video up. The tenth found YouTube turning the runner away, with the
+extension and without, behind a check page of Google's: after that many
+visits from one of GitHub's machines it would serve none of them a
+video. What YouTube does with a person's browser is still to be seen
+by one.
 
 Some sites turn a headless browser away whatever it carries (Stack
 Overflow and AccuWeather answered 403, USA Today sometimes 402, the
