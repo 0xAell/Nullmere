@@ -1,0 +1,27 @@
+PERF-CHECK this runner runs the plain work at 667.1 ms against 353.0: CPU figures allowed x1.89
+PERF-CHECK calibration.cpu 667.12 ms (baseline 353.00) CALIBRATION
+PERF-CHECK lake.gpu.p50 9.11 ms (baseline 8.30, allowed 16.70) OK
+PERF-CHECK lake.gpu.p95 9.50 ms (baseline 8.30, allowed 16.70) OK
+PERF-CHECK live.stage.cpu.p50 10.91 ms (baseline 7.00, allowed 19.84) OK
+PERF-CHECK live.stage.cpu.p95 17.72 ms (baseline 9.00, allowed 29.77) OK
+PERF-CHECK near.gpu.scale60.p50 9.35 ms (baseline 8.28, allowed 16.70) OK
+PERF-CHECK near.gpu.scale60.plain.p50 9.41 ms (baseline 8.66, allowed 16.70) OK
+PERF-CHECK pan.frame.p50 9.27 ms (baseline 8.96, allowed 16.70) OK
+PERF-CHECK pan.frame.p95 23.99 ms (baseline 9.39, allowed 16.70) REGRESSED
+PERF-CHECK pan.gpu.p50 8.77 ms (baseline 8.56, allowed 16.70) OK
+PERF-CHECK pan.gpu.p95 14.41 ms (baseline 8.87, allowed 16.70) OK
+PERF-CHECK wide.gpu.scale28.p50 12.74 ms (baseline 12.44, allowed 16.70) OK
+PERF-CHECK wide.gpu.scale28.whole.p50 22.70 ms (baseline 23.23, allowed 65.85) OK
+PERF-CHECK wider.gpu.scale28.bare.p50 10.29 ms RECORDED (no baseline yet)
+PERF-CHECK wider.gpu.scale28.day.bare.p50 11.93 ms RECORDED (no baseline yet)
+PERF-CHECK wider.gpu.scale28.day.p50 16.11 ms (baseline 16.09, allowed 16.70) OK
+PERF-CHECK wider.gpu.scale28.day.plain.p50 15.60 ms RECORDED (no baseline yet)
+PERF-CHECK wider.gpu.scale28.p50 14.48 ms (baseline 14.37, allowed 16.70) OK
+PERF-CHECK world.gpu.scale12.p50 6.82 ms (baseline 6.19, allowed 16.70) OK
+PERF-CHECK world.gpu.scale12.p95 8.08 ms (baseline 6.62, allowed 16.70) OK
+PERF-CHECK world.gpu.scale28.day.p50 10.31 ms (baseline 10.47, allowed 16.70) OK
+PERF-CHECK world.gpu.scale28.p50 8.85 ms (baseline 8.61, allowed 16.70) OK
+PERF-CHECK world.gpu.scale28.p95 9.34 ms (baseline 8.95, allowed 16.70) OK
+PERF-CHECK world.gpu.scale60.p50 7.65 ms (baseline 5.70, allowed 16.16) OK
+PERF-CHECK world.gpu.scale60.p95 8.30 ms (baseline 7.37, allowed 16.70) OK
+PERF-CHECK failed: a figure regressed or went missing (see above)
