@@ -216,13 +216,7 @@ struct CompanionBuilding: View {
                         .foregroundStyle(.secondary)
                 } else if line.next != nil {
                     Button(line.building == nil ? "Build" : "Upgrade") {
-                        Task {
-                            if let building = line.building {
-                                await session.upgrade(building: building.id)
-                            } else {
-                                await session.build(line.kind)
-                            }
-                        }
+                        Task { await session.raise(line) }
                     }
                     .buttonStyle(.borderless)
                     .disabled(line.block != nil || session.asking > 0)

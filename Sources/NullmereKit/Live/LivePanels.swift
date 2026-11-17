@@ -134,13 +134,7 @@ struct LiveBuildings: View {
                         QuietButton(title: line.building == nil ? "Build" : "Upgrade", prominent: line.block == nil,
                                     enabled: line.block == nil && session.asking == 0,
                                     name: "\(line.building == nil ? "Build" : "Upgrade") \(line.name)", why: line.block?.words) {
-                            Task {
-                                if let building = line.building {
-                                    await session.upgrade(building: building.id)
-                                } else {
-                                    await session.build(line.kind)
-                                }
-                            }
+                            Task { await session.raise(line) }
                         }
                     }
                 }

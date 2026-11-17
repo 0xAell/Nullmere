@@ -347,6 +347,13 @@ final class LiveSessionTests: XCTestCase {
         session.selected = LiveHex(q: 12, r: -2)
         XCTAssertNil(session.chosenWork)
         guard case .site = session.selection else { return XCTFail("the grove") }
+
+        // The city's list raises a building: upgrading what stands, building what does not.
+        let lines = session.world.buildingLines(at: 2_015)
+        line.clear()
+        await session.raise(try XCTUnwrap(lines.first { $0.kind == 2 }))
+        await session.raise(try XCTUnwrap(lines.first { $0.kind == 7 }))
+        XCTAssertEqual(line.asked.filter { $0.hasPrefix("upgrade") || $0.hasPrefix("build") }, ["upgrade 22", "build 7"])
     }
 
     func testWhatIsChosenIsToldOnACardWithWhatCanBeDone() async throws {

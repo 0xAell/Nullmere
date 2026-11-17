@@ -554,6 +554,15 @@ public final class LiveSession {
 
     public func join(name: String) async { await ask { try await $0.join(name: name) } }
     public func build(_ kind: Int) async { await ask { try await $0.build(kind) } }
+    /// Raises a building of the city's list a level: upgraded where the
+    /// city has it, built where it has not.
+    public func raise(_ line: LiveBuildingLine) async {
+        if let building = line.building {
+            await upgrade(building: building.id)
+        } else {
+            await build(line.kind)
+        }
+    }
     public func upgrade(building: UInt64) async { await ask { try await $0.upgrade(building: building) } }
     public func train(building: UInt64, tier: Int, count: UInt64) async { await ask { try await $0.train(building: building, tier: tier, count: count) } }
     public func promote(building: UInt64, from: Int, to: Int, count: UInt64) async {
