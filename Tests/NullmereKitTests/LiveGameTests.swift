@@ -444,6 +444,85 @@ final class LiveGameTests: XCTestCase {
         XCTAssertTrue(line.asked.isEmpty, "Drawing asks the realm nothing")
     }
 
+    /// What the other tests' realms never come to, drawn and kept: a
+    /// newcomer in no alliance with an Embassy built, offered the realm's
+    /// alliances and the founding of her own; a Barracks training and a
+    /// study under way, each with how far it has come; a commander, free,
+    /// keeping the city; in an alliance, its Moonspire's next stage and a
+    /// topic it learns rising, and a rally her own army is in; and more
+    /// armies marching on her city than the warning lists.
+    func testWhatTheOtherRealmsNeverComeToIsDrawn() async throws {
+        var newcomer = rows()
+        newcomer["member"]?.removeAll { $0.first == n(1) }
+        newcomer["my_buildings"]?.append([n(32), n(7), n(15), n(1)])
+        newcomer["my_jobs"]?.append(contentsOf: [[n(6), n(7), n(LiveJob.train), n(24), n(1), n(120), n(2_000), n(2_100), n(11)],
+                                                 [n(7), n(7), n(LiveJob.study), n(1), n(3), n(0), n(2_000), n(2_200), n(12)]])
+        newcomer["my_lore"]?.append([n(7 << 8 | 8), n(7), n(8), n(3)])
+        newcomer["my_prisoners"] = []
+        let (fresh, line) = await playing(newcomer)
+        let world = fresh.world
+        XCTAssertNil(world.myMembership)
+        XCTAssertNil(world.foundingBlock, "An Embassy built and in no alliance: she may found her own")
+        XCTAssertEqual(world.allianceLines().map(\.alliance.tag), ["WRD", "MERE"], "the larger first")
+        XCTAssertEqual(world.allianceLines().map(\.offer), ["Join", "Ask to join"], "the Wardens open to anyone, the Keepers by asking")
+        XCTAssertEqual(world.allianceLines().map(\.why), [nil, nil])
+        XCTAssertGreaterThan(try drawn(LiveSidePanel(session: fresh, seconds: 2_015, panel: .alliance) {}, width: 340, height: 700,
+                                       as: "live-alliance-newcomer.png"), 800)
+        _ = try drawn(whole(.alliance, of: fresh).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600)
+
+        let barracks = try XCTUnwrap(world.trainLines(at: 2_015).first { $0.building.id == 24 })
+        XCTAssertEqual(barracks.job?.amount, 120, "its batch under way")
+        let studies = world.studyLines(at: 2_015)
+        XCTAssertEqual(studies.first { $0.topic == 1 }?.job?.level, 3, "Tillage being studied to its third level")
+        let spearcraft = try XCTUnwrap(studies.first { $0.topic == 8 })
+        XCTAssertEqual(spearcraft.level, 3)
+        XCTAssertNil(spearcraft.next, "Spearcraft learnt as far as it goes")
+        XCTAssertEqual(world.keeper, 11)
+        XCTAssertNil(world.held(11), "Corwen free, and keeping the city")
+        let underWay = VStack(alignment: .leading, spacing: 12) {
+            LiveTroops(session: fresh, seconds: 2_015)
+            LiveStudies(session: fresh, seconds: 2_015)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(NullmereKit.Palette.panel)
+        XCTAssertGreaterThan(try drawn(underWay, width: LiveSidePanel.width, height: 900, as: "live-under-way.png"), 800)
+        XCTAssertGreaterThan(try drawn(whole(.troops, of: fresh).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800)
+
+        // A city with no soldiers at all, none out either.
+        var soldierless = LiveSample.rows()
+        soldierless["my_squads"] = []
+        let (bare, _) = await playing(soldierless)
+        XCTAssertTrue(bare.world.troopLines().isEmpty)
+        XCTAssertGreaterThan(try drawn(LiveTroops(session: bare, seconds: 2_015).frame(maxWidth: .infinity, alignment: .topLeading),
+                                       width: LiveSidePanel.width, height: 200), 80)
+
+        // In her alliance: the Moonspire's next stage and a topic rising, her army mustered for Bryn's rally.
+        var allied = rows()
+        allied["spire"] = [[n(5), .string("Keepers of the Mere"), n(1), n(1), n(3_000), n(0), n(40_000), n(30_000), n(20_000), n(0)]]
+        allied["learning"] = [[n(5 << 8 | 1), n(5), n(1), n(1), n(9_000), n(0), n(60_000), n(0), n(0)]]
+        allied["my_musters"] = [[n(3), n(6), n(1), .bool(false)]]
+        let (rallied, _) = await playing(allied)
+        XCTAssertEqual(rallied.world.myRally?.id, 6, "her army mustered for Bryn's rally")
+        XCTAssertGreaterThan(try drawn(whole(.alliance, of: rallied).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800)
+
+        // Four armies marching on her city: three told, and how many more.
+        var besieged = LiveSample.rows()
+        for (index, arrives) in [2_100, 2_160, 2_220, 2_280].enumerated() {
+            besieged["march"]?.append([n(21 + index), n(2), n(8), n(LiveMarch.attack), n(LiveMarch.going), n(Int(LiveHex(q: 14, r: -4).packed)),
+                                       n(Int(LiveHex(q: 10, r: -4).packed)), n(7), n(2_000), n(arrives), n(300), .string(""), n(4)])
+        }
+        let (under, _) = await playing(besieged)
+        XCTAssertEqual(under.world.threats(at: 2_015).count, 4)
+        let three = try drawn(LiveThreats(session: under, seconds: 2_015), width: 600, height: 240)
+        XCTAssertGreaterThan(three, 300, "three told, and one more")
+        var panel: LiveGameView.Panel?
+        let binding = Binding(get: { panel }, set: { panel = $0 })
+        XCTAssertGreaterThan(try drawn(LiveHUD(session: under, panel: binding, palette: .constant(false)), width: 1280, height: 800), three,
+                             "the warning over the world with the rest")
+        XCTAssertTrue(line.asked.isEmpty, "Drawing asks the realm nothing")
+    }
+
     func testTheRealmsMapLivesInAWindowAndAnswersThePointer() async throws {
         guard WorldMetalView.systemDevice != nil else { throw XCTSkip("No Metal device available") }
         let (session, _) = await playing()
