@@ -343,23 +343,23 @@ struct CompanionChart: View {
                     .resizable()
                     .interpolation(.none)
                 Canvas { context, size in
-                    func dot(_ at: (u: Double, v: Double), _ r: CGFloat, _ colour: Color) {
-                        context.fill(Path(ellipseIn: CGRect(x: at.u * size.width - r, y: at.v * size.height - r, width: 2 * r, height: 2 * r)),
-                                     with: .color(colour))
+                    func spot(_ at: (u: Double, v: Double), _ r: CGFloat) -> Path {
+                        Path(ellipseIn: CGRect(x: at.u * size.width - r, y: at.v * size.height - r, width: 2 * r, height: 2 * r))
                     }
                     for city in world.cities.values where city.owner != world.me?.id {
-                        dot(map.place(of: city.hex), world.isAlly(city.owner) ? 2.5 : 1.5, world.isAlly(city.owner) ? .green : Color(white: 0.8))
+                        let ally = world.isAlly(city.owner)
+                        context.fill(spot(map.place(of: city.hex), ally ? 2.5 : 1.5), with: .color(ally ? Color.green : Color(white: 0.8)))
                     }
                     for march in world.marches.values {
                         let at = march.position(at: seconds)
                         let on = HexLayout(size: 1).hex(atX: at.x, y: at.y)
                         let foe = march.owner != world.me?.id && march.to == world.city?.hex
                         if march.owner == world.me?.id || foe {
-                            dot(map.place(of: LiveHex(q: on.q, r: on.r)), 2.5, foe ? .red : .yellow)
+                            context.fill(spot(map.place(of: LiveHex(q: on.q, r: on.r)), 2.5), with: .color(foe ? Color.red : Color.yellow))
                         }
                     }
                     if let home = world.city {
-                        dot(map.place(of: home.hex), 4, .white)
+                        context.fill(spot(map.place(of: home.hex), 4), with: .color(Color.white))
                     }
                 }
             }
