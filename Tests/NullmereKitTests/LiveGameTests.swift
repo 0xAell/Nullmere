@@ -241,6 +241,22 @@ final class LiveGameTests: XCTestCase {
         let home = session.card(for: session.selection(at: LiveHex(q: 10, r: -4)))
         XCTAssertGreaterThan(try drawn(LiveRing(session: session, card: home, at: CGPoint(x: 160, y: 160), panel: binding), width: 640, height: 320,
                                        as: "live-ring.png"), 300)
+        // Her city chosen: its plots, a hammer where each building her Keep
+        // has opened but she has not built would stand; one chosen, its
+        // card asks it built.
+        session.selected = LiveHex(q: 10, r: -4)
+        let plots = session.plots()
+        XCTAssertTrue(plots.contains { $0.kind == 11 }, "the Hospital, opened by her Keep and not built: \(plots.map(\.kind))")
+        XCTAssertGreaterThan(try drawn(LivePlots(session: session, size: CGSize(width: 1280, height: 800)), width: 1280, height: 800), 20, "a hammer drawn")
+        XCTAssertGreaterThan(try drawn(LiveHUD(session: session, panel: binding, palette: .constant(false)), width: 1280, height: 800,
+                                       as: "live-plots.png"), bare)
+        session.choose(try XCTUnwrap(plots.first { $0.kind == 11 }))
+        let plot = session.card(for: try XCTUnwrap(session.selection))
+        XCTAssertEqual(plot.title, "Hospital")
+        XCTAssertEqual(plot.buttons.first?.title, "Build")
+        XCTAssertGreaterThan(try drawn(LiveRing(session: session, card: plot, at: CGPoint(x: 160, y: 160), panel: binding), width: 640, height: 320,
+                                       as: "live-plot-ring.png"), 300)
+        session.selected = LiveHex(q: 12, r: -2)
         // The callout keeps clear of an open destination: to the ring's left where, to its right, the destination would cover it.
         let window = CGSize(width: 1024, height: 700)
         XCTAssertFalse(LiveRing.leftward(at: CGPoint(x: 500, y: 200), in: window, beside: nil), "Nothing open: to the right")
