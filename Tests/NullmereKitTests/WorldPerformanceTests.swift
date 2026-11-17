@@ -59,7 +59,7 @@ final class WorldPerformanceTests: XCTestCase {
 
         // By day, at the realm's own scale: the land and the water alone,
         // with the day's ground, relief and waves, beside the night's above;
-        // told, to be held once it is known.
+        // held by the check (perf/baseline.json).
         let fraction = WorldMetalView.renderScale(forCameraScale: 28)
         let target = try renderer.makeTarget(width: Int((Double(Self.width) * fraction).rounded()),
                                              height: Int((Double(Self.height) * fraction).rounded()))
@@ -99,9 +99,10 @@ final class WorldPerformanceTests: XCTestCase {
         XCTAssertLessThanOrEqual(culledMedian, wholeMedian * 1.1 + 0.5, "Drawing what is in view costs no more than drawing it all")
 
         // By day too, the land and water drawn with the day's relief and
-        // waves, which the night's frames carry none of; and, to tell where
-        // the day's cost lies, by day without them, and by night and by day
-        // without the land's furniture. Told, to be held once known.
+        // waves, which the night's frames carry none of, held within the
+        // frame by the check (perf/baseline.json); and, to tell where the
+        // day's cost lies, by day without them, and by night and by day
+        // without the land's furniture, told.
         let wider = try measureNear(seats: 96, seed: "a wider realm drawn", renderer: renderer, [
             Drawn(name: "night"), Drawn(name: "day", daylight: .day),
             Drawn(name: "day.plain", daylight: .day, detail: false),

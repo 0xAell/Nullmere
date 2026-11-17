@@ -126,10 +126,10 @@
       "note": "the same frame's slowest twentieth, CI runs 1037 to 1057 brought to the calibration's pace: 7.0 to 9.5, once 14.3 (run 1044), so allowed more than the median"
     },
     "wider.gpu.scale28.day.p50": {
-      "baseline": null,
+      "baseline": 16.09,
       "gpu": true,
       "limit": 16.7,
-      "note": "the ninety-six seats' realm near by day, the hour the game opens in: run 1072's first 21.11, run 1078's 16.91 with the day's ground carried from the land's corners; recorded until it is held within the frame"
+      "note": "the ninety-six seats' realm near by day, the hour the game opens in: run 1072's first 21.11; held since run 1083's 16.09, with the day's ground worked out at the land's corners and no night sky worked out by day (runs 1078, 1081, 1082: 16.91, 16.70, 16.45 on the way)"
     },
     "wider.gpu.scale28.day.plain.p50": {
       "baseline": null,
@@ -150,10 +150,10 @@
       "note": "the same by day (run 1078: 12.60)"
     },
     "world.gpu.scale28.day.p50": {
-      "baseline": null,
+      "baseline": 10.47,
       "gpu": true,
       "limit": 16.7,
-      "note": "the land and water alone at scale 28 by day, beside the night's world.gpu.scale28 (run 1078: 10.88 against 8.82)"
+      "note": "the land and water alone at scale 28 by day, beside the night's world.gpu.scale28: run 1083's 10.47 against 8.70 by night (run 1074's 14.78 before the day's ground was worked out at the land's corners)"
     }
   }
 }
