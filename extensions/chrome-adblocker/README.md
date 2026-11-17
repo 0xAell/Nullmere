@@ -133,7 +133,20 @@ Without the extension the player's response in the page carried two ad
 lists (`adPlacements`, `adBreakHeartbeatParams`); with it, none. The
 video played either way, 22 and 21.1 seconds in after fifteen seconds,
 much the same in the sixth and seventh runs. No ad showed in either run, with the
-extension or without.
+extension or without. The eighth ran in Google Chrome, which has the
+codecs ads are mostly served in and Playwright's Chromium lacks, its
+windows shown on a virtual display rather than headless: the same, the
+ad lists there without the extension and gone with it, the video
+playing either way, no ad shown; two of YouTube's most watched music
+videos, added to make an ad likelier, asked the runner to sign in. The
+ninth was turned away (429) without the extension, and with it found the
+ad lists still in the page: the check had reached YouTube in the moment
+after the extension was installed, before its scripts there were
+registered (see *YouTube is the hardest*). The check now waits for that,
+and goes on from the watch page to another video in it, as a person
+clicking one does, to see what the player is given when it fetches a
+video's data itself; in the ninth run the player did not take the next
+video up.
 
 Some sites turn a headless browser away whatever it carries (Stack
 Overflow and AccuWeather answered 403, USA Today sometimes 402, the
@@ -190,7 +203,13 @@ fetch its data for, which none of these runs did. YouTube changes its player oft
 blockers; expect this part to break first, and to need the *YouTube*
 switch turned off, or `youtube.com` let through, if YouTube objects. It
 does not hide what it does: a page that looks can tell that the functions
-it reads its data with have been wrapped. With the switch off, or
+it reads its data with have been wrapped. Its scripts there are
+registered with Chrome, which keeps them between sessions, and are only
+ever brought to the settings in place, so a YouTube tab Chrome restores as
+it starts has them (they were let go and registered afresh at each start
+until live run 9 showed the gap). In the moment after the extension is
+first installed, before it has registered them, a YouTube page already
+loading is left as it is; loaded again, it is not. With the switch off, or
 YouTube let through, nothing of that part runs in YouTube's pages at all.
 A player embedded in a site you have let through is left alone only from
 the moment the extension has looked the site up, which is after the
@@ -215,10 +234,13 @@ site's own words to any extension.
 **Chrome's own pages, the Web Store and other extensions** are closed to
 every extension, this one included.
 
-**Not yet run by a person in Google Chrome.** Everything above was checked
-by automated tests in Chromium 153 (Playwright's build, headless, on
-Linux), loading the unpacked extension, against stand-ins and on the
-live web. The toolbar picture is Chromium's own window, on a virtual
+**Run in Google Chrome by a machine, not yet by a person.** Every browser
+test runs on each change in Chromium 153 (Playwright's build, headless,
+on Linux) and again in Google Chrome as GitHub's Ubuntu machines carry
+it, which takes no extension named on its command line and is handed
+the unpacked one over the DevTools protocol instead (the *Test in Google
+Chrome* job; all passing there since 17 November 2026). The live check
+has run in Google Chrome too (its eighth and ninth runs). The toolbar picture is Chromium's own window, on a virtual
 display: the icon pinned and Chrome's count on it, read back as 3
 before it was taken (`tools/toolbar.js`). It has not been installed by
 hand in Google Chrome on a Mac or Windows machine. The popup and options
@@ -297,9 +319,10 @@ test/e2e/     the unpacked extension in Chromium against a stand-in for every ho
 ## Working on it
 
 ```sh
-npm test             # some 80 unit tests, Node alone
+npm test             # some 100 unit tests, Node alone
 npm run build        # lists/ -> build/
 npm run test:e2e     # the unpacked build in Chromium (needs Playwright: npm ci && npx playwright install chromium)
+STILLWATER_CHROME=1 npm run test:e2e   # the same in Google Chrome as installed, handed the extension over DevTools
 npm run package      # build, then dist/nullmere-stillwater-<version>.zip
 npm run refresh      # bring lists/ up to date with the EasyList repository
 ```
@@ -315,14 +338,19 @@ name is that server, so pages can ask for real ad hosts and the tests can
 see which requests never arrived. Nothing in them goes out to the network.
 
 The **Ad blocker** workflow (`.github/workflows/adblocker.yml`) runs all
-of it on every change under this folder, checks that the zip in `dist/`
-is exactly a fresh build, and keeps the zip as the run's artifact.
+of it on every change under this folder, the browser tests in Chromium
+and again in Google Chrome, checks that the zip in `dist/` is exactly a
+fresh build, and keeps the zip as the run's artifact.
+`STILLWATER_INSTALL=devtools` hands Chromium the extension the way Google
+Chrome is handed it, where Google Chrome is not at hand.
 
 The **Ad blocker, on the live web** workflow
 (`.github/workflows/adblocker-live.yml`), run by hand, loads the build in
 Chromium on real pages with and without the extension and reports what
 it found (`node tools/live-check.js` does the same anywhere the web can
-be reached; `LIVE_ONLY=YouTube` narrows it). It fails only if Chromium
+be reached; `LIVE_ONLY=YouTube` narrows it, `STILLWATER_CHROME=1` runs it
+in Google Chrome and `LIVE_HEADED=1` shows its windows, as the
+workflow's inputs do). It fails only if Chromium
 holds an error against the extension: the web changes too often to hold
 a page's numbers to anything.
 

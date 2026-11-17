@@ -218,3 +218,40 @@ test('after all of that, Chromium holds nothing against the extension', async (t
   if (!held) return t.skip('this Chromium has no extensions page to ask');
   assert.deepEqual(held, { state: 'ENABLED', warnings: [], manifest: [], errors: [] });
 });
+
+test('changing the settings never leaves a YouTube script or a scriptlet unregistered while it is wanted', async () => {
+  const fresh = await launch();
+  try {
+    // Every id the worker lets go of from here on is noted.
+    await fresh.worker.evaluate(() => {
+      globalThis.letGo = [];
+      const original = chrome.scripting.unregisterContentScripts.bind(chrome.scripting);
+      chrome.scripting.unregisterContentScripts = (filter) => {
+        globalThis.letGo.push(...(filter?.ids ?? ['every one']));
+        return original(filter);
+      };
+    });
+    const registered = () => fresh.worker.evaluate(async () => Object.fromEntries((await chrome.scripting.getRegisteredContentScripts()).map((script) => [script.id, script.excludeMatches ?? []])));
+    const letGo = () => fresh.worker.evaluate(() => globalThis.letGo);
+    const before = await registered();
+    assert.ok('youtube-main' in before && 'youtube' in before);
+    assert.ok(Object.keys(before).some((id) => id.startsWith('scriptlet-')), 'the lists\' scriptlets');
+
+    // A switch that changes none of them, and YouTube let through: brought to it in place.
+    await fresh.ask({ type: 'settings:set', patch: { badge: false } });
+    await fresh.ask({ type: 'site:set', site: 'youtube.com', allowed: true });
+    const through = await registered();
+    assert.deepEqual(Object.keys(through).sort(), Object.keys(before).sort(), 'the same scripts, all still there');
+    assert.ok(through['youtube-main'].includes('*://youtube.com/*'), 'the site let through left out of them');
+    assert.deepEqual(await letGo(), [], 'none let go meanwhile');
+    await fresh.ask({ type: 'site:set', site: 'youtube.com', allowed: false });
+    assert.deepEqual((await registered())['youtube-main'], [], 'and put back');
+
+    // Only what is no longer wanted is let go: YouTube's two when its switch is off.
+    await fresh.ask({ type: 'settings:set', patch: { youtube: false } });
+    assert.deepEqual((await letGo()).sort(), ['youtube', 'youtube-main']);
+    assert.ok(!('youtube-main' in (await registered())));
+  } finally {
+    await fresh.close();
+  }
+});

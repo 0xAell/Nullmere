@@ -100,6 +100,12 @@ async function start(directory) {
     const handed = inChrome ? (await (await context.browser().newBrowserCDPSession()).send('Extensions.loadUnpacked', { path: directory })).id : null;
     const ours = (candidate) => !handed || new URL(candidate.url()).host === handed;
     worker = context.serviceWorkers().find(ours) ?? (await context.waitForEvent('serviceworker', { predicate: ours, timeout: 15_000 }));
+    // No page is visited before the worker has put its settings into effect
+    // (live run 9 reached YouTube before its scripts there were registered).
+    for (let i = 0; i < 150; i++) {
+      if (await worker.evaluate(async () => (await chrome.storage.session.get('awake')).awake === true).catch(() => false)) break;
+      await new Promise((done) => setTimeout(done, 100));
+    }
   }
   return {
     context,

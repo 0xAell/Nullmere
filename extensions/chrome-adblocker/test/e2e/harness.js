@@ -170,6 +170,9 @@ export async function launch(directory = join(root, 'build'), { insecure = false
   const ours = (candidate) => !handed || new URL(candidate.url()).host === handed;
   const worker = context.serviceWorkers().find(ours) ?? (await context.waitForEvent('serviceworker', { predicate: ours }));
   const id = new URL(worker.url()).host;
+  // The tests begin once the worker has put the settings into effect (its
+  // rules, its YouTube scripts and scriptlets registered), as it marks.
+  await until(() => worker.evaluate(async () => (await chrome.storage.session.get('awake')).awake === true), 'the extension to put its settings into effect', { timeout: 15_000 });
   const extensionUrl = (path) => `chrome-extension://${id}/${path}`;
 
   // A page of the extension's own to send messages from.

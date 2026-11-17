@@ -56,14 +56,25 @@ async function applyLists(settings) {
 async function ownFilters(text) {
   if (own?.text === text) return own.value;
   let value = readOwn(text);
-  const refused = [];
-  for (const rule of value.rules) {
-    const regex = rule.condition.regexFilter;
-    if (!regex) continue;
-    const { isSupported } = await dnr.isRegexSupported({ regex, isCaseSensitive: Boolean(rule.condition.isUrlFilterCaseSensitive) });
-    if (!isSupported) refused.push(regex);
+  // Each expression asked of Chrome; one it refuses is read again as its
+  // alternatives (tools/lib/dnr.js), which are asked in their turn.
+  const refused = new Set();
+  const asked = new Set();
+  for (let round = 0; round < 4; round++) {
+    let more = false;
+    for (const rule of value.rules) {
+      const regex = rule.condition.regexFilter;
+      if (!regex || asked.has(regex)) continue;
+      asked.add(regex);
+      const { isSupported } = await dnr.isRegexSupported({ regex, isCaseSensitive: Boolean(rule.condition.isUrlFilterCaseSensitive) });
+      if (!isSupported) {
+        refused.add(regex);
+        more = true;
+      }
+    }
+    if (!more) break;
+    value = readOwn(text, { rejectedRegex: [...refused] });
   }
-  if (refused.length) value = readOwn(text, { rejectedRegex: refused });
   own = { text, value };
   return value;
 }
@@ -90,22 +101,20 @@ async function apply(settings) {
  * each for the sites its filter names (scriptlets/<list>.json, made by
  * the build), in the page's own world before its first script: never
  * while paused, and never for a site let through. Chrome keeps them
- * registered between sessions; they are made afresh whenever the
- * settings change.
+ * registered between sessions; they are brought to the settings in place
+ * whenever these change.
  */
 async function applyScriptlets(settings) {
-  const registered = await chrome.scripting.getRegisteredContentScripts();
-  const ours = registered.filter((script) => script.id.startsWith('scriptlet-')).map((script) => script.id);
-  if (ours.length) await chrome.scripting.unregisterContentScripts({ ids: ours });
-  if (settings.paused) return;
+  const ours = (id) => id.startsWith('scriptlet-');
+  if (settings.paused) return keepRegistered(ours, []);
   const off = new Set(settings.listsOff);
   const through = settings.allowlist.flatMap((site) => [`*://${site}/*`, `*://*.${site}/*`]);
   const plans = await Promise.all(listIds().filter((id) => !off.has(id)).map(async (id) => (await fetch(chrome.runtime.getURL(`scriptlets/${id}.json`))).json()));
   const scripts = plans.flat().map((script) => {
     const excluded = [...(script.excludeMatches ?? []), ...through];
-    return { ...script, ...(excluded.length ? { excludeMatches: excluded } : {}), runAt: 'document_start', allFrames: true, world: 'MAIN' };
+    return { ...script, excludeMatches: excluded, runAt: 'document_start', allFrames: true, world: 'MAIN' };
   });
-  if (scripts.length) await chrome.scripting.registerContentScripts(scripts);
+  await keepRegistered(ours, scripts);
 }
 
 const YOUTUBE = ['youtube.com', 'youtube-nocookie.com'];
@@ -122,9 +131,7 @@ const YOUTUBE = ['youtube.com', 'youtube-nocookie.com'];
  */
 async function applyYouTube(settings) {
   const ids = ['youtube-main', 'youtube'];
-  const registered = await chrome.scripting.getRegisteredContentScripts({ ids });
-  if (registered.length) await chrome.scripting.unregisterContentScripts({ ids: registered.map((script) => script.id) });
-  if (!settings.youtube || settings.paused) return;
+  if (!settings.youtube || settings.paused) return keepRegistered((id) => ids.includes(id), []);
   const where = {
     matches: YOUTUBE.flatMap((host) => [`*://${host}/*`, `*://*.${host}/*`]),
     runAt: 'document_start',
@@ -134,11 +141,30 @@ async function applyYouTube(settings) {
     matchOriginAsFallback: true,
   };
   const through = settings.allowlist.filter((site) => YOUTUBE.some((host) => site === host || site.endsWith(`.${host}`)));
-  if (through.length) where.excludeMatches = through.flatMap((site) => [`*://${site}/*`, `*://*.${site}/*`]);
-  await chrome.scripting.registerContentScripts([
+  where.excludeMatches = through.flatMap((site) => [`*://${site}/*`, `*://*.${site}/*`]);
+  await keepRegistered((id) => ids.includes(id), [
     { ...where, id: 'youtube-main', js: ['content/youtube-main.js'], world: 'MAIN' },
-    { ...where, id: 'youtube', js: ['content/youtube.js'] },
+    { ...where, id: 'youtube', js: ['content/youtube.js'], world: 'ISOLATED' },
   ]);
+}
+
+/**
+ * Makes the registered content scripts whose ids `ours` claims be those
+ * wanted, with no moment when one wanted is missing: each already
+ * registered is updated in place (Chrome keeps them between sessions, so
+ * at a browser's start they are there as its first tabs load), the new are
+ * registered, and only those no longer wanted are let go. Each wanted
+ * script says every field it sets, an empty list among them, as an update
+ * keeps whatever it does not say.
+ */
+async function keepRegistered(ours, wanted) {
+  const registered = new Set((await chrome.scripting.getRegisteredContentScripts()).map((script) => script.id).filter(ours));
+  const kept = wanted.filter((script) => registered.has(script.id));
+  const fresh = wanted.filter((script) => !registered.has(script.id));
+  const gone = [...registered].filter((id) => !wanted.some((script) => script.id === id));
+  if (kept.length) await chrome.scripting.updateContentScripts(kept);
+  if (fresh.length) await chrome.scripting.registerContentScripts(fresh);
+  if (gone.length) await chrome.scripting.unregisterContentScripts({ ids: gone });
 }
 
 /**
