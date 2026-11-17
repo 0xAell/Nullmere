@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { patternSource, PRIORITY, problemsWith, regexLooksSupported, toRules } from '../../tools/lib/dnr.js';
+import { alternatives, patternSource, PRIORITY, problemsWith, regexLooksSupported, toRules } from '../../tools/lib/dnr.js';
 import { parseLine } from '../../tools/lib/filters.js';
 
 /** Rules from filter lines, each checked against Chrome's requirements. */
@@ -200,6 +200,31 @@ test('exceptions that only turn hiding off make no rule, and name their hosts', 
   assert.deepEqual(result.rules.map((rule) => [rule.action.type, rule.condition.requestDomains ?? rule.condition.initiatorDomains]), [['allowAllRequests', ['doc.example']], ['allow', ['doc.example']]]);
   // Only part of a site on some pages can't be said by address alone.
   assert.deepEqual([...result.dropped], [['hide-exception:pattern', 1]]);
+});
+
+test('an expression Chrome refuses whole is given as its alternatives, each a rule alike but for it', () => {
+  // EasyList's, refused as compiling too large (lists/rejected.json); each alternative alone Chrome takes.
+  const whole = '^https?:\\/\\/.*\\/[a-z0-9A-Z_]{2,15}\\.(php|jx|j$)';
+  assert.deepEqual(alternatives(whole), ['^https?:\\/\\/.*\\/[a-z0-9A-Z_]{2,15}\\.php', '^https?:\\/\\/.*\\/[a-z0-9A-Z_]{2,15}\\.jx', '^https?:\\/\\/.*\\/[a-z0-9A-Z_]{2,15}\\.j$']);
+  const result = rules([`/${whole}/$script,domain=tube.example`], { rejectedRegex: [whole] });
+  assert.deepEqual(result.rules.map((rule) => rule.condition.regexFilter), alternatives(whole));
+  for (const rule of result.rules) {
+    assert.deepEqual(rule.condition.initiatorDomains, ['tube.example']);
+    assert.deepEqual(rule.condition.resourceTypes, ['script']);
+    assert.equal(rule.action.type, 'block');
+  }
+  assert.equal(result.dropped.size, 0, 'converted, not left out');
+  // Together they match what the whole matches, and nothing else.
+  const urls = ['https://a.example/ad.php', 'https://a.example/x/ab.jx', 'https://a.example/abc.j', 'https://a.example/abc.jsx', 'https://a.example/a.php', 'http://a.example/abc.j?x'];
+  for (const url of urls) assert.equal(alternatives(whole).some((one) => new RegExp(one, 'i').test(url)), new RegExp(whole, 'i').test(url), url);
+  // Given twice, once; a piece Chrome refuses too is split again, or the filter is left out.
+  assert.deepEqual(alternatives('^x\\.(club|bid|club)\\/'), ['^x\\.club\\/', '^x\\.bid\\/']);
+  assert.deepEqual(rules(['/(a|b)c{999}/'], { rejectedRegex: ['(a|b)c{999}', 'ac{999}'] }).dropped.get('regex:rejected-by-chrome'), 1);
+  assert.deepEqual(rules(['/(a|b)(c|d)/'], { rejectedRegex: ['(a|b)(c|d)', 'a(c|d)'] }).rules.map((rule) => rule.condition.regexFilter), ['ac', 'ad', 'b(c|d)']);
+  // Not split: a group repeated or made optional, one holding another, none, or an expression not refused.
+  for (const kept of ['^a(b|c)+d', '^a(b|c)?d', '^a(b|c){2}d', 'a(b(c|d)|e)f', '(?:x|y)z', 'a\\(b|c\\)d', '(https?:\\/\\/)1\\.2\\..{100,}']) assert.equal(alternatives(kept), null, kept);
+  assert.deepEqual(alternatives('^a[(|]b(c|d)'), ['^a[(|]bc', '^a[(|]bd'], 'a ( or | in a class is a character');
+  assert.deepEqual(rules(['/(a|b)c/']).rules.map((rule) => rule.condition.regexFilter), ['(a|b)c'], 'one Chrome takes is given whole');
 });
 
 test('an address pattern means as a regular expression what it means to Adblock Plus', () => {

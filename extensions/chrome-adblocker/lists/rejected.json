@@ -16,10 +16,5 @@
     "^https?:\\/\\/.*\\/[a-z0-9A-Z_]{2,15}\\.(php|jx|jsx|1ph|jsf|jz|jsm|j$)",
     "^https?:\\/\\/s3\\.*\\.amazonaws\\.com\\/[a-f0-9]{45,}\\/[a-f,0-9]{8,10}$"
   ],
-  "selectors": [
-    "article:has(header:has(.ct-sponsored))",
-    "div > [style]:has([style]:has([href*=\"&utm\"]))",
-    "div[data-test-id=\"MainDiscoveryContent\"] li:has(> div.cb-elevated:has(button[data-test-id=\"AdvertisingLabel\"]))",
-    "p + div:has(.responsive-post:has([href^=\"https://www.semrush.com\"]))"
-  ]
+  "selectors": []
 }

@@ -115,6 +115,40 @@ test('closed and started again, the browser has one\'s own filters as they were 
   }
 });
 
+test('an expression Chrome refuses whole is kept as its alternatives, and a :has() in a :has() is followed', async () => {
+  // EasyList's own, which Chrome refuses whole as compiling too large, each ending alone it takes;
+  // with a port allowed, as the stand-in server has one.
+  const endings = 'club|bid|biz|xyz|site|pro|info|online|icu|monster|buzz|website|re|casa|top|one|space|network|live|systems|ml|world|life|co';
+  const lines = [`/^https?:\\/\\/.*\\.(${endings})(:\\d+)?\\/.*/$script,domain=ownpage.test`, 'ownpage.test##article:has(header:has(.ct-sponsored))'];
+  server.page(
+    'ownpage.test',
+    '/split',
+    `<!doctype html><title>split</title><body>
+    <article id="paid"><header><span class="ct-sponsored">Sponsored</span></header><p>An offer</p></article>
+    <article id="story"><header><span>News</span></header><p>The page's own words.</p></article>
+    <script src="${server.url('cdn.ads.xyz', '/tag.js')}"></script>
+    <script src="${server.url('cdn.ads.example', '/tag.js')}"></script>
+    </body>`,
+  );
+  const browser = await launch();
+  try {
+    const answer = await browser.ask({ type: 'own:set', text: lines.join('\n') });
+    assert.equal(answer.own.taken, 2);
+    assert.deepEqual(answer.own.refused, []);
+    const dynamic = await browser.worker.evaluate(async () => (await chrome.declarativeNetRequest.getDynamicRules()).map((rule) => rule.condition.regexFilter).filter(Boolean));
+    assert.equal(dynamic.length, endings.split('|').length, 'a rule for each ending');
+    assert.ok(dynamic.includes('^https?:\\/\\/.*\\.xyz(:\\d+)?\\/.*'), JSON.stringify(dynamic.slice(0, 3)));
+    const { page, blocked } = await open(browser.context, server.url('ownpage.test', '/split'));
+    const hidden = () => page.evaluate(() => ['paid', 'story'].filter((id) => getComputedStyle(document.getElementById(id)).display === 'none'));
+    await until(async () => (await hidden()).includes('paid'), 'the sponsored article to be hidden');
+    assert.deepEqual(await hidden(), ['paid'], "the page's own article stays");
+    assert.deepEqual(blocked().map((url) => new URL(url).hostname), ['cdn.ads.xyz'], 'the .xyz script kept back, the other let through');
+    await page.close();
+  } finally {
+    await browser.close();
+  }
+});
+
 test('more than the worker keeps is refused, and nothing changes', async () => {
   const browser = await launch();
   try {

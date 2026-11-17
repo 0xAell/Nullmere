@@ -46,9 +46,22 @@ function closing(text, open) {
   return -1;
 }
 
-/** Whether a selector needs a plan: it uses a text operator somewhere. */
+/**
+ * Whether a selector holds a :has() inside a :has(), which CSS refuses
+ * (`article:has(header:has(.ad))`) and a plan follows: the outer one a
+ * step, what it holds plain CSS.
+ */
+export function nestedHas(selector) {
+  for (let at = selector.indexOf(':has('); at !== -1; at = selector.indexOf(':has(', at + 1)) {
+    const close = closing(selector, at + 4);
+    if (close !== -1 && selector.slice(at + 5, close).includes(':has(')) return true;
+  }
+  return false;
+}
+
+/** Whether a selector needs a plan: it uses a text operator somewhere, or a :has() within a :has(). */
 export function isProcedural(selector) {
-  return [...TEXT, ...FINDING].some((operator) => selector.includes(operator));
+  return [...TEXT, ...FINDING].some((operator) => selector.includes(operator)) || nestedHas(selector);
 }
 
 /**
@@ -154,8 +167,9 @@ export function planFor(selector) {
           i = close + 1;
           continue;
         }
-        if (isProcedural(argument)) {
+        if (isProcedural(argument) || argument.includes(':has(')) {
           // `:has(:has-text(x))`: the element the words are in is any one inside.
+          // `:has(header:has(.ad))`: CSS takes no :has() in a :has(), so the outer is a step.
           const inner = planFor(argument.startsWith(':') ? `*${argument}` : argument);
           if (!inner) return null;
           flush(true);

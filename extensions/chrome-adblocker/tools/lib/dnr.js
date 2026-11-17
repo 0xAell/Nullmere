@@ -115,12 +115,83 @@ export function patternSource(pattern) {
   return source + end;
 }
 
+/**
+ * A regular expression as the alternatives of its first group of them,
+ * each in the group's place: `a(b|c)d` is `abd` and `acd`. A URL matches
+ * the whole where it matches one of them, so a rule for each, with the
+ * same conditions, matches what the one would. Only a plain group: not a
+ * group repeated or made optional (`(b|c)+`), nor one holding another;
+ * null where there is none, and alternatives given twice are given once.
+ */
+export function alternatives(source) {
+  for (let at = 0; at < source.length; at++) {
+    if (source[at] === '\\') {
+      at++;
+      continue;
+    }
+    if (source[at] === '[') {
+      // A class: a ( or | in it is a character.
+      for (at++; at < source.length && source[at] !== ']'; at++) if (source[at] === '\\') at++;
+      continue;
+    }
+    if (source[at] !== '(' || source[at + 1] === '?') continue;
+    const parts = [];
+    let part = '';
+    let end = -1;
+    for (let inner = at + 1; inner < source.length; inner++) {
+      const c = source[inner];
+      if (c === '\\') {
+        part += c + (source[inner + 1] ?? '');
+        inner++;
+      } else if (c === '(' || c === '[') {
+        part = null;
+        break;
+      } else if (c === '|') {
+        parts.push(part);
+        part = '';
+      } else if (c === ')') {
+        parts.push(part);
+        end = inner;
+        break;
+      } else {
+        part += c;
+      }
+    }
+    if (part === null || end < 0) return null;
+    if (parts.length < 2) continue;
+    if (end + 1 < source.length && '*+?{'.includes(source[end + 1])) return null;
+    const before = source.slice(0, at), after = source.slice(end + 1);
+    return [...new Set(parts.map((one) => before + one + after))];
+  }
+  return null;
+}
+
+/**
+ * The expressions to give Chrome for one it refused: its alternatives,
+ * each split again where Chrome refused that too; null where one can't be.
+ */
+function pieces(source, rejected, depth = 0) {
+  if (!rejected.has(source)) return [source];
+  const split = depth < 3 ? alternatives(source) : null;
+  if (!split) return null;
+  const all = [];
+  for (const one of split) {
+    const more = pieces(one, rejected, depth + 1);
+    if (!more) return null;
+    all.push(...more);
+  }
+  return all;
+}
+
 /** The part of a filter that says which URLs it matches. */
 function urlPart(filter, rejected) {
   if (filter.regex) {
     if (!regexLooksSupported(filter.pattern)) return { drop: 'regex:unsupported' };
-    if (rejected.has(filter.pattern)) return { drop: 'regex:rejected-by-chrome' };
-    return { regexFilter: filter.pattern };
+    if (!rejected.has(filter.pattern)) return { regexFilter: filter.pattern };
+    // Refused whole, given as its alternatives where Chrome takes each.
+    const split = pieces(filter.pattern, rejected);
+    if (!split) return { drop: 'regex:rejected-by-chrome' };
+    return { regexFilter: split[0], moreRegex: split.slice(1) };
   }
   if (!filter.pattern) return {};
   const whole = /^\|\|([^/^*|:?=&]+)\^$/.exec(filter.pattern);
@@ -334,6 +405,8 @@ export function toRules(filters, options = {}) {
       if (url.regexFilter) rule.condition.regexFilter = url.regexFilter;
       if (filter.matchCase && (url.urlFilter || url.regexFilter)) rule.condition.isUrlFilterCaseSensitive = true;
       single.push(rule);
+      // An expression given as its alternatives: a rule for each, alike but for it.
+      for (const more of url.moreRegex ?? []) single.push({ ...rule, condition: { ...rule.condition, regexFilter: more } });
     }
   }
 
