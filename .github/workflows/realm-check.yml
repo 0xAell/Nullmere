@@ -75,6 +75,15 @@ jobs:
       - name: Check the realm
         run: realm/check.sh
 
+      # Then on the same server, the module published afresh: a hundred
+      # players joining at once and asking, each three times a second for
+      # half a minute, what players ask most; each ask's time from asking
+      # to answer, printed as LOAD lines (plan 9.3). Server and players
+      # share the runner: these are the realm's own times.
+      - name: The realm under load
+        timeout-minutes: 4
+        run: realm/load.sh
+
       - name: The server's log, if it failed
         if: failure()
         run: tail -n 60 build/realm-check-server.log 2>/dev/null || true
