@@ -108,9 +108,15 @@ auction's script (EasyList's `/pbjsandwichdirecta9-`). The Guardian's
 nineteen errors and USA Today's four are all *Failed to fetch*: a
 request the page's own code made, refused, and not caught by it. The
 Guardian's text reads the same. The Independent's 885 fewer letters and USA Today's
-1,621 are not yet accounted for: the check now lists the lines a page
-loses with the extension, and in the sixth run USA Today turned the
-machine away (402) with the extension and without. The frame left on the
+1,621 were listed, line by line, in the seventh run (1,004 and 1,600
+fewer then): paid notices (passport renewals, "GovPlus", "EaseGov", a
+clinic's advertisement) and among them, on the Independent, the paper's
+own headlines under their section names, and on USA Today its "Ask USA
+TODAY anything" box, marked beta. That is the mix a Taboola feed shows,
+and Taboola is among what EasyPrivacy keeps from every site
+(`||taboola.com^$third-party`; two of its requests were kept back on
+USA Today's page). Taken out with the ads, they come back on a site let
+through. The frame left on the
 BBC is from `buy-eu.piano.io`, which no filter names. Chromium held
 nothing against the extension.
 
@@ -124,7 +130,7 @@ YouTube served a real watch page, and the check pressed play (muted).
 Without the extension the player's response in the page carried two ad
 lists (`adPlacements`, `adBreakHeartbeatParams`); with it, none. The
 video played either way, 22 and 21.1 seconds in after fifteen seconds,
-the same in the sixth run. No ad showed in either run, with the
+much the same in the sixth and seventh runs. No ad showed in either run, with the
 extension or without.
 
 Some sites turn a headless browser away whatever it carries (Stack
