@@ -353,6 +353,14 @@ final class LiveBookTests: XCTestCase {
         XCTAssertEqual(learnt.block, .learntAll("Tillage"))
         XCTAssertNil(learnt.next)
         XCTAssertEqual(learnt.soFar, "Level 10: 50% so far")
+        // Learnt to its end, it says so whatever the Academy is about: another topic studied, or the Academy raised.
+        for job: [JSONValue] in [[n(9), n(7), n(4), n(6), n(1), n(0), n(2_000), n(2_120), n(3)], [n(9), n(7), n(1), n(30), n(2), n(0), n(2_000), n(2_120), n(3)]] {
+            snapshot["my_jobs"] = [job]
+            let lines = LiveWorld(snapshot: snapshot).studyLines(at: 2_000)
+            XCTAssertEqual(lines[0].block, .learntAll("Tillage"))
+            XCTAssertNotEqual(lines[1].block, .learntAll("Storage"), "the other still to learn")
+        }
+        snapshot["my_jobs"] = []
         XCTAssertEqual(LiveBlock.studying.words, "Your Academy is already at its studies. Wait for them to finish.")
         XCTAssertEqual(LiveBlock.learntAll("Tillage").words, "You have learnt all there is of Tillage.")
         let rules = try source("rules/mod.rs"), catalog = try source("catalog.rs")

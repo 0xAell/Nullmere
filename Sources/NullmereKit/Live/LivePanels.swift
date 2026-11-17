@@ -450,24 +450,42 @@ struct LiveReports: View {
                     .font(.nm(LiveType.body, weight: report.read ? .regular : .medium))
                     .foregroundStyle(report.read ? LiveEmphasis.secondary : LiveEmphasis.primary)
                     .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 8) {
-                    LiveSmall(words: LiveWords.ago(Int(seconds) - report.at), dim: true)
-                    Spacer(minLength: 0)
-                    QuietButton(title: "Show", name: "Show where this happened") {
-                        session.go(to: report.hex)
-                        session.selected = report.hex
+                // How long ago beside what may be done about it where the
+                // panel has room for both on one line; above it where not.
+                let ago = LiveSmall(words: LiveWords.ago(Int(seconds) - report.at), dim: true)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        ago.fixedSize()
+                        Spacer(minLength: 0)
+                        acts(report)
                     }
-                    if !report.read {
-                        QuietButton(title: "Read", enabled: session.asking == 0, name: "Mark this report read") {
-                            Task { await session.read(report: report.id) }
+                    VStack(alignment: .leading, spacing: 2) {
+                        ago
+                        HStack(spacing: 8) {
+                            Spacer(minLength: 0)
+                            acts(report)
                         }
-                    }
-                    QuietButton(title: "Forget", enabled: session.asking == 0, name: "Throw this report away") {
-                        Task { await session.forget(report: report.id) }
                     }
                 }
             }
             .accessibilityElement(children: .contain)
+        }
+    }
+
+    /// What may be done about a report: look where it happened, mark it read, throw it away.
+    @ViewBuilder
+    private func acts(_ report: LiveReport) -> some View {
+        QuietButton(title: "Show", name: "Show where this happened") {
+            session.go(to: report.hex)
+            session.selected = report.hex
+        }
+        if !report.read {
+            QuietButton(title: "Read", enabled: session.asking == 0, name: "Mark this report read") {
+                Task { await session.read(report: report.id) }
+            }
+        }
+        QuietButton(title: "Forget", enabled: session.asking == 0, name: "Throw this report away") {
+            Task { await session.forget(report: report.id) }
         }
     }
 }

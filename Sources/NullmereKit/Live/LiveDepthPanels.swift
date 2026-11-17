@@ -666,7 +666,6 @@ struct LiveLetters: View {
                     Text(verbatim: letter.name)
                         .font(.nm(LiveType.body, weight: letter.read ? .regular : .medium))
                         .foregroundStyle(LiveEmphasis.primary)
-                    LiveSmall(words: LiveWords.ago(Int(seconds) - letter.at), dim: true)
                     Spacer(minLength: 0)
                     if !letter.read {
                         QuietButton(title: "Read", enabled: session.asking == 0, name: "Mark the letter from \(letter.name) read") { Task { await session.readLetter(letter.id) } }
@@ -674,6 +673,8 @@ struct LiveLetters: View {
                     QuietButton(title: "Forget", enabled: session.asking == 0, name: "Forget the letter from \(letter.name)") { Task { await session.forgetLetter(letter.id) } }
                 }
                 LiveSmall(words: letter.words)
+                // How long ago, beneath its words, where the sender's line has no room for it.
+                LiveSmall(words: LiveWords.ago(Int(seconds) - letter.at), dim: true)
             }
         }
         let others = world.players.values.filter { $0.id != world.me?.id }.sorted { $0.id < $1.id }

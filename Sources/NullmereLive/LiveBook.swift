@@ -414,12 +414,13 @@ extension LiveWorld {
             var block: LiveBlock?
             if academy == nil {
                 block = .needsOther("Academy", 1)
+            } else if level >= LiveWorld.topStudy || next == nil {
+                // Learnt as far as it goes, whatever the Academy is about now.
+                block = .learntAll(first.name)
             } else if rising {
                 block = .rising("Academy")
             } else if studying != nil {
                 block = .studying
-            } else if level >= LiveWorld.topStudy || next == nil {
-                block = .learntAll(first.name)
             } else if let next, (academy?.level ?? 0) < next.needsLevel {
                 block = .needsOther("Academy", next.needsLevel)
             } else if let next, next.afterTopic > 0, (lore[next.afterTopic] ?? 0) < next.afterLevel {
