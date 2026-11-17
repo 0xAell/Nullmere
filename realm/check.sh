@@ -89,7 +89,7 @@ def check(what, got, wanted):
         print("  ok  ", what)
     else:
         print("  FAIL", what, "\n        got:   ", str(got)[:300], "\n        wanted:", str(wanted)[:300])
-        failures.append(what)
+        failures.append((what, str(got)[:300], str(wanted)[:300]))
 
 ada, bryn, nobody = someone(), someone(), someone()
 
@@ -255,7 +255,7 @@ check("the alliance's stores' prices are for all to read", sorted((price["item"]
 check("one in no alliance has no honour", rows(bryn, "SELECT * FROM my_honour"), [])
 check("and buys nothing from an alliance's stores", call(bryn, "buy", 1, 1), "You are in no alliance.")
 check("and no one reads the honour table itself", isinstance(rows(bryn, "SELECT * FROM honour"), str), True)
-check("tomes of war are among the realm's wares, read by commanders", sorted((ware["item"], ware["kind"]) for ware in rows(nobody, "SELECT * FROM ware") if ware["item"] >= 9), [(9, 4), (10, 4)])
+check("tomes of war are among the realm's wares, read by commanders", sorted((ware["item"], ware["kind"]) for ware in rows(nobody, "SELECT * FROM ware") if 9 <= ware["item"] <= 10), [(9, 4), (10, 4)])
 check("no tome is read by a commander one does not have", call(bryn, "read_tome", 999, 9, 1), "You have no such commander.")
 
 # A player's first tasks: the first is to raise the Keep, which Ada has done.
@@ -309,7 +309,7 @@ check("a player has none until they open a chest", (rows(ada, "SELECT * FROM my_
 
 # Items: the hastes a chest holds, kept in a satchel until they are used.
 wares = sorted(rows(nobody, "SELECT * FROM ware"), key=lambda ware: ware["item"])
-check("the items are written out for all to read", [(ware["name"], ware["seconds"], ware["kind"]) for ware in wares], [("Five minutes' haste", 300, 1), ("An hour's haste", 3600, 1), ("Eight hours' haste", 28800, 1), ("Eight hours' peace", 28800, 2), ("Iron", 0, 3), ("Leather", 0, 3), ("Bone", 0, 3), ("Silver", 0, 3), ("Tome of war", 0, 4), ("Great tome of war", 0, 4)])
+check("the items are written out for all to read", [(ware["name"], ware["seconds"], ware["kind"]) for ware in wares], [("Five minutes' haste", 300, 1), ("An hour's haste", 3600, 1), ("Eight hours' haste", 28800, 1), ("Eight hours' peace", 28800, 2), ("Iron", 0, 3), ("Leather", 0, 3), ("Bone", 0, 3), ("Silver", 0, 3), ("Tome of war", 0, 4), ("Great tome of war", 0, 4), ("Summons to the Tavern", 0, 5)])
 check("the day's last chest holds a peace", [chest["peaces"] for chest in sorted(chests, key=lambda chest: chest["id"])], [0, 0, 1])
 check("and a summons to the Tavern", ([chest["summonses"] for chest in sorted(chests, key=lambda chest: chest["id"])], [w["name"] for w in rows(nobody, "SELECT * FROM ware") if w["item"] == 11]), ([0, 0, 1], ["Summons to the Tavern"]))
 check("and every chest says what hastes it holds", all(chest["brief_hastes"] + chest["hour_hastes"] + chest["long_hastes"] > 0 for chest in chests), True)
@@ -518,6 +518,9 @@ check("their city stands under the name they are given", sorted(c["name"] for c 
 check("and whoever comes back on that device joins anew", call(leaver, "join", "Lea Leaving"), None)
 
 if failures:
+    # Each again at the foot, where a log's tail finds it.
+    for what, got, wanted in failures:
+        print("  FAIL", what, "\n        got:   ", got, "\n        wanted:", wanted)
     print(f"{len(failures)} of the realm's checks failed")
     sys.exit(1)
 print("The realm plays through.")
