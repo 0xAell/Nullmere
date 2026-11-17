@@ -140,22 +140,6 @@ enum Palette {
         }
 
         var colour: Color { Color(red: red, green: green, blue: blue) }
-
-        /// How bright it is to the eye, by the measure contrast is reckoned in.
-        var luminance: Double {
-            func linear(_ value: Double) -> Double { value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4) }
-            return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
-        }
-
-        func contrast(with other: RGB) -> Double {
-            let (light, dark) = (max(luminance, other.luminance), min(luminance, other.luminance))
-            return (light + 0.05) / (dark + 0.05)
-        }
-
-        /// Part of the way to another colour.
-        func toward(_ other: RGB, by amount: Double) -> RGB {
-            RGB(red + (other.red - red) * amount, green + (other.green - green) * amount, blue + (other.blue - blue) * amount)
-        }
     }
     /// The pale type, by the launcher's one rule: as faint as the design
     /// asks, but never too faint to read, and plainer with Increase Contrast.
