@@ -1,0 +1,26 @@
+PERF-CHECK calibration.cpu MISSING
+PERF-CHECK lake.gpu.p50 not measured: no GPU on this runner
+PERF-CHECK lake.gpu.p95 not measured: no GPU on this runner
+PERF-CHECK live.stage.cpu.p50 MISSING
+PERF-CHECK live.stage.cpu.p95 MISSING
+PERF-CHECK near.gpu.scale60.p50 not measured: no GPU on this runner
+PERF-CHECK near.gpu.scale60.plain.p50 not measured: no GPU on this runner
+PERF-CHECK pan.frame.p50 not measured: no GPU on this runner
+PERF-CHECK pan.frame.p95 not measured: no GPU on this runner
+PERF-CHECK pan.gpu.p50 not measured: no GPU on this runner
+PERF-CHECK pan.gpu.p95 not measured: no GPU on this runner
+PERF-CHECK wide.gpu.scale28.p50 not measured: no GPU on this runner
+PERF-CHECK wide.gpu.scale28.whole.p50 not measured: no GPU on this runner
+PERF-CHECK wider.gpu.scale28.bare.p50 not measured (no baseline yet)
+PERF-CHECK wider.gpu.scale28.day.bare.p50 not measured (no baseline yet)
+PERF-CHECK wider.gpu.scale28.day.p50 not measured: no GPU on this runner
+PERF-CHECK wider.gpu.scale28.day.plain.p50 not measured (no baseline yet)
+PERF-CHECK wider.gpu.scale28.p50 not measured: no GPU on this runner
+PERF-CHECK world.gpu.scale12.p50 not measured: no GPU on this runner
+PERF-CHECK world.gpu.scale12.p95 not measured: no GPU on this runner
+PERF-CHECK world.gpu.scale28.day.p50 not measured: no GPU on this runner
+PERF-CHECK world.gpu.scale28.p50 not measured: no GPU on this runner
+PERF-CHECK world.gpu.scale28.p95 not measured: no GPU on this runner
+PERF-CHECK world.gpu.scale60.p50 not measured: no GPU on this runner
+PERF-CHECK world.gpu.scale60.p95 not measured: no GPU on this runner
+PERF-CHECK failed: a figure regressed or went missing (see above)
