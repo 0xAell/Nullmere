@@ -17,6 +17,17 @@ test('the YouTube summary says what each run found in the page', () => {
   assert.doesNotMatch(words, /player absent/);
 });
 
+test('going on to another video in the page is said, with the ad lists the player then held', () => {
+  const on = (next, playing = true) => page({ ...without.youtube, playing, next });
+  const words = youtubeWords(on({ went: true, to: 'abc', taken: true, heldAdKeys: [] }), on({ went: true, to: 'abc', taken: true, heldAdKeys: ['adPlacements'] }));
+  assert.match(words, /without the extension: .*the player fetched no data; on to video abc in the page, the player holding ad lists \(adPlacements\); titled/);
+  assert.match(words, /with it: .*; on to video abc in the page, the player holding no ad lists; titled/);
+  assert.match(youtubeWords(on({ went: false }), on({ went: true, to: 'x', taken: false })), /on to video x in the page, which the player did not take up in fifteen seconds/);
+  assert.match(youtubeWords(on({ went: false }), without), /with it: .*; no other video to go on to was found in the page; titled/);
+  assert.match(youtubeWords(on({ went: true, to: 'y', taken: true, heldAdKeys: null }), without), /on to video y in the page, the player whose data could not be read/);
+  assert.doesNotMatch(youtubeWords(withIt, without), /on to video/, 'a run that did not go on says nothing of it');
+});
+
 test('a page with no player response is said to have none, and one not reached is said not to load', () => {
   const embed = { name: 'YouTube, embedded', title: 'YouTube', youtube: { response: false, written: false, adShowing: false, player: true, video: true, playing: false, fetched: false, fetchedAdKeys: [] } };
   assert.match(youtubeWords(embed, embed), /no player response was found on the page \(nor in the page as sent; player present\)/);

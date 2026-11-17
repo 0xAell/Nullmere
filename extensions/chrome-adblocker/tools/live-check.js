@@ -253,7 +253,45 @@ export async function youtube(tab) {
       seconds: typeof own === 'number' ? Math.round(own * 10) / 10 : null,
     };
   });
-  return { ...told, adShowing, ...player };
+  // Then on to another video in the same page, as a person clicking one of
+  // those beside it goes: the page is not loaded again, and the player
+  // fetches the next video's data itself. What it was then given to play
+  // is read from the player, as the page's own code has it.
+  const next = await onward(tab);
+  return { ...told, adShowing, ...player, next };
+}
+
+/**
+ * Goes on to another video in the page, by a link to one beside the video,
+ * and says which, whether the player took it up, and the ad lists in the
+ * data the player then held (null where it could not be read).
+ */
+export async function onward(tab) {
+  const from = await tab.evaluate(() => document.getElementById('movie_player')?.getVideoData?.()?.video_id ?? null).catch(() => null);
+  const to = await tab
+    .evaluate((current) => {
+      const link = [...document.querySelectorAll('a[href*="/watch?v="]')].find((anchor) => {
+        const id = new URL(anchor.href, location.href).searchParams.get('v');
+        return id && id !== current && anchor.offsetParent !== null;
+      });
+      if (!link) return null;
+      link.click();
+      return new URL(link.href, location.href).searchParams.get('v');
+    }, from)
+    .catch(() => null);
+  if (!to) return { went: false };
+  let taken = false;
+  for (let i = 0; i < 30 && !taken; i++) {
+    await tab.waitForTimeout(500);
+    taken = await tab.evaluate((id) => document.getElementById('movie_player')?.getVideoData?.()?.video_id === id, to).catch(() => false);
+  }
+  const held = taken
+    ? await tab.evaluate((keys) => {
+        const response = document.getElementById('movie_player')?.getPlayerResponse?.();
+        return response && typeof response === 'object' ? keys.filter((key) => key in response) : null;
+      }, AD_KEYS).catch(() => null)
+    : null;
+  return { went: true, to, taken, heldAdKeys: held };
 }
 
 /** What Chromium holds against the extension, from its extensions page; null where it can't be asked. */
@@ -321,8 +359,15 @@ export function youtubeWords(one, other) {
       ? `the player's response came through (${run.playable ?? 'no status'}), with ${run.adKeys.length ? `its ad lists: ${run.adKeys.join(', ')}` : 'no ad lists in it'}; an ad ${run.adShowing ? 'showed' : 'did not show'} in fifteen seconds; video ${video(run)}`
       : `no player response was found on the page (${run.written ? 'though the page as sent had one' : 'nor in the page as sent'}; player ${run.player ? 'present' : 'absent'}); an ad ${run.adShowing ? 'showed' : 'did not show'} in fifteen seconds; video ${video(run)}`;
   const wire = (run) => (run.fetched ? `the player fetched its data, which came ${run.fetchedAdKeys.length ? `with ad lists (${run.fetchedAdKeys.join(', ')})` : 'with no ad lists'}` : 'the player fetched no data');
+  const onward = ({ next } = {}) => {
+    if (!next) return '';
+    if (!next.went) return '; no other video to go on to was found in the page';
+    if (!next.taken) return `; on to video ${next.to} in the page, which the player did not take up in fifteen seconds`;
+    const held = next.heldAdKeys === null ? 'whose data could not be read' : next.heldAdKeys.length ? `holding ad lists (${next.heldAdKeys.join(', ')})` : 'holding no ad lists';
+    return `; on to video ${next.to} in the page, the player ${held}`;
+  };
   // What was found is in each run's `youtube`; the page's own title beside it.
-  return `${one.name}, without the extension: ${say(other.youtube)}; ${wire(other.youtube)}; titled "${other.title ?? ''}".\n\n${one.name}, with it: ${say(one.youtube)}; ${wire(one.youtube)}; titled "${one.title ?? ''}".`;
+  return `${one.name}, without the extension: ${say(other.youtube)}; ${wire(other.youtube)}${onward(other.youtube)}; titled "${other.title ?? ''}".\n\n${one.name}, with it: ${say(one.youtube)}; ${wire(one.youtube)}${onward(one.youtube)}; titled "${one.title ?? ''}".`;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
