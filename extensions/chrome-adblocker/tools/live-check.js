@@ -281,11 +281,14 @@ export async function onward(tab) {
         return id && id !== current && anchor.offsetParent !== null;
       });
       if (!link) return null;
-      link.click();
+      link.dataset.stillwaterOnward = '';
       return new URL(link.href, location.href).searchParams.get('v');
     }, from)
     .catch(() => null);
   if (!to) return { went: false };
+  // Clicked as a person clicks, with the pointer: a click a script makes
+  // (live run 9) YouTube's own pages did not follow.
+  await tab.locator('[data-stillwater-onward]').first().click({ timeout: 5_000 }).catch(() => {});
   let taken = false;
   for (let i = 0; i < 30 && !taken; i++) {
     await tab.waitForTimeout(500);
