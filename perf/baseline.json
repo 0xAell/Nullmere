@@ -117,13 +117,13 @@
     "live.stage.cpu.p50": {
       "baseline": 7.0,
       "cpu": true,
-      "note": "the rebuilt realm's frame staged, by the clock (LiveStagingTimeTests: 50 cities and 51 armies in a laptop's window), CI runs 1037 to 1057 brought to the calibration's pace: 6.1 to 7.9, the view opening at scale 46; from 64 it shows less, so a ceiling"
+      "note": "the rebuilt realm's frame staged (LiveStagingTimeTests: 50 cities and 51 armies in a laptop's window), CI runs 1037 to 1057 brought to the calibration's pace: 6.1 to 7.9, the view opening at scale 46; from 64 it shows less, so a ceiling. Timed by the wall's clock until run 1124, whose runner, taking the thread away, made the same code's median 10.9 at the pace where runs 1111 to 1122 made 7.6 to 10.1; since, by the thread's own clock, as the calibration that paces it"
     },
     "live.stage.cpu.p95": {
       "baseline": 9.0,
       "cpu": true,
       "ratio": 1.75,
-      "note": "the same frame's slowest twentieth, CI runs 1037 to 1057 brought to the calibration's pace: 7.0 to 9.5, once 14.3 (run 1044), so allowed more than the median"
+      "note": "the same frame's slowest twentieth, CI runs 1037 to 1057 brought to the calibration's pace: 7.0 to 9.5, once 14.3 (run 1044), so allowed more than the median; by the thread's own clock since run 1124, whose wall clock read 29.2"
     },
     "wider.gpu.scale28.day.p50": {
       "baseline": 16.09,

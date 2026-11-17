@@ -103,18 +103,27 @@ final class LiveStagingTimeTests: XCTestCase {
         XCTAssertGreaterThan(seen, first.fixed.reduce(0) { $0 + $1.instances.count }, "What the view shows is staged")
         let narrow = session.frame(time: 0.5, size: CGSize(width: 320, height: 200)).instanceCount
         XCTAssertLessThan(narrow, seen, "and what a narrow view can't show is left out")
+        // Each frame timed by the thread's own clock, as the plain work that
+        // paces it is: staging is the work of one thread, and a shared
+        // runner that takes the thread away for a while (run 1124: a median
+        // of 17.6 ms by the wall's clock, a slowest twentieth of 29) adds
+        // nothing to it. The wall's clock is told beside it.
         var times: [Double] = []
+        var walls: [Double] = []
         var models = 0
         for index in 1...180 {
-            let started = Date()
+            let started = CalibrationTests.threadCPUSeconds(), wall = Date()
             let frame = session.frame(time: Double(index) / 60, size: size)
-            times.append(Date().timeIntervalSince(started) * 1_000)
+            times.append((CalibrationTests.threadCPUSeconds() - started) * 1_000)
+            walls.append(Date().timeIntervalSince(wall) * 1_000)
             models = frame.instanceCount
         }
         times.sort()
+        walls.sort()
         let p50 = times[times.count / 2], p95 = times[times.count * 95 / 100]
         print("PERF staging the rebuilt realm's frame: \(models) of \(whole) models in view, \(crowd.cities + 2) cities and \(crowd.armies + 3) armies in the window, "
-            + "p50 \(String(format: "%.2f", p50)) ms, p95 \(String(format: "%.2f", p95)) ms")
+            + "p50 \(String(format: "%.2f", p50)) ms, p95 \(String(format: "%.2f", p95)) ms of the thread's time; "
+            + "by the wall's clock p50 \(String(format: "%.2f", walls[walls.count / 2])) ms, p95 \(String(format: "%.2f", walls[walls.count * 95 / 100])) ms")
         print("PERFMETRIC live.stage.cpu.p50 \(String(format: "%.3f", p50))")
         print("PERFMETRIC live.stage.cpu.p95 \(String(format: "%.3f", p95))")
         // The runner's pace beside it: the calibration's plain work, timed
