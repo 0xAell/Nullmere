@@ -1,3 +1,5 @@
+import CoreGraphics
+import NullmereLand
 import NullmereLive
 import NullmereLiveStage
 import SwiftUI
@@ -84,6 +86,13 @@ struct CompanionHome: View {
                         if let stock = world.stock {
                             Text(verbatim: stock.goods(at: seconds).words)
                         }
+                    }
+                }
+                // The whole realm small: its grounds, every city on it, the
+                // player's armies, and any marching on their city.
+                if let map = session.minimap {
+                    Section("The realm") {
+                        CompanionChart(session: session, map: map, seconds: seconds)
                     }
                 }
                 let threats = world.threats(at: seconds)
@@ -284,6 +293,68 @@ struct CompanionStudy: View {
             if line.job == nil, let next = line.next {
                 Text(verbatim: "\(next.cost.sentence), \(LiveWords.spoken(next.seconds))").font(.footnote).foregroundStyle(.secondary)
             }
+        }
+    }
+}
+
+/// The whole realm small on the phone, a pixel to each hex: its grounds
+/// as the realm tells them, every city on it (the player's own brightest
+/// and largest, an ally's green), the player's armies where they are, and
+/// in red any army marching on the player's city.
+struct CompanionChart: View {
+    let session: LiveSession
+    let map: LiveMinimap
+    let seconds: Double
+
+    /// Each ground's colour, as the module numbers grounds: deep water,
+    /// shallows, strand, salt, plain, wood, heath and mountain (the Mac's
+    /// small map's own).
+    static let colours: [[UInt8]] = [[13, 31, 51], [31, 77, 97], [178, 166, 128], [217, 214, 204], [92, 133, 71], [46, 82, 46], [115, 107, 77], [128, 128, 133]]
+
+    static func image(of map: LiveMinimap) -> CGImage? {
+        var bytes = [UInt8](repeating: 0, count: map.width * map.height * 4)
+        for (index, ground) in map.grounds.enumerated() where Int(ground) < colours.count {
+            let colour = colours[Int(ground)]
+            (bytes[index * 4], bytes[index * 4 + 1], bytes[index * 4 + 2], bytes[index * 4 + 3]) = (colour[0], colour[1], colour[2], 255)
+        }
+        guard let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
+        return CGImage(width: map.width, height: map.height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: map.width * 4,
+                       space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+    }
+
+    var body: some View {
+        let world = session.world
+        if let image = CompanionChart.image(of: map) {
+            ZStack {
+                Image(decorative: image, scale: 1)
+                    .resizable()
+                    .interpolation(.none)
+                Canvas { context, size in
+                    func dot(_ at: (u: Double, v: Double), _ r: CGFloat, _ colour: Color) {
+                        context.fill(Path(ellipseIn: CGRect(x: at.u * size.width - r, y: at.v * size.height - r, width: 2 * r, height: 2 * r)),
+                                     with: .color(colour))
+                    }
+                    for city in world.cities.values where city.owner != world.me?.id {
+                        dot(map.place(of: city.hex), world.isAlly(city.owner) ? 2.5 : 1.5, world.isAlly(city.owner) ? .green : Color(white: 0.8))
+                    }
+                    for march in world.marches.values {
+                        let at = march.position(at: seconds)
+                        let on = HexLayout(size: 1).hex(atX: at.x, y: at.y)
+                        let foe = march.owner != world.me?.id && march.to == world.city?.hex
+                        if march.owner == world.me?.id || foe {
+                            dot(map.place(of: LiveHex(q: on.q, r: on.r)), 2.5, foe ? .red : .yellow)
+                        }
+                    }
+                    if let home = world.city {
+                        dot(map.place(of: home.hex), 4, .white)
+                    }
+                }
+            }
+            .aspectRatio(CGFloat(map.width) / CGFloat(max(map.height, 1)), contentMode: .fit)
+            .accessibilityElement()
+            .accessibilityLabel("The whole realm, small, with your city on it")
+            .accessibilityAddTraits(.isImage)
         }
     }
 }

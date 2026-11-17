@@ -78,7 +78,7 @@ targets += [
     // brought in as them by the code their Mac shows. Built for iOS by
     // scripts/build-companion.sh, which bundles it; on the Mac it builds
     // too, to be checked as the rest is.
-    .executableTarget(name: "NullmereCompanion", dependencies: ["NullmereLive", "NullmereLiveStage", "NullmereRealm"]),
+    .executableTarget(name: "NullmereCompanion", dependencies: ["NullmereLand", "NullmereLive", "NullmereLiveStage", "NullmereRealm"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
     .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereLive", "NullmereLiveStage", "NullmereLand", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
