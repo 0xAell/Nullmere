@@ -397,6 +397,21 @@ struct LiveHUD: View {
                     }
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
+                    // Over each army in view, whose it is; over the player's own, who
+                    // leads it and how many; edged red where it marches on their city.
+                    ForEach(session.armyLabels(in: proxy.size)) { label in
+                        Text(verbatim: label.words)
+                            .font(.nm(LiveType.small, weight: label.own ? .semibold : .regular))
+                            .foregroundStyle(label.own || label.ally ? LiveEmphasis.primary : LiveEmphasis.secondary)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Palette.panel.opacity(0.6), in: Capsule())
+                            .overlay(Capsule().strokeBorder(label.foe ? Palette.bad.opacity(0.8) : label.ally ? Palette.good.opacity(0.6) : .clear, lineWidth: 1))
+                            .fixedSize()
+                            .position(label.point)
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
                 }
                 // While the player's city is chosen, its plots: where each building
                 // it has not built would stand, to be chosen and built.

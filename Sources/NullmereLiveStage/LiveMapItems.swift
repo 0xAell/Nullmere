@@ -96,3 +96,51 @@ extension LiveSession {
         }
     }
 }
+
+/// An army's mark as it hangs over it on the map: whose it is, and over
+/// the player's own who leads it and how many soldiers it has.
+public struct LiveArmyLabel: Equatable, Identifiable, Sendable {
+    public let id: UInt64
+    public let words: String
+    public let point: CGPoint
+    public let own: Bool
+    public let ally: Bool
+    /// Whether it marches on the player's city.
+    public let foe: Bool
+}
+
+extension LiveSession {
+    /// How far above an army its mark hangs, in points.
+    public static let armyLift: CGFloat = 24
+
+    /// The marks over the armies in the window whose marks would hang
+    /// within a view of a size, on the move or at their work: the player's
+    /// own under its commander's name, or as their army, with how many
+    /// soldiers it has; any other under its owner's name as others read
+    /// it, marked a foe where it marches on the player's city.
+    public func armyLabels(in size: CGSize) -> [LiveArmyLabel] {
+        guard let window else { return [] }
+        let seconds = now
+        let relief = land()?.relief
+        return world.marches.values.sorted { $0.id < $1.id }.compactMap { march in
+            let at = march.position(at: seconds)
+            let on = HexLayout(size: 1).hex(atX: at.x, y: at.y)
+            guard window.local(LiveHex(q: on.q, r: on.r)) != nil else { return nil }
+            let local = window.local(x: at.x, y: at.y)
+            let height = relief.map { Double($0.height(atX: local.x, z: local.z)) } ?? 0
+            let view = camera.viewPoint(worldX: Double(local.x), worldY: Double(local.z), height: height, in: size)
+            let point = CGPoint(x: view.x, y: view.y - LiveSession.armyLift)
+            guard point.x > 0, point.x < size.width, point.y > 0, point.y < size.height else { return nil }
+            let own = march.owner == world.me?.id
+            let words: String
+            if own {
+                let leader = world.commanders.first { $0.id == march.leader }?.name ?? "Your army"
+                words = "\(leader) · \(LiveWords.grouped(march.soldiers))"
+            } else {
+                words = world.shownName(of: march.owner) ?? "An army"
+            }
+            let foe = !own && [LiveMarch.attack, LiveMarch.scout, LiveMarch.rally].contains(march.kind) && march.to == world.city?.hex
+            return LiveArmyLabel(id: march.id, words: words, point: point, own: own, ally: world.isAlly(march.owner), foe: foe)
+        }
+    }
+}

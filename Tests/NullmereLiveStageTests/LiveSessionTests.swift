@@ -536,6 +536,21 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertTrue(session.cityLabels(in: CGSize(width: 1, height: 1)).isEmpty, "none hangs outside the view")
     }
 
+    /// Over each army in view, whose it is; over the player's own, how many
+    /// soldiers it has.
+    func testEachArmyInViewIsMarkedOverIt() async throws {
+        let session = session(StandInLine(rows: LiveWindowTests.rows()))
+        await session.open()
+        let size = CGSize(width: 1280, height: 800)
+        let labels = session.armyLabels(in: size)
+        XCTAssertEqual(labels.map(\.id), [3, 4, 6], "hers on the road, and Bryn's two at the grove and the barrow")
+        XCTAssertEqual(labels.map(\.words), ["Your army · 40", "Bryn", "Bryn"])
+        XCTAssertEqual(labels.map(\.own), [true, false, false])
+        XCTAssertFalse(labels.contains { $0.foe }, "none marches on her city")
+        XCTAssertTrue(labels.allSatisfy { size.width > $0.point.x && $0.point.x > 0 && size.height > $0.point.y && $0.point.y > 0 })
+        XCTAssertTrue(session.armyLabels(in: CGSize(width: 1, height: 1)).isEmpty, "none hangs outside the view")
+    }
+
     /// Every kind of building has a symbol of its own.
     func testEachBuildingHasASymbolOfItsOwn() {
         let symbols = (1...19).map { LiveIcons.building($0) }
