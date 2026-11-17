@@ -33,6 +33,10 @@ export const PAGES = [
   { name: 'Stack Overflow', url: 'https://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-processing-an-unsorted-array' },
   { name: 'IGN', url: 'https://www.ign.com/' },
   { name: 'AccuWeather', url: 'https://www.accuweather.com/' },
+  // Sites a scriptlet is for: what the page reads of what it fixes, with
+  // the extension and without ("probe", run in the page's own world).
+  { name: 'USA Today', url: 'https://www.usatoday.com/', probe: () => `admiral: ${typeof window.admiral === 'function' ? `a function of ${window.admiral.length} arguments` : typeof window.admiral}; gnt.x.adm: ${JSON.stringify(window.gnt?.x?.adm) ?? 'undefined'}` },
+  { name: 'TechCrunch', url: 'https://techcrunch.com/', probe: () => `admiral: ${typeof window.admiral}; Admiral's scripts: ${[...document.scripts].filter((script) => /admiral|getadmiral/i.test(script.src + script.textContent.slice(0, 2000))).length}` },
   { name: 'Wikipedia (no ads)', url: 'https://en.wikipedia.org/wiki/Lake' },
   { name: 'GitHub (no ads)', url: 'https://github.com/' },
   { name: 'YouTube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', youtube: true },
@@ -157,6 +161,7 @@ async function visit(browser, page, hosts) {
     result.frames = shown.length;
     result.frameHosts = shown;
     result.words = await tab.evaluate(() => (document.body?.innerText ?? '').length);
+    if (page.probe) result.probe = await tab.evaluate(page.probe).catch((error) => `(${String(error.message ?? error).slice(0, 60)})`);
     if (page.youtube) {
       result.youtube = await youtube(tab);
       // What YouTube sent when the player asked for its data, as it came over the wire:
@@ -300,6 +305,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     errorWords(withExtension, without),
     '',
     ...withExtension.flatMap((one, index) => (one.youtube !== undefined || PAGES.find((page) => page.name === one.name)?.youtube ? [youtubeWords(one, without[index]), ''] : [])),
+    '',
+    `What the pages a scriptlet is for read of what it fixes, without and with the extension: ${withExtension.filter((one) => one.probe !== undefined).map((one, index) => `${one.name}: ${without.find((other) => other.name === one.name)?.probe ?? '(not reached)'} → ${one.probe}`).join('; ') || 'none reached'}.`,
     '',
     `Most kept back, by host: ${withExtension.filter((one) => one.topBlocked.length).map((one) => `${one.name}: ${one.topBlocked.join(', ')}`).join('; ') || 'nothing'}.`,
     '',
