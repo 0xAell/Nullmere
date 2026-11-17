@@ -962,15 +962,7 @@ struct LiveRing: View {
     }
 
     /// Does what a symbol says: opens a part of the House, or asks the realm.
-    private func press(_ button: LiveCard.Button) {
-        if button.act == .city {
-            panel = .city
-        } else if button.act == .troops {
-            panel = .troops
-        } else {
-            Task { await session.press(button) }
-        }
-    }
+    private func press(_ button: LiveCard.Button) { LiveGameView.press(button, session: session, panel: $panel) }
 }
 
 /// The card for what is chosen: its name, a few lines, and what can be
@@ -1017,14 +1009,17 @@ struct LiveCardView: View {
 
     /// Does what a button says: opens a side of the window, or asks the
     /// realm.
-    private func press(_ button: LiveCard.Button) {
-        let act = button.act
-        if act == .city {
-            panel = .city
-        } else if act == .troops {
-            panel = .troops
-        } else {
-            Task { await session.press(button) }
+    private func press(_ button: LiveCard.Button) { LiveGameView.press(button, session: session, panel: $panel) }
+}
+
+extension LiveGameView {
+    /// Does what a card's button says, in its ring or at the foot: opens
+    /// the House's buildings or its troops, or asks the realm.
+    static func press(_ button: LiveCard.Button, session: LiveSession, panel: Binding<Panel?>) {
+        switch button.act {
+        case .city: panel.wrappedValue = .city
+        case .troops: panel.wrappedValue = .troops
+        default: Task { await session.press(button) }
         }
     }
 }

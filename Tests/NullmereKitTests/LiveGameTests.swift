@@ -193,6 +193,27 @@ final class LiveGameTests: XCTestCase {
         .background(NullmereKit.Palette.panel)
     }
 
+    /// A card's buttons, in its ring or at the foot: Buildings and Troops
+    /// open the House at those parts; any other asks the realm.
+    func testACardsButtonsOpenTheHouseOrAskTheRealm() async throws {
+        let (session, line) = await playing()
+        var panel: LiveGameView.Panel?
+        let binding = Binding(get: { panel }, set: { panel = $0 })
+        let home = session.card(for: session.selection(at: LiveHex(q: 10, r: -4)))
+        let city = try XCTUnwrap(home.buttons.first { $0.act == .city })
+        let troops = try XCTUnwrap(home.buttons.first { $0.act == .troops })
+        LiveGameView.press(city, session: session, panel: binding)
+        XCTAssertEqual(panel, .city)
+        LiveGameView.press(troops, session: session, panel: binding)
+        XCTAssertEqual(panel, .troops)
+        let hasten = try XCTUnwrap(home.buttons.first { if case .hasten = $0.act { return true } else { return false } }, "\(home.buttons.map(\.title))")
+        line.clear()
+        LiveGameView.press(hasten, session: session, panel: binding)
+        for _ in 0..<100 where line.asked.isEmpty { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertTrue(line.asked.contains { $0.hasPrefix("speed up") }, "\(line.asked)")
+        XCTAssertEqual(panel, .troops, "asking the realm opens nothing")
+    }
+
     /// The world is the screen in the rebuilt realm too: whatever is open,
     /// the interface keeps to the edges and leaves the world its share.
     func testTheWorldKeepsMostOfTheScreenWhateverIsOpen() async throws {
