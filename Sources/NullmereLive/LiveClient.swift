@@ -373,4 +373,12 @@ public final class LiveClient: @unchecked Sendable {
     public func claimPlace(contest: Int) async throws {
         try await ask("claim_place", [.integer(UInt64(contest))])
     }
+
+    /// Asks for a code to bring another device of the player's into the
+    /// realm as them: shown in the world's `link` once the realm has it.
+    public func offerLink() async throws { try await ask("offer_link", []) }
+
+    /// Takes a code another device of a player's shows, as typed: this
+    /// client, which plays as no one yet, plays as them from now on.
+    public func takeLink(_ code: String) async throws { try await ask("take_link", [.string(code)]) }
 }

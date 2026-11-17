@@ -38,6 +38,8 @@ public struct LiveWorld: Equatable, Sendable {
     /// first three places of a round give.
     public var standings: [LiveStanding] = []
     public var laurels: [LiveLaurel] = []
+    /// The code the player has asked for, to bring another device in.
+    public var link: LiveLink?
     /// Every alliance's Moonspire this season, by the alliance; the
     /// realm's seasons, by their number.
     public var spires: [UInt64: LiveSpire] = [:]
@@ -171,6 +173,7 @@ public struct LiveWorld: Equatable, Sendable {
         trials = Dictionary(rows("trial", LiveTrial.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         prizes = rows("prize", LivePrize.init).sorted { ($0.trial, $0.place) < ($1.trial, $1.place) }
         standings = rows("standing", LiveStanding.init)
+        link = rows("my_link", LiveLink.init).first
         laurels = rows("laurel", LiveLaurel.init).sorted { ($0.trial, $0.place) < ($1.trial, $1.place) }
         spires = Dictionary(rows("spire", LiveSpire.init).map { ($0.alliance, $0) }, uniquingKeysWith: { _, new in new })
         seasons = Dictionary(rows("season", LiveSeason.init).map { ($0.number, $0) }, uniquingKeysWith: { _, new in new })

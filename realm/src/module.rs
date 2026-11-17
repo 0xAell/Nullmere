@@ -10,23 +10,24 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 use crate::hex::Hex;
 use crate::rows::{
     alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
-    chest as _, daily as _, daily__view as _, duty as _, fame as _, boon as _, boon__view as _, cairn as _, find as _, find__view as _, honour as _, honour__view as _, price as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, standing as _, laurel as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _, prisoner as _, prisoner__view as _, petition as _, petition__view as _, title as _, letter as _, letter__view as _, gear as _, gear__view as _, pattern as _,
+    chest as _, daily as _, daily__view as _, duty as _, fame as _, boon as _, boon__view as _, cairn as _, find as _, find__view as _, honour as _, honour__view as _, price as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, standing as _, laurel as _, link as _, link__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _, prisoner as _, prisoner__view as _, petition as _, petition__view as _, title as _, letter as _, letter__view as _, gear as _, gear__view as _, pattern as _,
     building__view as _, city as _, city__view as _, commander as _, commander__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
     march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
     realm_chat as _, complaint as _, bar as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
     troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Bond, Building, Chest, City, Commander, Daily, Duty, Fame, Boon, Cairn, Find, Honour, Price, Favour, Gift, Grace, Haul, Helper, Hunt, Job, Keeper, Land, Lore, March, Member, Muster, Rally,
-    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Complaint, Bar, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Standing, Laurel, Task, Trial, Troop, Ware, Ward, Learning, Gate, Envoy, Pact, Prisoner, Petition, Title, Letter, Gear, Pattern,
+    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Complaint, Bar, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Standing, Laurel, Link, Task, Trial, Troop, Ware, Ward, Learning, Gate, Envoy, Pact, Prisoner, Petition, Title, Letter, Gear, Pattern,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
 
 /// Whose player a connection's identity is. The rules know players by
-/// number alone; only the module knows identities.
+/// number alone; only the module knows identities. A player may play from
+/// more than one device, each its own identity (`take_link`).
 #[table(accessor = account)]
 pub struct Account {
     #[primary_key]
     pub identity: Identity,
-    #[unique]
+    #[index(btree)]
     pub player: u64,
 }
 
@@ -169,6 +170,7 @@ stored!(Prize in prize by id);
 stored!(Tally in tally by id, player);
 stored!(Standing in standing by id, contest_round);
 stored!(Laurel in laurel by id);
+stored!(Link in link by code, player);
 stored!(Rally in rally by id, alliance);
 stored!(Muster in muster by march, rally);
 stored!(Plea in plea by job, alliance);
@@ -262,14 +264,18 @@ pub fn connected(ctx: &ReducerContext) {
     }
 }
 
-/// A connection closes. A player's last means they are gone, until they
-/// come back: their city, their armies and everything under way go on
-/// without them.
+/// A connection closes. A player's last, on every device of theirs, means
+/// they are gone, until they come back: their city, their armies and
+/// everything under way go on without them.
 #[reducer(client_disconnected)]
 pub fn disconnected(ctx: &ReducerContext) {
     if connections(ctx, false) == 0 {
         if let Ok(player) = caller(ctx) {
-            rules::seen(&mut Stdb(ctx), player, false);
+            let elsewhere = ctx.db.account().player().filter(player)
+                .any(|account| account.identity != ctx.sender() && ctx.db.presence().identity().find(account.identity).is_some());
+            if !elsewhere {
+                rules::seen(&mut Stdb(ctx), player, false);
+            }
         }
     }
 }
@@ -284,6 +290,29 @@ pub fn join(ctx: &ReducerContext, name: String) -> Result<(), String> {
         ctx.db.account().insert(Account { identity: ctx.sender(), player: player.id });
     });
     said(joined)
+}
+
+/// Ask for a code to bring another device of the caller's into the realm
+/// as them: shown in the caller's view of it, `my_link`.
+#[reducer]
+pub fn offer_link(ctx: &ReducerContext) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::offer_link(&mut Stdb(ctx), player)))
+}
+
+/// Take a code another device of a player's shows: this device, which
+/// plays as no one yet, plays as them from now on.
+#[reducer]
+pub fn take_link(ctx: &ReducerContext, code: String) -> Result<(), String> {
+    if caller(ctx).is_ok() {
+        return said::<()>(Err(Refusal::AlreadyAPlayer));
+    }
+    let taken = rules::take_link(&mut Stdb(ctx), &code).map(|player| {
+        ctx.db.account().insert(Account { identity: ctx.sender(), player });
+        if ctx.db.presence().identity().find(ctx.sender()).is_some() {
+            rules::seen(&mut Stdb(ctx), player, true);
+        }
+    });
+    said(taken)
 }
 
 /// Build a building the caller's city has not got, by its kind's number.
@@ -920,6 +949,12 @@ fn my_rallies(ctx: &ViewContext) -> Vec<Rally> {
 #[view(accessor = my_musters, public)]
 fn my_musters(ctx: &ViewContext) -> Vec<Muster> {
     my_rallies(ctx).iter().flat_map(|rally| ctx.db.muster().rally().filter(rally.id)).collect()
+}
+
+/// The code the caller has asked for, to bring another device of theirs in.
+#[view(accessor = my_link, public)]
+fn my_link(ctx: &ViewContext) -> Vec<Link> {
+    viewer(ctx).map(|player| ctx.db.link().player().filter(player).collect()).unwrap_or_default()
 }
 
 /// Which of their first tasks the caller is on.

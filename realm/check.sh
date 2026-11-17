@@ -269,6 +269,17 @@ check("and gives what it promised", (rows(ada, "SELECT * FROM my_stock")[0]["gra
 check("the next is not done yet", call(ada, "claim_task"), "Not done yet: Build a Barracks.")
 check("no one reads another's progress", isinstance(rows(ada, "SELECT * FROM progress"), str), True)
 
+# A player's other device, their phone beside their Mac: a code asked for
+# on one, taken on the other, which plays as them from then on.
+check("a code is asked for", call(ada, "offer_link"), None)
+link = rows(ada, "SELECT * FROM my_link")
+check("and shown to its player alone", (len(link), len(link[0]["letters"]) if link else 0, rows(bryn, "SELECT * FROM my_link"), isinstance(rows(ada, "SELECT * FROM link"), str)), (1, 10, [], True))
+phone = someone()
+check("another device takes it, however typed", call(phone, "take_link", link[0]["letters"].lower() if link else ""), None)
+check("and plays as its player", [p["name"] for p in rows(phone, "SELECT * FROM me")], [p["name"] for p in rows(ada, "SELECT * FROM me")])
+check("the code is used up", (call(someone(), "take_link", link[0]["letters"] if link else ""), rows(ada, "SELECT * FROM my_link")), ("No code of yours reads so, or it has been used. Ask your other device for a new one.", []))
+check("a device that plays already takes no code", call(bryn, "take_link", "ABCDEFGHJK"), "You have already joined the realm.")
+
 # The day's work: five deeds and three chests, the same for everyone.
 duties = rows(nobody, "SELECT * FROM duty")
 chests = rows(nobody, "SELECT * FROM chest")

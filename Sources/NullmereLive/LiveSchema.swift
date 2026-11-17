@@ -73,6 +73,7 @@ public enum LiveSchema {
         "my_favour": .init(columns: ["player", "points", "level"], key: "player"),
         "my_satchel": .init(columns: ["id", "player", "item", "count"], key: "id"),
         "my_tallies": .init(columns: ["id", "player", "trial", "round", "points", "claimed"], key: "id"),
+        "my_link": .init(columns: ["code", "player", "letters", "expires"], key: "code"),
         "my_rallies": .init(columns: ["id", "alliance", "caller", "name", "barrow", "city", "hex", "level", "sets_out", "state", "armies",
                                       "soldiers"], key: "id"),
         "my_musters": .init(columns: ["march", "rally", "player", "arrived"], key: "march"),
@@ -106,6 +107,7 @@ public enum LiveSchema {
         "my_tallies": "tally", "my_rallies": "rally", "my_musters": "muster", "my_pleas": "plea", "my_helps": "helper", "my_gift": "gift",
         "my_skills": "skill", "my_bonds": "bond", "my_keeper": "keeper", "my_envoys": "envoy", "my_prisoners": "prisoner", "my_petitions": "petition",
         "my_letters": "letter", "my_gear": "gear", "my_boons": "boon", "my_finds": "find", "my_honour": "honour",
+        "my_link": "link",
     ]
 
     /// The queries that watch all of them.

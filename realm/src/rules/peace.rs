@@ -158,6 +158,7 @@ pub fn forget(db: &mut impl Db, player: u64) -> Result<String, Refusal> {
     }
     let old = std::mem::replace(&mut row.name, name.clone());
     row.name_key = super::name_key(&name);
+    super::forget_links(db, player);
     // Their identity is let go, so nothing will tell the realm they left.
     row.online = false;
     db.update(row);

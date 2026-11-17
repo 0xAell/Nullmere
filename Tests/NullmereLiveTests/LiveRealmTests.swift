@@ -145,6 +145,21 @@ final class LiveRealmTests: XCTestCase {
         // Here while his subscription is open, whatever else he asks meanwhile.
         await eventually("Bryn is seen to be here") { ada.world.players[him]?.online == true }
 
+        // Her phone beside her Mac: a code asked for and pushed to her alone,
+        // taken as typed by a device that plays as no one yet, which then
+        // plays as her; and the code is used up.
+        try await ada.offerLink()
+        await eventually("her code is pushed to her") { ada.world.link != nil }
+        let code = try XCTUnwrap(ada.world.link)
+        XCTAssertEqual(code.letters.count, 10)
+        XCTAssertNil(bryn.world.link, "and to no one else")
+        let phone = try await LiveClient.open(server: server, database: database)
+        try await phone.takeLink(code.shown.lowercased())
+        let seen = try await phone.read()
+        XCTAssertEqual(seen.me?.name, "Ada \(tag)")
+        XCTAssertEqual(seen.city?.id, ada.world.city?.id)
+        await eventually("the code is used up") { ada.world.link == nil }
+
         // In a fast realm: a Barracks, a batch of spearmen, and an army out to gather and home again.
         guard let pace = ada.world.realm?.pace, pace >= 30 else {
             print("LIVE the realm runs at its written pace: troops and marches are left to realm/check.sh")

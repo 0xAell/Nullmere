@@ -299,6 +299,16 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertNil(LiveWorld(snapshot: [:]).laurelToClaim(of: trial, day: 13))
     }
 
+    func testTheCodeForAnotherDeviceIsReadAndShownInFives() throws {
+        let world = LiveWorld(snapshot: ["my_link": [[n(123), n(1), .string("ABCDE23456"), n(2_600)]]])
+        let link = try XCTUnwrap(world.link)
+        XCTAssertEqual(link.letters, "ABCDE23456")
+        XCTAssertEqual(link.shown, "ABCDE 23456")
+        XCTAssertTrue(link.isGood(at: 2_600))
+        XCTAssertFalse(link.isGood(at: 2_601))
+        XCTAssertNil(LiveWorld(snapshot: [:]).link)
+    }
+
     func testAlliancesAndWhatIsSaidAreRead() throws {
         let world = LiveWorld(snapshot: [
             "player": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)], [n(2), n(8), .string("Bryn"), n(1_000), .bool(true), n(1_000)],

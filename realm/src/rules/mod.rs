@@ -22,6 +22,7 @@ mod help;
 mod forge;
 mod items;
 mod letters;
+mod links;
 mod learning;
 mod march;
 mod pacts;
@@ -55,6 +56,7 @@ pub use help::*;
 pub use forge::*;
 pub use items::*;
 pub use letters::*;
+pub use links::*;
 pub use learning::*;
 pub use march::*;
 pub use pacts::*;
@@ -299,6 +301,10 @@ pub enum Refusal {
     /// The player was not among the first three of the contest's last round over.
     NotPlaced,
     PlaceClaimed,
+    /// No code of a player's other device reads so, or it has been taken.
+    NoSuchLink,
+    /// The code was good for ten minutes, and they are past.
+    LinkTooOld,
     /// The player has none of the item they would use.
     NoneLeft,
     /// An item of peace is used on the city, not on a work.
@@ -471,6 +477,8 @@ impl fmt::Display for Refusal {
             Refusal::NoRoundOver => "No round of that contest is over yet.",
             Refusal::NotPlaced => "You were not among the first three when its last round ended.",
             Refusal::PlaceClaimed => "You have claimed what your place gave.",
+            Refusal::NoSuchLink => "No code of yours reads so, or it has been used. Ask your other device for a new one.",
+            Refusal::LinkTooOld => "That code is more than ten minutes old. Ask your other device for a new one.",
             Refusal::NoneLeft => "You have none of that left.",
             Refusal::NotAHaste => "That keeps your city at peace; it hastens no work.",
             Refusal::AtTheForge => "That is worked at the Forge into gear.",

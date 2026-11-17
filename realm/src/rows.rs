@@ -1288,6 +1288,22 @@ pub struct Laurel {
 }
 row!(Laurel in laurel, by id);
 
+/// A code a player has asked for on one device of theirs, to bring another
+/// into the realm as them: theirs alone to read, good for ten minutes and
+/// for one device. Keyed by its number; `letters` is how it is shown and
+/// typed (`rules::link_letters`).
+#[spacetimedb::table(accessor = link)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Link {
+    #[primary_key]
+    pub code: u64,
+    #[index(btree)]
+    pub player: u64,
+    pub letters: String,
+    pub expires: Seconds,
+}
+row!(Link in link, by code, player);
+
 /// An item, for clients to show: its name, what it does, the time it
 /// takes off a work or the peace it keeps as written (in a realm that
 /// runs faster, as much less as everything there takes less), and which
@@ -1602,6 +1618,7 @@ pub trait Db:
     + Table<Tally>
     + Table<Standing>
     + Table<Laurel>
+    + Table<Link>
     + Table<Rally>
     + Table<Muster>
     + Table<Plea>
@@ -1677,6 +1694,7 @@ impl<
             + Table<Tally>
             + Table<Standing>
             + Table<Laurel>
+            + Table<Link>
             + Table<Rally>
             + Table<Muster>
             + Table<Plea>

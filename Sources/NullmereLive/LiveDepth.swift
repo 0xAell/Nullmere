@@ -186,6 +186,25 @@ public struct LiveStanding: Equatable, Sendable, Identifiable {
     }
 }
 
+/// A code the player has asked for, to bring another device of theirs
+/// into the realm as them: its letters, and until when it is good.
+public struct LiveLink: Equatable, Sendable {
+    public let letters: String
+    public let expires: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let letters = cells.text(2), let expires = cells.whole(3) else { return nil }
+        (self.letters, self.expires) = (letters, expires)
+    }
+
+    /// Whether it is good at a moment.
+    public func isGood(at seconds: Double) -> Bool { Double(expires) >= seconds }
+
+    /// Its letters as they are best read and typed: in two fives.
+    public var shown: String { letters.count == 10 ? "\(letters.prefix(5)) \(letters.suffix(5))" : letters }
+}
+
 /// What a place among the first three of a contest's round gives once it
 /// is over.
 public struct LiveLaurel: Equatable, Sendable, Identifiable {
