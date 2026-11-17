@@ -62,3 +62,5 @@ words.test##.feed > :has-text(Paid post)
 quiet.words.test#@#.card:has-text(Sponsored)
 ! --- restyling what is left ---
 words.test##.page {padding-top: 0px !important}
+words.test#?#.suppress-rss:has(:has-text(Supported by))
+words.test##.reveal:not(.is-shown):style(opacity: 1 !important;)

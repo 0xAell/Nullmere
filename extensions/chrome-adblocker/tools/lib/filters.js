@@ -4,7 +4,7 @@
 // data is built in cosmetic.js.
 
 import { domainToASCII } from 'node:url';
-import { isProcedural, planFor, styleRule } from './procedural.js';
+import { isProcedural, planFor, styleOperator, styleRule } from './procedural.js';
 import { redirectFile } from './redirects.js';
 import { readScriptlet } from './scriptlets.js';
 import { isBalanced, isContained, splitSelectors } from './selectors.js';
@@ -126,7 +126,9 @@ function cosmetic(domains, separator, body) {
   };
   const named = list.include.length + list.entities.length > 0;
 
-  // `selector {declarations}` is Adblock Plus's way to restyle an element.
+  // `selector {declarations}` is Adblock Plus's way to restyle an element;
+  // uBlock Origin's `selector:style(declarations)` is read as the same.
+  if (separator.includes('#') && selector.includes(':style(')) selector = styleOperator(selector) ?? selector;
   if (/\{[^{}]*\}\s*$/.test(selector)) {
     const rule = styleRule(selector);
     if (!rule) return unsupported('malformed');

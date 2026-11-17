@@ -267,7 +267,7 @@ test('the options page says what it cannot do with the build\'s own numbers, and
   const left = (test) => lists.lists.reduce((sum, list) => sum + Object.entries(list.dropped).reduce((n, [reason, count]) => n + (test(reason) ? count : 0), 0), 0);
   const scripted = left((reason) => /^cosmetic:(procedural|scriptlet|snippet|style)/.test(reason));
   const others = left(() => true) - scripted;
-  assert.ok(scripted > 10 && others > 10);
+  assert.ok(scripted > 0 && others > 0, 'both are said, so both must be counted');
   assert.match(limits[1], new RegExp(`${scripted.toLocaleString('en-US')} that need a script to find or restyle an element, and ${others.toLocaleString('en-US')} more that Chrome's rules can't say`));
   assert.match(limits[2], /A pop-up is closed, not prevented/);
   // The list that names pop-ups says how many.

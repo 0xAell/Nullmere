@@ -272,14 +272,17 @@ const WORDS = `
     <div id="row-ad" class="row">Promoted <div id="media-ad" class="media">ad</div></div>
     <div id="row-own" class="row own">Promoted <div id="media-own" class="media">own</div></div>
     <div id="feed" class="feed"><div id="feed-ad">Paid post</div><div id="feed-story">A story.</div></div>
+    <div id="rss-ad" class="suppress-rss"><p><b>Supported by</b> a bank</p></div><div id="rss" class="suppress-rss"><p>News</p></div>
+    <div id="reveal" class="reveal" style="opacity: 0">Shown when the page's analytics say so.</div>
   </div>`;
-const WORD_IDS = ['card-ad', 'card', 'li-ad', 'li-deep', 'li', 'heading', 'partners', 'after', 'row-ad', 'media-ad', 'row-own', 'media-own', 'feed', 'feed-ad', 'feed-story'];
+const WORD_IDS = ['card-ad', 'card', 'li-ad', 'li-deep', 'li', 'heading', 'partners', 'after', 'row-ad', 'media-ad', 'row-own', 'media-own', 'feed', 'feed-ad', 'feed-story', 'rss-ad', 'rss'];
 
 test('filters that pick an element by its words hide it: plain, by expression, inside :has, and going on to a sibling or child', async () => {
   const { page } = await visit('words.test', WORDS);
-  await until(async () => (await hidden(page, WORD_IDS)).length >= 5, 'the worded slots to be hidden');
-  // The last is found among a feed's children: the feed itself, which holds the words too, is left.
-  assert.deepEqual(await hidden(page, WORD_IDS), ['card-ad', 'li-ad', 'partners', 'media-ad', 'feed-ad']);
+  await until(async () => (await hidden(page, WORD_IDS)).length >= 6, 'the worded slots to be hidden');
+  // One is found among a feed's children: the feed itself, which holds the words too, is left.
+  // The last holds the words somewhere inside it (`:has(:has-text(...))`).
+  assert.deepEqual(await hidden(page, WORD_IDS), ['card-ad', 'li-ad', 'partners', 'media-ad', 'feed-ad', 'rss-ad']);
 
   // Words that arrive later are found too.
   await page.evaluate(() => {
@@ -293,18 +296,21 @@ test('filters that pick an element by its words hide it: plain, by expression, i
 test('a restyling filter restyles what is left, over the page\'s own style', async () => {
   const { page } = await visit('words.test', WORDS);
   await until(() => page.evaluate(() => getComputedStyle(document.getElementById('page')).paddingTop === '0px'), 'the page\'s padding to be taken away');
+  // Written as uBlock Origin writes it (`:style()`), over the page's own inline style.
+  await until(() => page.evaluate(() => getComputedStyle(document.getElementById('reveal')).opacity === '1'), 'the hidden words to be shown');
   await page.close();
   const other = await visit('other.test', WORDS);
   await other.page.waitForTimeout(500);
   assert.equal(await other.page.evaluate(() => getComputedStyle(document.getElementById('page')).paddingTop), '90px', 'only on the site named');
+  assert.equal(await other.page.evaluate(() => getComputedStyle(document.getElementById('reveal')).opacity), '0');
   assert.deepEqual(await hidden(other.page, WORD_IDS), []);
   await other.page.close();
 });
 
 test('an exception takes a worded filter back for its site', async () => {
   const { page } = await visit('quiet.words.test', WORDS);
-  await until(async () => (await hidden(page, WORD_IDS)).length >= 4, 'the other worded slots to be hidden');
-  assert.deepEqual(await hidden(page, WORD_IDS), ['li-ad', 'partners', 'media-ad', 'feed-ad']);
+  await until(async () => (await hidden(page, WORD_IDS)).length >= 5, 'the other worded slots to be hidden');
+  assert.deepEqual(await hidden(page, WORD_IDS), ['li-ad', 'partners', 'media-ad', 'feed-ad', 'rss-ad']);
   await page.close();
 });
 

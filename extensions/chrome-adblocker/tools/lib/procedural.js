@@ -117,7 +117,8 @@ export function planFor(selector) {
           continue;
         }
         if (isProcedural(argument)) {
-          const inner = planFor(argument);
+          // `:has(:has-text(x))`: the element the words are in is any one inside.
+          const inner = planFor(argument.startsWith(':') ? `*${argument}` : argument);
           if (!inner) return null;
           flush(true);
           steps.push({ has: inner });
@@ -147,6 +148,18 @@ export function planFor(selector) {
   // Something must be found before it can be narrowed.
   if (steps[0].css === undefined) return null;
   return steps;
+}
+
+/**
+ * uBlock Origin's way to restyle, `selector:style(declarations)`, written
+ * as Adblock Plus writes it, `selector {declarations}`; null if the
+ * selector does not end so.
+ */
+export function styleOperator(text) {
+  const selector = text.trimEnd();
+  const at = selector.lastIndexOf(':style(');
+  if (at <= 0 || closing(selector, at + ':style'.length) !== selector.length - 1) return null;
+  return `${selector.slice(0, at)} {${selector.slice(at + ':style('.length, -1)}}`;
 }
 
 /**

@@ -163,6 +163,8 @@ test('cosmetic filters that pick an element by its words become plans', () => {
   assert.deepEqual(plan('example.com##.a:has-text(One) :has-text(Two)').steps, [{ css: '.a' }, { text: 'One' }, { css: ' *' }, { text: 'Two' }]);
   assert.deepEqual(plan('example.com##.a:has-text(One) + :has-text(Two)').steps, [{ css: '.a' }, { text: 'One' }, { css: ' + *' }, { text: 'Two' }]);
   assert.deepEqual(plan('example.com##.feed :has(> b:has-text(Ad))').steps, [{ css: '.feed *' }, { has: [{ css: '> b' }, { text: 'Ad' }] }]);
+  // Inside :has(), words with nothing before them are in any element under it.
+  assert.deepEqual(plan('example.com#?#.suppress-rss:has(:has-text(Supported by))').steps, [{ css: '.suppress-rss' }, { has: [{ css: '*' }, { text: 'Supported by' }] }]);
   assert.deepEqual(plan('example.com##.wide\\ :has-text(Ad)').steps, [{ css: '.wide\\ ' }, { text: 'Ad' }], 'an escaped space is the end of a name');
   // Flags that make an expression remember where it stopped are left off: it is asked of one element after another.
   assert.deepEqual(plan('example.com##.card:has-text(/ad/gi)').steps, [{ css: '.card' }, { re: 'ad', flags: 'i' }]);
@@ -177,6 +179,12 @@ test('restyling filters become CSS rules for the sites they name, and only plain
   assert.deepEqual(parseLine('example.com##.nav.sticky {top:0px;}').styles, ['.nav.sticky{top:0px}']);
   assert.deepEqual(parseLine('example.com###wrap > [id][style*="height"] { height: 100% !important; margin : 0 }').styles, ['#wrap > [id][style*="height"]{height:100% !important;margin:0}']);
   assert.deepEqual(parseLine('example.com##.a { display: block }').selectors, []);
+  // uBlock Origin's way of writing the same.
+  assert.deepEqual(parseLine('example.com##body[style="opacity: 0;"]:style(opacity: 1 !important;)').styles, ['body[style="opacity: 0;"]{opacity:1 !important}']);
+  assert.deepEqual(parseLine('example.com##.view:not(.is-show):style(transform: translateY(0) !important; opacity: 1)').styles, ['.view:not(.is-show){transform:translateY(0) !important;opacity:1}']);
+  assert.equal(parseLine('##.a:style(color: red)').reason, 'cosmetic:style', 'not for every site');
+  assert.equal(parseLine('example.com##.a:style(background: url(x))').kind, 'unsupported');
+  assert.equal(parseLine('example.com##.a:style(color: red) .b').kind, 'unsupported', 'only where it ends the filter');
   for (const bad of ['example.com##.a { color: red; background: URL(x) }', 'example.com##.a { }', 'example.com##.a { @import "x" }', 'example.com##.a { content: "\\61" }']) {
     assert.equal(parseLine(bad).kind, 'unsupported', bad);
   }

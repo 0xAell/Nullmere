@@ -66,8 +66,8 @@ front. Press it for the popup:
 | **Blocks requests** | 135,154 filters from EasyList, EasyPrivacy and a short list of Stillwater's own become 12,997 rules for Chrome's `declarativeNetRequest`, inside the 30,000 Chrome guarantees every extension. Filters for whole hosts are merged, so 94,309 hosts are blocked by 184 of those rules. |
 | **Gives stand-ins** | 37 filters keep a request back by giving the page something harmless of Stillwater's own in its place, where refusing it outright would leave the page waiting on it: an empty script, text or JSON, a one-pixel image, a second of silent video, or a few lines that answer as Google's tag manager, Chartbeat or fingerprintjs2 would and send nothing. Chrome serves them from the extension; nothing is fetched. |
 | **Runs scriptlets** | 29 filters name a site where a short script of Stillwater's own is to run in its pages, in the page's own world and before the site's scripts: most stop the script of an anti-adblock wall (Admiral's, on many news sites), others give a property a value the page can't change, take a script out before it runs, or answer a tracker's request without sending it. Ten kinds, written for Stillwater under the names the lists use. Only on the sites a filter names, never on a site let through, and none while paused. |
-| **Hides ad slots** | 30,934 selectors. A site's own are applied as its pages begin. The 13,637 generic ones are not thrown at every page: a content script tells the extension which classes and ids a page has, and only the selectors that could match are added. They are added as the user's own style, so a page's `!important` can't undo them. A list's exception turns hiding off for a site, or for part of one by its address (a search engine's results, a router's own pages). |
-| **Follows worded filters** | 283 filters pick an element by the words in it (*hide the card whose label says Sponsored*). No style sheet can; the content script follows them as short plans. |
+| **Hides ad slots** | 30,939 selectors. A site's own are applied as its pages begin. The 13,637 generic ones are not thrown at every page: a content script tells the extension which classes and ids a page has, and only the selectors that could match are added. They are added as the user's own style, so a page's `!important` can't undo them. A list's exception turns hiding off for a site, or for part of one by its address (a search engine's results, a router's own pages). |
+| **Follows worded filters** | 284 filters pick an element by the words in it (*hide the card whose label says Sponsored*). No style sheet can; the content script follows them as short plans. |
 | **Closes pop-up ads** | 2,977 filters name the addresses of pop-up ads. A tab or window a page opens to one is closed: at once if it is opened straight there, or as it gets there if it is opened empty or by way of another address. A tab you open yourself (a new tab, a bookmark, an address you type) is never touched. |
 | **Lets sites through** | Per site, from the popup or the options page, subdomains included. |
 | **YouTube** | Takes the ad lists out of the data YouTube's player reads, skips or runs out an ad that plays anyway, and hides promoted tiles. Best effort: see below. |
@@ -126,11 +126,11 @@ rules made ahead of time. So:
   | Left out | How many | Why |
   |---|---|---|
   | Exceptions that take back only a stand-in (`$redirect-rule`) | 1 | They leave the block standing; Chrome's `allow` would take back both. |
-  | Scriptlets Stillwater has not written, HTML filtering, procedural filters beyond `:has-text` | 14 | `json-edit` is not among the scriptlets written for it; `##^` would rewrite a page before the browser reads it, which no extension may; `:xpath` and `:-abp-properties` are not followed. |
+  | Scriptlets Stillwater has not written, HTML filtering, procedural filters beyond `:has-text` | 9 | `json-edit` is not among the scriptlets written for it; `##^` would rewrite a page before the browser reads it, which no extension may; `:xpath` and `:-abp-properties` are not followed. |
   | Regular expressions Chrome refuses | 15 | Chrome's engine has no lookahead and refuses expressions that compile too large. `tools/validate.js` asks a real Chromium which. |
   | Others | 7 | Four selectors Chromium can't read, two filters for addresses that are not hosts, and one that would match every request. |
 
-  That is 37 of 135,154 filters, 0.03%. Nothing is approximated in a
+  That is 32 of 135,154 filters, 0.02%. Nothing is approximated in a
   way that blocks more than the filter meant.
 
 **A pop-up is closed, not prevented.** No rule of Chrome's can stop a page
