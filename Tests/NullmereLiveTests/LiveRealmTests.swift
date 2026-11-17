@@ -155,9 +155,9 @@ final class LiveRealmTests: XCTestCase {
         XCTAssertNil(bryn.world.link, "and to no one else")
         let phone = try await LiveClient.open(server: server, database: database)
         try await phone.takeLink(code.shown.lowercased())
-        let seen = try await phone.read()
-        XCTAssertEqual(seen.me?.name, "Ada \(tag)")
-        XCTAssertEqual(seen.city?.id, ada.world.city?.id)
+        let onThePhone = try await phone.read()
+        XCTAssertEqual(onThePhone.me?.name, "Ada \(tag)")
+        XCTAssertEqual(onThePhone.city?.id, ada.world.city?.id)
         await eventually("the code is used up") { ada.world.link == nil }
 
         // In a fast realm: a Barracks, a batch of spearmen, and an army out to gather and home again.
