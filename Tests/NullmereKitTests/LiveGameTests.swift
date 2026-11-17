@@ -442,7 +442,11 @@ final class LiveGameTests: XCTestCase {
         XCTAssertFalse(LivePaletteView.found("barrow", in: session, at: 2_015, leaving: true).contains(LivePaletteView.leaving), "Only where its words are searched for")
         XCTAssertLessThanOrEqual(LivePaletteView.found("", in: session, at: 2_015, leaving: true).count, LivePaletteView.most)
         XCTAssertGreaterThan(try drawn(LiveNotice(title: "The world can't be drawn", words: "This Mac's graphics could not draw it.", button: nil) {}, width: 600, height: 200), 80)
+        // The name card with what the realm said of a name refused, as a player
+        // asking one sees it (not what was said of the grove above).
+        session.said = "Another player has that name."
         XCTAssertGreaterThan(try drawn(LiveNameCard(session: session), width: 400, height: 260, as: "live-name.png"), 80)
+        session.said = nil
         XCTAssertTrue(LiveNameCard.fits("Ada"))
         XCTAssertTrue(LiveNameCard.fits("  Ada   of the Lake "), "tidied as the realm tidies it")
         XCTAssertFalse(LiveNameCard.fits("Al"))

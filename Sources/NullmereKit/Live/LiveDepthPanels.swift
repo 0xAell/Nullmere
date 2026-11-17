@@ -765,8 +765,11 @@ struct LiveForgePanel: View {
                     }
                 }
                 LiveSmall(words: wearer.map { "Worn by \($0.name)." } ?? "Worn by no one.", dim: wearer == nil)
-                if wearer == nil {
-                    HStack(spacing: 2) {
+                if wearer == nil, !world.commanders.isEmpty {
+                    // Each commander's name a way to give it them, said as such.
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        LiveSmall(words: "Give it to", dim: true)
+                            .padding(.trailing, 4)
                         ForEach(world.commanders) { commander in
                             QuietButton(title: commander.name, enabled: session.asking == 0, name: "Give the \(name) to \(commander.name)") { Task { await session.equip(gear: piece.id, on: commander.id) } }
                         }
