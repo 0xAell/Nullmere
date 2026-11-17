@@ -32,6 +32,24 @@ final class RootRenderTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
         return image
     }
+    /// The menu's commands, Leave the Realm, Sound and Music, are built
+    /// over the launcher and within the realm alike.
+    func testTheRealmsMenuIsBuiltOverTheLauncherAndWithinTheRealm() throws {
+        let suite = "root-menu-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let environment = LauncherEnvironment(modelReadiness: { .ready }, systemSavesEnergy: { false },
+                                              downloadNews: { throw URLError(.notConnectedToInternet) }, open: { _ in true }, terminate: {})
+        let shell = OnlineShell(launcher: LauncherModel(defaults: defaults, environment: environment), sound: RealmSound(sound: false))
+        _ = RealmCommands(shell: shell).body
+        shell.opening = { _ in LiveSession(line: StandInLine(rows: LiveSample.rows())) { 2_015 } }
+        shell.enterRealm()
+        XCTAssertTrue(shell.inRealm)
+        _ = RealmCommands(shell: shell).body
+        shell.leaveRealm()
+        XCTAssertFalse(shell.inRealm)
+    }
+
     func testTheOneWindowShowsTheLauncherThenTheRealm() throws {
         let suite = "root-render-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
