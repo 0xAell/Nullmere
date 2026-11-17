@@ -70,6 +70,7 @@ front. Press it for the popup:
 | **Follows worded filters** | 291 filters pick an element by the words in it (*hide the card whose label says Sponsored*), by an XPath expression, or by the declarations the page's own style sheets give it. No style sheet can; the content script follows them as short plans. A style sheet from another site can't be read by any extension, so what only it gives is not seen. |
 | **Closes pop-up ads** | 2,977 filters name the addresses of pop-up ads. A tab or window a page opens to one is closed: at once if it is opened straight there, or as it gets there if it is opened empty or by way of another address. A tab you open yourself (a new tab, a bookmark, an address you type) is never touched. |
 | **Lets sites through** | Per site, from the popup or the options page, subdomains included. |
+| **Picks an element to hide** | From the popup, *Hide an element*: point at something on the page and click it, and Stillwater offers a few ways of naming it (by its id, its classes, where it stands), each with how many elements on the page it names, the chosen one outlined; *Wider* chooses what holds it. *Hide it* keeps the way chosen as one of your own filters for the site and hides it at once. Escape stops, and keeps nothing. |
 | **Takes your own filters** | Written on the options page, one to a line, in the lists' own syntax, and read by the same reader the build uses, so a line of your own blocks, hides or lets through as the same line in EasyList would. Each line not taken is listed with why: a scriptlet of your own can't be run (Chrome runs only the extension's own scripts), and pop-up filters of your own aren't followed. A selector this browser can't read is said to do nothing, and is kept in a style rule of its own so it takes no other with it. |
 | **YouTube** | Takes the ad lists out of the data YouTube's player reads, skips or runs out an ad that plays anyway, and hides promoted tiles. Best effort: see below. |
 | **Sends nothing anywhere** | The extension makes no request of its own. No account, no telemetry, no remote code, no "acceptable ads". |
@@ -239,7 +240,7 @@ history of either.
 | `declarativeNetRequestFeedback` | Reading Chrome's count of what it blocked on a tab, for the popup. |
 | `storage` | The sites let through and the switches. Kept on this computer. |
 | `webNavigation` | Being told when a page opens a tab or window, and where it goes in its first seconds, so a pop-up ad can be closed. |
-| `scripting` | Adding the style that hides ad slots to a page; registering the two YouTube scripts only while their switch is on; and registering each scriptlet for the sites its filter names, while its list is on. |
+| `scripting` | Adding the style that hides ad slots to a page; registering the two YouTube scripts only while their switch is on; registering each scriptlet for the sites its filter names, while its list is on; and putting the element picker into the page in front, only when you ask for it from the popup. |
 | Access to all sites | The content script that reports a page's classes and ids and follows the worded filters. It reads class names, ids, and for worded filters the text of the elements a list points at; none of it leaves the browser. |
 
 ## How it is put together

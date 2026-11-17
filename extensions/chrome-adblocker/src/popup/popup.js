@@ -20,6 +20,8 @@ function show(state) {
   $('words').textContent = words.words;
   $('act').textContent = words.act;
   $('act').hidden = !words.act;
+  // Picking something to hide, on a page Stillwater is filtering.
+  $('pick').hidden = !state.filterable || state.allowed || state.paused;
 }
 
 async function main() {
@@ -47,6 +49,17 @@ async function main() {
   };
   $('moon').addEventListener('click', press);
   $('act').addEventListener('click', press);
+
+  // The picker, put into the page; the popup gets out of its way.
+  $('pick').addEventListener('click', async () => {
+    try {
+      const answer = await ask({ type: 'picker:start', tabId });
+      if (answer?.error) throw new Error(answer.error);
+      window.close();
+    } catch (error) {
+      $('words').textContent = `Stillwater could not do that: ${error.message ?? error}`;
+    }
+  });
 
   // The options page, in the tab it already has if it is open.
   $('options').addEventListener('click', (event) => {

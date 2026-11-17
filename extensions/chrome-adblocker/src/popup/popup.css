@@ -137,6 +137,18 @@ footer .caps {
   color: var(--faint);
 }
 
+.pick {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.pick:hover,
+footer a:hover {
+  color: var(--ink);
+}
+
 #count-label {
   margin: 0;
 }

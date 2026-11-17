@@ -3,6 +3,7 @@
 // options page. It holds nothing that can't be made again: Chrome stops it
 // when idle and starts it afresh for the next event.
 
+import { parseLine } from '../lib/filters.js';
 import { OWN_FIRST_ID, OWN_MOST_LETTERS, readOwn } from '../lib/own.js';
 import { CosmeticIndex, hidingCSS, merged } from '../shared/cosmetic-lookup.js';
 import { Popups } from '../shared/popups.js';
@@ -401,6 +402,34 @@ const fromPage = {
     return { active: settings.youtube && !settings.paused && !through };
   },
 
+  /**
+   * The picker, started from the popup in this tab, keeps what was picked
+   * as one of your own filters for the site the page is on (by the
+   * frame's own address, never the page's word), and hides it at once.
+   * Only a plain selector, and only from the tab the picker was started
+   * in, once.
+   */
+  async 'picker:hide'({ selector }, sender) {
+    const { picking } = await chrome.storage.session.get('picking');
+    if (!sender.tab || sender.tab.id !== picking) return { error: 'Start the picker from Stillwater\'s popup.' };
+    const site = siteOf(hostOf(sender.url));
+    if (!site || typeof selector !== 'string' || !selector || selector.length > 500) return { error: 'There is nothing to keep.' };
+    const line = `${site}##${selector}`;
+    const filter = parseLine(line);
+    if (filter.kind !== 'cosmetic' || filter.exception || filter.procedural || filter.styles || filter.selectors.length !== 1 || filter.selectors[0] !== selector) {
+      return { error: 'That is not a selector Stillwater can keep.' };
+    }
+    await chrome.storage.session.remove('picking');
+    await inTurn(async () => {
+      const kept = await readSettings();
+      kept.own = kept.own === '' || kept.own.endsWith('\n') ? `${kept.own}${line}` : `${kept.own}\n${line}`;
+      await save(kept);
+      index = null;
+    });
+    await hide(sender, [selector], '', new Set([selector]));
+    return { line };
+  },
+
   /** Classes and ids a document has: hide what the generic filters say of them. */
   async 'cosmetic:tokens'({ host, top, tokens }, sender) {
     if (!Array.isArray(tokens) || tokens.length > 20_000) return {};
@@ -501,6 +530,14 @@ const fromExtension = {
       return kept;
     });
     return { settings };
+  },
+
+  /** Puts the picker into the page in a tab, to choose something there to hide. */
+  async 'picker:start'({ tabId }) {
+    if (!Number.isInteger(tabId)) return { error: 'There is no page to pick from.' };
+    await chrome.storage.session.set({ picking: tabId });
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['content/picker.js'] });
+    return { started: true };
   },
 
   /** Keeps one's own filters, and puts them into effect. */
