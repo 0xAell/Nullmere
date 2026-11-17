@@ -45,6 +45,9 @@ and load `build/` the same way.
 The toolbar icon shows how many requests Chrome kept from the page in
 front. Press it for the popup:
 
+<img src="docs/toolbar.png" width="560" alt="The end of Chromium's toolbar: the address bar's star, then Stillwater's icon, a moon on a dark square, with a count of 3 on it, then the extensions menu, the profile and the browser's menu">
+
+
 - **The moon is the switch.** Full, with its light on the water:
   Stillwater is filtering this site. Press the moon, or *Let this site
   through*, and the site is reloaded with nothing blocked or hidden on it
@@ -176,9 +179,10 @@ every extension, this one included.
 **Not yet run by a person in Google Chrome.** Everything above was checked
 by automated tests in Chromium 153 (Playwright's build, headless, on
 Linux), loading the unpacked extension, against stand-ins and on the
-live web. It has not been installed by hand
-in Google Chrome on a Mac or Windows machine, and the toolbar icon and
-badge have not been looked at on a real toolbar. The popup and options
+live web. The toolbar picture is Chromium's own window, on a virtual
+display: the icon pinned and Chrome's count on it, read back as 3
+before it was taken (`tools/toolbar.js`). It has not been installed by
+hand in Google Chrome on a Mac or Windows machine. The popup and options
 pictures here are the real pages, taken in that Chromium.
 
 ## Why it asks for what it asks for
@@ -204,7 +208,7 @@ history of either.
 
 ```
 lists/        EasyList and EasyPrivacy at a named commit, and Stillwater's own short list
-tools/        refresh-lists.js, build.js, validate.js, package.js, make-icons.js, shots.js,
+tools/        refresh-lists.js, build.js, validate.js, package.js, make-icons.js, shots.js, toolbar.js,
               live-check.js (real pages, from a machine that can reach the web)
   lib/        filters.js (reads the lists)   dnr.js (makes Chrome's rules)
               redirects.js (the stand-ins, by every name the lists give them)
