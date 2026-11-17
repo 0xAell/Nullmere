@@ -174,7 +174,9 @@ struct LiveCommanders: View {
                         .font(.nm(LiveType.small))
                         .foregroundStyle(LiveEmphasis.tertiary)
                     Spacer(minLength: 0)
-                    LiveSmall(words: commander.isFree ? "In the city" : (commander.isHeld ? "Held prisoner" : "Out with an army"), dim: true)
+                    // Held by the realm's word for it, or by the row that says who holds
+                    // them, whichever comes first.
+                    LiveSmall(words: commander.isHeld || world.held(commander.id) != nil ? "Held prisoner" : (commander.isFree ? "In the city" : "Out with an army"), dim: true)
                     let open = counsel?.commander == commander.id
                     QuietButton(title: open ? "Close" : "Counsel", name: open ? "Close counsel with \(commander.name)" : "Take counsel of \(commander.name)") {
                         if open {
@@ -195,7 +197,7 @@ struct LiveCommanders: View {
                     if commander.gift < 5 {
                         let why = world.giftBlock(of: commander)
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            LiveSmall(words: "Sigils: \(commander.sigils) of the \(LiveWorld.giftNeeds(commander.gift)) its next level asks.", dim: why != nil)
+                            LiveSmall(words: "Sigils: \(commander.sigils); its next level asks \(LiveWorld.giftNeeds(commander.gift)).", dim: why != nil)
                             Spacer(minLength: 0)
                             QuietButton(title: "Raise gift", enabled: why == nil && session.asking == 0, name: "Raise \(commander.name)'s gift", why: why) {
                                 Task { await session.raiseGift(commander: commander.id) }

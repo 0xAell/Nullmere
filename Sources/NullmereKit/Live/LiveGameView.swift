@@ -158,6 +158,10 @@ public struct LiveGameView: View {
                 }
             }
         }
+        // Drawn dark on dark whatever the Mac's appearance: the system's own
+        // menus and fields in it take their words' colour from this, and in
+        // Light they were dark grey on the panels' black.
+        .environment(\.colorScheme, .dark)
         .task {
             await session.open()
             #if DEBUG

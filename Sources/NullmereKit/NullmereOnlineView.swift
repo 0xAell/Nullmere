@@ -153,6 +153,9 @@ public struct NullmereOnlineView: View {
             }
         }
         .animation(.easeInOut(duration: 0.8), value: shell.rebuilt == nil)
+        // The window stays dark in the realm too, where the launcher that
+        // asks for it is gone.
+        .preferredColorScheme(.dark)
         .background(WindowFitter())
         .onAppear { if !shell.inRealm, shell.rebuilt == nil { shell.playTitle() } }
     }
