@@ -82,8 +82,51 @@ extension LiveWorld {
         let marks = marksToday(at: seconds)
         return chests.map { chest in
             let opened = row?.hasOpened(chest.id) ?? false
-            return LiveChestLine(id: chest.id, marks: chest.marks, holds: holdings(chest.goods, chest.hastes), opened: opened, ready: !opened && marks >= chest.marks)
+            var holds = holdings(chest.goods, chest.hastes)
+            if chest.summonses > 0 {
+                let name = wares[LiveWorld.summons]?.name ?? "Summons to the Tavern"
+                let summons = chest.summonses == 1 ? name : "\(name) ×\(chest.summonses)"
+                holds = holds == "nothing" ? summons : "\(holds), \(summons)"
+            }
+            return LiveChestLine(id: chest.id, marks: chest.marks, holds: holds, opened: opened, ready: !opened && marks >= chest.marks)
         }
+    }
+
+    /// The item a summons to the Tavern is, and the free summonses it gives
+    /// each day.
+    public static let summons = 11
+    public static let freeDraws = 1
+    /// The Tavern's number among the buildings.
+    public static let tavern = 16
+
+    /// The summonses the player keeps.
+    public var summonses: UInt64 { satchel[LiveWorld.summons] ?? 0 }
+
+    /// The Tavern's free summonses still to take today.
+    public func freeDraws(at seconds: Double) -> Int { max(LiveWorld.freeDraws - (doneToday(at: seconds)?.drawn ?? 0), 0) }
+
+    /// Why the player can't take a summons to their Tavern now, in the
+    /// realm's words; none if they can.
+    public func drawBlock(at seconds: Double) -> String? {
+        guard city != nil else { return "Join the realm first." }
+        guard (building(LiveWorld.tavern)?.level ?? 0) > 0 else { return "Raise your Tavern to level 1 first." }
+        if freeDraws(at: seconds) == 0 && summonses == 0 {
+            return "The Tavern's free summons is taken for today, and you have no summons to bring it."
+        }
+        return nil
+    }
+
+    /// The sigils a gift asks to rise from a level to the next.
+    public static func giftNeeds(_ level: Int) -> Int { 10 << (min(max(level, 1), 5) - 1) }
+
+    /// Why a commander's gift can't be raised now, in the realm's words;
+    /// none if it can.
+    public func giftBlock(of commander: LiveCommander) -> String? {
+        guard commander.person(in: people) != nil else { return "That commander has no gift of their own." }
+        if commander.gift >= 5 { return "\(commander.name)'s gift is at its last level." }
+        let needs = LiveWorld.giftNeeds(commander.gift)
+        if commander.sigils < needs { return "\(commander.name) needs \(needs - commander.sigils) more sigils to raise their gift." }
+        return nil
     }
 
     /// Goods and hastes in words: "5,000 grain and 5,000 timber, Five minutes' haste ×2".

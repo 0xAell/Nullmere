@@ -68,6 +68,8 @@ public protocol LiveLine: AnyObject, Sendable {
     func offerLink() async throws
     func takeLink(_ code: String) async throws
     func nameDevice(_ name: String) async throws
+    func draw() async throws
+    func raiseGift(commander: UInt64) async throws
     func letGo(device: UInt64) async throws
     func leaveRealm(name: String) async throws
     func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async throws
@@ -639,6 +641,11 @@ public final class LiveSession {
     /// Takes a code another device of a player's shows, as typed: this
     /// device, playing as no one yet, plays as them from now on.
     public func takeLink(_ code: String) async { await ask { try await $0.takeLink(code) } }
+    /// Takes a summons to the Tavern: one of the realm's commanders comes,
+    /// or sigils for one of the player's own.
+    public func draw() async { await ask { try await $0.draw() } }
+    /// Raises a commander's gift a level with the sigils they hold.
+    public func raiseGift(commander: UInt64) async { await ask { try await $0.raiseGift(commander: commander) } }
     /// Names this device among the player's, as its client calls it, once:
     /// when the realm has it called nothing.
     public func nameDevice(_ name: String) async {

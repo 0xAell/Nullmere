@@ -188,9 +188,20 @@ struct LiveCommanders: View {
                     LiveCounselView(counsel: counsel, session: session)
                 }
                 LiveSmall(words: commander.wayWords)
-                // Their gift, for one of the realm's own.
+                // Their gift, for one of the realm's own, and the sigils
+                // toward its next level, with a way to raise it.
                 if let gift = commander.told(in: world.people).gift {
                     LiveSmall(words: gift)
+                    if commander.gift < 5 {
+                        let why = world.giftBlock(of: commander)
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            LiveSmall(words: "Sigils: \(commander.sigils) of the \(LiveWorld.giftNeeds(commander.gift)) its next level asks.", dim: why != nil)
+                            Spacer(minLength: 0)
+                            QuietButton(title: "Raise gift", enabled: why == nil && session.asking == 0, name: "Raise \(commander.name)'s gift", why: why) {
+                                Task { await session.raiseGift(commander: commander.id) }
+                            }
+                        }
+                    }
                 }
                 // What they wear from the Forge, if anything.
                 let worn = world.wornGear(of: commander.id).compactMap { world.patterns[$0.piece]?.name }
@@ -208,6 +219,16 @@ struct LiveCommanders: View {
             QuietButton(title: "Take on", prominent: block == nil, enabled: block == nil && session.asking == 0, name: "Take on another commander",
                         why: block?.words) {
                 Task { await session.hire() }
+            }
+        }
+        // The Tavern's summons: free once a day, or with one kept.
+        let drawBlock = world.drawBlock(at: seconds)
+        let free = world.freeDraws(at: seconds)
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            LiveSmall(words: drawBlock ?? (free > 0 ? "The Tavern's summons is free today." : "A summons of the \(world.summonses) you keep."), dim: drawBlock != nil)
+            Spacer(minLength: 0)
+            QuietButton(title: "Summon", enabled: drawBlock == nil && session.asking == 0, name: "Summon a commander at the Tavern", why: drawBlock) {
+                Task { await session.draw() }
             }
         }
         Rectangle()

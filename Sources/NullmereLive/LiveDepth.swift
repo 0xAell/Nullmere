@@ -37,6 +37,8 @@ public struct LiveChest: Equatable, Sendable, Identifiable {
     public let marks: Int
     public let goods: LiveGoods
     public let hastes: LiveHastes
+    /// How many summonses to the Tavern it holds.
+    public let summonses: UInt64
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
@@ -44,6 +46,7 @@ public struct LiveChest: Equatable, Sendable, Identifiable {
         (self.id, self.marks) = (id, marks)
         goods = LiveGoods(grain: cells.unsigned(2) ?? 0, timber: cells.unsigned(3) ?? 0, stone: cells.unsigned(4) ?? 0, moonsalt: cells.unsigned(5) ?? 0)
         hastes = [cells.unsigned(6) ?? 0, cells.unsigned(7) ?? 0, cells.unsigned(8) ?? 0, cells.unsigned(9) ?? 0]
+        summonses = cells.unsigned(10) ?? 0
     }
 }
 
@@ -137,12 +140,15 @@ public struct LiveDaily: Equatable, Sendable {
     /// So much of each deed, in the order the deeds are numbered.
     public let done: [UInt64]
     public let opened: Int
+    /// How many of the Tavern's free summonses the player has taken.
+    public let drawn: Int
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
         guard let day = cells.unsigned(1), let opened = cells.whole(7) else { return nil }
         (self.day, self.opened) = (day, opened)
         done = (2...6).map { cells.unsigned($0) ?? 0 }
+        drawn = cells.whole(8) ?? 0
     }
 
     /// How much of a deed the player has done today.

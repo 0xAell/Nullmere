@@ -17,6 +17,8 @@ pub fn write_wares(db: &mut impl Db) {
             Ware::MATERIAL
         } else if item.is_tome() {
             Ware::TOME
+        } else if item.is_summons() {
+            Ware::SUMMONS
         } else {
             Ware::HASTE
         };
@@ -69,6 +71,9 @@ pub fn use_item(db: &mut impl Db, player: u64, item: u8, job: u64) -> Result<Job
     }
     if item.is_tome() {
         return Err(Refusal::ForACommander);
+    }
+    if item.is_summons() {
+        return Err(Refusal::AtTheTavern);
     }
     let mut job = Table::<Job>::get(db, job)
         .filter(|row| row.city == city.id && matches!(row.kind, Job::RAISE | Job::STUDY | Job::TRAIN | Job::HEAL))

@@ -658,6 +658,19 @@ pub fn hire(ctx: &ReducerContext) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::hire(&mut Stdb(ctx), player)))
 }
 
+/// Take a summons to the caller's Tavern: today's free one, or one they
+/// keep. Who came, or brought sigils, shows in their commanders.
+#[reducer]
+pub fn draw(ctx: &ReducerContext) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::draw(&mut Stdb(ctx), player)))
+}
+
+/// Raise one of the caller's commanders' gift a level with their sigils.
+#[reducer]
+pub fn raise_gift(ctx: &ReducerContext, commander: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::raise_gift(&mut Stdb(ctx), player, commander)))
+}
+
 /// Call one of the caller's armies home.
 #[reducer]
 pub fn recall(ctx: &ReducerContext, march: u64) -> Result<(), String> {

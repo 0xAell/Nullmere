@@ -27,6 +27,7 @@ pub fn write_days(db: &mut impl Db) {
             hour_hastes: count(Item::Haste60),
             long_hastes: count(Item::Haste480),
             peaces: count(Item::Peace8),
+            summonses: count(Item::Summons),
         });
     }
 }
@@ -43,7 +44,7 @@ pub fn today(db: &impl Db) -> u64 {
 /// earlier day.
 pub fn daily_of(db: &impl Db, player: u64) -> Daily {
     let day = today(db);
-    Table::<Daily>::get(db, player).filter(|row| row.day == day).unwrap_or(Daily { player, day, trained: 0, gathered: 0, cleared: 0, begun: 0, hastened: 0, opened: 0 })
+    Table::<Daily>::get(db, player).filter(|row| row.day == day).unwrap_or(Daily { player, day, trained: 0, gathered: 0, cleared: 0, begun: 0, hastened: 0, opened: 0, drawn: 0 })
 }
 
 /// How much of a deed a day's row counts.

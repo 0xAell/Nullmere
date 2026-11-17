@@ -739,8 +739,9 @@ pub struct Chest {
     pub brief_hastes: u64,
     pub hour_hastes: u64,
     pub long_hastes: u64,
-    /// How many eight hours' peaces.
+    /// How many eight hours' peaces, and summonses to the Tavern.
     pub peaces: u64,
+    pub summonses: u64,
 }
 row!(Chest in chest, by id);
 
@@ -1347,6 +1348,8 @@ impl Ware {
     pub const MATERIAL: u8 = 3;
     /// Read by a commander.
     pub const TOME: u8 = 4;
+    /// Taken to the Tavern.
+    pub const SUMMONS: u8 = 5;
 }
 
 /// How many of an item a player keeps: theirs alone to read. Keyed by
@@ -1386,6 +1389,8 @@ pub struct Daily {
     pub hastened: u64,
     /// Which chests have been opened: a bit for each, the first the lowest.
     pub opened: u8,
+    /// How many of the Tavern's free summonses have been taken today.
+    pub drawn: u8,
 }
 row!(Daily in daily, by player);
 

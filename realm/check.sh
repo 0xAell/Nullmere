@@ -311,6 +311,7 @@ check("a player has none until they open a chest", (rows(ada, "SELECT * FROM my_
 wares = sorted(rows(nobody, "SELECT * FROM ware"), key=lambda ware: ware["item"])
 check("the items are written out for all to read", [(ware["name"], ware["seconds"], ware["kind"]) for ware in wares], [("Five minutes' haste", 300, 1), ("An hour's haste", 3600, 1), ("Eight hours' haste", 28800, 1), ("Eight hours' peace", 28800, 2), ("Iron", 0, 3), ("Leather", 0, 3), ("Bone", 0, 3), ("Silver", 0, 3), ("Tome of war", 0, 4), ("Great tome of war", 0, 4)])
 check("the day's last chest holds a peace", [chest["peaces"] for chest in sorted(chests, key=lambda chest: chest["id"])], [0, 0, 1])
+check("and a summons to the Tavern", ([chest["summonses"] for chest in sorted(chests, key=lambda chest: chest["id"])], [w["name"] for w in rows(nobody, "SELECT * FROM ware") if w["item"] == 11]), ([0, 0, 1], ["Summons to the Tavern"]))
 check("and every chest says what hastes it holds", all(chest["brief_hastes"] + chest["hour_hastes"] + chest["long_hastes"] > 0 for chest in chests), True)
 check("a satchel begins empty, and is its owner's alone to read", (rows(ada, "SELECT * FROM my_satchel"), isinstance(rows(ada, "SELECT * FROM satchel"), str)), ([], True))
 check("a haste a player has not got is refused", call(ada, "use_item", 1, 1), "No such work is under way in your city.")
@@ -388,6 +389,8 @@ check("nor is an army sent against one by an order of its own", call(ada, "send"
 captains = rows(bryn, "SELECT * FROM my_commanders")
 check("a player begins with one commander, in the city", [(c["level"], c["march"], 1 <= c["way"] <= 6, len(c["name"]) >= 3) for c in captains], [(1, 0, True, True)])
 check("another is taken on from a Tavern", call(bryn, "hire"), "Raise your Tavern to level 1 first.")
+check("or summoned to one", call(bryn, "draw"), "Raise your Tavern to level 1 first.")
+check("and a gift is raised with sigils", call(bryn, "raise_gift", captains[0]["id"]) if captains else None, f"{captains[0]['name']} needs 10 more sigils to raise their gift." if captains else None)
 check("no one reads another's commanders", (rows(ada, "SELECT * FROM my_commanders") != captains, isinstance(rows(bryn, "SELECT * FROM commander"), str)), (True, True))
 people = {p["number"]: p for p in rows(nobody, "SELECT * FROM person")}
 check("the realm's commanders are written out for all to read, and the first is one of them",

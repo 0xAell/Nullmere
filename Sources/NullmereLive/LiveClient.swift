@@ -382,6 +382,12 @@ public final class LiveClient: @unchecked Sendable {
     /// client, which plays as no one yet, plays as them from now on.
     public func takeLink(_ code: String) async throws { try await ask("take_link", [.string(code)]) }
 
+    /// Takes a summons to the Tavern: today's free one, or one kept.
+    public func draw() async throws { try await ask("draw", []) }
+
+    /// Raises one of the player's commanders' gift a level with their sigils.
+    public func raiseGift(commander: UInt64) async throws { try await ask("raise_gift", [.integer(commander)]) }
+
     /// Names the device this client runs on, as the player's devices show
     /// it ("Mac", "iPhone").
     public func nameDevice(_ name: String) async throws { try await ask("name_device", [.string(name)]) }

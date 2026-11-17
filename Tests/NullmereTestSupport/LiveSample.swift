@@ -190,6 +190,8 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func offerLink() async throws { try take("offer a link") }
     public func takeLink(_ code: String) async throws { try take("take link \(code)") }
     public func nameDevice(_ name: String) async throws { try take("name this device \(name)") }
+    public func draw() async throws { try take("summon at the Tavern") }
+    public func raiseGift(commander: UInt64) async throws { try take("raise the gift of \(commander)") }
     public func letGo(device: UInt64) async throws { try take("let go device \(device)") }
     public func leaveRealm(name: String) async throws { try take("leave the realm as \(name)") }
     public func sendEnvoy(to alliance: UInt64, terms: Int, days: Int) async throws { try take("envoy to \(alliance): \(terms) for \(days) days") }

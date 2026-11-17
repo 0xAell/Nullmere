@@ -34,6 +34,7 @@ mod rally;
 mod siege;
 mod spire;
 mod study;
+mod tavern;
 mod titles;
 mod tasks;
 mod trials;
@@ -68,6 +69,7 @@ pub use rally::*;
 pub use siege::*;
 pub use spire::*;
 pub use study::*;
+pub use tavern::*;
 pub use titles::*;
 pub use tasks::*;
 pub use trials::*;
@@ -138,6 +140,16 @@ pub enum Refusal {
     NoSuchWare,
     NotATome,
     ForACommander,
+    /// A summons is taken to the Tavern.
+    AtTheTavern,
+    /// No free summons is left today and none is kept.
+    NoSummons,
+    /// A commander of no renown has no gift to raise.
+    NoGift,
+    /// A gift at its last level.
+    GiftAtTop(String),
+    /// So many more sigils a gift asks.
+    TooFewSigils(String, u32),
     /// The commander, at the top of what may be seen.
     SeenAll(String),
     /// How much honour the player has.
@@ -399,6 +411,8 @@ impl fmt::Display for Refusal {
             Refusal::TooManyReports(most) => return write!(f, "You have {most} reports waiting already. Wait for the realm's owner to read them."),
             Refusal::Barred(left) => return write!(f, "You may not speak for another {}.", crate::catalog::spoken(*left)),
             Refusal::BarTooLong(hours) => return write!(f, "A player is barred for {hours} hours at most."),
+            Refusal::GiftAtTop(name) => return write!(f, "{name}'s gift is at its last level."),
+            Refusal::TooFewSigils(name, more) => return write!(f, "{name} needs {more} more sigils to raise their gift."),
             Refusal::ShortOfMaterials(words) => return write!(f, "You need {words} more."),
             Refusal::HeldPrisoner(name) => return write!(f, "{name} is held prisoner."),
             Refusal::SeenAll(name) => return write!(f, "{name} has seen all there is to see of war."),
@@ -431,6 +445,9 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchWare => "The alliance's stores sell no such thing.",
             Refusal::NotATome => "That is not a tome.",
             Refusal::ForACommander => "A tome is read by one of your commanders.",
+            Refusal::AtTheTavern => "A summons is taken to your Tavern.",
+            Refusal::NoSummons => "The Tavern's free summons is taken for today, and you have no summons to bring it.",
+            Refusal::NoGift => "That commander has no gift of their own.",
             Refusal::NoSuchOrder => "The realm knows no such order.",
             Refusal::NothingThere => "There is nothing to gather there.",
             Refusal::SiteTaken => "Another army is gathering there.",

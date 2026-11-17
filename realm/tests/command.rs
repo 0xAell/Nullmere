@@ -4,7 +4,7 @@
 use realm::catalog::{self, Building as Kind, Gift, Goods, Item, Leading, Renown, Troops, Way};
 use realm::hex::Hex;
 use realm::land;
-use realm::rows::{Barrow, Building, City, Commander, Haul, March, Person, Report, Site, Stock, Troop};
+use realm::rows::{Barrow, Building, City, Commander, Haul, March, Person, Report, Satchel, Site, Stock, Troop};
 use realm::rules::{self, Asked, Refusal};
 use realm::store::{Mem, Seconds, Table};
 
@@ -390,4 +390,92 @@ fn the_realms_commanders_are_written_out_for_clients() {
     assert_eq!(lines.len(), 5, "a line for each of the gift's levels");
     assert_eq!(lines[0], "12 in a hundred of their army's dead are carried home wounded after all.");
     assert_eq!(lines[4], "28 in a hundred of their army's dead are carried home wounded after all.");
+}
+
+/// A player with a Tavern of a level, and nothing else changed.
+fn with_tavern(level: u32) -> (Mem, u64, City) {
+    let (mut db, player, city, _) = led(10);
+    db.insert(Building { id: 0, city: city.id, kind: Kind::Tavern as u8, level });
+    (db, player, city)
+}
+
+/// Gives a player so many summonses.
+fn summonses(db: &mut Mem, player: u64, count: u64) {
+    db.insert(Satchel { id: Satchel::key(player, Item::Summons as u8), player, item: Item::Summons as u8, count });
+}
+
+#[test]
+fn the_tavern_summons_once_a_day_free_and_then_with_summonses() {
+    let (mut db, player, _) = with_tavern(5);
+    let before = rules::commanders_of(&db, player).len();
+    let drawn = db.call(|db| rules::draw(db, player)).unwrap();
+    // A first commander of the realm's own came with the player, and
+    // three may be had at a Tavern of the fifth level: one new comes, or
+    // one they have is drawn again.
+    let after = rules::commanders_of(&db, player);
+    assert!(catalog::person_of(drawn.commander.person).is_some(), "one of the realm's");
+    assert_eq!(after.len(), before + drawn.new as usize);
+    // The free summons is taken for today; with none kept, refused.
+    assert_eq!(db.call(|db| rules::draw(db, player)), Err(Refusal::NoSummons));
+    assert_eq!(Refusal::NoSummons.to_string(), "The Tavern's free summons is taken for today, and you have no summons to bring it.");
+    summonses(&mut db, player, 2);
+    db.call(|db| rules::draw(db, player)).unwrap();
+    assert_eq!(rules::held(&db, player, Item::Summons), 1, "one taken");
+    // A summons is not used on a work, and a new day brings a free one.
+    assert_eq!(db.call(|db| rules::use_item(db, player, Item::Summons as u8, 1)), Err(Refusal::AtTheTavern));
+    until(&mut db, START + 86_400 + 60);
+    db.call(|db| rules::draw(db, player)).unwrap();
+    assert_eq!(rules::held(&db, player, Item::Summons), 1, "the day's free one, the kept one kept");
+    // The day's last chest holds one.
+    assert!(catalog::chest_items(3).contains(&(Item::Summons, 1)));
+    // No Tavern, no summons.
+    let (mut none, player, _, _) = led(10);
+    assert_eq!(none.call(|db| rules::draw(db, player)), Err(Refusal::NeedsOther(Kind::Tavern, 1)));
+}
+
+#[test]
+fn one_drawn_again_brings_sigils_and_sigils_raise_a_gift() {
+    // A Tavern with room for no one more: every draw is among the player's
+    // own, and brings sigils.
+    let (mut db, player, _) = with_tavern(1);
+    let first = rules::commanders_of(&db, player)[0].clone();
+    let other = if first.person == 1 { 2 } else { 1 };
+    let name = catalog::person_of(other).unwrap().name.to_string();
+    db.insert(Commander { id: 0, owner: player, name, way: catalog::person_of(other).unwrap().way as u8, level: 1, seen: 0, march: 0, person: other, gift: 1, sigils: 0 });
+    let theirs = rules::commanders_of(&db, player);
+    assert_eq!(theirs.len() as u32, catalog::commanders(1));
+    summonses(&mut db, player, 30);
+    for _ in 0..30 {
+        let drawn = db.call(|db| rules::draw(db, player)).unwrap();
+        assert!(!drawn.new);
+    }
+    let first = Table::<Commander>::get(&db, theirs[0].id).unwrap();
+    let total: u32 = rules::commanders_of(&db, player).iter().map(|commander| commander.sigils).sum();
+    assert_eq!(total, 30 * catalog::SIGILS_A_DRAW, "the day's free summons and twenty-nine kept, ten sigils each");
+    assert_eq!(rules::held(&db, player, Item::Summons), 1);
+    // Ten, twenty, forty, eighty: a hundred and fifty raise a gift to the fifth.
+    assert_eq!((1..5).map(catalog::gift_needs).collect::<Vec<_>>(), vec![10, 20, 40, 80]);
+    let mut row = first.clone();
+    row.sigils = 145;
+    db.update(row);
+    for level in 2..=4 {
+        assert_eq!(db.call(|db| rules::raise_gift(db, player, first.id)).unwrap().gift, level);
+    }
+    let short = db.call(|db| rules::raise_gift(db, player, first.id));
+    assert_eq!(short, Err(Refusal::TooFewSigils(first.name.clone(), 5)));
+    assert_eq!(short.unwrap_err().to_string(), format!("{} needs 5 more sigils to raise their gift.", first.name));
+    let mut row = Table::<Commander>::get(&db, first.id).unwrap();
+    row.sigils += 5;
+    db.update(row);
+    assert_eq!(db.call(|db| rules::raise_gift(db, player, first.id)).unwrap().gift, 5);
+    assert_eq!(db.call(|db| rules::raise_gift(db, player, first.id)), Err(Refusal::GiftAtTop(first.name.clone())));
+    // Its gift at the fifth level, in what they lead with.
+    let raised = Table::<Commander>::get(&db, first.id).unwrap();
+    let person = catalog::person_of(raised.person).unwrap();
+    assert_eq!(rules::commanding(&db, &raised), rules::way_of(&raised).plus(person.gift.leading(5)));
+    // One of no renown has no gift, and another's commander is not theirs.
+    let plain = make(&mut db, &raised, Way::Vanguard, 1);
+    assert_eq!(db.call(|db| rules::raise_gift(db, player, plain.id)), Err(Refusal::NoGift));
+    let bryn = db.call(|db| rules::join(db, "Bryn")).unwrap().id;
+    assert_eq!(db.call(|db| rules::raise_gift(db, bryn, raised.id)).map(|_| ()).unwrap_err(), Refusal::NoSuchCommander);
 }

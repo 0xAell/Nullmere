@@ -841,6 +841,37 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertFalse(empty.asked.contains { $0.hasPrefix("name this device") })
     }
 
+    /// The Tavern from the palette: a summons taken while today's is free,
+    /// and a gift raised once its sigils are held.
+    func testTheTavernSummonsAndAGiftIsRaisedFromThePalette() async throws {
+        var rows = LiveWindowTests.rows()
+        let summon = LiveCommand(title: "Summon a commander at the Tavern, free today", act: .draw)
+        let none = self.session(StandInLine(rows: rows))
+        await none.open()
+        XCTAssertFalse(none.commands(at: 2_015).contains(summon), "no Tavern, no summons")
+        rows["my_buildings"]?.append([n(24), n(7), n(16), n(1)])
+        rows["person"] = [[n(3), .string("Corran Ash"), n(1), n(1), n(2), .string("Mercy"), .string("")]]
+        rows["my_commanders"] = [[n(11), n(1), .string("Corran Ash"), n(1), n(1), n(0), n(0), n(3), n(1), n(12)]]
+        let line = StandInLine(rows: rows)
+        let session = self.session(line)
+        await session.open()
+        let commands = session.commands(at: 2_015)
+        XCTAssertTrue(commands.contains(summon))
+        let raise = LiveCommand(title: "Raise Corran Ash's gift to level 2", act: .raiseGift(11))
+        XCTAssertTrue(commands.contains(raise))
+        line.clear()
+        await session.perform(summon)
+        await session.perform(raise)
+        XCTAssertEqual(line.asked, ["summon at the Tavern", "raise the gift of 11"])
+        // Today's taken, one kept: the summons is with it.
+        line.change {
+            $0["my_daily"] = [[self.n(1), self.n(0), self.n(0), self.n(0), self.n(0), self.n(0), self.n(0), self.n(0), self.n(1)]]
+            $0["my_satchel"] = [[self.n(1 << 8 | 11), self.n(1), self.n(11), self.n(1)]]
+        }
+        session.refresh()
+        XCTAssertTrue(session.commands(at: 2_015).contains(LiveCommand(title: "Summon a commander at the Tavern, with a summons, of 1", act: .draw)))
+    }
+
     func testRalliesGatesAndWardstonesAreCalledFromTheirCards() async throws {
         var rows = LiveWindowTests.rows()
         rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]

@@ -72,8 +72,8 @@ pub fn enlist(db: &mut impl Db, player: u64) -> Commander {
                 break;
             }
         }
-        let (number, person) = chosen[(db.chance() % chosen.len() as u64) as usize];
-        return db.insert(Commander { id: 0, owner: player, name: person.name.to_string(), way: person.way as u8, level: 1, seen: 0, march: 0, person: number, gift: 1, sigils: 0 });
+        let (number, _) = chosen[(db.chance() % chosen.len() as u64) as usize];
+        return welcome(db, player, number);
     }
     let free: Vec<Way> = Way::ALL.into_iter().filter(|way| !have.iter().any(|commander| commander.way == *way as u8)).collect();
     let ways = if free.is_empty() { Way::ALL.to_vec() } else { free };
@@ -87,6 +87,13 @@ pub fn enlist(db: &mut impl Db, player: u64) -> Commander {
         }
     }
     db.insert(Commander { id: 0, owner: player, name, way: way as u8, level: 1, seen: 0, march: 0, person: 0, gift: 0, sigils: 0 })
+}
+
+/// One of the realm's commanders comes to a player, at the first level,
+/// their gift at its first.
+pub(super) fn welcome(db: &mut impl Db, player: u64, number: u8) -> Commander {
+    let (name, way) = catalog::person_of(number).map(|person| (person.name.to_string(), person.way as u8)).unwrap_or_default();
+    db.insert(Commander { id: 0, owner: player, name, way, level: 1, seen: 0, march: 0, person: number, gift: 1, sigils: 0 })
 }
 
 /// A player takes on another commander: as many as their Tavern's level

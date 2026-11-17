@@ -57,9 +57,12 @@ final class LiveGameTests: XCTestCase {
         }
         rows["my_lore"] = [[n(7 << 8 | 1), n(7), n(1), n(2)]]
         rows["my_buildings"]?.append([n(30), n(7), n(14), n(3)])
+        // A Tavern, its free summons not yet taken today.
+        rows["my_buildings"]?.append([n(31), n(7), n(16), n(1)])
         // Corwen, one of the realm's own, a famed vanguard with the gift of
-        // Bulwark at its second level; Halen, one of no renown.
-        rows["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(1), n(2), n(100), n(0), n(2), n(2), n(4)], [n(12), n(1), .string("Halen"), n(3), n(4), n(0), n(3)]]
+        // Bulwark at its second level and the sigils to raise it to the
+        // third; Halen, one of no renown.
+        rows["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(1), n(2), n(100), n(0), n(2), n(2), n(24)], [n(12), n(1), .string("Halen"), n(3), n(4), n(0), n(3)]]
         rows["person"] = [[n(2), .string("Corwen"), n(1), n(2), n(6), .string("Bulwark"),
                            .string((1...5).map { "Their army is \(4 + 2 * $0) hundredths harder to bring down." }.joined(separator: "\n"))]]
         rows["task"] = [[n(1), n(1), n(2), n(0), .string("Raise your Keep to level 2."), n(1_000), n(1_000), n(0), n(0)],

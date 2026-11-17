@@ -450,6 +450,55 @@ final class LiveBookTests: XCTestCase {
         XCTAssertTrue(alliance.contains("pub const ALLIANCE_NAME_SHORTEST: usize = 3;") && alliance.contains("pub const ALLIANCE_NAME_LONGEST: usize = 20;"))
     }
 
+    /// The Tavern: its summons free once a day, then with one kept; a chest
+    /// that holds one says so; and a gift raised once its sigils are held.
+    func testTheTavernSummonsAndGiftsAreReckoned() throws {
+        // A realm opened at 1,000 at its first pace: 90,000 is day 1.
+        let city = [n(9), n(1), n(Double(LiveHex(q: 3, r: 3).packed)), .string("Ada"), n(5), n(0), n(1_000), n(1)]
+        var snapshot: [String: [[JSONValue]]] = [
+            "realm": [[n(0), n(42), n(1_000), n(1), n(1_000), n(0), n(48)]],
+            "me": [[n(1), n(9), .string("Ada"), n(1_000), .bool(true), n(1_000)]],
+            "my_city": [city],
+            "chest": [[n(3), n(100), n(0), n(0), n(0), n(0), n(0), n(2), n(1), n(1), n(1)], [n(4), n(120), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(2)]],
+            "ware": [[n(2), .string("An hour's haste"), .string(""), n(3_600)], [n(3), .string("Eight hours' haste"), .string(""), n(28_800)],
+                     [n(4), .string("Eight hours' peace"), .string(""), n(28_800)], [n(11), .string("Summons to the Tavern"), .string(""), n(0)]],
+            "person": [[n(3), .string("Corran Ash"), n(1), n(1), n(2), .string("Mercy"), .string("12\n16\n20\n24\n28")]],
+            "my_commanders": [[n(11), n(1), .string("Corran Ash"), n(1), n(1), n(0), n(0), n(3), n(2), n(25)],
+                              [n(12), n(1), .string("Halen"), n(3), n(1), n(0), n(0)],
+                              [n(13), n(1), .string("Corran Ash"), n(1), n(1), n(0), n(0), n(3), n(5), n(400)]],
+        ]
+        var world = LiveWorld(snapshot: snapshot)
+        let chests = world.chestLines(at: 90_000)
+        XCTAssertEqual(chests[0].holds, "An hour's haste ×2, Eight hours' haste, Eight hours' peace, Summons to the Tavern")
+        XCTAssertEqual(chests[1].holds, "Summons to the Tavern ×2", "a summons alone, and two")
+        XCTAssertEqual(world.drawBlock(at: 90_000), "Raise your Tavern to level 1 first.")
+        XCTAssertEqual(LiveWorld(snapshot: [:]).drawBlock(at: 90_000), "Join the realm first.")
+        snapshot["my_buildings"] = [[n(90), n(9), n(16), n(1)]]
+        world = LiveWorld(snapshot: snapshot)
+        XCTAssertEqual(world.freeDraws(at: 90_000), 1)
+        XCTAssertNil(world.drawBlock(at: 90_000), "free today")
+        snapshot["my_daily"] = [[n(1), n(1), n(0), n(0), n(0), n(0), n(0), n(0), n(1)]]
+        world = LiveWorld(snapshot: snapshot)
+        XCTAssertEqual(world.freeDraws(at: 90_000), 0)
+        XCTAssertEqual(world.freeDraws(at: 200_000), 1, "a new day, a free summons")
+        XCTAssertEqual(world.drawBlock(at: 90_000), "The Tavern's free summons is taken for today, and you have no summons to bring it.")
+        snapshot["my_satchel"] = [[n(1 << 8 | 11), n(1), n(11), n(2)]]
+        world = LiveWorld(snapshot: snapshot)
+        XCTAssertEqual(world.summonses, 2)
+        XCTAssertNil(world.drawBlock(at: 90_000), "with a summons kept")
+
+        // Gifts: ten sigils, then twice as many each level, to the fifth.
+        XCTAssertEqual((1...4).map(LiveWorld.giftNeeds), [10, 20, 40, 80])
+        let theirs = world.commanders.sorted { $0.id < $1.id }
+        XCTAssertNil(world.giftBlock(of: theirs[0]), "twenty-five sigils, twenty asked at the second level")
+        XCTAssertEqual(world.giftBlock(of: theirs[1]), "That commander has no gift of their own.")
+        XCTAssertEqual(world.giftBlock(of: theirs[2]), "Corran Ash's gift is at its last level.")
+        snapshot["my_commanders"]?[0][9] = n(19)
+        let short = LiveWorld(snapshot: snapshot)
+        let corran = try XCTUnwrap(short.commanders.first { $0.id == 11 })
+        XCTAssertEqual(short.giftBlock(of: corran), "Corran Ash needs 1 more sigils to raise their gift.")
+    }
+
     func testTheDaysWorkTalentsLearningAndRalliesAreListed() throws {
         // A realm opened at 1,000 at its first pace: the day it is at 90,000 is day 1.
         var snapshot: [String: [[JSONValue]]] = [

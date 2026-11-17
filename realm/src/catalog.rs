@@ -1065,11 +1065,25 @@ pub enum Item {
     /// Read by a commander: so much more seen of war (`Item::seen`).
     Tome = 9,
     GreatTome = 10,
+    /// Taken to the Tavern: one of the realm's commanders, or sigils for
+    /// one of the player's own.
+    Summons = 11,
 }
 
 impl Item {
-    pub const ALL: [Item; 10] =
-        [Item::Haste5, Item::Haste60, Item::Haste480, Item::Peace8, Item::Iron, Item::Leather, Item::Bone, Item::Silver, Item::Tome, Item::GreatTome];
+    pub const ALL: [Item; 11] = [
+        Item::Haste5,
+        Item::Haste60,
+        Item::Haste480,
+        Item::Peace8,
+        Item::Iron,
+        Item::Leather,
+        Item::Bone,
+        Item::Silver,
+        Item::Tome,
+        Item::GreatTome,
+        Item::Summons,
+    ];
 
     /// The materials, in the order a piece's cost names them.
     pub const MATERIALS: [Item; 4] = [Item::Iron, Item::Leather, Item::Bone, Item::Silver];
@@ -1085,7 +1099,7 @@ impl Item {
             Item::Haste5 => 300,
             Item::Haste60 => 3_600,
             Item::Haste480 | Item::Peace8 => 28_800,
-            Item::Iron | Item::Leather | Item::Bone | Item::Silver | Item::Tome | Item::GreatTome => 0,
+            Item::Iron | Item::Leather | Item::Bone | Item::Silver | Item::Tome | Item::GreatTome | Item::Summons => 0,
         }
     }
 
@@ -1097,6 +1111,11 @@ impl Item {
     /// Whether it keeps the city at peace, rather than hastening a work.
     pub fn is_peace(self) -> bool {
         self == Item::Peace8
+    }
+
+    /// Whether it is taken to the Tavern, rather than used.
+    pub fn is_summons(self) -> bool {
+        self == Item::Summons
     }
 
     /// Whether a commander reads it, rather than it hastening a work.
@@ -1125,6 +1144,7 @@ impl Item {
             Item::Silver => "Silver",
             Item::Tome => "Tome of war",
             Item::GreatTome => "Great tome of war",
+            Item::Summons => "Summons to the Tavern",
         }
     }
 
@@ -1139,6 +1159,9 @@ impl Item {
         if self.is_tome() {
             return format!("Read by one of your commanders: {} more seen of war, toward their next level.", grouped(self.seen()));
         }
+        if self.is_summons() {
+            return format!("Taken to your Tavern: one of the realm's commanders comes, or {SIGILS_A_DRAW} sigils for one of yours, toward their gift's next level.");
+        }
         format!("Takes {} off a work under way in your city.", spoken(self.seconds()))
     }
 }
@@ -1148,7 +1171,7 @@ pub fn chest_items(chest: u8) -> Vec<(Item, u64)> {
     match chest {
         1 => vec![(Item::Haste5, 2)],
         2 => vec![(Item::Haste5, 3), (Item::Haste60, 1)],
-        3 => vec![(Item::Haste60, 2), (Item::Haste480, 1), (Item::Peace8, 1)],
+        3 => vec![(Item::Haste60, 2), (Item::Haste480, 1), (Item::Peace8, 1), (Item::Summons, 1)],
         _ => Vec::new(),
     }
 }
@@ -1674,6 +1697,19 @@ pub enum Gift {
 
 /// The highest level a gift rises to.
 pub const TOP_GIFT: u32 = 5;
+
+/// The sigils a commander drawn again at the Tavern brings to the one a
+/// player has.
+pub const SIGILS_A_DRAW: u32 = 10;
+
+/// How many free summonses the Tavern gives each day of the realm.
+pub const FREE_DRAWS: u8 = 1;
+
+/// The sigils a gift asks to rise from a level to the next: ten, then
+/// twice as many each level.
+pub fn gift_needs(level: u32) -> u32 {
+    10 << (level.clamp(1, TOP_GIFT) - 1)
+}
 
 impl Gift {
     pub const ALL: [Gift; 6] = [Gift::Quick, Gift::Mercy, Gift::Bane, Gift::Swift, Gift::Hoard, Gift::Bulwark];

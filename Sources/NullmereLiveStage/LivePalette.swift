@@ -32,6 +32,10 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case useHaste(item: Int, job: UInt64)
         /// Let go another of the player's devices, by its number.
         case letGo(UInt64)
+        /// Take a summons to the Tavern.
+        case draw
+        /// Raise a commander's gift a level.
+        case raiseGift(UInt64)
     }
 
     public let title: String
@@ -60,7 +64,8 @@ extension LiveSession {
     /// be opened, the soldiers each training building may raise a tier,
     /// each piece the Forge may make, each thing the alliance's stores
     /// sell that the player's honour buys, another commander to take
-    /// on and each contest's prize reached, now; the player's devices to
+    /// on, a summons to take to the Tavern and each gift its commander's
+    /// sigils raise, and each contest's prize reached, now; the player's devices to
     /// see, and each other one to let go; and the nearest barrow the
     /// player may attack, the nearest cairn their scouts have not found,
     /// and the nearest site of each good no one works, to go to.
@@ -131,6 +136,13 @@ extension LiveSession {
         }
         if world.city != nil, world.hireBlock(at: seconds) == nil {
             all.append(LiveCommand(title: "Take on another commander", act: .hire))
+        }
+        if world.drawBlock(at: seconds) == nil {
+            let how = world.freeDraws(at: seconds) > 0 ? "free today" : "with a summons, of \(world.summonses)"
+            all.append(LiveCommand(title: "Summon a commander at the Tavern, \(how)", act: .draw))
+        }
+        for commander in world.commanders where world.giftBlock(of: commander) == nil {
+            all.append(LiveCommand(title: "Raise \(commander.name)'s gift to level \(commander.gift + 1)", act: .raiseGift(commander.id)))
         }
         for prize in world.prizes {
             let tally = world.tallies.filter { $0.trial == prize.trial }.max { $0.round < $1.round }
@@ -208,6 +220,8 @@ extension LiveSession {
         case .claimPrize(let contest, let place): await claimPrize(contest: contest, place: place)
         case .claimPlace(let contest): await claimPlace(contest: contest)
         case .offerLink: await offerLink()
+        case .draw: await draw()
+        case .raiseGift(let commander): await raiseGift(commander: commander)
         case .letGo(let number):
             if let device = world.devices.first(where: { $0.number == number }) { await letGo(device) }
         case .promote(let building, let from, let to, let count): await promote(building: building, from: from, to: to, count: count)
