@@ -169,6 +169,27 @@ final class StageTests: XCTestCase {
         XCTAssertEqual(stage.furnish(occupied: [], holds: [seat.position]), round, "and bare to its reach without it")
     }
 
+    /// A hold's lanes are drawn whole: each length's ends carried out with
+    /// the hold and set on the land where it is drawn, a little above it,
+    /// so the land drawn between its corners covers no joint; each as much
+    /// wider as the hold is drawn larger.
+    func testAHoldsLanesLieOnTheLandWhereItIsDrawn() throws {
+        let stage = stage()
+        let relief = Relief(map: Self.state.map)
+        let hold = try XCTUnwrap(Self.state.holds.first { $0.isSeat })
+        var frame = SceneFrame()
+        let batches = stage.holds([HoldSight(hold: hold, colour: Vec4(0.8, 0.1, 0.1, 1))], time: 3, into: &frame).batches
+        let lanes = batches.filter { $0.key == .town(.lane) }.flatMap(\.instances)
+        XCTAssertGreaterThan(lanes.count, 10, "a seat's lanes")
+        for length in lanes {
+            for end in [Vec3(-0.5, 0, 0), Vec3(0.5, 0, 0)].map({ length.model.transformPoint($0) }) {
+                XCTAssertEqual(end.y, relief.height(atX: end.x, z: end.z) + WorldStage.laneLift, accuracy: 1e-3, "each end on the land, a little above")
+            }
+            let across = length.model.transformPoint(Vec3(0, 0, 1)) - length.model.transformPoint(.zero)
+            XCTAssertEqual(across.length, HoldLayout.grandeur, accuracy: 1e-3, "as much wider as the hold is drawn larger")
+        }
+    }
+
     /// A forge at work throws its firelight on its yard when the eye is
     /// near, flickering; far off, none.
     func testAForgeAtWorkLightsItsYard() throws {

@@ -968,12 +968,40 @@ public final class WorldStage: @unchecked Sendable {
     /// middle and made as much larger, set down on the land where it now
     /// stands.
     func grand(_ piece: Piece, about middle: (x: Float, z: Float)) -> Piece {
+        if piece.key == .town(.lane) { return grandLane(piece, about: middle) }
         let at = piece.position
         let out = WorldStage.grand(at, about: middle)
         let rise = relief.height(atX: out.x, z: out.z) - relief.height(atX: at.x, z: at.z)
         var grand = piece
         grand.transform = .translation(Vec3(out.x, at.y + rise, out.z)) * .scale(HoldLayout.grandeur) * .translation(Vec3(-at.x, -at.y, -at.z))
             * piece.transform
+        return grand
+    }
+
+    /// How far above the land a length of lane or road is laid at its ends:
+    /// the land is drawn between corners a third of a unit apart, and in a
+    /// hollow stands above its own height there by more than a lane's
+    /// crown, so a length laid on the land's own height sank into it at its
+    /// joints and a lane was drawn in dashes (CI run 1204's play view).
+    public static let laneLift: Float = 0.015
+
+    /// A length of a hold's lane as the hold is drawn: its two ends carried
+    /// out from the hold's middle, each set on the land where it now lies,
+    /// the length laid straight between them, as much wider as the hold is
+    /// made larger. Carried out whole, a length laid along the land of the
+    /// plan stood off the land where the hold is drawn.
+    func grandLane(_ piece: Piece, about middle: (x: Float, z: Float)) -> Piece {
+        let run = Vec3(piece.transform.c0.x, piece.transform.c0.y, piece.transform.c0.z)
+        let at = piece.position
+        var from = WorldStage.grand(at - run * 0.5, about: middle), to = WorldStage.grand(at + run * 0.5, about: middle)
+        from.y = relief.height(atX: from.x, z: from.z) + WorldStage.laneLift
+        to.y = relief.height(atX: to.x, z: to.z) + WorldStage.laneLift
+        let flat = Vec3(to.x - from.x, 0, to.z - from.z).length
+        let heading = Float(atan2(Double(-(to.z - from.z)), Double(to.x - from.x)))
+        let pitch = Float(atan2(Double(to.y - from.y), Double(flat)))
+        var grand = piece
+        grand.transform = .translation((from + to) * 0.5) * .rotationY(heading) * .rotationZ(pitch)
+            * .scale(Vec3((to - from).length, HoldLayout.grandeur, HoldLayout.grandeur))
         return grand
     }
 
@@ -1692,8 +1720,8 @@ public final class WorldStage: @unchecked Sendable {
                 let count = max(Int((flat.length / WorldStage.roadStep).rounded(.up)), 1)
                 for part in 0..<count {
                     var from = a + flat * (Float(part) / Float(count)), to = a + flat * (Float(part + 1) / Float(count))
-                    from.y = ground(atX: from.x, z: from.z)
-                    to.y = ground(atX: to.x, z: to.z)
+                    from.y = ground(atX: from.x, z: from.z) + WorldStage.laneLift
+                    to.y = ground(atX: to.x, z: to.z) + WorldStage.laneLift
                     let run = Vec3(to.x - from.x, 0, to.z - from.z).length
                     let mid = (from + to) * 0.5
                     let heading = Float(atan2(Double(-(to.z - from.z)), Double(to.x - from.x)))
