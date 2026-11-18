@@ -71,7 +71,7 @@ public struct LiveGrace: Equatable, Sendable, Identifiable {
 /// what it is called, and how long it takes off or keeps.
 public struct LiveWare: Equatable, Sendable, Identifiable {
     /// Its kinds, as the module numbers them.
-    public static let haste = 1, peace = 2, material = 3, tome = 4, summons = 5, crate = 6
+    public static let haste = 1, peace = 2, material = 3, tome = 4, summons = 5, crate = 6, draught = 7
 
     public let item: Int
     public let name: String
@@ -91,6 +91,8 @@ public struct LiveWare: Equatable, Sendable, Identifiable {
     public var isSummons: Bool { kind == LiveWare.summons }
     /// Whether it is a crate of goods, opened into the city.
     public var isCrate: Bool { kind == LiveWare.crate }
+    /// Whether it is drunk, lending the city a study's levels for a while.
+    public var isDraught: Bool { kind == LiveWare.draught }
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
@@ -484,6 +486,18 @@ public struct LiveGate: Equatable, Sendable, Identifiable {
         guard let id = cells.unsigned(0), let hex = cells.unsigned(1), let holder = cells.unsigned(2), let holderName = cells.text(3),
               let takenAt = cells.whole(4), let fighter = cells.unsigned(5) else { return nil }
         (self.id, self.hex, self.holder, self.holderName, self.takenAt, self.fighter) = (id, LiveHex(packed: hex), holder, holderName, takenAt, fighter)
+    }
+}
+
+/// A draught the player has drunk, and till when what it lends lasts.
+public struct LiveDraught: Equatable, Sendable {
+    public let item: Int
+    public let ends: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let item = cells.whole(2), let ends = cells.whole(3) else { return nil }
+        (self.item, self.ends) = (item, ends)
     }
 }
 

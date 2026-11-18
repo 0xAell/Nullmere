@@ -103,6 +103,7 @@ public enum LiveSchema {
         "my_records": .init(columns: ["key", "player", "deed", "done", "claimed"], key: "key"),
         "deal": .init(columns: ["id", "item", "count", "grain", "timber", "stone", "moonsalt", "slot"], key: "id"),
         "my_bought": .init(columns: ["key", "player", "deal", "day"], key: "key"),
+        "my_draughts": .init(columns: ["key", "player", "item", "ends"], key: "key"),
         "pattern": .init(columns: ["piece", "name", "slot", "grade", "words", "iron", "leather", "bone", "silver", "grain", "timber", "stone", "moonsalt",
                                    "forge_level"], key: "piece"),
         "my_gear": .init(columns: ["id", "owner", "piece", "commander"], key: "id"),
@@ -125,7 +126,7 @@ public enum LiveSchema {
         "my_daily": "daily", "my_favour": "favour", "my_satchel": "satchel",
         "my_tallies": "tally", "my_rallies": "rally", "my_musters": "muster", "my_pleas": "plea", "my_helps": "helper", "my_gift": "gift",
         "my_skills": "skill", "my_bonds": "bond", "my_keeper": "keeper", "my_envoys": "envoy", "my_prisoners": "prisoner", "my_petitions": "petition",
-        "my_letters": "letter", "my_shunned": "shun", "my_marks": "mark", "my_claims": "claim", "my_welcome": "welcome", "my_road": "road", "my_tilt": "tilt", "my_records": "record", "my_bought": "bought", "my_gear": "gear", "my_boons": "boon", "my_finds": "find", "my_honour": "honour",
+        "my_letters": "letter", "my_shunned": "shun", "my_marks": "mark", "my_claims": "claim", "my_welcome": "welcome", "my_road": "road", "my_tilt": "tilt", "my_records": "record", "my_bought": "bought", "my_draughts": "draught", "my_gear": "gear", "my_boons": "boon", "my_finds": "find", "my_honour": "honour",
         "my_link": "link",
     ]
 

@@ -32,6 +32,8 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case useHaste(item: Int, job: UInt64)
         /// Open so many of a crate of goods into the city.
         case openCrates(item: Int, count: UInt64)
+        /// Drink a draught held.
+        case drink(Int)
         /// Let go another of the player's devices, by its number.
         case letGo(UInt64)
         /// Take a summons to the Tavern.
@@ -130,6 +132,12 @@ extension LiveSession {
             let count = min(crate.count, LiveWorld.mostOpened)
             let name = crate.ware.name.lowercased()
             all.append(LiveCommand(title: count == 1 ? "Open a \(name)" : "Open \(name) ×\(count)", act: .openCrates(item: crate.ware.item, count: count)))
+        }
+        // Each draught held, drunk; one still lasting, drunk for longer.
+        for draught in world.heldItems where draught.ware.isDraught {
+            let name = draught.ware.name.lowercased()
+            let lasting = (world.draughts[draught.ware.item] ?? 0) > Int(seconds)
+            all.append(LiveCommand(title: lasting ? "Drink another \(name), for longer" : "Drink a \(name)", act: .drink(draught.ware.item)))
         }
         // Each work under way: hastened by a quarter for goods, or by a haste held.
         let hastes = world.heldItems.filter { $0.ware.isHaste }
@@ -338,6 +346,7 @@ extension LiveSession {
         case .speedUp(let job): await speedUp(job: job)
         case .useHaste(let item, let job): await useItem(item, on: job)
         case .openCrates(let item, let count): await openCrates(item, count: count)
+        case .drink(let item): await drink(item)
         case .setMark(let hex, let words): await setMark(at: hex, words)
         case .clearMark(let mark): await clearMark(mark)
         case .claimMilestone(let milestone): await claimMilestone(milestone)

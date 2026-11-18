@@ -161,6 +161,12 @@ pub enum Refusal {
     NotACrate,
     /// A crate is opened into the city, not used on a work.
     ToBeOpened,
+    /// A draught is drunk, not used on a work.
+    ToBeDrunk,
+    NotADraught,
+    /// A draught's kind lasts so many seconds more already: another would
+    /// carry it past three days.
+    DraughtLasting(i64),
     ForACommander,
     /// A summons is taken to the Tavern.
     AtTheTavern,
@@ -476,6 +482,9 @@ impl fmt::Display for Refusal {
             Refusal::PetitionTooLarge(most) => return write!(f, "A petition asks {} of each good at most.", crate::catalog::grouped(*most)),
             Refusal::NoSuchTerms(most) => return write!(f, "A pact is a truce or passage, for a day to {most} days."),
             Refusal::GatesShut(left) => return write!(f, "The gates of the ridge may be stormed in {}.", crate::catalog::spoken(*left)),
+            Refusal::DraughtLasting(left) => {
+                return write!(f, "That draught lasts another {} already; another would carry it past three days.", crate::catalog::spoken(*left));
+            }
             Refusal::ShrinesShut(left) => return write!(f, "The holy sites may be stormed in {}.", crate::catalog::spoken(*left)),
             Refusal::ShrineGuarded(left) => return write!(f, "That holy site was taken lately. It may be stormed again in {}.", crate::catalog::spoken(*left)),
             Refusal::NothingMoreToLearn(topic) => return write!(f, "You have learnt all there is of {}.", topic.name()),
@@ -532,6 +541,8 @@ impl fmt::Display for Refusal {
             Refusal::NotATome => "That is not a tome.",
             Refusal::NotACrate => "That is not a crate of goods.",
             Refusal::ToBeOpened => "A crate is opened into your city; it hastens no work.",
+            Refusal::ToBeDrunk => "A draught is drunk; it hastens no work.",
+            Refusal::NotADraught => "That is not a draught.",
             Refusal::ForACommander => "A tome is read by one of your commanders.",
             Refusal::AtTheTavern => "A summons is taken to your Tavern.",
             Refusal::NoSummons => "The Tavern's free summons is taken for today, and you have no summons to bring it.",

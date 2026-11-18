@@ -127,6 +127,7 @@ final class LiveClientTests: XCTestCase {
         try await client.claimPlace(contest: 1)
         try await client.buy(item: 1, count: 1)
         try await client.usePeace(4)
+        try await client.drink(16)
         try await client.openCrates(12, count: 3)
         try await client.sendGoods(to: hex, LiveGoods(grain: 1_000))
         try await client.openChest(1)
@@ -140,7 +141,7 @@ final class LiveClientTests: XCTestCase {
         let reducers = try Self.reducers()
         XCTAssertGreaterThan(reducers.count, 60, "the module's reducers are read")
         let requests = server.requests
-        XCTAssertEqual(requests.count, 88)
+        XCTAssertEqual(requests.count, 89)
         var asked: Set<String> = []
         for request in requests {
             let reducer = request.url.lastPathComponent

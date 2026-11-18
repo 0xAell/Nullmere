@@ -144,6 +144,8 @@ public struct LiveWorld: Equatable, Sendable {
     /// last took each, by deal.
     public var deals: [LiveDeal] = []
     public var bought: [UInt64: UInt64] = [:]
+    /// The draughts the player has drunk, by their item, and till when each lasts.
+    public var draughts: [Int: Int] = [:]
     /// What the Forge makes, by piece; and the player's gear.
     public var patterns: [Int: LivePattern] = [:]
     public var gear: [LiveGear] = []
@@ -272,6 +274,7 @@ public struct LiveWorld: Equatable, Sendable {
             guard let deal = cells.unsigned(2), let day = cells.unsigned(3) else { return nil }
             return (deal, day)
         }, uniquingKeysWith: { _, new in new })
+        draughts = Dictionary(rows("my_draughts", LiveDraught.init).map { ($0.item, $0.ends) }, uniquingKeysWith: { _, new in new })
         patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
         gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
         boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }
@@ -679,6 +682,15 @@ public struct LiveWorld: Equatable, Sendable {
     public var heldTomes: [(ware: LiveWare, count: UInt64)] { heldItems.filter { $0.ware.isTome } }
 
     /// The items the player holds, each with what it is.
+    /// The draughts drunk that still last at a moment, each with how long
+    /// is left of it, the soonest over first.
+    public func lasting(at seconds: Int) -> [(ware: LiveWare, left: Int)] {
+        draughts.compactMap { item, ends -> (ware: LiveWare, left: Int)? in
+            guard ends > seconds, let ware = wares[item] else { return nil }
+            return (ware: ware, left: ends - seconds)
+        }.sorted { $0.left != $1.left ? $0.left < $1.left : $0.ware.item < $1.ware.item }
+    }
+
     public var heldItems: [(ware: LiveWare, count: UInt64)] {
         var held: [(ware: LiveWare, count: UInt64)] = []
         for item in satchel.keys.sorted() {

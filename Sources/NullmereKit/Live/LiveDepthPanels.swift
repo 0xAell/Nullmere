@@ -98,6 +98,10 @@ struct LiveDayPanel: View {
                     // Opened into the city, as many as may be at once.
                     let count = min(world.satchel[ware.item] ?? 0, LiveWorld.mostOpened)
                     QuietButton(title: count > 1 ? "Open \(count)" : "Open", enabled: session.asking == 0, name: "Open \(ware.name)", why: nil) { Task { await session.openCrates(ware.item, count: count) } }
+                } else if ware.isDraught {
+                    // A draught is drunk; one still lasting, for longer.
+                    let lasting = (world.draughts[ware.item] ?? 0) > Int(seconds)
+                    QuietButton(title: lasting ? "Drink another" : "Drink", enabled: session.asking == 0, name: "Drink \(ware.name)", why: nil) { Task { await session.drink(ware.item) } }
                 } else if ware.isPeace {
                     // A peace is kept on the city itself, with no work to hasten.
                     QuietButton(title: "Use", enabled: session.asking == 0, name: "Use \(ware.name)", why: nil) { Task { await session.usePeace(ware.item) } }
@@ -105,6 +109,11 @@ struct LiveDayPanel: View {
                     QuietButton(title: "Use", enabled: work != nil && session.asking == 0, name: "Use \(ware.name)", why: work == nil ? "No work is under way in your city." : nil) { Task { await session.useItem(ware.item, on: work?.id ?? 0) } }
                 }
             }
+        }
+
+        // The draughts drunk that still last, and for how long.
+        ForEach(world.lasting(at: Int(seconds)), id: \.ware.item) { draught in
+            LiveSmall(words: "\(draught.ware.name): \(LiveWords.spoken(draught.left)) left.", dim: true)
         }
 
         // The day's welcome: claimed once a day, more each day in a row, to the seventh.

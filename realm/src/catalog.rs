@@ -1151,10 +1151,16 @@ pub enum Item {
     TimberCrate = 13,
     StoneCrate = 14,
     MoonsaltCrate = 15,
+    /// Drunk: so many levels of a study lent the city for so long
+    /// (`Item::lends`, `Item::seconds`).
+    GatherDraught = 16,
+    DrillDraught = 17,
+    WarDraught = 18,
+    WardDraught = 19,
 }
 
 impl Item {
-    pub const ALL: [Item; 15] = [
+    pub const ALL: [Item; 19] = [
         Item::Haste5,
         Item::Haste60,
         Item::Haste480,
@@ -1170,10 +1176,17 @@ impl Item {
         Item::TimberCrate,
         Item::StoneCrate,
         Item::MoonsaltCrate,
+        Item::GatherDraught,
+        Item::DrillDraught,
+        Item::WarDraught,
+        Item::WardDraught,
     ];
 
     /// The materials, in the order a piece's cost names them.
     pub const MATERIALS: [Item; 4] = [Item::Iron, Item::Leather, Item::Bone, Item::Silver];
+
+    /// The draughts, drunk for a while's levels of a study.
+    pub const DRAUGHTS: [Item; 4] = [Item::GatherDraught, Item::DrillDraught, Item::WarDraught, Item::WardDraught];
 
     /// The crates of goods, in the order of the goods.
     pub const CRATES: [Item; 4] = [Item::GrainCrate, Item::TimberCrate, Item::StoneCrate, Item::MoonsaltCrate];
@@ -1188,7 +1201,8 @@ impl Item {
         match self {
             Item::Haste5 => 300,
             Item::Haste60 => 3_600,
-            Item::Haste480 | Item::Peace8 => 28_800,
+            Item::Haste480 | Item::Peace8 | Item::GatherDraught | Item::DrillDraught => 28_800,
+            Item::WarDraught | Item::WardDraught => 7_200,
             _ => 0,
         }
     }
@@ -1218,6 +1232,23 @@ impl Item {
     /// Whether it keeps the city at peace, rather than hastening a work.
     pub fn is_peace(self) -> bool {
         self == Item::Peace8
+    }
+
+    /// Whether it is drunk, lending the city a study's levels for a while.
+    pub fn is_draught(self) -> bool {
+        Item::DRAUGHTS.contains(&self)
+    }
+
+    /// The studies a draught lends the city of the one who drinks it, and
+    /// as many levels of each, while it lasts. Nothing for anything else.
+    pub fn lends(self) -> &'static [(Topic, u32)] {
+        match self {
+            Item::GatherDraught => &[(Topic::Gathering, 5)],
+            Item::DrillDraught => &[(Topic::Drill, 10)],
+            Item::WarDraught => &[(Topic::Spearcraft, 4), (Topic::Archery, 4), (Topic::Horsemanship, 4), (Topic::Siegecraft, 4)],
+            Item::WardDraught => &[(Topic::Shields, 4)],
+            _ => &[],
+        }
     }
 
     /// Whether it is taken to the Tavern, rather than used.
@@ -1256,6 +1287,10 @@ impl Item {
             Item::TimberCrate => "Crate of timber",
             Item::StoneCrate => "Crate of stone",
             Item::MoonsaltCrate => "Crate of moonsalt",
+            Item::GatherDraught => "Gatherer's draught",
+            Item::DrillDraught => "Drillmaster's draught",
+            Item::WarDraught => "Draught of war",
+            Item::WardDraught => "Draught of warding",
         }
     }
 
@@ -1272,6 +1307,17 @@ impl Item {
         }
         if self.is_crate() {
             return format!("Holds {}. Kept in your satchel no army can carry it off; opened, it goes into your city.", self.goods());
+        }
+        if self.is_draught() {
+            let (topic, levels) = self.lends()[0];
+            let share = topic.each() * levels as u64;
+            let does = match self {
+                Item::GatherDraught => format!("your armies gather {share}% faster"),
+                Item::DrillDraught => format!("your soldiers are trained {share}% sooner"),
+                Item::WarDraught => format!("your soldiers strike {share}% harder"),
+                _ => format!("your soldiers are {share}% harder to bring down"),
+            };
+            return format!("Drunk, {does} for {}. Another drunk while it lasts adds its time.", spoken(self.seconds()));
         }
         if self.is_summons() {
             return format!("Taken to your Tavern: one of the realm's commanders comes, or {SIGILS_A_DRAW} sigils for one of yours, toward their gift's next level.");
@@ -2366,13 +2412,13 @@ pub fn pedlar_deals() -> [(u64, Item, u64, Goods, u64); 12] {
         (1, Item::Haste5, 6, Goods::of(4_000, 4_000, 0, 0), 0),
         (2, Item::Tome, 2, Goods::of(6_000, 0, 6_000, 0), 0),
         (3, Item::Iron, 3, Goods::of(0, 8_000, 8_000, 0), 0),
-        (4, Item::GrainCrate, 2, Goods::of(0, 14_000, 7_000, 0), 0),
+        (4, Item::GatherDraught, 1, Goods::of(10_000, 10_000, 5_000, 0), 0),
         (5, Item::Haste60, 1, Goods::of(12_000, 12_000, 6_000, 0), 1),
         (6, Item::Leather, 3, Goods::of(8_000, 8_000, 0, 0), 1),
-        (7, Item::TimberCrate, 2, Goods::of(14_000, 0, 7_000, 0), 1),
+        (7, Item::DrillDraught, 1, Goods::of(10_000, 10_000, 5_000, 0), 1),
         (8, Item::GreatTome, 1, Goods::of(30_000, 30_000, 30_000, 0), 1),
         (9, Item::Bone, 3, Goods::of(8_000, 0, 8_000, 0), 2),
-        (10, Item::StoneCrate, 2, Goods::of(9_000, 9_000, 0, 0), 2),
+        (10, Item::WarDraught, 1, Goods::of(15_000, 15_000, 15_000, 0), 2),
         (11, Item::Silver, 2, Goods::of(10_000, 10_000, 10_000, 500), 2),
         (12, Item::Peace8, 1, Goods::of(40_000, 40_000, 40_000, 0), 2),
     ]

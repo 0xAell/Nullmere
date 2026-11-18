@@ -306,6 +306,7 @@ public final class LiveClient: @unchecked Sendable {
 
     /// Uses one of the player's items of peace on their city.
     public func usePeace(_ item: Int) async throws { try await ask("use_peace", [.integer(UInt64(item))]) }
+    public func drink(_ item: Int) async throws { try await ask("drink", [.integer(UInt64(item))]) }
 
     /// Sends a load of goods by cart to the city of an ally at a hex.
     public func sendGoods(to hex: LiveHex, _ goods: LiveGoods) async throws {

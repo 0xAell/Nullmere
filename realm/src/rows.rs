@@ -873,6 +873,27 @@ pub struct Gate {
 }
 row!(Gate in gate, by id);
 
+/// A draught a player has drunk, and till when what it lends their city
+/// lasts. Keyed by the two (`Draught::key`). Its drinker's alone to read,
+/// through `my_draughts`.
+#[spacetimedb::table(accessor = draught)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Draught {
+    #[primary_key]
+    pub key: u64,
+    #[index(btree)]
+    pub player: u64,
+    pub item: u8,
+    pub ends: Seconds,
+}
+row!(Draught in draught, by key, player);
+
+impl Draught {
+    pub fn key(player: u64, item: crate::catalog::Item) -> u64 {
+        player << 8 | item as u64
+    }
+}
+
 /// A holy site (`catalog::Holy`): where it stands, its kind, whose it
 /// is (the Unquiet's, 0, until an alliance takes it, and the alliance's
 /// name then), since when, and the march of the rally at it, if one is.
@@ -1677,6 +1698,8 @@ impl Ware {
     pub const SUMMONS: u8 = 5;
     /// Opened into the city: so much of a good.
     pub const CRATE: u8 = 6;
+    /// Drunk: a study's levels lent the city for a while.
+    pub const DRAUGHT: u8 = 7;
 }
 
 /// How many of an item a player keeps: theirs alone to read. Keyed by
@@ -1990,6 +2013,7 @@ pub trait Db:
     + Table<Learning>
     + Table<Gate>
     + Table<Shrine>
+    + Table<Draught>
     + Table<Envoy>
     + Table<Pact>
     + Table<Prisoner>
@@ -2083,6 +2107,7 @@ impl<
             + Table<Learning>
             + Table<Gate>
     + Table<Shrine>
+    + Table<Draught>
             + Table<Envoy>
             + Table<Pact>
             + Table<Prisoner>

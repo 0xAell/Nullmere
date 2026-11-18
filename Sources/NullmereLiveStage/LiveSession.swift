@@ -62,6 +62,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func buy(item: Int, count: UInt64) async throws
     func readTome(commander: UInt64, item: Int, count: UInt64) async throws
     func usePeace(_ item: Int) async throws
+    func drink(_ item: Int) async throws
     func openCrates(_ item: Int, count: UInt64) async throws
     func sendGoods(to hex: LiveHex, _ goods: LiveGoods) async throws
     func openChest(_ chest: Int) async throws
@@ -670,6 +671,7 @@ public final class LiveSession {
     public func speedUp(job: UInt64) async { await ask { try await $0.speedUp(job: job) } }
     public func useItem(_ item: Int, on job: UInt64) async { await ask { try await $0.useItem(item, on: job) } }
     public func usePeace(_ item: Int) async { await ask { try await $0.usePeace(item) } }
+    public func drink(_ item: Int) async { await ask { try await $0.drink(item) } }
     public func openCrates(_ item: Int, count: UInt64) async { await ask { try await $0.openCrates(item, count: count) } }
     public func forge(piece: Int) async { await ask { try await $0.forge(piece: piece) } }
     public func equip(gear: UInt64, on commander: UInt64) async { await ask { try await $0.equip(gear: gear, on: commander) } }

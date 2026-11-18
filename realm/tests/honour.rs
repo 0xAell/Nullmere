@@ -79,7 +79,7 @@ fn honour_is_earned_giving_toward_the_alliance_s_learning_and_spent_in_its_store
     let (mut db, [ada, bryn, cole]) = alliance();
     // The stores' prices, written out for clients.
     let prices: Vec<(u64, u64)> = { let mut all: Vec<_> = Table::<Price>::all(&db).iter().map(|row| (row.item, row.honour)).collect(); all.sort(); all };
-    assert_eq!(prices, vec![(1, 100), (2, 1_000), (3, 6_000), (4, 5_000), (9, 250), (10, 2_000), (12, 200), (13, 200), (14, 200), (15, 1_000)]);
+    assert_eq!(prices, vec![(1, 100), (2, 1_000), (3, 6_000), (4, 5_000), (9, 250), (10, 2_000), (12, 200), (13, 200), (14, 200), (15, 1_000), (16, 1_500), (17, 1_500), (18, 2_500), (19, 2_500)]);
     assert_eq!(rules::price_of(Item::Iron), None, "materials are not sold");
 
     // Ada gives 30,000 goods toward the alliance's first topic: thirty honour.

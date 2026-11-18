@@ -1364,6 +1364,34 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(line.asked.last, "let in 2")
     }
 
+    /// Draughts held are drunk from the palette, one still lasting for
+    /// longer; those drunk say how long each lasts.
+    func testADraughtIsDrunkFromThePaletteAndSaysHowLongItLasts() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["ware"] = [[n(16), .string("Gatherer's draught"), .string("Drunk, your armies gather 50% faster for 8 hours."), n(28_800), n(LiveWare.draught)],
+                        [n(18), .string("Draught of war"), .string("Drunk, your soldiers strike 12% harder for 2 hours."), n(7_200), n(LiveWare.draught)],
+                        [n(1), .string("Five minutes' haste"), .string("Takes 5 minutes off a work under way in your city."), n(300), n(LiveWare.haste)]]
+        rows["my_satchel"] = [[n(1 << 8 | 16), n(1), n(16), n(2)], [n(1 << 8 | 18), n(1), n(18), n(1)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        XCTAssertEqual(session.world.wares[16]?.isDraught, true)
+        XCTAssertEqual(session.world.wares[1]?.isDraught, false)
+        let drinks = session.commands(at: 2_015).filter { if case .drink = $0.act { return true } else { return false } }
+        XCTAssertEqual(drinks.map(\.title), ["Drink a gatherer's draught", "Drink a draught of war"])
+        await session.perform(drinks[0])
+        XCTAssertEqual(line.asked.last, "drink 16")
+
+        // Drunk: it lasts, the soonest over first, and another is drunk for longer.
+        line.change { $0["my_draughts"] = [[self.n(1 << 8 | 16), self.n(1), self.n(16), self.n(30_815)], [self.n(1 << 8 | 18), self.n(1), self.n(18), self.n(9_215)]] }
+        session.refresh()
+        XCTAssertEqual(session.world.draughts, [16: 30_815, 18: 9_215])
+        XCTAssertEqual(session.world.lasting(at: 2_015).map(\.ware.item), [18, 16])
+        XCTAssertEqual(session.world.lasting(at: 2_015).map(\.left), [7_200, 28_800])
+        XCTAssertEqual(session.world.lasting(at: 9_215).map(\.ware.item), [16], "the draught of war is over")
+        XCTAssertTrue(session.commands(at: 2_015).contains { $0.title == "Drink another gatherer's draught, for longer" })
+    }
+
     /// The holy sites: one kept by the Unquiet, shut to rallies until
     /// three days into the season and stormed by one after; one Ada's
     /// alliance holds, saying what it gives; one another alliance took

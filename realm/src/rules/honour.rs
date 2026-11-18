@@ -26,7 +26,7 @@ pub const MOST_BOUGHT: u64 = 100;
 pub const HONOUR_A_RALLY_LEVEL: u64 = 10;
 
 /// What the stores sell, and for how much honour each.
-pub const PRICES: [(Item, u64); 10] = [
+pub const PRICES: [(Item, u64); 14] = [
     (Item::Haste5, 100),
     (Item::Haste60, 1_000),
     (Item::Haste480, 6_000),
@@ -37,6 +37,10 @@ pub const PRICES: [(Item, u64); 10] = [
     (Item::TimberCrate, 200),
     (Item::StoneCrate, 200),
     (Item::MoonsaltCrate, 1_000),
+    (Item::GatherDraught, 1_500),
+    (Item::DrillDraught, 1_500),
+    (Item::WarDraught, 2_500),
+    (Item::WardDraught, 2_500),
 ];
 
 /// Writes the stores' prices out as rows, for clients to show, as the

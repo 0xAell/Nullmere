@@ -79,7 +79,11 @@ fn the_items_are_written_out_and_the_chests_say_what_they_hold() {
             (12, 0, Ware::CRATE),
             (13, 0, Ware::CRATE),
             (14, 0, Ware::CRATE),
-            (15, 0, Ware::CRATE)
+            (15, 0, Ware::CRATE),
+            (16, 28_800, Ware::DRAUGHT),
+            (17, 28_800, Ware::DRAUGHT),
+            (18, 7_200, Ware::DRAUGHT),
+            (19, 7_200, Ware::DRAUGHT)
         ]
     );
     assert_eq!(wares[11].name, "Crate of grain");
@@ -239,4 +243,69 @@ fn a_crate_opened_puts_what_it_holds_in_the_city_though_it_overfill_it() {
     assert_eq!((refusal.clone(), refusal.to_string()), (Refusal::ToBeOpened, "A crate is opened into your city; it hastens no work.".to_string()));
     assert_eq!(rules::held(&db, player, Item::GrainCrate), 1);
     assert_eq!(rules::held(&db, player, Item::Haste5), 1);
+}
+
+#[test]
+fn a_draught_drunk_lends_its_study_for_its_hours_and_another_adds_its_time() {
+    let mut db = realm();
+    let (ada, city) = joined("Ada", &mut db);
+    let (bryn, theirs) = joined("Bryn", &mut db);
+    hand(&mut db, ada, Item::GatherDraught, 2);
+    hand(&mut db, ada, Item::WarDraught, 1);
+    let before = rules::boost(&db, city.id, Topic::Gathering);
+    assert_eq!(Item::GatherDraught.words(), "Drunk, your armies gather 50% faster for 8 hours. Another drunk while it lasts adds its time.");
+    assert_eq!(Item::WarDraught.words(), "Drunk, your soldiers strike 12% harder for 2 hours. Another drunk while it lasts adds its time.");
+    assert_eq!(Item::WardDraught.words(), "Drunk, your soldiers are 12% harder to bring down for 2 hours. Another drunk while it lasts adds its time.");
+    assert_eq!(Item::DrillDraught.words(), "Drunk, your soldiers are trained 30% sooner for 8 hours. Another drunk while it lasts adds its time.");
+    assert_eq!(Table::<Ware>::get(&db, Item::GatherDraught as u64).map(|ware| ware.kind), Some(Ware::DRAUGHT));
+
+    // Drunk: half as fast again at gathering, for eight hours; one spent.
+    let drunk = db.call(|db| rules::drink(db, ada, Item::GatherDraught as u8)).unwrap();
+    assert_eq!(drunk.ends, db.clock + 28_800);
+    assert_eq!(rules::held(&db, ada, Item::GatherDraught), 1);
+    assert_eq!(rules::boost(&db, city.id, Topic::Gathering), before + 50);
+    assert_eq!(rules::boost(&db, theirs.id, Topic::Gathering), before, "Bryn drank nothing");
+    // Another drunk while it lasts adds its eight hours to what is left.
+    wait(&mut db, 3_600);
+    let again = db.call(|db| rules::drink(db, ada, Item::GatherDraught as u8)).unwrap();
+    assert_eq!(again.ends, drunk.ends + 28_800);
+    assert_eq!(rules::boost(&db, city.id, Topic::Gathering), before + 50, "two of a kind at once lend as one, for longer");
+    // A draught of war lends every kind its strike, for two hours.
+    let war = db.call(|db| rules::drink(db, ada, Item::WarDraught as u8)).unwrap();
+    for topic in [Topic::Spearcraft, Topic::Archery, Topic::Horsemanship, Topic::Siegecraft] {
+        assert_eq!(rules::drunk(&db, city.id, topic), 4);
+    }
+    // Over, it lends no more.
+    let at = db.clock;
+    wait(&mut db, war.ends - at);
+    assert_eq!(rules::drunk(&db, city.id, Topic::Spearcraft), 0);
+    assert_eq!(rules::drunk(&db, city.id, Topic::Gathering), 5);
+    let at = db.clock;
+    wait(&mut db, again.ends - at);
+    assert_eq!(rules::boost(&db, city.id, Topic::Gathering), before);
+
+    // Refused: none left, not a draught, used on a work, or past three days drunk on and on.
+    assert_eq!(db.call(|db| rules::drink(db, ada, Item::GatherDraught as u8)), Err(Refusal::NoneLeft));
+    assert_eq!(db.call(|db| rules::drink(db, ada, Item::Haste5 as u8)), Err(Refusal::NotADraught));
+    assert_eq!(db.call(|db| rules::drink(db, ada, 99)), Err(Refusal::NoSuchItem));
+    hand(&mut db, bryn, Item::DrillDraught, 20);
+    let farm = raise(&mut db, theirs.id, Kind::Farm, 1);
+    let job = db.call(|db| rules::upgrade(db, bryn, farm.id)).unwrap();
+    assert_eq!(db.call(|db| rules::use_item(db, bryn, Item::DrillDraught as u8, job.id)), Err(Refusal::ToBeDrunk));
+    for _ in 0..9 {
+        db.call(|db| rules::drink(db, bryn, Item::DrillDraught as u8)).unwrap();
+    }
+    assert_eq!(db.call(|db| rules::drink(db, bryn, Item::DrillDraught as u8)), Err(Refusal::DraughtLasting(9 * 28_800)));
+    assert_eq!(rules::held(&db, bryn, Item::DrillDraught), 11, "the refused one is kept");
+    assert_eq!(Refusal::DraughtLasting(72_000).to_string(), "That draught lasts another 20 hours already; another would carry it past three days.");
+}
+
+#[test]
+fn in_a_faster_realm_a_draught_lasts_as_much_less() {
+    let mut db = Mem::new(START, 5);
+    rules::open(&mut db, 7, 60, 48);
+    let (ada, _) = joined("Ada", &mut db);
+    hand(&mut db, ada, Item::WardDraught, 1);
+    let drunk = db.call(|db| rules::drink(db, ada, Item::WardDraught as u8)).unwrap();
+    assert_eq!(drunk.ends, db.clock + 120);
 }

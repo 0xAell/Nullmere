@@ -6,7 +6,7 @@
 
 use super::{asking, city_of, did, goods, realm, set_goods, settle, Refusal, TIMER_JOB};
 use crate::catalog::{self, Deed, Goods, Item};
-use crate::rows::{City, Db, Job, March, Muster, Rally, Satchel, Ware};
+use crate::rows::{City, Db, Draught, Job, March, Muster, Rally, Satchel, Ware};
 use crate::store::Table;
 
 /// Writes the items out as rows, for clients to show, as the realm opens.
@@ -22,6 +22,8 @@ pub fn write_wares(db: &mut impl Db) {
             Ware::SUMMONS
         } else if item.is_crate() {
             Ware::CRATE
+        } else if item.is_draught() {
+            Ware::DRAUGHT
         } else {
             Ware::HASTE
         };
@@ -80,6 +82,9 @@ pub fn use_item(db: &mut impl Db, player: u64, item: u8, job: u64) -> Result<Job
     }
     if item.is_crate() {
         return Err(Refusal::ToBeOpened);
+    }
+    if item.is_draught() {
+        return Err(Refusal::ToBeDrunk);
     }
     let mut job = Table::<Job>::get(db, job)
         .filter(|row| row.city == city.id && matches!(row.kind, Job::RAISE | Job::STUDY | Job::TRAIN | Job::HEAL))
@@ -171,4 +176,61 @@ pub fn keep_peace(db: &mut impl Db, player: u64, item: u8) -> Result<City, Refus
     city.shield = until;
     db.update(city.clone());
     Ok(city)
+}
+
+/// The longest a draught's kind may last from now, drunk on and on: three
+/// days, at the realm's pace.
+pub const DRAUGHT_LONGEST: i64 = 3 * catalog::DAY;
+
+/// A player drinks one of a draught they keep: what it lends their city
+/// lasts so long from now, at the realm's pace, or so much longer than
+/// one of its kind drunk before would, but never longer than three days
+/// from now.
+pub fn drink(db: &mut impl Db, player: u64, item: u8) -> Result<Draught, Refusal> {
+    asking(db, player)?;
+    city_of(db, player)?;
+    let item = Item::of(item).ok_or(Refusal::NoSuchItem)?;
+    if item.is_material() {
+        return Err(Refusal::AtTheForge);
+    }
+    if !item.is_draught() {
+        return Err(Refusal::NotADraught);
+    }
+    let have = held(db, player, item);
+    if have == 0 {
+        return Err(Refusal::NoneLeft);
+    }
+    let now = db.now();
+    let pace = realm(db)?.pace;
+    let key = Draught::key(player, item);
+    let kept = Table::<Draught>::get(db, key);
+    let from = kept.as_ref().map(|row| row.ends).unwrap_or(now).max(now);
+    let ends = from + catalog::paced(item.seconds(), pace).max(1);
+    let longest = catalog::paced(DRAUGHT_LONGEST, pace);
+    if ends - now > longest {
+        return Err(Refusal::DraughtLasting(from - now));
+    }
+    keep(db, player, item, have - 1);
+    let row = Draught { key, player, item: item as u8, ends };
+    if kept.is_some() {
+        db.update(row.clone());
+    } else {
+        db.insert(row.clone());
+    }
+    Ok(row)
+}
+
+/// The levels of a study the draughts a city's owner has drunk lend it,
+/// while they last.
+pub fn drunk(db: &impl Db, city: u64, topic: catalog::Topic) -> u32 {
+    let Some(owner) = Table::<City>::get(db, city).map(|city| city.owner) else { return 0 };
+    let now = db.now();
+    Table::<Draught>::by(db, 0, owner)
+        .into_iter()
+        .filter(|draught| draught.ends > now)
+        .filter_map(|draught| Item::of(draught.item))
+        .flat_map(|item| item.lends().iter())
+        .filter(|(lent, _)| *lent == topic)
+        .map(|(_, levels)| levels)
+        .sum()
 }
