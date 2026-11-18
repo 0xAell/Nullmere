@@ -280,8 +280,10 @@ public struct LiveWindow: Sendable {
             let clip: Clip = moving ? .march : (march.state == LiveMarch.fighting ? .attack : .idle)
             let own = world.me?.id == march.owner
             let (kind, tier) = LiveWindow.figure(of: march, squads: own ? world.squads : [])
+            // Carts carry no army: a carter and their handcart go with them.
+            let key: ModelKey = march.kind == LiveMarch.carts ? .folk(variant: Folk.timberCarter) : .figure(kind, tier: tier)
             let ground = max(relief.height(atX: place.x, z: place.z), Relief.waterline)
-            return CompanyPose(unit: Int(march.id), key: .figure(kind, tier: tier), sigil: LiveWindow.sigil(of: march.owner), health: 100,
+            return CompanyPose(unit: Int(march.id), key: key, sigil: LiveWindow.sigil(of: march.owner), health: 100,
                                hex: hex, position: Vec3(place.x, ground, place.z), heading: heading, clip: clip,
                                clipTime: Float(seconds.truncatingRemainder(dividingBy: 3_600)), isOwn: own)
         }

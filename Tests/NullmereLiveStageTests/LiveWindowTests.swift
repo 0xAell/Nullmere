@@ -215,6 +215,21 @@ final class LiveWindowTests: XCTestCase {
     /// furniture: written out for the browser preview where a folder is
     /// named, from the rows above or, where a realm is named, from it.
     @MainActor
+    /// Carts of goods go on the road as a carter with a handcart, never as
+    /// a company of soldiers, and march like any army.
+    func testCartsGoAsACarterWithAHandcart() throws {
+        var rows = LiveWindowTests.rows()
+        // Ada's army on its way to the grove, made a load of carts.
+        rows["march"] = rows["march"]?.map { row in row[0] == .number(3) ? Array(row[0..<3]) + [.number(9)] + Array(row[4...]) : row }
+        let world = LiveWorld(snapshot: rows)
+        let window = LiveWindow(world: world, centre: LiveHex(q: 10, r: -4), radius: 12)
+        let companies = window.companies(in: world, relief: Relief(map: window.map), at: 2_015)
+        let carts = try XCTUnwrap(companies.first { $0.unit == 3 })
+        XCTAssertEqual(carts.key, .folk(variant: Folk.timberCarter))
+        XCTAssertEqual(carts.clip, .march)
+        XCTAssertEqual(companies.first { $0.unit == 4 }?.key, .figure(.spear, tier: 1), "an army is drawn as soldiers still")
+    }
+
     func testAnAlliancesLandIsTintedInItsColour() {
         var rows = LiveWindowTests.rows()
         // A wardstone of the fifth alliance two hexes east of Ada's city, standing since 1,500; another raised but not yet standing.
