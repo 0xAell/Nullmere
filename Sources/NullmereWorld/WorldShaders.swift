@@ -422,12 +422,27 @@ public enum WorldShaders {
         return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), float3(0.0), float3(1.0));
     }
 
+    // The day's grade, as a painted picture holds its colours: a little
+    // fuller, the lit a touch warmer and the shade a touch cooler; `day`
+    // of it, none at night.
+    float3 nm_grade(float3 c, float day) {
+        float luma = dot(c, float3(0.2126, 0.7152, 0.0722));
+        float3 fuller = max(mix(float3(luma), c, 1.12), float3(0.0));
+        float3 toned = fuller * mix(float3(0.97, 0.99, 1.04), float3(1.03, 1.0, 0.96), smoothstep(0.12, 0.65, luma));
+        return mix(c, toned, day);
+    }
+
     // A colour as the picture holds it: lifted as the keeper chooses, set
     // down by as much of the filmic curve as the hour asks (none at night,
-    // whose colours are kept as they are), and encoded.
+    // whose colours are kept as they are), graded as much, and encoded.
     float3 nm_output(float3 c NM_FRAME_ARGUMENT) {
         float3 lifted = nm_expose(c, frame.haze.z);
-        return nm_encode(mix(lifted, nm_filmic(lifted), frame.groundLight.a));
+        float day = frame.groundLight.a;
+    #ifndef NM_NO_GRADE
+        return nm_encode(nm_grade(mix(lifted, nm_filmic(lifted), day), day));
+    #else
+        return nm_encode(mix(lifted, nm_filmic(lifted), day));
+    #endif
     }
 
     // The fractional axial coordinates of a map point.
