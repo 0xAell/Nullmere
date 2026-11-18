@@ -128,7 +128,7 @@ final class LiveClientTests: XCTestCase {
         let reducers = try Self.reducers()
         XCTAssertGreaterThan(reducers.count, 60, "the module's reducers are read")
         let requests = server.requests
-        XCTAssertEqual(requests.count, 74)
+        XCTAssertEqual(requests.count, 76)
         var asked: Set<String> = []
         for request in requests {
             let reducer = request.url.lastPathComponent
