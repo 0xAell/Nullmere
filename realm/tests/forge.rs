@@ -98,7 +98,7 @@ fn a_commander_wears_one_piece_in_each_place_and_leads_the_better_for_it() {
     for item in Item::MATERIALS {
         rules::give(&mut db, ada, item, 100);
     }
-    let mut make = |db: &mut Mem, piece: Piece| {
+    let make = |db: &mut Mem, piece: Piece| {
         wait(db, 1);
         db.call(|db| rules::forge(db, ada, piece as u8)).unwrap()
     };
