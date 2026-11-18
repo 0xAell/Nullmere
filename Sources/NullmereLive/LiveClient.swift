@@ -388,6 +388,9 @@ public final class LiveClient: @unchecked Sendable {
     /// Claims the next tier of merit of a deed.
     public func claimMerit(_ deed: Int) async throws { try await ask("claim_merit", [.integer(UInt64(deed))]) }
 
+    /// Takes one of the deals the pedlar offers today.
+    public func buyDeal(_ deal: UInt64) async throws { try await ask("buy_deal", [.integer(deal)]) }
+
     /// Claims what a milestone the realm has reached gives.
     public func claimMilestone(_ milestone: UInt64) async throws { try await ask("claim_milestone", [.integer(milestone)]) }
 

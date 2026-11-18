@@ -819,6 +819,24 @@ public struct LiveRecord: Equatable, Sendable {
     }
 }
 
+/// One of the pedlar's deals: what he sells and how many of it, the goods
+/// it costs, and the slot of his days he offers it on.
+public struct LiveDeal: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let item: Int
+    public let count: UInt64
+    public let cost: LiveGoods
+    public let slot: UInt64
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let item = cells.whole(1), let count = cells.unsigned(2), let grain = cells.unsigned(3),
+              let timber = cells.unsigned(4), let stone = cells.unsigned(5), let moonsalt = cells.unsigned(6), let slot = cells.unsigned(7) else { return nil }
+        (self.id, self.item, self.count, self.slot) = (id, item, count, slot)
+        cost = LiveGoods(grain: grain, timber: timber, stone: stone, moonsalt: moonsalt)
+    }
+}
+
 /// One of the realm's milestones: how many of a feat of every player's
 /// reach it and how many the realm has done, when it was reached (0 while
 /// it is not), its words, and what each player may claim once it is.

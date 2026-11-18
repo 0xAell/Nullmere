@@ -40,6 +40,7 @@ pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
     super::write_stages(db);
     super::write_purses(db);
     super::write_merits(db);
+    super::write_deals(db);
     write_trials(db);
     begin_season(db, 1, now);
     write_gates(db, radius);

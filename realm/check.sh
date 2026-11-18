@@ -562,6 +562,16 @@ check("twenty tiers of merit are for all to read, the first asking five hundred 
 trained = [r["done"] for r in rows(bryn, "SELECT * FROM my_records") if r["deed"] == 1]
 check("a player's soldiers trained are on their record, theirs alone to read", (trained[:1] != [] and trained[0] >= 70, isinstance(rows(bryn, "SELECT * FROM record"), str)), (True, True))
 check("and a tier not reached is not claimed", str(call(bryn, "claim_merit", 1)).startswith("You have done "), True)
+# The pedlar: twelve deals for all to read, four offered on each of his three days; one of today's taken, or refused for want of goods, but once a day.
+deals = sorted(rows(nobody, "SELECT * FROM deal"), key=lambda d: d["id"])
+check("the pedlar's twelve deals are for all to read, four on each of his three days", (len(deals), [sum(1 for d in deals if d["slot"] == slot) for slot in range(3)]), (12, [4, 4, 4]))
+offered = [(d, call(bryn, "buy_deal", d["id"])) for d in deals]
+offered = [(d, said) for d, said in offered if said != "The pedlar does not offer that today."]
+check("he offers four of them today, each taken or refused for want of goods", (len(offered), all(said is None or str(said).startswith("You need ") for _, said in offered)), (4, True))
+taken = [d for d, said in offered if said is None]
+if taken:
+    check("a deal taken is not taken again today", call(bryn, "buy_deal", taken[0]["id"]), "You have taken that deal today. Come again tomorrow.")
+check("and what a player took is theirs alone to read", (sorted(b["deal"] for b in rows(bryn, "SELECT * FROM my_bought")) == sorted(d["id"] for d in taken), isinstance(rows(bryn, "SELECT * FROM bought"), str)), (True, True))
 
 # A player leaves the realm for good, their own name typed to be sure.
 leaver = someone()

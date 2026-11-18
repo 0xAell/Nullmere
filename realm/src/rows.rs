@@ -1050,6 +1050,46 @@ pub struct Record {
 }
 row!(Record in record, by key, player);
 
+/// One of the pedlar's deals: what he sells and how many of it, the goods
+/// it costs, and the slot of his days he offers it on (the day of the
+/// realm's number over `catalog::PEDLAR_DAYS`). For all to read. Keyed by
+/// number.
+#[spacetimedb::table(accessor = deal, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Deal {
+    #[primary_key]
+    pub id: u64,
+    pub item: u8,
+    pub count: u64,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+    pub slot: u64,
+}
+row!(Deal in deal, by id);
+
+/// The day of the realm a player last took one of the pedlar's deals.
+/// Theirs alone to read, through `my_bought`. Keyed by player and deal
+/// (`Bought::key`).
+#[spacetimedb::table(accessor = bought)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Bought {
+    #[primary_key]
+    pub key: u64,
+    #[index(btree)]
+    pub player: u64,
+    pub deal: u64,
+    pub day: u64,
+}
+row!(Bought in bought, by key, player);
+
+impl Bought {
+    pub fn key(player: u64, deal: u64) -> u64 {
+        player << 8 | deal
+    }
+}
+
 impl Record {
     pub fn key(player: u64, deed: u8) -> u64 {
         player << 8 | deed as u64
@@ -1942,6 +1982,8 @@ pub trait Db:
     + Table<Tilt>
     + Table<Merit>
     + Table<Record>
+    + Table<Deal>
+    + Table<Bought>
     + Table<Gear>
     + Table<Pattern>
     + Table<Lore>
@@ -2032,6 +2074,8 @@ impl<
             + Table<Tilt>
             + Table<Merit>
             + Table<Record>
+            + Table<Deal>
+            + Table<Bought>
             + Table<Gear>
             + Table<Pattern>
             + Table<Lore>

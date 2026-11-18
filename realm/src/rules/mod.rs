@@ -37,6 +37,7 @@ mod rally;
 mod road;
 mod lists;
 mod merits;
+mod pedlar;
 mod shun;
 mod siege;
 mod spire;
@@ -79,6 +80,7 @@ pub use rally::*;
 pub use road::*;
 pub use lists::*;
 pub use merits::*;
+pub use pedlar::*;
 pub use shun::*;
 pub use siege::*;
 pub use spire::*;
@@ -327,6 +329,9 @@ pub enum Refusal {
     NoChallengesLeft(u64),
     PurseClaimed,
     NoSuchMerit,
+    NoSuchDeal,
+    NotOfferedToday,
+    DealTaken,
     MeritsClaimed,
     MeritNotReached(u64, u64),
     ShutOutAlready,
@@ -629,6 +634,9 @@ impl fmt::Display for Refusal {
             Refusal::NotAbove => "Challenge one above you in the Lists.",
             Refusal::PurseClaimed => "You have claimed today's purse. Come again tomorrow.",
             Refusal::NoSuchMerit => "There is no such merit.",
+            Refusal::NoSuchDeal => "The pedlar has no such deal.",
+            Refusal::NotOfferedToday => "The pedlar does not offer that today.",
+            Refusal::DealTaken => "You have taken that deal today. Come again tomorrow.",
             Refusal::MeritsClaimed => "You have claimed every tier of that merit.",
             Refusal::ShutOutAlready => "You have shut them out already.",
             Refusal::NotShutOut => "You haven't shut them out.",

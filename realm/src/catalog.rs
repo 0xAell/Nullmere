@@ -2273,3 +2273,26 @@ impl Deed {
         }
     }
 }
+
+/// Over how many days of the realm the pedlar's deals turn: on a day, he
+/// offers those whose slot is the day's number over this many.
+pub const PEDLAR_DAYS: u64 = 3;
+
+/// The pedlar's deals: their number, what he sells and how many of it, the
+/// goods it costs, and the slot of his days he offers it on.
+pub fn pedlar_deals() -> [(u64, Item, u64, Goods, u64); 12] {
+    [
+        (1, Item::Haste5, 6, Goods::of(4_000, 4_000, 0, 0), 0),
+        (2, Item::Tome, 2, Goods::of(6_000, 0, 6_000, 0), 0),
+        (3, Item::Iron, 3, Goods::of(0, 8_000, 8_000, 0), 0),
+        (4, Item::GrainCrate, 2, Goods::of(0, 14_000, 7_000, 0), 0),
+        (5, Item::Haste60, 1, Goods::of(12_000, 12_000, 6_000, 0), 1),
+        (6, Item::Leather, 3, Goods::of(8_000, 8_000, 0, 0), 1),
+        (7, Item::TimberCrate, 2, Goods::of(14_000, 0, 7_000, 0), 1),
+        (8, Item::GreatTome, 1, Goods::of(30_000, 30_000, 30_000, 0), 1),
+        (9, Item::Bone, 3, Goods::of(8_000, 0, 8_000, 0), 2),
+        (10, Item::StoneCrate, 2, Goods::of(9_000, 9_000, 0, 0), 2),
+        (11, Item::Silver, 2, Goods::of(10_000, 10_000, 10_000, 500), 2),
+        (12, Item::Peace8, 1, Goods::of(40_000, 40_000, 40_000, 0), 2),
+    ]
+}

@@ -138,6 +138,10 @@ public struct LiveWorld: Equatable, Sendable {
     /// their deeds, by deed.
     public var merits: [LiveMerit] = []
     public var records: [Int: LiveRecord] = [:]
+    /// The pedlar's deals, by number; and the day of the realm the player
+    /// last took each, by deal.
+    public var deals: [LiveDeal] = []
+    public var bought: [UInt64: UInt64] = [:]
     /// What the Forge makes, by piece; and the player's gear.
     public var patterns: [Int: LivePattern] = [:]
     public var gear: [LiveGear] = []
@@ -258,6 +262,12 @@ public struct LiveWorld: Equatable, Sendable {
         tilt = rows("my_tilt", LiveTilt.init).first
         merits = rows("merit", LiveMerit.init).sorted { $0.deed != $1.deed ? $0.deed < $1.deed : $0.tier < $1.tier }
         records = Dictionary(rows("my_records", LiveRecord.init).map { ($0.deed, $0) }, uniquingKeysWith: { _, new in new })
+        deals = rows("deal", LiveDeal.init).sorted { $0.id < $1.id }
+        bought = Dictionary((snapshot["my_bought"] ?? []).compactMap { row -> (UInt64, UInt64)? in
+            let cells = Cells(row: row)
+            guard let deal = cells.unsigned(2), let day = cells.unsigned(3) else { return nil }
+            return (deal, day)
+        }, uniquingKeysWith: { _, new in new })
         patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
         gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
         boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }
@@ -554,6 +564,27 @@ public struct LiveWorld: Equatable, Sendable {
             parts.append(merit.items == 1 ? name : "\(name) ×\(merit.items)")
         }
         return parts.joined(separator: ", ")
+    }
+
+    /// Over how many days the pedlar's deals turn, as the module's
+    /// catalogue has it.
+    public static let pedlarDays: UInt64 = 3
+
+    /// The deals the pedlar offers today.
+    public func dealsToday(at seconds: Double) -> [LiveDeal] {
+        let slot = today(at: seconds) % LiveWorld.pedlarDays
+        return deals.filter { $0.slot == slot }
+    }
+
+    /// Whether the player has taken a deal today.
+    public func taken(_ deal: LiveDeal, at seconds: Double) -> Bool {
+        bought[deal.id] == today(at: seconds)
+    }
+
+    /// A deal in words: "6 × five minutes' haste".
+    public func dealWords(of deal: LiveDeal) -> String {
+        let name = wares[deal.item].map { LiveWorld.inLine($0.name) } ?? "goods"
+        return deal.count == 1 ? name : "\(deal.count) × \(name)"
     }
 
     /// The mark of the player's alliance at a hex, if it has one there.

@@ -1624,6 +1624,34 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertNil(session.world.nextMerit(of: 1), "every tier written is claimed")
     }
 
+    /// The pedlar: today's deals, each bought once a day from the palette,
+    /// and the next day's others.
+    func testThePedlarsDealsAreBoughtOnceADay() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["ware"] = [[n(1), .string("Five minutes' haste"), .string("Five minutes sooner."), n(300), n(1)], [n(9), .string("Tome of war"), .string("Read."), n(0), n(1)]]
+        rows["deal"] = [[n(1), n(1), n(6), n(4_000), n(4_000), n(0), n(0), n(0)], [n(2), n(9), n(2), n(6_000), n(0), n(6_000), n(0), n(0)],
+                        [n(5), n(9), n(1), n(12_000), n(12_000), n(6_000), n(0), n(1)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        // Day 0 of the realm: the deals of the first slot.
+        XCTAssertEqual(session.world.dealsToday(at: 2_015).map(\.id), [1, 2])
+        XCTAssertEqual(session.world.dealsToday(at: 1_000 + 86_400).map(\.id), [5], "the next day, the next slot's")
+        XCTAssertEqual(session.world.dealWords(of: session.world.deals[0]), "6 × five minutes' haste")
+        XCTAssertEqual(session.world.dealWords(of: session.world.deals[2]), "tome of war")
+        let buy = try XCTUnwrap(session.commands(at: 2_015).first { $0.act == .buyDeal(1) })
+        XCTAssertEqual(buy.title, "Buy from the pedlar: 6 × five minutes' haste for 4,000 grain and 4,000 timber")
+        _ = await session.perform(buy)
+        XCTAssertEqual(line.asked.last, "buy deal 1")
+        // Taken today: not offered again until the pedlar brings it round.
+        line.change { $0["my_bought"] = [[self.n(1 << 8 | 1), self.n(1), self.n(1), self.n(0)]] }
+        session.refresh()
+        XCTAssertTrue(session.world.taken(session.world.deals[0], at: 2_015))
+        XCTAssertFalse(session.commands(at: 2_015).contains { $0.act == .buyDeal(1) })
+        XCTAssertTrue(session.commands(at: 2_015).contains { $0.act == .buyDeal(2) })
+        XCTAssertFalse(session.world.taken(session.world.deals[0], at: 1_000 + 3 * 86_400), "three days on it is offered afresh")
+    }
+
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
         let line = StandInLine(rows: LiveWindowTests.rows())
         // Seventeen seconds along its way of twenty-four: on 11, -2.
