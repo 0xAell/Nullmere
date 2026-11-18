@@ -55,10 +55,24 @@ far, close = [], []
 # MARK: The motte, its palisade and stair
 
 bottom, top, height = MOTTE
-far.append(rings("motte", [(bottom + 0.02, -0.3), (bottom, 0.0), ((bottom + top) / 2 + 0.01, height * 0.6), (top, height), (top * 0.94, height + 0.008),
-                           (0.0, height + 0.008)], 14, earth, centre=(0.0, MIDDLE), twist=0.1))
-close.append(rings("turf", [((bottom + top) / 2 + 0.012, height * 0.58), (top + 0.002, height + 0.001), (top * 0.94, height + 0.0095),
-                            (0.0, height + 0.0095)], 14, moss, centre=(0.0, MIDDLE), twist=0.1, caps=(False, False)))
+# Bare earth only at its foot, where the ditch was dug that raised it; its
+# slopes and top turfed over, so it stands green on the land as the
+# grass about it does.
+far.append(rings("motte foot", [(bottom + 0.02, -0.3), (bottom, 0.0), (bottom - 0.012, 0.012)], 14, earth, centre=(0.0, MIDDLE), twist=0.1,
+                 caps=(True, False)))
+far.append(rings("motte", [(bottom - 0.012, 0.012), ((bottom + top) / 2 + 0.01, height * 0.6), (top, height), (top * 0.94, height + 0.008),
+                           (0.0, height + 0.008)], 14, moss, centre=(0.0, MIDDLE), twist=0.1, caps=(False, True)))
+# Close, the path worn up its face beside the stair, and tussocks on it.
+close.append(slab("worn path", [(-0.036, height + 0.004, MIDDLE + top * 0.9), (0.036, height + 0.004, MIDDLE + top * 0.9),
+                                (0.04, 0.014, MIDDLE + bottom - 0.01), (-0.04, 0.014, MIDDLE + bottom - 0.01)], earth, 0.003,
+                  normal=(0, 1, (height / (bottom - top * 0.9)))))
+for k in range(9):
+    a = 0.4 + k * 0.62
+    r = (bottom + top) / 2 + 0.012
+    x, z = r * math.cos(a), MIDDLE + r * math.sin(a)
+    if abs(x) < 0.06 and z > MIDDLE:
+        continue
+    close.append(rings("tussock", [(0.009, height * 0.55), (0.0, height * 0.55 + 0.014)], 4, moss, centre=(x, z), twist=k))
 # The palisade about its top, its gate toward the hall.
 stakes = 26
 for k in range(stakes):
