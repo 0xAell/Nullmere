@@ -531,6 +531,18 @@ if wounded:
     until("and stand ready again", lambda: [(t["ready"], t["wounded"]) for t in rows(bryn, "SELECT * FROM my_troops")] == [(70, 0)], 60)
 check("the report is thrown away", (call(bryn, "forget_report", told[0]["id"]), rows(bryn, "SELECT * FROM my_reports")), (None, []))
 
+# The Barrow Road: thirty stages for all to read, walked with soldiers of the city under a commander, none lost; then a rest.
+stages = sorted(rows(nobody, "SELECT * FROM stage"), key=lambda stage: stage["id"])
+check("the Barrow Road's thirty stages are for all to read, the first a host of thirty-six leaning on riders",
+      ([stage["id"] for stage in stages], [(stage["tier"], stage["spearmen"], stage["riders"], stage["most"]) for stage in stages[:1]]), (list(range(1, 31)), [(1, 15, 21, 36)]))
+check("no more may walk a stage than its host has", call(bryn, "walk_road", [{"kind": 1, "tier": 1, "count": 37}], 0), "The road is narrow there: no more than 36 soldiers may go.")
+check("spearmen led by a commander best its riders, and none of them are lost",
+      (call(bryn, "walk_road", [{"kind": 1, "tier": 1, "count": 36}], captains[0]["id"] if captains else 0),
+       [(r["kind"], r["won"], r["foe"]) for r in rows(bryn, "SELECT * FROM my_reports")], [t["ready"] for t in rows(bryn, "SELECT * FROM my_troops")]),
+      (None, [(19, True, 1)], [70]))
+check("how far they have come is theirs alone to read", ([r["cleared"] for r in rows(bryn, "SELECT * FROM my_road")], isinstance(rows(bryn, "SELECT * FROM road"), str)), ([1], True))
+check("and they rest before walking it again", str(call(bryn, "walk_road", [{"kind": 1, "tier": 1, "count": 36}], 0)).startswith("Your soldiers rest from the road another "), True)
+
 # A player leaves the realm for good, their own name typed to be sure.
 leaver = someone()
 check("a player who would leave", call(leaver, "join", "Lea Leaving"), None)

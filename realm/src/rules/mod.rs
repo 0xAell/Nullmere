@@ -34,6 +34,7 @@ mod raid;
 mod petitions;
 mod prisoners;
 mod rally;
+mod road;
 mod shun;
 mod siege;
 mod spire;
@@ -73,6 +74,7 @@ use raid::*;
 pub use petitions::*;
 pub use prisoners::*;
 pub use rally::*;
+pub use road::*;
 pub use shun::*;
 pub use siege::*;
 pub use spire::*;
@@ -310,6 +312,9 @@ pub enum Refusal {
     MilestoneNotReached,
     MilestoneClaimed,
     WelcomeClaimed,
+    RoadWalked,
+    RoadResting(i64),
+    RoadNarrow(u64),
     ShutOutAlready,
     NotShutOut,
     /// A player shuts out so many others at most.
@@ -450,6 +455,8 @@ impl fmt::Display for Refusal {
             Refusal::PrizeNotEarned(points) => return write!(f, "That prize is for {} points.", crate::catalog::grouped(*points)),
             Refusal::RallyTooStrong(level) => return write!(f, "A rally of yours may go against a barrow of level {level} at most."),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
+            Refusal::RoadResting(left) => return write!(f, "Your soldiers rest from the road another {}.", crate::catalog::spoken(*left)),
+            Refusal::RoadNarrow(most) => return write!(f, "The road is narrow there: no more than {} soldiers may go.", crate::catalog::grouped(*most)),
             Refusal::AtPeaceLonger(left) => return write!(f, "Your city is at peace for another {} already.", crate::catalog::spoken(*left)),
             Refusal::TooManyReports(most) => return write!(f, "You have {most} reports waiting already. Wait for the realm's owner to read them."),
             Refusal::Barred(left) => return write!(f, "You may not speak for another {}.", crate::catalog::spoken(*left)),
@@ -596,6 +603,7 @@ impl fmt::Display for Refusal {
             Refusal::MilestoneNotReached => "The realm has not reached that milestone yet.",
             Refusal::MilestoneClaimed => "You have claimed what that milestone gave.",
             Refusal::WelcomeClaimed => "You have claimed today's welcome. Come again tomorrow.",
+            Refusal::RoadWalked => "You have walked the whole of the Barrow Road.",
             Refusal::ShutOutAlready => "You have shut them out already.",
             Refusal::NotShutOut => "You haven't shut them out.",
             Refusal::NoSuchLetter => "There is no such letter of yours.",

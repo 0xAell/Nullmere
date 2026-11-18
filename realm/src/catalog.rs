@@ -2151,3 +2151,46 @@ pub fn welcome(streak: u64) -> (Goods, Option<(Item, u64)>) {
     let goods = Goods::of(1_000 * day, 1_000 * day, 500 * day, 0);
     (goods, (day == WELCOME_DAYS).then_some((Item::Haste60, 1)))
 }
+
+/// How many stages the Barrow Road has.
+pub const ROAD_STAGES: u64 = 30;
+
+/// How long a player's soldiers rest after walking the Barrow Road before
+/// they may walk it again, as written.
+pub const ROAD_REST: i64 = 60;
+
+/// The host of the Unquiet met at a stage of the Barrow Road (1 to
+/// `ROAD_STAGES`), and the most soldiers a player may bring against it:
+/// as many as it has. Each host leans on one kind, in turn riders,
+/// spearmen and archers, so the soldiers that best it change from stage
+/// to stage; every sixth stage its tier rises.
+pub fn road_host(stage: u64) -> (Vec<Unit>, u64) {
+    let stage = stage.clamp(1, ROAD_STAGES);
+    let tier = (1 + (stage - 1) / 6) as u32;
+    let heads = 30 * stage + 6 * stage * stage;
+    let (most, rest) = match stage % 3 {
+        1 => (Troops::Riders, Troops::Spearmen),
+        2 => (Troops::Spearmen, Troops::Archers),
+        _ => (Troops::Archers, Troops::Riders),
+    };
+    let leaning = heads * 60 / 100;
+    (vec![Unit { kind: most, tier, count: leaning }, Unit { kind: rest, tier, count: heads - leaning }], heads)
+}
+
+/// What clearing a stage of the Barrow Road the first time gives: goods
+/// that grow with the stage, moonsalt from the tenth, and on every fifth
+/// an item besides.
+pub fn road_gives(stage: u64) -> (Goods, Option<(Item, u64)>) {
+    let stage = stage.clamp(1, ROAD_STAGES);
+    let goods = Goods::of(1_200 * stage, 1_200 * stage, 500 * stage, if stage >= 10 { 40 * stage } else { 0 });
+    let item = match stage {
+        5 => Some((Item::Haste60, 2)),
+        10 => Some((Item::Tome, 3)),
+        15 => Some((Item::Haste480, 1)),
+        20 => Some((Item::GreatTome, 1)),
+        25 => Some((Item::Summons, 1)),
+        30 => Some((Item::Summons, 2)),
+        _ => None,
+    };
+    (goods, item)
+}

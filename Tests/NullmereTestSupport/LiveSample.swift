@@ -216,6 +216,9 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func clearMark(_ mark: UInt64) async throws { try take("clear mark \(mark)") }
     public func claimMilestone(_ milestone: UInt64) async throws { try take("claim milestone \(milestone)") }
     public func claimWelcome() async throws { try take("claim the welcome") }
+    public func walkRoad(soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {
+        try take("walk the road with \(listed(soldiers)) led by \(leader)")
+    }
 }
 
 /// How many times something has been tried.

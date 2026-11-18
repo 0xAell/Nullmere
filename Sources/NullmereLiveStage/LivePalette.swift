@@ -44,6 +44,8 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         /// Claim what a milestone the realm reached gives, and the day's welcome.
         case claimMilestone(UInt64)
         case claimWelcome
+        /// Walk the next stage of the Barrow Road.
+        case walkRoad
     }
 
     public let title: String
@@ -189,6 +191,9 @@ extension LiveSession {
             all.append(LiveCommand(title: "Claim the day's welcome: day \(world.welcomeStreak(at: seconds)) of \(LiveWorld.welcomeDays) in a row",
                                    act: .claimWelcome))
         }
+        if let stage = world.nextStage, world.roadRests(at: seconds) == 0, !world.roadArmy(for: stage).isEmpty {
+            all.append(LiveCommand(title: "Walk the Barrow Road: stage \(stage.id) of \(world.stages.count), against \(world.host(of: stage))", act: .walkRoad))
+        }
         for milestone in world.milestonesToClaim {
             all.append(LiveCommand(title: "Claim what the realm's milestone gave: \(milestone.words)", act: .claimMilestone(milestone.id)))
         }
@@ -310,6 +315,7 @@ extension LiveSession {
         case .clearMark(let mark): await clearMark(mark)
         case .claimMilestone(let milestone): await claimMilestone(milestone)
         case .claimWelcome: await claimWelcome()
+        case .walkRoad: await walkRoad()
         }
         return nil
     }

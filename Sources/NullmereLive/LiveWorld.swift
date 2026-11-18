@@ -124,6 +124,10 @@ public struct LiveWorld: Equatable, Sendable {
     /// The day of the realm the player last claimed the day's welcome on,
     /// and how many days in a row they had then.
     public var welcomed: LiveWelcome?
+    /// The Barrow Road's stages, the first first, and how far along it the
+    /// player has come.
+    public var stages: [LiveStage] = []
+    public var road: LiveRoad?
     /// What the Forge makes, by piece; and the player's gear.
     public var patterns: [Int: LivePattern] = [:]
     public var gear: [LiveGear] = []
@@ -233,6 +237,8 @@ public struct LiveWorld: Equatable, Sendable {
         milestones = rows("milestone", LiveMilestone.init).sorted { $0.id < $1.id }
         claimed = Set((snapshot["my_claims"] ?? []).compactMap { Cells(row: $0).unsigned(2) })
         welcomed = rows("my_welcome", LiveWelcome.init).first
+        stages = rows("stage", LiveStage.init).sorted { $0.id < $1.id }
+        road = rows("my_road", LiveRoad.init).first
         patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
         gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
         boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }
@@ -394,6 +400,56 @@ public struct LiveWorld: Equatable, Sendable {
             parts.append(milestone.items == 1 ? name : "\(name) ×\(milestone.items)")
         }
         return parts.isEmpty ? "nothing" : parts.joined(separator: ", ")
+    }
+
+    /// How long the player's soldiers rest after walking the Barrow Road,
+    /// as the module's catalogue has it.
+    public static let roadRest = 60
+
+    /// The stage of the Barrow Road the player walks next: none once they
+    /// have cleared them all.
+    public var nextStage: LiveStage? { stages.first { $0.id == (road?.cleared ?? 0) + 1 } }
+
+    /// How many seconds the player's soldiers rest yet before they may walk
+    /// the road again.
+    public func roadRests(at seconds: Double) -> Int {
+        guard let road else { return 0 }
+        let rest = max(LiveWorld.roadRest / max(realm?.pace ?? 1, 1), 1)
+        return max(road.walked + rest - Int(seconds), 0)
+    }
+
+    /// The soldiers to walk a stage with: of those ready, the kind that
+    /// bests its host first and the best tiers first, then the rest, as
+    /// many as may go.
+    public func roadArmy(for stage: LiveStage) -> [(kind: Int, tier: Int, count: UInt64)] {
+        func order(_ troop: LiveTroop) -> [Int] { [troop.kind == stage.bestedBy ? 0 : 1, -troop.tier, troop.kind] }
+        let ready = troops.filter { $0.ready > 0 }.sorted { order($0).lexicographicallyPrecedes(order($1)) }
+        var room = stage.most
+        var army: [(kind: Int, tier: Int, count: UInt64)] = []
+        for troop in ready where room > 0 {
+            let count = min(troop.ready, room)
+            army.append((troop.kind, troop.tier, count))
+            room -= count
+        }
+        return army
+    }
+
+    /// A stage's host in words: "21 riders and 15 spearmen of tier 1".
+    public func host(of stage: LiveStage) -> String {
+        let named = stage.host.map { "\(LiveWords.grouped($0.count)) \((LiveWorld.kindNames[$0.kind] ?? "soldiers").lowercased())" }
+        return "\(named.joined(separator: " and ")) of tier \(stage.tier)"
+    }
+
+    /// The names of the kinds of soldier, by number.
+    public static let kindNames: [Int: String] = [1: "Spearmen", 2: "Archers", 3: "Riders", 4: "Mangonels"]
+
+    /// What clearing a stage the first time gives, in words.
+    public func gifts(of stage: LiveStage) -> String {
+        var parts = [stage.gives.words]
+        if stage.items > 0, let ware = wares[stage.item] {
+            parts.append("\(LiveWorld.inLine(ware.name)) ×\(stage.items)")
+        }
+        return parts.joined(separator: ", ")
     }
 
     /// The mark of the player's alliance at a hex, if it has one there.

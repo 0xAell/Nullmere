@@ -531,6 +531,8 @@ public struct LiveReport: Equatable, Sendable, Identifiable {
     public static let fieldDefence = 17
     /// Carts of goods unloaded at an ally's city, or come back.
     public static let carts = 18
+    /// A walk of the Barrow Road: `foe` is the stage.
+    public static let road = 19
 
     public let id: UInt64
     public let at: Int

@@ -274,15 +274,17 @@ final class LiveBookTests: XCTestCase {
         XCTAssertTrue(LiveWorld.news(from: LiveWorld(snapshot: reached), to: LiveWorld(snapshot: reached), at: 2_030).isEmpty)
         XCTAssertTrue(LiveWorld.news(from: before, to: LiveWorld(snapshot: reached), at: 2_030).isEmpty, "before, none were read")
         // A gathering fallen on and lost in the field is told as a fight
-        // lost; carts unloaded as a report.
+        // lost; carts unloaded as a report; a stage of the Barrow Road
+        // cleared as a fight won.
         func report(_ id: Int, kind: Int, won: Bool, words: String) -> [JSONValue] {
             [n(Double(id)), n(1), n(2_010), n(Double(kind)), n(Double(LiveHex(q: 5, r: 5).packed)), .bool(won), n(2), n(3),
              n(20), n(2), n(0), n(12), n(0), n(0), n(0), n(0), n(0), .string(words), .bool(false)]
         }
         var fought = rows()
         fought["my_reports"] = [report(32, kind: LiveReport.fieldDefence, won: false, words: "Bryn's army fell on your gatherers. They fled."),
-                                report(33, kind: LiveReport.carts, won: true, words: "Your carts unloaded at Bryn's city.")]
-        XCTAssertEqual(LiveWorld.told(from: LiveWorld(snapshot: rows()), to: LiveWorld(snapshot: fought), at: 2_030).map(\.kind), [.lost, .report])
+                                report(33, kind: LiveReport.carts, won: true, words: "Your carts unloaded at Bryn's city."),
+                                report(34, kind: LiveReport.road, won: true, words: "Your soldiers cleared stage 1 of the Barrow Road: all 36 of its Unquiet fell.")]
+        XCTAssertEqual(LiveWorld.told(from: LiveWorld(snapshot: rows()), to: LiveWorld(snapshot: fought), at: 2_030).map(\.kind), [.lost, .report, .won])
         // Nothing new, nothing told; nor before there is a city to tell of.
         XCTAssertTrue(LiveWorld.news(from: before, to: before, at: 2_030).isEmpty)
         XCTAssertTrue(LiveWorld.news(from: LiveWorld(snapshot: [:]), to: before, at: 2_030).isEmpty)

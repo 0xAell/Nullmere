@@ -111,8 +111,11 @@ pub fn fight_learned(attackers: &[Unit], defenders: &[Unit], learnt: [Mastery; 2
 /// What an army has in a fight beyond its numbers: what its city has
 /// learnt, and what the commander who leads it adds.
 pub(super) fn led(db: &impl Db, march: &March) -> Mastery {
-    let mut all = mastery(db, march.city);
-    let leading = leading_of(db, march);
+    with_leading(mastery(db, march.city), leading_of(db, march))
+}
+
+/// What a city has learnt, and what a commander adds to it.
+pub(super) fn with_leading(mut all: Mastery, leading: crate::catalog::Leading) -> Mastery {
     for kind in 0..4 {
         all.strikes[kind] += leading.strikes[kind];
     }

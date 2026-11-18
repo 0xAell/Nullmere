@@ -126,6 +126,33 @@ pub fn send_led(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked
 }
 
 /// Sends an army on any order there is, a rally's among them.
+/// What was asked of a city's soldiers, each kind and tier once: refused
+/// if it names no soldiers, or more of any than stand ready.
+pub(super) fn wanted(db: &impl Db, city: u64, asked: &[Asked]) -> Result<Vec<Asked>, Refusal> {
+    let mut wanted: Vec<Asked> = Vec::new();
+    for ask in asked.iter().filter(|ask| ask.count > 0) {
+        let troops = Troops::of(ask.kind).ok_or(Refusal::NoSuchTroops)?;
+        if !(1..=TOP_TIER).contains(&ask.tier) {
+            return Err(Refusal::NoSuchTroops);
+        }
+        match wanted.iter_mut().find(|other| other.kind == troops as u8 && other.tier == ask.tier) {
+            Some(other) => other.count += ask.count,
+            None => wanted.push(*ask),
+        }
+    }
+    if wanted.is_empty() {
+        return Err(Refusal::NothingAsked);
+    }
+    for ask in &wanted {
+        let troops = Troops::of(ask.kind).ok_or(Refusal::NoSuchTroops)?;
+        let ready = troop(db, city, troops, ask.tier).ready;
+        if ready < ask.count {
+            return Err(Refusal::NotEnoughTroops(troops, ask.tier, ready));
+        }
+    }
+    Ok(wanted)
+}
+
 pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked], leader: u64) -> Result<March, Refusal> {
     asking(db, player)?;
     let city = city_of(db, player)?;
@@ -166,28 +193,7 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
         },
         _ => return Err(Refusal::NoSuchOrder),
     };
-    // What was asked, each kind and tier once.
-    let mut wanted: Vec<Asked> = Vec::new();
-    for ask in asked.iter().filter(|ask| ask.count > 0) {
-        let troops = Troops::of(ask.kind).ok_or(Refusal::NoSuchTroops)?;
-        if !(1..=TOP_TIER).contains(&ask.tier) {
-            return Err(Refusal::NoSuchTroops);
-        }
-        match wanted.iter_mut().find(|other| other.kind == troops as u8 && other.tier == ask.tier) {
-            Some(other) => other.count += ask.count,
-            None => wanted.push(*ask),
-        }
-    }
-    if wanted.is_empty() {
-        return Err(Refusal::NothingAsked);
-    }
-    for ask in &wanted {
-        let troops = Troops::of(ask.kind).ok_or(Refusal::NoSuchTroops)?;
-        let ready = troop(db, city.id, troops, ask.tier).ready;
-        if ready < ask.count {
-            return Err(Refusal::NotEnoughTroops(troops, ask.tier, ready));
-        }
-    }
+    let wanted = wanted(db, city.id, asked)?;
     let most = catalog::marches(city.keep);
     if armies_out(db, city.id).len() as u32 >= most {
         return Err(Refusal::NoFreeMarch(most));

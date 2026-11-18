@@ -182,7 +182,7 @@ pub fn leading_of(db: &impl Db, march: &March) -> Leading {
 /// A commander has seen something of war or of work: so much is added to
 /// what they have seen, and they rise a level for each measure of it, to
 /// the thirtieth.
-fn seen_by(db: &mut impl Db, commander: u64, amount: u64) {
+pub(super) fn seen_by(db: &mut impl Db, commander: u64, amount: u64) {
     let Some(mut commander) = Table::<Commander>::get(db, commander) else { return };
     commander.seen += amount;
     while commander.level < TOP_COMMAND && commander.seen >= catalog::command_needs(commander.level) {

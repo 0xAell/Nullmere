@@ -664,6 +664,61 @@ public struct LiveWelcome: Equatable, Sendable {
     }
 }
 
+/// A stage of the Barrow Road: the tier of the host of the Unquiet met
+/// there and how many of each kind it has, the most soldiers that may go
+/// against it, and what clearing it the first time gives.
+public struct LiveStage: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let tier: Int
+    public let spearmen: UInt64
+    public let archers: UInt64
+    public let riders: UInt64
+    public let most: UInt64
+    public let gives: LiveGoods
+    public let item: Int
+    public let items: UInt64
+
+    /// Its host, kind by kind (1 spearmen, 2 archers, 3 riders), the most
+    /// of them first.
+    public var host: [(kind: Int, count: UInt64)] {
+        let all: [(kind: Int, count: UInt64)] = [(1, spearmen), (2, archers), (3, riders)]
+        return all.filter { $0.count > 0 }.sorted { first, second in
+            first.count != second.count ? first.count > second.count : first.kind < second.kind
+        }
+    }
+
+    /// The kind its host leans on, and the kind that bests that: spears
+    /// stop riders, riders run down bows, bows pick off spears.
+    public var leaning: Int { host.first?.kind ?? 1 }
+    public var bestedBy: Int { leaning == 3 ? 1 : leaning == 1 ? 2 : 3 }
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let tier = cells.whole(1), let spearmen = cells.unsigned(2), let archers = cells.unsigned(3),
+              let riders = cells.unsigned(4), let most = cells.unsigned(5), let grain = cells.unsigned(6), let timber = cells.unsigned(7),
+              let stone = cells.unsigned(8), let moonsalt = cells.unsigned(9), let item = cells.whole(10), let items = cells.unsigned(11) else { return nil }
+        (self.id, self.tier, self.spearmen, self.archers, self.riders, self.most) = (id, tier, spearmen, archers, riders, most)
+        (self.gives, self.item, self.items) = (LiveGoods(grain: grain, timber: timber, stone: stone, moonsalt: moonsalt), item, items)
+    }
+}
+
+/// How far the player has come along the Barrow Road: the stages cleared,
+/// and when they last walked it.
+public struct LiveRoad: Equatable, Sendable {
+    public let cleared: UInt64
+    public let walked: Int
+
+    public init(cleared: UInt64, walked: Int) {
+        (self.cleared, self.walked) = (cleared, walked)
+    }
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let cleared = cells.unsigned(1), let walked = cells.whole(2) else { return nil }
+        (self.cleared, self.walked) = (cleared, walked)
+    }
+}
+
 /// One of the realm's milestones: how many of a feat of every player's
 /// reach it and how many the realm has done, when it was reached (0 while
 /// it is not), its words, and what each player may claim once it is.

@@ -368,6 +368,12 @@ public final class LiveClient: @unchecked Sendable {
     /// Claims the day's welcome.
     public func claimWelcome() async throws { try await ask("claim_welcome", []) }
 
+    /// Walks the next stage of the Barrow Road with soldiers of the
+    /// player's city, under one of their commanders or under none with 0.
+    public func walkRoad(soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
+        try await ask("walk_road", [records(soldiers), .integer(leader)])
+    }
+
     /// Claims what a milestone the realm has reached gives.
     public func claimMilestone(_ milestone: UInt64) async throws { try await ask("claim_milestone", [.integer(milestone)]) }
 

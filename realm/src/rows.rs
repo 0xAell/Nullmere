@@ -551,6 +551,8 @@ impl Report {
     /// Carts of goods unloaded, or come back: `foe` is the other player's
     /// number, and the goods what was unloaded.
     pub const CARTS: u8 = 18;
+    /// A walk of the Barrow Road: `foe` is the stage.
+    pub const ROAD: u8 = 19;
 }
 
 /// An alliance of players. Everyone may read it.
@@ -897,6 +899,42 @@ pub struct Welcome {
     pub streak: u64,
 }
 row!(Welcome in welcome, by player);
+
+/// A stage of the Barrow Road: the tier of the host of the Unquiet met
+/// there and how many of each kind it has, the most soldiers a player may
+/// bring against it, and what clearing it the first time gives. For all
+/// to read. Keyed by number, from 1.
+#[spacetimedb::table(accessor = stage, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Stage {
+    #[primary_key]
+    pub id: u64,
+    pub tier: u32,
+    pub spearmen: u64,
+    pub archers: u64,
+    pub riders: u64,
+    pub most: u64,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub moonsalt: u64,
+    pub item: u8,
+    pub items: u64,
+}
+row!(Stage in stage, by id);
+
+/// How far a player has come along the Barrow Road: how many of its
+/// stages they have cleared, and when they last walked it. Theirs alone to
+/// read, through `my_road`. Keyed by player.
+#[spacetimedb::table(accessor = road)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Road {
+    #[primary_key]
+    pub player: u64,
+    pub cleared: u64,
+    pub walked: Seconds,
+}
+row!(Road in road, by player);
 
 /// One of the realm's milestones: the feat it counts (`catalog::Feat`),
 /// how many of it reach it and how many the realm has done, when it was
@@ -1776,6 +1814,8 @@ pub trait Db:
     + Table<Milestone>
     + Table<Claim>
     + Table<Welcome>
+    + Table<Stage>
+    + Table<Road>
     + Table<Gear>
     + Table<Pattern>
     + Table<Lore>
@@ -1858,6 +1898,8 @@ impl<
             + Table<Milestone>
             + Table<Claim>
             + Table<Welcome>
+            + Table<Stage>
+            + Table<Road>
             + Table<Gear>
             + Table<Pattern>
             + Table<Lore>

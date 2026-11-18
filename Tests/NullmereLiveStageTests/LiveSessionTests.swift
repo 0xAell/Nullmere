@@ -1471,6 +1471,59 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(session.world.welcomeStreak(at: 1_000 + 86_400), 1, "after the seventh, afresh")
     }
 
+    /// The Barrow Road: the next stage, its host and gifts, the soldiers
+    /// that best it, the rest between walks, and walked from the palette.
+    func testTheBarrowRoadIsWalkedWithTheSoldiersThatBestEachHost() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["ware"] = [[n(2), .string("An hour's haste"), .string("An hour sooner."), n(3_600), n(1)]]
+        func stage(_ id: Int, spearmen: Int, archers: Int, riders: Int, item: Int = 0, items: Int = 0) -> [JSONValue] {
+            [n(id), n(1), n(spearmen), n(archers), n(riders), n(spearmen + archers + riders), n(1_200 * id), n(1_200 * id), n(500 * id), n(0), n(item), n(items)]
+        }
+        rows["stage"] = [stage(2, spearmen: 50, archers: 34, riders: 0, item: 2, items: 2), stage(1, spearmen: 15, archers: 0, riders: 21)]
+        // Forty spearmen and thirty archers of the first tier, ten spearmen of the second; and a commander in the city.
+        rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)], [n(7 << 16 | 2 << 8 | 1), n(7), n(2), n(1), n(30), n(0)],
+                             [n(7 << 16 | 1 << 8 | 2), n(7), n(1), n(2), n(10), n(0)]]
+        rows["my_commanders"] = [[n(11), n(1), .string("Corran Ash"), n(1), n(1), n(0), n(0), n(3), n(1), n(12)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        let first = try XCTUnwrap(session.world.nextStage, "never walked: the first stage is next")
+        XCTAssertEqual(first.id, 1)
+        XCTAssertEqual([first.leaning, first.bestedBy], [3, 1], "a host of riders is bested by spearmen")
+        XCTAssertEqual(session.world.host(of: first), "21 riders and 15 spearmen of tier 1")
+        XCTAssertEqual(session.world.gifts(of: first), "1,200 grain, 1,200 timber and 500 stone")
+        XCTAssertEqual(session.world.roadArmy(for: first).map { [$0.kind, $0.tier, Int($0.count)] }, [[1, 2, 10], [1, 1, 26]], "spearmen, the best first, as many as may go")
+        XCTAssertEqual(session.world.roadRests(at: 2_015), 0)
+        let walk = try XCTUnwrap(session.commands(at: 2_015).first { $0.act == .walkRoad })
+        XCTAssertEqual(walk.title, "Walk the Barrow Road: stage 1 of 2, against 21 riders and 15 spearmen of tier 1")
+        _ = await session.perform(walk)
+        XCTAssertEqual(line.asked.last, "walk the road with 10 of 1.2, 26 of 1.1 led by 11")
+
+        // The first cleared at 2,010: the second is next, its soldiers resting a minute.
+        line.change { $0["my_road"] = [[self.n(1), self.n(1), self.n(2_010)]] }
+        session.refresh()
+        XCTAssertEqual(session.world.road, LiveRoad(cleared: 1, walked: 2_010))
+        let second = try XCTUnwrap(session.world.nextStage)
+        XCTAssertEqual([Int(second.id), second.leaning, second.bestedBy], [2, 1, 2], "a host of spearmen is bested by archers")
+        XCTAssertEqual(session.world.gifts(of: second), "2,400 grain, 2,400 timber and 1,000 stone, an hour's haste ×2")
+        XCTAssertEqual(session.world.roadRests(at: 2_015), 55)
+        XCTAssertFalse(session.commands(at: 2_015).contains { $0.act == .walkRoad }, "resting")
+        XCTAssertEqual(session.world.roadRests(at: 2_070), 0)
+        XCTAssertEqual(session.world.roadArmy(for: second).map { [$0.kind, $0.tier, Int($0.count)] }, [[2, 1, 30], [1, 2, 10], [1, 1, 40]],
+                       "the archers, then the rest as there is room")
+        await session.walkRoad()
+        XCTAssertEqual(line.asked.last, "walk the road with 30 of 2.1, 10 of 1.2, 40 of 1.1 led by 11")
+
+        // The whole road walked: nothing is next, and nothing is asked.
+        line.change { $0["my_road"] = [[self.n(1), self.n(2), self.n(2_010)]] }
+        session.refresh()
+        XCTAssertNil(session.world.nextStage)
+        XCTAssertFalse(session.commands(at: 3_000).contains { $0.act == .walkRoad })
+        let asked = line.asked.count
+        await session.walkRoad()
+        XCTAssertEqual(line.asked.count, asked)
+    }
+
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
         let line = StandInLine(rows: LiveWindowTests.rows())
         // Seventeen seconds along its way of twenty-four: on 11, -2.

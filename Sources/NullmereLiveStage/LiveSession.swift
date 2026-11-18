@@ -94,6 +94,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func clearMark(_ mark: UInt64) async throws
     func claimMilestone(_ milestone: UInt64) async throws
     func claimWelcome() async throws
+    func walkRoad(soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
 }
 
 extension LiveClient: LiveLine {}
@@ -716,6 +717,15 @@ public final class LiveSession {
     public func clearMark(_ mark: UInt64) async { await ask { try await $0.clearMark(mark) } }
     public func claimMilestone(_ milestone: UInt64) async { await ask { try await $0.claimMilestone(milestone) } }
     public func claimWelcome() async { await ask { try await $0.claimWelcome() } }
+
+    /// Walks the next stage of the Barrow Road with the soldiers that best
+    /// its host, led by the highest commander in the city.
+    public func walkRoad() async {
+        guard let stage = world.nextStage else { return }
+        let asked = world.roadArmy(for: stage)
+        let leader = world.freeLeader?.id ?? 0
+        await ask { try await $0.walkRoad(soldiers: asked, leader: leader) }
+    }
 
     /// One soldier of the first kind and tier standing ready: a scout.
     public var scoutParty: [(kind: Int, tier: Int, count: UInt64)] {
