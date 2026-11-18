@@ -1499,12 +1499,26 @@ final class LiveSessionTests: XCTestCase {
     }
 
     /// The realm's milestones: how near each stands, and the one reached
-    /// claimed from the palette, once.
+    /// claimed from the palette, once, by one a day in the realm when it was
+    /// reached with a Keep of the fifth level; anyone else told why not.
     func testTheRealmsMilestonesAreClaimedOnceReached() async throws {
         var rows = LiveWindowTests.rows()
         rows["ware"] = [[n(2), .string("An hour's haste"), .string("An hour sooner."), n(3_600), n(1)]]
-        rows["milestone"] = [[n(1), n(1), n(50), n(50), n(2_000), .string("Fifty cities founded in the realm."), n(20_000), n(20_000), n(20_000), n(2), n(1)],
+        rows["milestone"] = [[n(1), n(1), n(50), n(50), n(90_000), .string("Fifty cities founded in the realm."), n(20_000), n(20_000), n(20_000), n(2), n(1)],
                              [n(3), n(2), n(100), n(37), n(0), .string("A hundred barrows of the Unquiet cleared."), n(30_000), n(30_000), n(30_000), n(9), n(1)]]
+        // Ada, in the realm since 1,000, her Keep raised to the fifth level.
+        let lowKeep = rows["my_city"]
+        rows["my_city"] = rows["my_city"]?.map { row in var row = row; row[4] = .number(5); return row }
+        var young = rows
+        young["milestone"]?[0][4] = n(2_000)
+        let reachedEarly = LiveWorld(snapshot: young)
+        XCTAssertEqual(reachedEarly.milestoneWhy(reachedEarly.milestones[0]), "The realm reached that milestone before you had been a day in it.")
+        XCTAssertTrue(reachedEarly.milestonesToClaim.isEmpty)
+        var low = rows
+        low["my_city"] = lowKeep
+        let lowWorld = LiveWorld(snapshot: low)
+        XCTAssertEqual(lowWorld.milestoneWhy(lowWorld.milestones[0]), "Raise your Keep to level 5 first.")
+        XCTAssertTrue(lowWorld.milestonesToClaim.isEmpty)
         let line = StandInLine(rows: rows)
         let session = session(line)
         await session.open()

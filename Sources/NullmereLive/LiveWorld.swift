@@ -425,8 +425,27 @@ public struct LiveWorld: Equatable, Sendable {
         return "\(goods.words), \(LiveWorld.inLine(wares[2]?.name ?? "an hour's haste"))"
     }
 
-    /// The milestones the realm has reached whose gifts the player has not claimed.
-    public var milestonesToClaim: [LiveMilestone] { milestones.filter { $0.isReached && !claimed.contains($0.id) } }
+    /// The milestones the realm has reached whose gifts the player has not
+    /// claimed, and may.
+    public var milestonesToClaim: [LiveMilestone] { milestones.filter { $0.isReached && !claimed.contains($0.id) && milestoneWhy($0) == nil } }
+
+    /// The Keep's level from which a player claims what a milestone gives
+    /// (`catalog::MILESTONE_KEEP`).
+    public static let milestoneKeep = 5
+
+    /// Why the player may not claim what a milestone the realm reached
+    /// gives, in the realm's own words; nil where they may. It is claimed
+    /// only by those who had been a day in the realm when it was reached,
+    /// at its pace, with a Keep of the fifth level.
+    public func milestoneWhy(_ milestone: LiveMilestone) -> String? {
+        if let me, let realm, me.joined + max(86_400 / max(realm.pace, 1), 1) > milestone.reached {
+            return "The realm reached that milestone before you had been a day in it."
+        }
+        if (city?.keep ?? 0) < LiveWorld.milestoneKeep {
+            return "Raise your Keep to level \(LiveWorld.milestoneKeep) first."
+        }
+        return nil
+    }
 
     /// What a milestone gives each player, in words.
     public func gifts(of milestone: LiveMilestone) -> String {

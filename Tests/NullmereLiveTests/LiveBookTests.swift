@@ -487,6 +487,16 @@ final class LiveBookTests: XCTestCase {
         XCTAssertTrue(alliance.contains("pub const ALLIANCE_NAME_SHORTEST: usize = 3;") && alliance.contains("pub const ALLIANCE_NAME_LONGEST: usize = 20;"))
     }
 
+    /// Who may claim a milestone's gifts, as the client tells it, is as the
+    /// realm has it: a Keep of the fifth level, and a day in the realm.
+    func testAMilestoneIsClaimedAsTheRealmAllows() throws {
+        let catalog = try source("catalog.rs"), rules = try source("rules/mod.rs"), milestones = try source("rules/milestones.rs")
+        XCTAssertTrue(catalog.contains("pub const MILESTONE_KEEP: u32 = \(LiveWorld.milestoneKeep);"))
+        XCTAssertTrue(rules.contains("\"The realm reached that milestone before you had been a day in it.\""))
+        XCTAssertTrue(rules.contains("\"Raise your Keep to level {level} first.\""))
+        XCTAssertTrue(milestones.contains("joined + catalog::paced(catalog::DAY, pace) > row.reached"))
+    }
+
     /// The holy sites as the client tells them are as the realm keeps
     /// them: their kinds' numbers, when they open and how long one taken
     /// is guarded, and what each gives.

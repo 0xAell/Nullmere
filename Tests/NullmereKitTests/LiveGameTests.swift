@@ -460,7 +460,11 @@ final class LiveGameTests: XCTestCase {
         }
         XCTAssertEqual(claimingLine.asked.suffix(2), ["claim the welcome", "buy deal 1"])
         // The realm's milestones, the Barrow Road and the merits in the Feats part.
-        let (feating, featingLine) = await playing()
+        // Hers to claim: she had been a day in the realm when it was reached, her Keep at the fifth level.
+        var claimable = rows()
+        claimable["milestone"]?[0][4] = n(90_000)
+        claimable["my_city"] = claimable["my_city"]?.map { row in var row = row; row[4] = .number(5); return row }
+        let (feating, featingLine) = await playing(claimable)
         await held(whole(.feats, of: feating).frame(width: LiveSidePanel.width - 28)) {
             XCTAssertTrue(PressableButtons.press("Claim what the realm's milestone gave: Fifty cities founded in the realm."),
                           "Among \(PressableButtons.actions.keys.sorted())")

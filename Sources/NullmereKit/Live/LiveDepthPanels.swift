@@ -187,11 +187,15 @@ struct LiveFeatsPanel: View {
                     LiveSmall(words: milestone.words)
                     LiveSmall(words: milestone.isReached ? "Reached. Gives \(world.gifts(of: milestone))."
                         : "\(LiveWords.grouped(milestone.done)) of \(LiveWords.grouped(milestone.goal)) so far. Gives \(world.gifts(of: milestone)).", dim: true)
+                    // Why it is not hers to claim, where it is not.
+                    if milestone.isReached, !world.claimed.contains(milestone.id), let why = world.milestoneWhy(milestone) {
+                        LiveSmall(words: why, dim: true)
+                    }
                 }
                 Spacer(minLength: 0)
                 if world.claimed.contains(milestone.id) {
                     LiveSmall(words: "Claimed", dim: true)
-                } else if milestone.isReached {
+                } else if milestone.isReached, world.milestoneWhy(milestone) == nil {
                     QuietButton(title: "Claim", prominent: true, enabled: session.asking == 0, name: "Claim what the realm's milestone gave: \(milestone.words)") {
                         Task { await session.claimMilestone(milestone.id) }
                     }
