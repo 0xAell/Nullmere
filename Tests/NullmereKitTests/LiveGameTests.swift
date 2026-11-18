@@ -633,6 +633,8 @@ final class LiveGameTests: XCTestCase {
                 try await pressAll(LiveGameView(session: session, opening: part), as: part.title)
             }
         }
+        // The palette: every command it lists, chosen.
+        try await pressAll(LivePaletteView(session: session, seconds: 2_015, open: { _ in }) {}, as: "palette")
         // Her city, the grove, the barrow and Bryn's city, each chosen.
         for hex in [LiveHex(q: 10, r: -4), LiveHex(q: 12, r: -2), LiveHex(q: 8, r: -2), LiveHex(q: 14, r: -4)] {
             session.selected = hex
@@ -798,6 +800,13 @@ final class LiveGameTests: XCTestCase {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         XCTAssertEqual(talk.lines.map(\.text), ["What now?", "As you say: What now?"])
+
+        // Words in the palette that nothing answers to: said so.
+        await held(LivePaletteView(session: session, seconds: 2_015, open: { _ in }) {}, width: 420, height: 320) {
+            XCTAssertTrue(PressableButtons.type("no such deed at all", into: "What would you do?"), "Among \(PressableButtons.fields.keys.sorted())")
+            spin(0.3)
+            XCTAssertTrue(PressableButtons.press("Send: What would you do?"))
+        }
 
         // The realm left, the player's own name typed to be sure.
         await held(whole(.day, of: session).frame(width: LiveSidePanel.width - 28)) {

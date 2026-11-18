@@ -1,5 +1,6 @@
 import Foundation
 import LauncherCore
+import LauncherKit
 import NullmereLand
 import NullmereLive
 import NullmereLiveStage
@@ -498,6 +499,9 @@ struct LivePaletteView: View {
     var body: some View {
         let found = LivePaletteView.found(search, in: session, at: seconds, leaving: leave != nil)
         VStack(alignment: .leading, spacing: 6) {
+            // Noted for a listening test, to type into it and choose as a player would.
+            let _ = PressableButtons.noteField("What would you do?") { [binding = $search] words in binding.wrappedValue = words }
+            let _ = PressableButtons.note("Send: What would you do?", enabled: true) { if let first = found.first { choose(first) } }
             TextField("What would you do?", text: $search)
                 .textFieldStyle(.plain)
                 .font(.nm(LiveType.title))
@@ -506,6 +510,7 @@ struct LivePaletteView: View {
                 .onSubmit { if let first = found.first { choose(first) } }
                 .accessibilityLabel("Search for something to do")
             ForEach(found) { command in
+                let _ = PressableButtons.note("Do: \(command.title)", enabled: true) { choose(command) }
                 Button { choose(command) } label: {
                     Text(verbatim: command.title)
                         .font(.nm(LiveType.body))
@@ -549,10 +554,12 @@ struct LiveTopBar: View {
     var body: some View {
         HStack(spacing: 14) {
             if let city = session.world.city {
-                Button {
+                let home = {
                     session.go(to: city.hex)
                     session.selected = city.hex
-                } label: {
+                }
+                let _ = PressableButtons.note("Go to your city", enabled: true, home)
+                Button(action: home) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(verbatim: city.name)
                             .font(.nm(LiveType.body, weight: .medium))
@@ -615,6 +622,7 @@ struct LiveIdleChips: View {
     var body: some View {
         HStack(spacing: 6) {
             ForEach(idle) { item in
+                let _ = PressableButtons.note("Idle: \(item.words)", enabled: true) { open(item.part) }
                 Button { open(item.part) } label: {
                     HStack(spacing: 6) {
                         Image(systemName: LiveIdleChips.symbol(of: item.kind))
@@ -817,11 +825,13 @@ struct LiveArmies: View {
         if !lines.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(lines) { line in
-                    Button {
+                    let go = {
                         let place = line.march.stands ? line.march.to : (line.march.route.last ?? line.march.to)
                         session.go(to: place)
                         session.selected = place
-                    } label: {
+                    }
+                    let _ = PressableButtons.note("Go to: \(line.doing)", enabled: true, go)
+                    Button(action: go) {
                         HStack(spacing: 8) {
                             Text(verbatim: line.doing)
                                 .font(.nm(LiveType.body))
@@ -855,6 +865,7 @@ struct LivePlots: View {
         ForEach(session.plots(), id: \.kind) { plot in
             let point = session.camera.viewPoint(worldX: Double(plot.foot.x), worldY: Double(plot.foot.z), height: Double(plot.foot.y), in: size)
             let name = session.world.blueprint(plot.kind, level: 1)?.name ?? "building"
+            let _ = PressableButtons.note("Build a \(name) here", enabled: true) { session.choose(plot) }
             Button { session.choose(plot) } label: {
                 Image(systemName: "hammer")
                     .font(.nm(LiveType.small, weight: .medium))
@@ -954,7 +965,8 @@ struct LiveRing: View {
     }
 
     private func symbol(_ icon: String, name: String, enabled: Bool, why: String?, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        PressableButtons.note("Ring: \(name)", enabled: enabled, action)
+        return Button(action: action) {
             Image(systemName: icon)
                 .font(.nm(LiveType.title, weight: .medium))
                 .foregroundStyle(enabled ? LiveEmphasis.primary : LiveEmphasis.tertiary)
