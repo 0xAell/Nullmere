@@ -966,6 +966,14 @@ final class LiveGameTests: XCTestCase {
         let joining = LiveSession(line: line) { 2_015 }
         await joining.open()
         XCTAssertEqual(joining.phase, .naming)
+        // A name typed on the card and the city founded under it, as a player founds it.
+        await held(LiveGameView(session: joining), width: 900, height: 600) {
+            XCTAssertTrue(PressableButtons.type("Ilsen", into: "Your name in the realm"), "Among \(PressableButtons.fields.keys.sorted())")
+            spin(0.3)
+            XCTAssertTrue(PressableButtons.press("Found your city"), "Among \(PressableButtons.actions.keys.sorted())")
+        }
+        XCTAssertEqual(line.asked, ["join Ilsen"])
+        line.clear()
         var shown: [LiveGameView.Panel] = []
         await LiveGameView.rehearse(joining, ["NULLMERE_REBUILT_NAME": "Ilsen", "NULLMERE_REBUILT_SHOW": "city"], patience: 1) { shown.append($0) }
         XCTAssertEqual(line.asked, ["join Ilsen"])

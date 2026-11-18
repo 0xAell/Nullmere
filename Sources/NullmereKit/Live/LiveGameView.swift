@@ -266,6 +266,8 @@ struct LiveNameCard: View {
         VStack(spacing: 14) {
             Caps("Your name in the realm", size: LiveType.body, weight: .medium, centred: true)
                 .foregroundStyle(LiveEmphasis.primary)
+            // Noted for a listening test, to type a name into it as a player would.
+            let _ = PressableButtons.noteField("Your name in the realm") { [binding = $name] words in binding.wrappedValue = words }
             TextField("Three to sixteen letters", text: $name)
                 .textFieldStyle(.plain)
                 .font(.nm(LiveType.title))
