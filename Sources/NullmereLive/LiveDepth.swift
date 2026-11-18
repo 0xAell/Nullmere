@@ -170,6 +170,24 @@ public struct LiveFavour: Equatable, Sendable {
     public let points: UInt64
     public let level: Int
 
+    /// The levels of a study, by its number, favour lends at a level of
+    /// it, as the module's catalogue has them: gathering from the second
+    /// level and the sixth, the Farm, Sawmill and Quarry from the third and
+    /// the ninth, marching from the fourth and the eighth, storage from the
+    /// fifth, shields from the seventh and the tenth.
+    public static func lends(level: Int, topic: Int) -> Int {
+        let level = min(max(level, 0), 10)
+        func from(_ at: Int) -> Int { level >= at ? 1 : 0 }
+        switch topic {
+        case 7: return from(2) + from(6)
+        case 1, 2, 3: return from(3) + from(9)
+        case 14: return from(4) + from(8)
+        case 6: return from(5)
+        case 12: return from(7) + from(10)
+        default: return 0
+        }
+    }
+
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
         guard let points = cells.unsigned(1), let level = cells.whole(2) else { return nil }

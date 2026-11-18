@@ -108,6 +108,9 @@ struct LiveDayPanel: View {
 
         if let favour = world.favour {
             LiveSmall(words: "Favour: level \(favour.level), \(LiveWords.grouped(favour.points)) points.")
+            if let words = world.favourWords {
+                LiveSmall(words: words, dim: true)
+            }
         }
         LiveAccount(session: session, seconds: seconds)
     }

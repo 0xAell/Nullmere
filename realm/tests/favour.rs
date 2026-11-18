@@ -141,3 +141,53 @@ fn favour_stops_at_its_top_and_never_makes_a_work_take_no_time() {
     let job = fast.call(|db| rules::upgrade(db, player, farm.id)).unwrap();
     assert!(job.ends - job.started >= 1);
 }
+
+#[test]
+fn from_its_second_level_favour_lends_levels_of_studies_as_a_title_does() {
+    let (mut db, player, city) = joined();
+    let lent = |topic: Topic| (0..=TOP_FAVOUR).map(|level| catalog::favour_lends(level, topic)).collect::<Vec<_>>();
+    assert_eq!(lent(Topic::Gathering), vec![0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2]);
+    assert_eq!(lent(Topic::Tillage), vec![0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2]);
+    assert_eq!(lent(Topic::Forestry), lent(Topic::Tillage));
+    assert_eq!(lent(Topic::Masonry), lent(Topic::Tillage));
+    assert_eq!(lent(Topic::Marching), vec![0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2]);
+    assert_eq!(lent(Topic::Storage), vec![0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]);
+    assert_eq!(lent(Topic::Shields), vec![0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2]);
+    assert_eq!(lent(Topic::Drill), vec![0; 11], "nothing of what is not named");
+    assert_eq!(catalog::favour_lends(99, Topic::Shields), 2, "no more past the top");
+
+    // Read wherever a study tells: a level of gathering is a tenth faster.
+    assert_eq!(rules::boost(&db, city.id, Topic::Gathering), 0);
+    favour(&mut db, player, catalog::favour_needs(2));
+    assert_eq!(rules::boost(&db, city.id, Topic::Gathering), 10);
+    favour(&mut db, player, catalog::favour_needs(TOP_FAVOUR));
+    assert_eq!(rules::boost(&db, city.id, Topic::Marching), 10);
+    assert_eq!(rules::boost(&db, city.id, Topic::Shields), 6);
+    assert_eq!(rules::favour_lent(&db, city.id, Topic::Storage), 1);
+}
+
+#[test]
+fn rising_a_level_of_favour_reckons_the_city_for_what_the_level_lends() {
+    let (mut db, player, city) = joined();
+    provide(&mut db, city.id);
+    raise(&mut db, city.id, Kind::Keep, 6);
+    let barracks = raise(&mut db, city.id, Kind::Barracks, 10);
+    raise(&mut db, city.id, Kind::Academy, 1);
+    // Ten short of the third level.
+    favour(&mut db, player, catalog::favour_needs(3) - 10);
+    db.call(|db| rules::train(db, player, barracks.id, 1, 50)).unwrap();
+    let farm = rules::building_of(&db, city.id, Kind::Farm).unwrap();
+    db.call(|db| rules::upgrade(db, player, farm.id)).unwrap();
+    // A study begun is not yet learnt: it adds nothing to the Farm here.
+    db.call(|db| rules::study(db, player, Topic::Tillage as u8)).unwrap();
+    let before = Table::<Stock>::get(&db, city.id).unwrap();
+    assert!(before.grain_hourly > 0);
+
+    // The first chest's ten: the third level, and the Farm brings in a twentieth more.
+    db.call(|db| rules::open_chest(db, player, 1)).unwrap();
+    assert_eq!(rules::favour_of(&db, player).level, 3);
+    let after = Table::<Stock>::get(&db, city.id).unwrap();
+    assert_eq!(after.grain_hourly, before.grain_hourly * 105 / 100);
+    assert_eq!(after.timber_hourly, before.timber_hourly * 105 / 100);
+    assert_eq!(after.moonsalt_hourly, before.moonsalt_hourly, "nothing lent for the Saltworks");
+}

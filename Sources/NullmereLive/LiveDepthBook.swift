@@ -99,6 +99,26 @@ extension LiveWorld {
     /// The Tavern's number among the buildings.
     public static let tavern = 16
 
+    /// What the player's favour does, in words: "Level 3: every work done
+    /// 3 hundredths sooner, and it lends a level of Tillage, Forestry,
+    /// Masonry and Gathering." Nil before the first level.
+    public var favourWords: String? {
+        guard let favour, favour.level > 0 else { return nil }
+        let sooner = favour.level == 1 ? "a hundredth" : "\(favour.level) hundredths"
+        var said = "Level \(favour.level): every work done \(sooner) sooner"
+        let lent = (1...15).compactMap { topic -> String? in
+            let levels = LiveFavour.lends(level: favour.level, topic: topic)
+            guard levels > 0 else { return nil }
+            let name = study(topic, level: 1)?.name ?? "study \(topic)"
+            return levels == 1 ? "a level of \(name)" : "\(levels) levels of \(name)"
+        }
+        if !lent.isEmpty {
+            let named = lent.count == 1 ? lent[0] : lent.dropLast().joined(separator: ", ") + " and " + lent[lent.count - 1]
+            said += ", and it lends \(named)"
+        }
+        return said + "."
+    }
+
     /// The summonses the player keeps.
     public var summonses: UInt64 { satchel[LiveWorld.summons] ?? 0 }
 

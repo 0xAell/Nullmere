@@ -1331,6 +1331,25 @@ pub fn favour_level(points: u64) -> u32 {
     (0..=TOP_FAVOUR).rev().find(|level| points >= favour_needs(*level)).unwrap_or(0)
 }
 
+/// The levels of a study favour lends at a level of it, beside whatever
+/// the player's city has learnt, as a title lends them: gathering from the
+/// second level and again from the sixth, what the Farm, Sawmill and
+/// Quarry bring in from the third and the ninth, marching from the fourth
+/// and the eighth, storage from the fifth, shields from the seventh and
+/// the tenth.
+pub fn favour_lends(level: u32, topic: Topic) -> u32 {
+    let level = level.min(TOP_FAVOUR);
+    let from = |at: u32| u32::from(level >= at);
+    match topic {
+        Topic::Gathering => from(2) + from(6),
+        Topic::Tillage | Topic::Forestry | Topic::Masonry => from(3) + from(9),
+        Topic::Marching => from(4) + from(8),
+        Topic::Storage => from(5),
+        Topic::Shields => from(7) + from(10),
+        _ => 0,
+    }
+}
+
 /// The favour each of the day's chests adds when it is opened, in their
 /// order: seventy a day for one who does all the day's work.
 pub fn chest_favour(chest: u8) -> u64 {

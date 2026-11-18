@@ -696,4 +696,30 @@ final class LiveWorldTests: XCTestCase {
         world.me = LivePlayer([n(1), n(9), .string("Ada"), n(0), .bool(true), n(0)])
         XCTAssertEqual(world.myMarches.map(\.id), [3])
     }
+
+    /// Favour lends levels of studies from its second level, as the
+    /// module's catalogue has them, and says so in words with the topics'
+    /// own names.
+    func testFavourSaysWhatItLends() {
+        let lent = { (topic: Int) in (0...10).map { LiveFavour.lends(level: $0, topic: topic) } }
+        XCTAssertEqual(lent(7), [0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2])
+        XCTAssertEqual(lent(1), [0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2])
+        XCTAssertEqual(lent(14), [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2])
+        XCTAssertEqual(lent(6), [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1])
+        XCTAssertEqual(lent(12), [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2])
+        XCTAssertEqual(lent(15), Array(repeating: 0, count: 11))
+        let names = [1: "Tillage", 2: "Forestry", 3: "Masonry", 6: "Storage", 7: "Gathering", 12: "Shields", 14: "Marching"]
+        let studies: [[JSONValue]] = names.keys.sorted().map { topic in
+            [n(Double(topic << 32 | 1)), n(Double(topic)), n(1), .string(names[topic] ?? ""), .string(""), n(5), n(0), n(0), n(0), n(0), n(60), n(1)]
+        }
+        func world(points: Double, level: Double) -> LiveWorld {
+            LiveWorld(snapshot: ["study": studies, "my_favour": [[n(1), n(points), n(level)]]])
+        }
+        XCTAssertNil(world(points: 0, level: 0).favourWords)
+        XCTAssertEqual(world(points: 50, level: 1).favourWords, "Level 1: every work done a hundredth sooner.")
+        XCTAssertEqual(world(points: 350, level: 3).favourWords,
+                       "Level 3: every work done 3 hundredths sooner, and it lends a level of Tillage, a level of Forestry, a level of Masonry and a level of Gathering.")
+        XCTAssertEqual(world(points: 11_000, level: 10).favourWords,
+                       "Level 10: every work done 10 hundredths sooner, and it lends 2 levels of Tillage, 2 levels of Forestry, 2 levels of Masonry, a level of Storage, 2 levels of Gathering, 2 levels of Shields and 2 levels of Marching.")
+    }
 }
