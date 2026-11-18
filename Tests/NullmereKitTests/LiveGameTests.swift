@@ -123,6 +123,11 @@ final class LiveGameTests: XCTestCase {
         rows["entrant"] = [[n(2), n(1), n(0), n(1_000)], [n(1), n(2), n(12), n(1_000)]]
         rows["guard"] = [[n(2 << 16 | 1 << 8 | 1), n(2), n(1), n(1), n(300)], [n(1 << 16 | 1 << 8 | 1), n(1), n(1), n(1), n(40)]]
         rows["purse"] = [[n(1), n(1), n(1), n(30_000), n(30_000), n(30_000), n(300)], [n(2), n(2), n(3), n(20_000), n(20_000), n(20_000), n(200)]]
+        // Two tiers of the trainer's merit, the first reached; and every tier of the builder's claimed.
+        rows["merit"] = [[n(1 << 8 | 1), n(1), n(1), .string("Drillmaster"), .string("soldiers set to train"), n(500), n(5_000), n(5_000), n(2_500), n(0), n(0)],
+                         [n(1 << 8 | 2), n(1), n(2), .string("Drillmaster"), .string("soldiers set to train"), n(5_000), n(20_000), n(20_000), n(10_000), n(2), n(1)],
+                         [n(4 << 8 | 1), n(4), n(1), .string("Builder"), .string("works begun"), n(20), n(5_000), n(5_000), n(2_500), n(0), n(0)]]
+        rows["my_records"] = [[n(1 << 8 | 1), n(1), n(1), n(700), n(0)], [n(1 << 8 | 4), n(1), n(4), n(31), n(1)]]
         // The Barrow Road's first two stages, never walked.
         rows["stage"] = [[n(1), n(1), n(15), n(0), n(21), n(36), n(1_200), n(1_200), n(500), n(0), n(0), n(0)],
                          [n(2), n(1), n(50), n(34), n(0), n(84), n(2_400), n(2_400), n(1_000), n(0), n(2), n(2)]]
@@ -441,8 +446,9 @@ final class LiveGameTests: XCTestCase {
                           "Among \(PressableButtons.actions.keys.sorted())")
             XCTAssertTrue(PressableButtons.press("Claim the day's welcome"), "Among \(PressableButtons.actions.keys.sorted())")
             XCTAssertTrue(PressableButtons.press("Walk the Barrow Road"), "Among \(PressableButtons.actions.keys.sorted())")
+            XCTAssertTrue(PressableButtons.press("Claim the merit Drillmaster, tier 1"), "Among \(PressableButtons.actions.keys.sorted())")
         }
-        XCTAssertEqual(claimingLine.asked.suffix(3), ["claim milestone 1", "claim the welcome", "walk the road with 36 of 1.1 led by 11"])
+        XCTAssertEqual(claimingLine.asked.suffix(4), ["claim milestone 1", "claim the welcome", "walk the road with 36 of 1.1 led by 11", "claim merit of deed 1"])
         // The road walked a minute ago, its soldiers resting; and walked whole.
         var rested = rows()
         rested["my_road"] = [[n(1), n(1), n(2_000)]]

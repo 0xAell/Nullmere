@@ -167,6 +167,32 @@ struct LiveDayPanel: View {
             LiveSmall(words: "You have walked the whole of the Barrow Road.", dim: true)
         }
 
+        // Merits: each deed over all the player's days, how near its next
+        // tier stands and what it gives, claimed once reached.
+        if !world.merits.isEmpty {
+            Caps("Merits", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
+        }
+        ForEach(world.meritDeeds, id: \.self) { deed in
+            let done = world.records[deed]?.done ?? 0
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if let merit = world.nextMerit(of: deed) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        LiveSmall(words: "\(merit.name), tier \(merit.tier): \(LiveWords.grouped(min(done, merit.goal))) of \(LiveWords.grouped(merit.goal)) \(merit.words).")
+                        LiveSmall(words: "Gives \(world.gifts(of: merit)).", dim: true)
+                    }
+                    Spacer(minLength: 0)
+                    if done >= merit.goal {
+                        QuietButton(title: "Claim", prominent: true, enabled: session.asking == 0, name: "Claim the merit \(merit.name), tier \(merit.tier)") {
+                            Task { await session.claimMerit(deed) }
+                        }
+                    }
+                } else if let last = world.merits.last(where: { $0.deed == deed }) {
+                    LiveSmall(words: "\(last.name): every tier claimed, \(LiveWords.grouped(done)) \(last.words).", dim: true)
+                }
+            }
+        }
+
         if let favour = world.favour {
             LiveSmall(words: "Favour: level \(favour.level), \(LiveWords.grouped(favour.points)) points.")
             if let words = world.favourWords {
