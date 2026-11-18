@@ -153,6 +153,22 @@ public struct LiveWindow: Sendable {
         }
     }
 
+    /// The holy sites in the window, each drawn as its kind, its pennant in
+    /// its holder's colour, the Unquiet's own while they keep it.
+    public func shrines(in world: LiveWorld, colours: [Vec4]) -> [(kind: ShrineKind, hex: Hex, colour: Vec4?)] {
+        world.shrines.values.sorted { $0.id < $1.id }.compactMap { shrine in
+            guard let hex = local(shrine.hex), let kind = LiveWindow.shrineKind(of: shrine.kind) else { return nil }
+            let colour = shrine.holder == 0 ? LiveWindow.unquiet : WorldStage.colour(colours, sigil: LiveWindow.allianceSigil(of: shrine.holder))
+            return (kind, hex, colour)
+        }
+    }
+
+    /// The stage's kind for a holy site of the realm's numbering.
+    static func shrineKind(of kind: Int) -> ShrineKind? {
+        [LiveShrine.moonwell: .moonwell, LiveShrine.stillStone: .stillStone, LiveShrine.saltAltar: .saltAltar,
+         LiveShrine.brokenSpire: .brokenSpire, LiveShrine.heartstone: .heartstone][kind]
+    }
+
     /// The window's tiles as the world's shader takes them: every hex
     /// known and watched, since the realm keeps nothing of its land from
     /// anyone; a hold where a city stands; and, where a world is given,

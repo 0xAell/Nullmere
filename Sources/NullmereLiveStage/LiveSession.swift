@@ -483,8 +483,10 @@ public final class LiveSession {
         func seen(_ hex: Hex, within reach: Float) -> Bool { view?.sees(hex, within: reach) ?? true }
         let sights = timed("cities read") { window.holds(in: world, colours: LiveSession.colours, at: seconds) }
         let (sites, barrows, cairns) = timed("places read") { (window.sites(in: world), window.barrows(in: world), window.cairns(in: world)) }
+        let shrines = timed("places read") { window.shrines(in: world, colours: LiveSession.colours) }
         if fixed.isEmpty {
-            fixed = stage.furnish(occupied: Set(sites.map(\.hex) + barrows.map(\.hex) + cairns.map(\.hex)), holds: Set(sights.map(\.hold.position)))
+            fixed = stage.furnish(occupied: Set(sites.map(\.hex) + barrows.map(\.hex) + cairns.map(\.hex) + shrines.map(\.hex)),
+                                  holds: Set(sights.map(\.hold.position)))
         }
         frame.fixed = fixed
         frame.fixedVersion = windowVersion * 100_000 + standingVersion
@@ -492,7 +494,7 @@ public final class LiveSession {
         let poses = timed("armies read") { window.companies(in: world, relief: land.relief, at: seconds).filter { seen($0.hex, within: Self.companyReach) } }
         let places = timed("places staged") {
             stage.sites(sites.filter { seen($0.hex, within: 1) }) + stage.lairs(barrows.filter { seen($0.hex, within: 1) }).batches
-                + stage.finds(cairns.filter { seen($0.hex, within: 1) }).batches
+                + stage.finds(cairns.filter { seen($0.hex, within: 1) }).batches + stage.shrines(shrines.filter { seen($0.hex, within: 1) })
         }
         let armies = timed("armies staged") { stage.companies(poses, houses: LiveSession.colours, into: &frame) }
         // What stands near the middle of the view drawn with its fine work,

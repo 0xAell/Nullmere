@@ -202,6 +202,17 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(window.cairns(in: cairned).map { [$0.hex.q, $0.hex.r] }, [[3, -2]])
         XCTAssertEqual(window.cairns(in: cairned).map(\.kind), [.barrow])
         XCTAssertTrue(far.cairns(in: cairned).isEmpty && window.cairns(in: world).isEmpty)
+        // The holy sites, each of its kind, in its holder's colour or the Unquiet's dark.
+        var withShrines = LiveWindowTests.rows()
+        withShrines["shrine"] = [[.number(1), .number(Double(LiveHex(q: 12, r: -6).packed)), .number(1), .number(0), .string(""), .number(0), .number(0)],
+                                 [.number(2), .number(Double(LiveHex(q: 14, r: -8).packed)), .number(5), .number(5), .string("[MERE] Keepers"), .number(1_000), .number(0)]]
+        let hallowed = LiveWorld(snapshot: withShrines)
+        let shrines = window.shrines(in: hallowed, colours: LiveSession.colours)
+        XCTAssertEqual(shrines.map { [$0.hex.q, $0.hex.r] }, [[2, -2], [4, -4]])
+        XCTAssertEqual(shrines.map(\.kind), [.moonwell, .heartstone])
+        XCTAssertEqual(shrines.map(\.colour), [LiveWindow.unquiet, WorldStage.colour(LiveSession.colours, sigil: LiveWindow.allianceSigil(of: 5))])
+        XCTAssertTrue(far.shrines(in: hallowed, colours: LiveSession.colours).isEmpty && window.shrines(in: world, colours: LiveSession.colours).isEmpty)
+        XCTAssertEqual((1...6).map { LiveWindow.shrineKind(of: $0) }, [.moonwell, .stillStone, .saltAltar, .brokenSpire, .heartstone, nil])
 
         // Arrived, Ada's stands at the grove; before it set out, at her city.
         XCTAssertEqual(window.companies(in: world, relief: relief, at: 9_999)[0].position.x, grove.x, accuracy: 1e-4)
