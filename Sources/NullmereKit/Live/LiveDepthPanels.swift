@@ -1,3 +1,4 @@
+import LauncherKit
 import NullmereLand
 import NullmereLive
 import NullmereLiveStage
@@ -318,40 +319,21 @@ struct LiveTalentControls: View {
         // panel's width holds no more than three in a row.
         HStack(spacing: 6) {
             if left > 0 {
-                Menu("Learn") {
-                    ForEach(lines.filter(\.canLearn)) { talent in
-                        Button(talent.name) { Task { await session.learnTalent(commander: commander.id, talent: talent.id) } }
-                    }
-                }
-                .menuStyle(.button)
-                .buttonStyle(.borderless)
-                .fixedSize()
-                .font(.nm(LiveType.small))
+                ChoiceMenu(title: "Learn", name: "Learn for \(commander.name)", choices: lines.filter(\.canLearn).map { talent in
+                    ChoiceMenu.Choice(title: talent.name) { Task { await session.learnTalent(commander: commander.id, talent: talent.id) } }
+                })
             }
             if !others.isEmpty {
-                Menu(partner.map { "Beside: \($0)" } ?? "Pair") {
-                    ForEach(others) { other in
-                        Button(other.name) { Task { await session.pair(commander: commander.id, with: other.id) } }
-                    }
-                    Button("No one") { Task { await session.pair(commander: commander.id, with: 0) } }
-                }
-                .menuStyle(.button)
-                .buttonStyle(.borderless)
-                .fixedSize()
-                .font(.nm(LiveType.small))
+                ChoiceMenu(title: partner.map { "Beside: \($0)" } ?? "Pair", name: "Pair with \(commander.name)", choices: others.map { other in
+                    ChoiceMenu.Choice(title: other.name) { Task { await session.pair(commander: commander.id, with: other.id) } }
+                } + [ChoiceMenu.Choice(title: "No one") { Task { await session.pair(commander: commander.id, with: 0) } }])
             }
             // Tomes of war held: read by this commander, one at a time.
             let tomes = world.heldTomes
             if !tomes.isEmpty, commander.level < LiveCommander.topLevel {
-                Menu("Read") {
-                    ForEach(tomes, id: \.ware.item) { tome in
-                        Button("\(tome.ware.name) (\(tome.count) held)") { Task { await session.readTome(commander: commander.id, item: tome.ware.item) } }
-                    }
-                }
-                .menuStyle(.button)
-                .buttonStyle(.borderless)
-                .fixedSize()
-                .font(.nm(LiveType.small))
+                ChoiceMenu(title: "Read", name: "Read to \(commander.name)", choices: tomes.map { tome in
+                    ChoiceMenu.Choice(title: "\(tome.ware.name) (\(tome.count) held)") { Task { await session.readTome(commander: commander.id, item: tome.ware.item) } }
+                })
             }
         }
         HStack(spacing: 6) {
@@ -634,15 +616,9 @@ struct LiveMere: View {
                 }
                 Spacer(minLength: 0)
                 if world.isLord {
-                    Menu("Bestow") {
-                        ForEach(players) { player in
-                            Button(player.name) { Task { await session.bestowTitle(title, on: player.id) } }
-                        }
-                    }
-                    .menuStyle(.button)
-                    .buttonStyle(.borderless)
-                    .fixedSize()
-                    .font(.nm(LiveType.small))
+                    ChoiceMenu(title: "Bestow", name: "Bestow \(named?.name ?? "the title")", choices: players.map { player in
+                        ChoiceMenu.Choice(title: player.name) { Task { await session.bestowTitle(title, on: player.id) } }
+                    })
                     if held != nil {
                         QuietButton(title: "Take back", enabled: session.asking == 0, name: "Take back \(named?.name ?? "the title")") { Task { await session.takeTitle(title) } }
                     }
@@ -693,15 +669,9 @@ struct LiveLetters: View {
             if others.isEmpty {
                 LiveSmall(words: "No one else has joined to write to.", dim: true)
             } else {
-                Menu(addressee.map { "To \($0.name)" } ?? "Write to…") {
-                    ForEach(others) { player in
-                        Button(player.name) { to = player.id }
-                    }
-                }
-                .menuStyle(.button)
-                .buttonStyle(.borderless)
-                .fixedSize()
-                .font(.nm(LiveType.small))
+                ChoiceMenu(title: addressee.map { "To \($0.name)" } ?? "Write to…", name: "Write to", choices: others.map { player in
+                    ChoiceMenu.Choice(title: player.name) { to = player.id }
+                })
                 .accessibilityLabel(addressee.map { "Writing to \($0.name): choose another" } ?? "Choose whom to write to")
             }
             LiveField(prompt: "A letter", text: $words, width: nil, submit: send)
@@ -835,3 +805,33 @@ struct LiveRankingsPanel: View {
     }
 }
 
+/// A menu of choices, each a title and what it does, as SwiftUI draws a
+/// menu. A menu's items are made only as it opens, so each choice is noted
+/// as the menu is drawn, for a listening test to press it as a player
+/// would choose it ("Learn for Corwen: Archery").
+struct ChoiceMenu: View {
+    struct Choice: Identifiable {
+        let title: String
+        let action: () -> Void
+        var id: String { title }
+    }
+
+    let title: String
+    /// What its choices are noted under: its title, or more where two
+    /// menus of one title stand in a panel.
+    var name: String?
+    let choices: [Choice]
+
+    var body: some View {
+        let _ = choices.forEach { PressableButtons.note("\(name ?? title): \($0.title)", enabled: true, $0.action) }
+        Menu(title) {
+            ForEach(choices) { choice in
+                Button(choice.title, action: choice.action)
+            }
+        }
+        .menuStyle(.button)
+        .buttonStyle(.borderless)
+        .fixedSize()
+        .font(.nm(LiveType.small))
+    }
+}

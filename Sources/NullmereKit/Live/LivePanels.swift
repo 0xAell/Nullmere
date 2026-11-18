@@ -1,3 +1,4 @@
+import LauncherKit
 import NullmereLand
 import NullmereLive
 import NullmereLiveStage
@@ -498,6 +499,10 @@ struct LiveField: View {
     let submit: () -> Void
 
     var body: some View {
+        // Noted for a listening test, to type into it and send it as a
+        // player would.
+        let _ = PressableButtons.noteField(prompt) { [binding = $text] words in binding.wrappedValue = words }
+        let _ = PressableButtons.note("Send: \(prompt)", enabled: true, submit)
         TextField(prompt, text: $text)
             .textFieldStyle(.plain)
             .font(.nm(LiveType.body))

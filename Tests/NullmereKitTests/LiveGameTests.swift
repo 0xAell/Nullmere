@@ -729,6 +729,85 @@ final class LiveGameTests: XCTestCase {
         XCTAssertTrue(taken.deeds.isEmpty)
     }
 
+    /// A view held in a window while a test types into its fields and
+    /// presses what it draws, as a player would; what the presses set
+    /// going is let run after.
+    private func held(_ view: some View, width: CGFloat = LiveSidePanel.width, height: CGFloat = 3_600, act: () -> Void) async {
+        PressableButtons.isListening = true
+        defer { PressableButtons.isListening = false }
+        let size = NSSize(width: width, height: height)
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: view.frame(width: width, height: height).background(Color.black))
+        window.orderFrontRegardless()
+        defer { window.close() }
+        spin(0.3)
+        act()
+        for _ in 0..<20 { await Task.yield() }
+        spin(0.1)
+    }
+
+    /// What a player types and sends, typed and sent as they would in a
+    /// window: an alliance founded, words said to the realm, a letter
+    /// written to one chosen and to the alliance, a question put to a
+    /// commander, and the realm left by their own name.
+    func testWhatIsTypedIsSentAsAPlayerSendsIt() async throws {
+        // In no alliance, with an Embassy: one founded by its name and tag.
+        var newcomer = rows()
+        newcomer["member"]?.removeAll { $0.first == n(1) }
+        newcomer["my_buildings"]?.append([n(32), n(7), n(15), n(1)])
+        let (fresh, freshLine) = await playing(newcomer)
+        await held(whole(.alliance, of: fresh).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.type("Keepers of the Lake", into: "Its name"), "Among \(PressableButtons.fields.keys.sorted())")
+            XCTAssertTrue(PressableButtons.type("LAKE", into: "Tag"))
+            spin(0.3)
+            XCTAssertTrue(PressableButtons.press("Send: Tag"))
+        }
+        XCTAssertEqual(freshLine.asked.last, "found Keepers of the Lake [LAKE]")
+
+        // Words to the realm; a letter to Bryn, chosen, and one to the alliance.
+        let (session, line) = await playing()
+        await held(whole(.chat, of: session).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.type("Well met", into: "Say to the realm"), "Among \(PressableButtons.fields.keys.sorted())")
+            spin(0.3)
+            XCTAssertTrue(PressableButtons.press("Send: Say to the realm"))
+        }
+        XCTAssertEqual(line.asked.last, "say to all: Well met")
+        await held(whole(.reports, of: session).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.press("Write to: Bryn"), "Among \(PressableButtons.actions.keys.sorted())")
+            XCTAssertTrue(PressableButtons.type("Well met, Bryn", into: "A letter"))
+            spin(0.3)
+            XCTAssertTrue(PressableButtons.press("Send: A letter"))
+            XCTAssertTrue(PressableButtons.type("To the gates at dusk", into: "A letter"))
+            spin(0.3)
+            _ = PressableButtons.press("Send the letter to the whole alliance")
+        }
+        XCTAssertTrue(line.asked.contains("letter to 2: Well met, Bryn"), "\(line.asked.suffix(3))")
+
+        // A question put to a commander, as asked in the counsel's field.
+        var counselled = rows()
+        counselled["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(3), n(4), n(200), n(0)]]
+        let (advised, _) = await playing(counselled)
+        let talk = LiveCounselSession(counsel: try XCTUnwrap(advised.counsel(of: 11)), speaker: { asked in "As you say: \(asked)" })
+        await held(LiveCounselView(counsel: talk, session: advised), height: 400) {
+            XCTAssertTrue(PressableButtons.type("What now?", into: "Ask Corwen"), "Among \(PressableButtons.fields.keys.sorted())")
+            spin(0.3)
+            XCTAssertTrue(PressableButtons.press("Send: Ask Corwen"))
+        }
+        for _ in 0..<100 where talk.answering {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(talk.lines.map(\.text), ["What now?", "As you say: What now?"])
+
+        // The realm left, the player's own name typed to be sure.
+        await held(whole(.day, of: session).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.type("Ada", into: "Your name, to leave"), "Among \(PressableButtons.fields.keys.sorted())")
+            spin(0.3)
+            XCTAssertTrue(PressableButtons.press("Send: Your name, to leave"))
+        }
+        XCTAssertEqual(line.asked.last, "leave the realm as Ada")
+    }
+
     /// The commander's looks and deeds as the model takes them, through
     /// its tools: each look shown, a deed put forward as one to do; the
     /// realm renewed for the next question; and what goes wrong with the
@@ -739,18 +818,18 @@ final class LiveGameTests: XCTestCase {
         let (advised, _) = await playing(counselled)
         let grounded = try XCTUnwrap(advised.counsel(of: 11))
         let deed = try XCTUnwrap(grounded.deeds.first, "something can be done now")
-        final class Held: @unchecked Sendable { var bench: LiveCounselBench? }
-        let held = Held()
+        final class Holder: @unchecked Sendable { var bench: LiveCounselBench? }
+        let holder = Holder()
         // A stand-in for the model that looks at the armies and puts the deed forward, as the model would through its tools.
         let talk = LiveCounselSession(counsel: grounded, speaker: { _ in
-            guard let bench = held.bench else { return "" }
+            guard let bench = holder.bench else { return "" }
             let look = LiveCounselLook(bench: bench)
             _ = try await look.call(arguments: try LiveCounselLook.Arguments(GeneratedContent(properties: ["at": "armies"])))
             let proposal = LiveCounselProposal(bench: bench)
             let put = try await proposal.call(arguments: try LiveCounselProposal.Arguments(GeneratedContent(properties: ["deed": deed.title])))
             return put.hasPrefix("Put to your lord") ? "Do it, my lord." : put
         })
-        held.bench = talk.bench
+        holder.bench = talk.bench
         XCTAssertEqual(LiveCounselLook(bench: talk.bench).name, "look")
         XCTAssertEqual(LiveCounselProposal(bench: talk.bench).name, "proposeADeed")
         talk.renew(grounded)

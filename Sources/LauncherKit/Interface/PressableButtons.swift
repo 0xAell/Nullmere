@@ -4,7 +4,27 @@
 @MainActor
 public enum PressableButtons {
     public static var isListening = false {
-        didSet { actions = [:] }
+        didSet {
+            actions = [:]
+            fields = [:]
+        }
+    }
+    /// What sets the words of each field drawn while a test listens, by its
+    /// prompt, so a test can type into it as a keeper would.
+    public private(set) static var fields: [String: (String) -> Void] = [:]
+
+    public static func noteField(_ prompt: String, _ type: @escaping (String) -> Void) {
+        guard isListening else { return }
+        fields[prompt] = type
+    }
+
+    /// Types words into the field drawn with that prompt, in place of what
+    /// it held; false if none was drawn.
+    @discardableResult
+    public static func type(_ words: String, into prompt: String) -> Bool {
+        guard let field = fields[prompt] else { return false }
+        field(words)
+        return true
     }
     public private(set) static var actions: [String: () -> Void] = [:]
 
