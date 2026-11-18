@@ -90,14 +90,18 @@ final class LiveGameTests: XCTestCase {
                         [n(4), .string("Eight hours' peace"), .string("Keeps your city at peace for 8 hours."), n(28_800), n(2)],
                         [n(5), .string("Iron"), .string("Worked at the Forge into gear."), n(0), n(3)],
                         [n(9), .string("A tome of war"), .string("Adds 500 to what a commander has seen."), n(0), n(4)],
-                        [n(12), .string("Crate of grain"), .string("Holds 10,000 grain. Kept in your satchel no army can carry it off; opened, it goes into your city."), n(0), n(6)]]
+                        [n(12), .string("Crate of grain"), .string("Holds 10,000 grain. Kept in your satchel no army can carry it off; opened, it goes into your city."), n(0), n(6)],
+                        [n(16), .string("Gatherer's draught"), .string("Drunk, your armies gather 50% faster for 8 hours."), n(28_800), n(7)],
+                        [n(18), .string("Draught of war"), .string("Drunk, your soldiers strike 12% harder for 2 hours."), n(7_200), n(7)]]
+        // A gatherer's draught held, and a draught of war drunk, lasting another hour.
+        rows["my_draughts"] = [[n(1 << 8 | 18), n(1), n(18), n(5_615)]]
         // Two tomes held, to read to a commander; the alliance's stores, a
         // haste she has the honour for and a tome she has not.
         rows["price"] = [[n(1), n(100)], [n(9), n(250)]]
         rows["my_honour"] = [[n(1), n(180), n(0), n(0)]]
         rows["my_daily"] = [[n(1), n(0), n(60), n(1_200), n(0), n(1), n(0), n(0)]]
         rows["my_satchel"] = [[n(1 << 8 | 1), n(1), n(1), n(3)], [n(1 << 8 | 4), n(1), n(4), n(1)], [n(1 << 8 | 5), n(1), n(5), n(6)],
-                              [n(1 << 8 | 9), n(1), n(9), n(2)], [n(1 << 8 | 12), n(1), n(12), n(2)]]
+                              [n(1 << 8 | 9), n(1), n(9), n(2)], [n(1 << 8 | 12), n(1), n(12), n(2)], [n(1 << 8 | 16), n(1), n(16), n(1)]]
         // The Forge: two pieces it makes, a piece worn and one spare.
         rows["pattern"] = [[n(1), .string("Iron sword"), n(1), n(1), .string("Everyone its wearer leads strikes 3% harder."), n(4), n(4), n(0), n(0), n(0), n(5_000), n(5_000),
                             n(0), n(1)],
@@ -148,6 +152,9 @@ final class LiveGameTests: XCTestCase {
         rows["my_pleas"] = [[n(77), n(5), n(2), .string("[MERE] Bryn"), n(1), n(1), n(5)]]
         rows["ward"] = [[n(3), n(5), n(Int(LiveHex(q: 12, r: -6).packed)), n(1), n(1_500)]]
         rows["gate"] = [[n(1), n(Int(LiveHex(q: 22, r: 0).packed)), n(5), .string("[MERE] Keepers of the Mere"), n(1_900), n(0)]]
+        // Two holy sites: the Salt Altar her alliance holds, and the Moonwell the Unquiet keep.
+        rows["shrine"] = [[n(2), n(Int(LiveHex(q: 18, r: -9).packed)), n(3), n(5), .string("[MERE] Keepers of the Mere"), n(1_200), n(0)],
+                          [n(1), n(Int(LiveHex(q: 4, r: 9).packed)), n(1), n(0), .string(""), n(0), n(0)]]
         // A truce with the Wardens, their envoy waiting, a prisoner each way, and two petitions.
         rows["pact"] = [[n(1), n(5), n(6), n(1), n(1_500), n(600_000)]]
         rows["my_envoys"] = [[n(5), n(6), n(5), .string("[WRD] Wardens"), n(2), n(7), n(2_000)]]
