@@ -1,0 +1,69 @@
+name: Models
+
+# Every model of the world made again in Blender, each from its script in
+# Art/blender, with Blender's own Python module (plan 5.1): what it made, and
+# how each compares with the model committed, kept on the ci-shots branch in
+# a folder of the run's own (models-<run>). Run by hand, or when a model's
+# script changes on main. Nothing is committed: what it made is fetched,
+# looked at in Tools/model-preview and committed by hand, with the Swift
+# that embeds it (scripts/build-models.sh --embed).
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "Art/blender/**"
+      - "Art/embed.py"
+      - "scripts/build-models.sh"
+      - "scripts/compare-models.py"
+      - ".github/workflows/models.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: models-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  models:
+    name: Make every model in Blender
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      # Blender 5.2's own Python module, which the models committed were
+      # exported by, and the system's libraries it opens even without a
+      # screen.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Blender's Python
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libxi6 libxxf86vm1 libxfixes3 libxrender1 libxkbcommon0 libsm6 libgl1 libegl1
+          python -m pip install --quiet bpy==5.2.4
+          python -c "import bpy; print('Blender', bpy.app.version_string)"
+
+      - name: Make every model
+        run: |
+          mkdir -p build/before build/kept
+          cp Art/models/*.glb build/before/
+          PYTHON=python scripts/build-models.sh 2>&1 | tee build/models.log
+
+      - name: Compare them with those committed
+        run: python3 scripts/compare-models.py build/before Art/models | tee build/models.txt
+
+      - name: Keep them on ci-shots
+        if: ${{ !cancelled() }}
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN: models-${{ github.run_number }}
+          SHA: ${{ github.sha }}
+        run: |
+          cp Art/models/*.glb build/kept/ 2>/dev/null || true
+          cp build/models.txt build/kept/ 2>/dev/null || true
+          scripts/push-ci-shots.sh build/kept
