@@ -872,6 +872,14 @@ final class LiveGameTests: XCTestCase {
         XCTAssertGreaterThan(try drawn(LiveGameView(session: marking), width: window.width, height: window.height, as: "live-marks.png"), 800)
         marking.selected = LiveHex(q: 12, r: -2)
         XCTAssertEqual(marking.card(for: try XCTUnwrap(marking.selection)).lines.last, "Your alliance's mark: Take the grove")
+        // Listed in the Alliance part: gone to, and cleared, from there.
+        marking.selected = nil
+        await held(whole(.alliance, of: marking).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.press("Go to the mark: Take the grove"), "Among \(PressableButtons.actions.keys.sorted())")
+            XCTAssertTrue(PressableButtons.press("Clear the mark: Take the grove"))
+        }
+        XCTAssertEqual(marking.selected, LiveHex(q: 12, r: -2))
+        XCTAssertEqual(markingLine.asked.last, "clear mark 3")
         // Ada leads her alliance: she may clear it from the palette.
         let clear = try XCTUnwrap(marking.commands(at: 2_015).first { $0.act == .clearMark(3) })
         _ = await marking.perform(clear)

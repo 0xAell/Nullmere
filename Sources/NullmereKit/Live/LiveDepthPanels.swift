@@ -482,6 +482,26 @@ struct LiveAllianceDepth: View {
             let raised = wards.count == 1 ? "1 wardstone raised." : "\(wards.count) wardstones raised."
             let held = gates.count == 1 ? "1 gate of the ridge held" : "\(gates.count) gates of the ridge held"
             LiveSmall(words: gates.isEmpty ? "\(raised) No gate of the ridge held." : "\(raised) \(held): the lake country is open to you.")
+            // The places its officers marked: each to go to, and an officer's to clear.
+            if !world.marks.isEmpty {
+                Caps("Marks", size: LiveType.small)
+                    .foregroundStyle(LiveEmphasis.secondary)
+                ForEach(world.marks) { mark in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        LiveSmall(words: mark.words)
+                        Spacer(minLength: 0)
+                        QuietButton(title: "Go", name: "Go to the mark: \(mark.words)") {
+                            session.go(to: mark.hex)
+                            session.selected = mark.hex
+                        }
+                        if world.isOfficer {
+                            QuietButton(title: "Clear", enabled: session.asking == 0, name: "Clear the mark: \(mark.words)") {
+                                Task { await session.clearMark(mark.id) }
+                            }
+                        }
+                    }
+                }
+            }
             LiveDiplomacy(session: session, seconds: seconds, alliance: alliance)
             LivePetitions(session: session, seconds: seconds)
         }
