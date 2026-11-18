@@ -848,6 +848,13 @@ final class LiveGameTests: XCTestCase {
         }
         XCTAssertTrue(session.hasReported(line: 11, withinAlliance: false))
         XCTAssertGreaterThan(try drawn(whole(.chat, of: session).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800)
+        // Bryn's city chosen, her ally's: carts of goods offered beside the
+        // reinforcement, drawn as the play view draws a card.
+        let bryns = LiveHex(q: 14, r: -4)
+        XCTAssertTrue(session.card(for: session.selection(at: bryns)).buttons.contains { $0.act == .sendGoods }, "\(session.card(for: session.selection(at: bryns)))")
+        session.selected = bryns
+        XCTAssertGreaterThan(try drawn(LiveGameView(session: session), width: 1512, height: 982, as: "live-ally-card.png"), 800)
+        session.selected = nil
         // No one else in the realm: no one to write to, and that said.
         var alone = rows()
         alone["player"] = alone["player"]?.filter { $0.first == n(1) }
