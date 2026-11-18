@@ -553,8 +553,9 @@ final class LiveGameTests: XCTestCase {
         defer { PressableButtons.isListening = false }
         PressableButtons.isListening = true
         XCTAssertGreaterThan(try drawn(LiveTaskChip(session: going, panel: opens), width: 420, height: 70, as: "live-task-go.png"), 60)
-        XCTAssertTrue(PressableButtons.press("Go"), "Go drawn, and pressable")
-        XCTAssertFalse(PressableButtons.press("Claim"), "and no Claim beside it")
+        // Noted by its full name: where it goes.
+        XCTAssertTrue(PressableButtons.press("Go to your buildings"), "Go drawn, and pressable: \(PressableButtons.actions.keys.sorted())")
+        XCTAssertFalse(PressableButtons.press("Claim what the task gives"), "and no Claim beside it")
         for _ in 0..<20 { await Task.yield() }
         spin(0.05)
         XCTAssertEqual(opened, .city)
