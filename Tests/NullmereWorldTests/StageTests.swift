@@ -153,6 +153,20 @@ final class StageTests: XCTestCase {
             let p = instance.model.c3
             XCTAssertGreaterThan(((p.x - heart.x) * (p.x - heart.x) + (p.z - heart.z) * (p.z - heart.z)).squareRoot(), HoldLayout.reach - 0.01)
         }
+        // Its ground given, the land is furnished up to its homes and works,
+        // nothing on what it stands on; the same hold, the same ground.
+        let sight = HoldSight(hold: seat, colour: Vec4(0.8, 0.1, 0.1, 1))
+        let grounds = stage.grounds(of: [sight])
+        let footprint = try XCTUnwrap(grounds[seat.position])
+        XCTAssertEqual(stage.grounds(of: [sight]), grounds)
+        let grounded = stage.furnish(occupied: [], holds: [seat.position], grounds: grounds)
+        XCTAssertGreaterThan(count(grounded), count(round), "the land furnished up to its homes")
+        for instance in grounded.flatMap(\.instances) {
+            let p = instance.model.c3
+            XCTAssertTrue(footprint.clear(x: p.x, z: p.z, radius: 0, tall: false), "nothing on its ground")
+        }
+        XCTAssertEqual(stage.furnish(occupied: [], holds: [seat.position], grounds: grounds), grounded, "kept, not laid out again")
+        XCTAssertEqual(stage.furnish(occupied: [], holds: [seat.position]), round, "and bare to its reach without it")
     }
 
     /// A forge at work throws its firelight on its yard when the eye is

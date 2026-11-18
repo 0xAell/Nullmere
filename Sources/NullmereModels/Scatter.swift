@@ -61,12 +61,18 @@ public enum Scatter {
         }
     }
 
-    /// One hex's furnishings.
-    public static func pieces(in hex: Hex, map: WorldMap, relief: Relief, clearHeart: Bool = false, holds: Set<Hex> = []) -> [Piece] {
+    /// One hex's furnishings. About a hold in `holds` the ground within
+    /// `HoldLayout.reach` of its heart, as the hold is drawn, is left bare;
+    /// about one whose ground `grounds` gives, only what its keep, walls,
+    /// works, lanes and town stand on (`HoldLayout.Footprint`), so the
+    /// woods come up to its homes.
+    public static func pieces(in hex: Hex, map: WorldMap, relief: Relief, clearHeart: Bool = false, holds: Set<Hex> = [],
+                              grounds: [Hex: HoldLayout.Footprint] = [:]) -> [Piece] {
         guard let tile = map[hex] else { return [] }
         let centre = Relief.centre(of: hex)
         let heartPoint = (x: centre.x, z: centre.z)
-        let nearHolds = holds.filter { $0.distance(to: hex) <= 3 }.map { Relief.centre(of: $0) }
+        let nearHolds = holds.filter { $0.distance(to: hex) <= 3 && grounds[$0] == nil }.map { Relief.centre(of: $0) }
+        let nearGrounds = grounds.filter { $0.key.distance(to: hex) <= 3 }.map(\.value)
         let neighbours = hex.neighbors.map { Relief.centre(of: $0) }
         let layout = HexLayout(size: 1)
         var placed: [(x: Float, z: Float, radius: Float)] = []
@@ -83,6 +89,7 @@ public enum Scatter {
                 let draw = { (salt: Int32) in roll(100 &+ Int32(item) &* 13 &+ salt) }
                 let scale = recipe.scale.lowerBound + (recipe.scale.upperBound - recipe.scale.lowerBound) * draw(0)
                 let radius = footprint(recipe.furnishing) * scale
+                let tall = height(recipe.furnishing) > underfoot
                 for attempt in 0..<14 {
                     // A feature tries the heart first; the rest anywhere in the hex.
                     let x: Float, z: Float
@@ -97,6 +104,7 @@ public enum Scatter {
                     if clearHeart && distance(heartPoint) < heart + radius { continue }
                     if neighbours.contains(where: { distance($0) < heart + radius }) { continue }
                     if nearHolds.contains(where: { distance($0) < HoldLayout.reach * HoldLayout.grandeur + radius }) { continue }
+                    if nearGrounds.contains(where: { !$0.clear(x: x, z: z, radius: radius, tall: tall) }) { continue }
                     if placed.contains(where: { distance(($0.x, $0.z)) < ($0.radius + radius) * recipe.closeness }) { continue }
                     placed.append((x, z, radius))
                     let y = relief.height(atX: x, z: z) - sink

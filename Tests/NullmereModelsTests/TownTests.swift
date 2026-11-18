@@ -110,6 +110,55 @@ final class TownTests: XCTestCase {
         XCTAssertGreaterThan(lotsSeen, 200, "Towns stand about the holds")
     }
 
+    /// The ground a hold stands on as it is drawn, which the land's
+    /// furniture keeps clear of: all of it, its keep, walls, works, every
+    /// length of its lanes and its lots; a slot no work stands in yet kept
+    /// from trees but not from heather; about them, ground the woods may
+    /// take; beyond its reach, nothing of it.
+    func testAHoldsGroundIsWhereItsKeepWorksLanesAndHomesStand() {
+        let tree: Float = 0.05
+        var bare = 0, heathered = 0, wooded = 0, samples = 0
+        for state in TownTests.worlds {
+            let relief = Relief(map: state.map)
+            for hold in state.holds {
+                let young = HoldLayout.Plan(hex: hold.position, isSeat: hold.isSeat)
+                for plan in [grand(hold.position, seat: hold.isSeat), young] {
+                    let ground = HoldLayout.footprint(plan, relief: relief)
+                    let centre = Relief.centre(of: plan.hex)
+                    let k = HoldLayout.grandeur
+                    func drawn(_ x: Float, _ z: Float) -> (x: Float, z: Float) {
+                        (centre.x + (x - centre.x) * k, centre.z + (z - centre.z) * k)
+                    }
+                    for piece in HoldLayout.pieces(plan, relief: relief) + HoldLayout.town(plan, relief: relief) {
+                        let at = drawn(piece.position.x, piece.position.z)
+                        XCTAssertFalse(ground.clear(x: at.x, z: at.z, radius: 0.01, tall: false), "\(piece.key) stands on its ground")
+                    }
+                    let gate = HoldLayout.gate(of: plan.hex), before = drawn(gate.x, gate.z)
+                    XCTAssertFalse(ground.clear(x: before.x, z: before.z, radius: 0.01, tall: false), "Before its gate, where envoys wait")
+                    let beyond = drawn(centre.x + HoldLayout.reach + tree + 0.01, centre.z)
+                    XCTAssertTrue(ground.clear(x: beyond.x, z: beyond.z, radius: tree * k, tall: true), "Beyond its reach, nothing of it")
+                    let taken = Set(HoldLayout.assign(plan, relief: relief).map(\.1.index))
+                    for slot in HoldLayout.reservedSlots(plan, relief: relief).slots where !taken.contains(slot.index) {
+                        let at = drawn(slot.position.x, slot.position.z)
+                        XCTAssertFalse(ground.clear(x: at.x, z: at.z, radius: tree * k, tall: true), "No tree where a work may yet stand")
+                        if ground.clear(x: at.x, z: at.z, radius: 0.01, tall: false) { heathered += 1 } else { bare += 1 }
+                    }
+                    guard plan == young else { continue }
+                    // About a young hold, the woods come close.
+                    for step in 0..<72 {
+                        let angle = Float(step) * 2 * .pi / 72
+                        let r = HoldLayout.reach - 0.08
+                        let at = drawn(centre.x + r * Float(cos(Double(angle))), centre.z + r * Float(sin(Double(angle))))
+                        samples += 1
+                        if ground.clear(x: at.x, z: at.z, radius: tree * k, tall: true) { wooded += 1 }
+                    }
+                }
+            }
+        }
+        XCTAssertGreaterThan(heathered, bare, "Heather grows where works may yet stand, but where a lane runs")
+        XCTAssertGreaterThan(wooded * 3, samples, "A young hold's woods come up between its slots at its edge: \(wooded) of \(samples)")
+    }
+
     func testTheTownGrowsWithItsWorksAndWhatStandsStays() {
         for state in TownTests.worlds {
             let relief = Relief(map: state.map)

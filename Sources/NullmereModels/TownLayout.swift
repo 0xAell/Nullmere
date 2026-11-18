@@ -461,6 +461,108 @@ extension HoldLayout {
         return gathered
     }
 
+    // MARK: The ground it stands on
+
+    /// The ground a hold's keep, walls, works, lanes and town stand on as
+    /// the hold is drawn, `grandeur` times its plan about its heart: what
+    /// the land's furniture keeps clear of, so the woods and the heather
+    /// come up to its homes and its works rather than stopping at its
+    /// reach. Where a work could stand and none does yet, nothing taller
+    /// than heather grows: no tree is felled where a work is raised.
+    public struct Footprint: Sendable, Equatable {
+        /// A lot, a work or a slot: where on the ground plane, how far
+        /// about, and whether only what stands taller than heather keeps
+        /// clear of it.
+        public struct Spot: Sendable, Equatable {
+            public var x: Float
+            public var z: Float
+            public var radius: Float
+            public var tallOnly: Bool
+        }
+
+        /// A lane laid: its way from the heart, radians from +x toward +z,
+        /// and how far from the heart it begins and ends.
+        public struct Lane: Sendable, Equatable {
+            public var angle: Float
+            public var from: Float
+            public var to: Float
+        }
+
+        public var x: Float
+        public var z: Float
+        /// About the heart, wholly its own: the keep, and where it is walled
+        /// the ward, the walls and the lane round them.
+        public var ward: Float
+        public var spots: [Spot]
+        public var lanes: [Lane]
+        /// How near a lane's line nothing stands.
+        public var laneHalf: Float
+        /// Beyond this from the heart nothing of it stands.
+        public var reach: Float
+
+        /// Whether something reaching `radius` about (x, z), standing
+        /// taller than heather or not, stands clear of all of it.
+        public func clear(x px: Float, z pz: Float, radius: Float, tall: Bool) -> Bool {
+            let dx = px - x, dz = pz - z
+            let r = (dx * dx + dz * dz).squareRoot()
+            if r - radius >= reach { return true }
+            if r - radius < ward { return false }
+            for lane in lanes {
+                let wx = Float(cos(Double(lane.angle))), wz = Float(sin(Double(lane.angle)))
+                let along = min(max(dx * wx + dz * wz, lane.from), lane.to)
+                let ox = dx - wx * along, oz = dz - wz * along
+                if (ox * ox + oz * oz).squareRoot() < laneHalf + radius { return false }
+            }
+            for spot in spots where tall || !spot.tallOnly {
+                let sx = px - spot.x, sz = pz - spot.z
+                if (sx * sx + sz * sz).squareRoot() < spot.radius + radius { return false }
+            }
+            return true
+        }
+    }
+
+    /// Room kept about a lot of the town, for the folk about its well and
+    /// stalls and the eaves of its homes.
+    static let lotRoom: Float = 0.06
+    /// Room kept beside a lane's line, for the folk walking to one side.
+    static let laneRoom: Float = 0.03
+    /// Room kept before a hold's gate, for the envoys waiting there.
+    static let gateRoom: Float = 0.17
+
+    /// The ground a plan's hold stands on as it is drawn (`Footprint`):
+    /// its keep, its walls and the ward within them, every work standing
+    /// or rising and each slot one may yet stand in, its lanes as laid and
+    /// its town's lots.
+    public static func footprint(_ plan: Plan, relief: Relief) -> Footprint {
+        let centre = Relief.centre(of: plan.hex)
+        let k = grandeur
+        func spot(_ p: Vec3, _ radius: Float, tallOnly: Bool) -> Footprint.Spot {
+            Footprint.Spot(x: centre.x + (p.x - centre.x) * k, z: centre.z + (p.z - centre.z) * k, radius: radius * k, tallOnly: tallOnly)
+        }
+        let keep = Library.model(keepKey(plan)).mesh.bounds
+        let keepReach = max(-keep.min.x, keep.max.x, -keep.min.z, keep.max.z)
+        let walled = isWalled(plan)
+        let ward = walled ? max(keepReach, ringLane + laneHalfWidth) : keepReach
+        let standing = assign(plan, relief: relief)
+        let taken = Set(standing.map(\.1.index))
+        var spots = standing.map { spot($0.1.position, workRadius, tallOnly: false) }
+        spots += reservedSlots(plan, relief: relief).slots.filter { !taken.contains($0.index) }.map { spot($0.position, workRadius, tallOnly: true) }
+        spots += lots(plan, relief: relief).map { spot($0.position, $0.piece.footprint + lotRoom, tallOnly: false) }
+        let angles = laneAngles(of: plan.hex)
+        // Before the gate, where envoys wait on the keeper and petitioners stand.
+        let out = Vec3(Float(cos(Double(angles[0]))), 0, Float(sin(Double(angles[0]))))
+        spots.append(spot(gate(of: plan.hex) + out * gateRoom, gateRoom + 0.03, tallOnly: false))
+        var lanes: [Footprint.Lane] = []
+        for (index, end) in laneEnds(plan, relief: relief).sorted(by: { $0.key < $1.key }) {
+            // As laid: within the walls only the way to the gate.
+            let start = walled && index != 0 ? ringLane : door
+            guard end > start + 0.05 else { continue }
+            lanes.append(Footprint.Lane(angle: angles[index], from: start * k, to: end * k))
+        }
+        return Footprint(x: centre.x, z: centre.z, ward: ward * k, spots: spots, lanes: lanes,
+                         laneHalf: (laneHalfWidth + laneRoom) * k, reach: reach * k)
+    }
+
     /// A way kept to one side of its lanes: each point of it moved `side`
     /// across the way's course there.
     static func keeping(_ side: Float, to path: [Vec3]) -> [Vec3] {

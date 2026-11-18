@@ -229,7 +229,11 @@ public final class WorldStage: @unchecked Sendable {
     /// where companies stand for `furnitureByHex`.
     private var openByHex: [Hex: [Piece]] = [:]
     private var openHolds: Set<Hex>?
-    private var furnished: (occupied: Set<Hex>, holds: Set<Hex>, burnt: Set<Hex>)?
+    private var openGrounds: [Hex: HoldLayout.Footprint] = [:]
+    private var furnished: (occupied: Set<Hex>, holds: Set<Hex>, burnt: Set<Hex>, grounds: [Hex: HoldLayout.Footprint])?
+    /// Each hold's ground as drawn, with what it was worked out from.
+    private var footprinted: [Int: (hold: Hold, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?, keep: HoldLayout.KeepLook?,
+                                    footprint: HoldLayout.Footprint)] = [:]
     private var furniture: [ModelBatch] = []
     /// Moves each time the furniture is laid out again: a number no other
     /// layout of any stage has had (`FurnitureVersions`), for a renderer
@@ -283,23 +287,32 @@ public final class WorldStage: @unchecked Sendable {
 
     /// The land's furniture, with whatever would rise among a company's
     /// ranks given way where `occupied` hexes are held and the ground round
-    /// `holds` bare; on `burnt` ground, ash after a fire in the blackwood,
-    /// its trees standing dead and its undergrowth gone (`burnt(_:)`). Only
-    /// the hexes whose lot changed, and those beside a company come or
-    /// gone, are laid out again.
-    public func furnish(occupied: Set<Hex>, holds: Set<Hex>, burnt: Set<Hex> = []) -> [ModelBatch] {
-        if let furnished, furnished.occupied == occupied, furnished.holds == holds, furnished.burnt == burnt { return furniture }
-        // The open ground, laid out again only round a hold come or gone.
+    /// `holds` bare: all within a hold's reach, or where `grounds` gives a
+    /// hold's ground (`grounds(of:)`), only what it stands on, the woods
+    /// coming up to its homes. On `burnt` ground, ash after a fire in the
+    /// blackwood, its trees standing dead and its undergrowth gone
+    /// (`burnt(_:)`). Only the hexes whose lot changed, and those beside a
+    /// company come or gone, are laid out again.
+    public func furnish(occupied: Set<Hex>, holds: Set<Hex>, burnt: Set<Hex> = [],
+                        grounds: [Hex: HoldLayout.Footprint] = [:]) -> [ModelBatch] {
+        if let furnished, furnished.occupied == occupied, furnished.holds == holds, furnished.burnt == burnt, furnished.grounds == grounds {
+            return furniture
+        }
+        // The open ground, laid out again only round a hold come or gone,
+        // or whose ground has changed.
         var reopened: Set<Hex> = []
         if let openHolds {
-            for hold in openHolds.symmetricDifference(holds) { reopened.formUnion(hold.spiral(3).filter { map[$0] != nil }) }
+            var moved = openHolds.symmetricDifference(holds)
+            for hex in Set(openGrounds.keys).union(grounds.keys) where openGrounds[hex] != grounds[hex] { moved.insert(hex) }
+            for hold in moved { reopened.formUnion(hold.spiral(3).filter { map[$0] != nil }) }
         } else {
             reopened = Set(map.hexes)
         }
         for hex in reopened {
-            openByHex[hex] = Scatter.pieces(in: hex, map: map, relief: relief, clearHeart: holds.contains(hex), holds: holds)
+            openByHex[hex] = Scatter.pieces(in: hex, map: map, relief: relief, clearHeart: holds.contains(hex), holds: holds, grounds: grounds)
         }
         openHolds = holds
+        openGrounds = grounds
         var changed: Set<Hex>
         if let furnished {
             let moved = furnished.occupied.symmetricDifference(occupied)
@@ -333,7 +346,7 @@ public final class WorldStage: @unchecked Sendable {
         let gathered = Regions.gather(placed, radius: map.radius)
         furniture = gathered.batches
         furnitureRegions = gathered.regions
-        furnished = (occupied, holds, burnt)
+        furnished = (occupied, holds, burnt, grounds)
         furnitureVersion = FurnitureVersions.next()
         return furniture
     }
@@ -813,6 +826,29 @@ public final class WorldStage: @unchecked Sendable {
     }
 
     // MARK: Holds
+
+    /// The ground each hold stands on as it is drawn, by its hex
+    /// (`HoldLayout.footprint`), for `furnish`: worked out again only when
+    /// the hold, the work finishing in it, its House's people or its
+    /// keep's look change, not as a work rises.
+    public func grounds(of sights: [HoldSight]) -> [Hex: HoldLayout.Footprint] {
+        var grounds: [Hex: HoldLayout.Footprint] = [:]
+        for sight in sights {
+            var finishing = sight.finishing
+            finishing?.progress = 0
+            if let kept = footprinted[sight.hold.id], kept.hold == sight.hold, kept.finishing == finishing, kept.heritage == sight.heritage,
+               kept.keep == sight.keep {
+                grounds[sight.hold.position] = kept.footprint
+                continue
+            }
+            var plan = WorldStage.plan(of: sight.hold, progress: nil, finishing: finishing, heritage: sight.heritage, keep: sight.keep)
+            plan.rising?.progress = 0
+            let footprint = HoldLayout.footprint(plan, relief: relief)
+            footprinted[sight.hold.id] = (sight.hold, finishing, sight.heritage, sight.keep, footprint)
+            grounds[sight.hold.position] = footprint
+        }
+        return grounds
+    }
 
     /// A hold's pieces, laid out again only when it, its rising or its
     /// House's people change. A work `finishing` stands at the level below

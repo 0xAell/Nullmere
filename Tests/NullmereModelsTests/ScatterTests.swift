@@ -63,6 +63,38 @@ final class ScatterTests: XCTestCase {
         XCTAssertEqual(Scatter.held, Formation.hexInner, "As far as its figures reach")
     }
 
+    /// About a hold the land is bare as far as its reach; but where its
+    /// ground is given, only what its keep, walls, works, lanes and town
+    /// stand on, so the heather and the woods come up to its homes.
+    func testTheLandIsFurnishedUpToAHoldsHomes() throws {
+        let map = Self.state.map
+        var within = 0, withinBare = 0
+        for hold in Self.state.holds {
+            let ground = HoldLayout.footprint(HoldLayout.Plan(hold: hold), relief: Self.relief)
+            let heart = Relief.centre(of: hold.position)
+            for hex in hold.position.spiral(3) where map[hex] != nil {
+                let bare = Scatter.pieces(in: hex, map: map, relief: Self.relief, holds: [hold.position])
+                let furnished = Scatter.pieces(in: hex, map: map, relief: Self.relief, holds: [hold.position], grounds: [hold.position: ground])
+                for piece in furnished {
+                    guard case .furnishing(let furnishing) = piece.key else { continue }
+                    let c = piece.transform.c0
+                    let radius = Scatter.footprint(furnishing) * (c.x * c.x + c.y * c.y + c.z * c.z).squareRoot()
+                    let p = piece.position
+                    XCTAssertTrue(ground.clear(x: p.x, z: p.z, radius: radius * 0.999, tall: Scatter.height(furnishing) > Scatter.underfoot),
+                                  "\(furnishing) clear of all the hold stands on")
+                    if reach(piece, from: hold.position) < HoldLayout.reach * HoldLayout.grandeur { within += 1 }
+                }
+                for piece in bare {
+                    let p = piece.position
+                    let r = ((p.x - heart.x) * (p.x - heart.x) + (p.z - heart.z) * (p.z - heart.z)).squareRoot()
+                    if r < HoldLayout.reach * HoldLayout.grandeur { withinBare += 1 }
+                }
+            }
+        }
+        XCTAssertEqual(withinBare, 0, "Bare as far as its reach without its ground")
+        XCTAssertGreaterThan(within, 0, "Furnished up to its homes with it")
+    }
+
     /// Heather grows on the open grass in drifts a few hexes across, never
     /// salted over every meadow alike: a hex in a drift has most of its
     /// neighbours in it, a hex outside few; what grows anywhere does so

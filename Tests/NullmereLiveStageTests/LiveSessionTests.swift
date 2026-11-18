@@ -223,6 +223,15 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertTrue(frame.batches.contains { $0.key == .site(.timber) }, "the grove")
         XCTAssertTrue(frame.batches.contains { $0.key == .lair(.barrowkin) }, "the barrow")
         XCTAssertEqual(frame.fixedVersion, 100_001)
+        // The meadow comes up to her homes and works, not stopping at the
+        // edge of her city's reach.
+        let home = try XCTUnwrap(session.window?.local(LiveHex(q: 10, r: -4)))
+        let heart = Relief.centre(of: home)
+        let near = frame.fixed.flatMap(\.instances).filter { instance in
+            let p = instance.model.c3
+            return ((p.x - heart.x) * (p.x - heart.x) + (p.z - heart.z) * (p.z - heart.z)).squareRoot() < HoldLayout.reach * HoldLayout.grandeur
+        }
+        XCTAssertGreaterThan(near.count, 0, "the meadow comes up to her city")
         // The next frame keeps the furniture as it is: the GPU is sent it once.
         let next = session.frame(time: 20.1)
         XCTAssertEqual(next.fixedVersion, frame.fixedVersion)

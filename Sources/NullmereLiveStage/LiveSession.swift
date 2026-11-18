@@ -223,6 +223,10 @@ public final class LiveSession {
     @ObservationIgnored private let clock: @Sendable () -> Double
     @ObservationIgnored private var staged: (stage: WorldStage, relief: Relief, terrain: TerrainMesh)?
     @ObservationIgnored private var fixed: [ModelBatch] = []
+    /// The cities' grounds the furniture was laid about, and how many times
+    /// it has been laid again as one changed in the same window.
+    @ObservationIgnored private var fixedGrounds: [Hex: HoldLayout.Footprint] = [:]
+    @ObservationIgnored private var regrown = 0
     @ObservationIgnored private var standing: [LiveHex] = []
     @ObservationIgnored private var landCount = 0
     @ObservationIgnored private var placed = false
@@ -485,12 +489,17 @@ public final class LiveSession {
         let sights = timed("cities read") { window.holds(in: world, colours: LiveSession.colours, at: seconds) }
         let (sites, barrows, cairns) = timed("places read") { (window.sites(in: world), window.barrows(in: world), window.cairns(in: world)) }
         let shrines = timed("places read") { window.shrines(in: world, colours: LiveSession.colours) }
-        if fixed.isEmpty {
+        // The woods come up to each city's homes and works, and give way
+        // as it grows.
+        let grounds = timed("cities read") { stage.grounds(of: sights) }
+        if fixed.isEmpty || grounds != fixedGrounds {
+            if !fixed.isEmpty { regrown += 1 }
             fixed = stage.furnish(occupied: Set(sites.map(\.hex) + barrows.map(\.hex) + cairns.map(\.hex) + shrines.map(\.hex)),
-                                  holds: Set(sights.map(\.hold.position)))
+                                  holds: Set(sights.map(\.hold.position)), grounds: grounds)
+            fixedGrounds = grounds
         }
         frame.fixed = fixed
-        frame.fixedVersion = windowVersion * 100_000 + standingVersion
+        frame.fixedVersion = windowVersion * 100_000 + standingVersion + regrown * 10_000_000_000
         let (holds, _) = timed("cities staged") { stage.holds(sights.filter { seen($0.hold.position, within: Self.holdReach) }, time: Float(time), into: &frame, smoke: false) }
         let poses = timed("armies read") { window.companies(in: world, relief: land.relief, at: seconds).filter { seen($0.hex, within: Self.companyReach) } }
         let places = timed("places staged") {
