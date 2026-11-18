@@ -474,6 +474,53 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertLessThan(differ, WorldRenderTests.width * WorldRenderTests.height / 40, "but in the same land: only the marchers differ")
     }
 
+    /// Two holy sites staged from the realm's rows as the play view stages
+    /// them and drawn by day at the view's opening zoom: the Moonwell kept
+    /// by the Unquiet, and the Heartstone held by an alliance, its pennant
+    /// in that alliance's colour; beside the same land with neither. Kept
+    /// as live-shrines (plan 2.15), no picture of the app's having one in
+    /// view.
+    @MainActor
+    func testTheHolySitesAreDrawnWhereTheyStandByDay() async throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
+        let library = try await device.makeLibrary(source: WorldShaders.source, options: nil)
+        let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
+        renderer.meshSource = { Library.model($0).mesh }
+        renderer.setHouses(LiveSession.palette)
+        let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
+        func drawn(_ name: String, hallowed: Bool) async throws -> Drawn {
+            var rows = LiveSample.rows()
+            if hallowed {
+                let (well, heart) = (LiveHex(q: 12, r: -6), LiveHex(q: 14, r: -8))
+                rows["shrine"] = [[.number(1), .number(Double(well.packed)), .number(1), .number(0), .string(""), .number(0), .number(0)],
+                                  [.number(2), .number(Double(heart.packed)), .number(5), .number(5), .string("[MERE] Keepers"), .number(1_000), .number(0)]]
+                rows["place"] = (rows["place"] ?? []) + [[.number(Double(well.packed)), .number(7), .number(1)], [.number(Double(heart.packed)), .number(7), .number(2)]]
+            }
+            let session = LiveSession(line: StandInLine(rows: rows)) { 2_015 }
+            await session.open()
+            session.go(to: LiveHex(q: 13, r: -7))
+            var camera = session.camera
+            camera.scale = LiveSession.openingScale
+            session.moved(camera)
+            let land = try XCTUnwrap(session.land(), "\(name): the window's land")
+            try renderer.setLand(land.terrain, for: land.map)
+            try renderer.updateTiles(try XCTUnwrap(session.tiles()), side: TileTexture.side(for: land.map))
+            let scene = session.frame(time: 20, size: WorldRenderTests.size)
+            var frame = FrameUniforms.make(camera: session.camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: 20, motion: 1,
+                                           radius: land.map.radius, terrain: land.terrain, hovered: nil, selected: nil, daylight: .day)
+            frame.light(with: PointLight.strongest(scene.lights, near: session.camera.focus))
+            let pixels = try XCTUnwrap(renderer.pixels(frame, scene: scene, into: target), "\(name) drawn")
+            return Drawn(name: name, pixels: pixels, camera: session.camera)
+        }
+        let hallowed = try await drawn("holy sites", hallowed: true)
+        let bare = try await drawn("no holy sites", hallowed: false)
+        try keep([hallowed, bare], as: "live-shrines")
+        let differ = WorldRenderTests.changed(hallowed, bare)
+        print("RENDER shrines: \(differ) of the grid's points differ from the same land without them")
+        XCTAssertGreaterThan(differ, 10, "The holy sites are drawn")
+        XCTAssertLessThan(differ, WorldRenderTests.width * WorldRenderTests.height / 20, "where they stand, the land about them as it was")
+    }
+
     /// The world's day: the same land about the keeper's seat at noon, at
     /// dusk and at midnight. By day it is read in full light; the dusk is
     /// dimmer and the night dimmer again, but a night of bright moonlight,
