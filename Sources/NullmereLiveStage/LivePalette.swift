@@ -30,6 +30,8 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         /// Hasten a work by a quarter for goods, or use a haste on it.
         case speedUp(UInt64)
         case useHaste(item: Int, job: UInt64)
+        /// Open so many of a crate of goods into the city.
+        case openCrates(item: Int, count: UInt64)
         /// Let go another of the player's devices, by its number.
         case letGo(UInt64)
         /// Take a summons to the Tavern.
@@ -105,8 +107,14 @@ extension LiveSession {
             all.append(LiveCommand(title: "Raise \(LiveWords.grouped(raise.count)) tier \(raise.from) \(name) to tier \(raise.to)",
                                    act: .promote(building: line.building.id, from: raise.from, to: raise.to, count: raise.count)))
         }
+        // Each crate held, opened, as many as may be at once.
+        for crate in world.heldItems where crate.ware.isCrate {
+            let count = min(crate.count, LiveWorld.mostOpened)
+            let name = crate.ware.name.lowercased()
+            all.append(LiveCommand(title: count == 1 ? "Open a \(name)" : "Open \(name) ×\(count)", act: .openCrates(item: crate.ware.item, count: count)))
+        }
         // Each work under way: hastened by a quarter for goods, or by a haste held.
-        let hastes = world.heldItems.filter { !$0.ware.isPeace && !$0.ware.isMaterial && !$0.ware.isTome }
+        let hastes = world.heldItems.filter { $0.ware.isHaste }
         let affords = (world.stock?.goods(at: seconds) ?? LiveGoods()).covers(LiveWorld.hastening)
         for work in world.works(at: seconds) {
             if affords {
@@ -270,6 +278,7 @@ extension LiveSession {
         case .readTome(let commander, let item): await readTome(commander: commander, item: item)
         case .speedUp(let job): await speedUp(job: job)
         case .useHaste(let item, let job): await useItem(item, on: job)
+        case .openCrates(let item, let count): await openCrates(item, count: count)
         }
         return nil
     }

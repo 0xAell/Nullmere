@@ -5,7 +5,7 @@
 //! giving goods toward what the alliance learns, one for every thousand
 //! taken; and by fighting in a rally that clears a barrow, ten for each
 //! level of it. Honour is the member's own and stays with them through
-//! any alliance they are in. It buys hastes, peace and tomes from the stores
+//! any alliance they are in. It buys hastes, peace, tomes and crates of goods from the stores
 //! of whatever alliance they are in now, at prices the realm writes out
 //! for clients to show.
 
@@ -26,8 +26,18 @@ pub const MOST_BOUGHT: u64 = 100;
 pub const HONOUR_A_RALLY_LEVEL: u64 = 10;
 
 /// What the stores sell, and for how much honour each.
-pub const PRICES: [(Item, u64); 6] =
-    [(Item::Haste5, 100), (Item::Haste60, 1_000), (Item::Haste480, 6_000), (Item::Peace8, 5_000), (Item::Tome, 250), (Item::GreatTome, 2_000)];
+pub const PRICES: [(Item, u64); 10] = [
+    (Item::Haste5, 100),
+    (Item::Haste60, 1_000),
+    (Item::Haste480, 6_000),
+    (Item::Peace8, 5_000),
+    (Item::Tome, 250),
+    (Item::GreatTome, 2_000),
+    (Item::GrainCrate, 200),
+    (Item::TimberCrate, 200),
+    (Item::StoneCrate, 200),
+    (Item::MoonsaltCrate, 1_000),
+];
 
 /// Writes the stores' prices out as rows, for clients to show, as the
 /// realm opens.

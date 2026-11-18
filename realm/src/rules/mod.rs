@@ -139,6 +139,10 @@ pub enum Refusal {
     ScoutsOnTheWay,
     NoSuchWare,
     NotATome,
+    /// Opened, not used: that is not a crate of goods.
+    NotACrate,
+    /// A crate is opened into the city, not used on a work.
+    ToBeOpened,
     ForACommander,
     /// A summons is taken to the Tavern.
     AtTheTavern,
@@ -444,6 +448,8 @@ impl fmt::Display for Refusal {
             Refusal::ScoutsOnTheWay => "Your scouts are on their way to that cairn already.",
             Refusal::NoSuchWare => "The alliance's stores sell no such thing.",
             Refusal::NotATome => "That is not a tome.",
+            Refusal::NotACrate => "That is not a crate of goods.",
+            Refusal::ToBeOpened => "A crate is opened into your city; it hastens no work.",
             Refusal::ForACommander => "A tome is read by one of your commanders.",
             Refusal::AtTheTavern => "A summons is taken to your Tavern.",
             Refusal::NoSummons => "The Tavern's free summons is taken for today, and you have no summons to bring it.",

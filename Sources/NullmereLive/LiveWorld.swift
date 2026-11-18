@@ -405,6 +405,9 @@ public struct LiveWorld: Equatable, Sendable {
         return rallies.first { mine.contains($0.id) }
     }
 
+    /// The most crates the realm opens at once.
+    public static let mostOpened: UInt64 = 100
+
     /// The tomes of war the player holds, each with what it is.
     public var heldTomes: [(ware: LiveWare, count: UInt64)] { heldItems.filter { $0.ware.isTome } }
 

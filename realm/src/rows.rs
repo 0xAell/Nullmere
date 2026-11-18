@@ -1350,6 +1350,8 @@ impl Ware {
     pub const TOME: u8 = 4;
     /// Taken to the Tavern.
     pub const SUMMONS: u8 = 5;
+    /// Opened into the city: so much of a good.
+    pub const CRATE: u8 = 6;
 }
 
 /// How many of an item a player keeps: theirs alone to read. Keyed by

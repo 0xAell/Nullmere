@@ -1068,10 +1068,16 @@ pub enum Item {
     /// Taken to the Tavern: one of the realm's commanders, or sigils for
     /// one of the player's own.
     Summons = 11,
+    /// So much of one good (`Item::goods`), kept in the satchel, where no
+    /// army can carry it off, until it is opened into the city.
+    GrainCrate = 12,
+    TimberCrate = 13,
+    StoneCrate = 14,
+    MoonsaltCrate = 15,
 }
 
 impl Item {
-    pub const ALL: [Item; 11] = [
+    pub const ALL: [Item; 15] = [
         Item::Haste5,
         Item::Haste60,
         Item::Haste480,
@@ -1083,10 +1089,17 @@ impl Item {
         Item::Tome,
         Item::GreatTome,
         Item::Summons,
+        Item::GrainCrate,
+        Item::TimberCrate,
+        Item::StoneCrate,
+        Item::MoonsaltCrate,
     ];
 
     /// The materials, in the order a piece's cost names them.
     pub const MATERIALS: [Item; 4] = [Item::Iron, Item::Leather, Item::Bone, Item::Silver];
+
+    /// The crates of goods, in the order of the goods.
+    pub const CRATES: [Item; 4] = [Item::GrainCrate, Item::TimberCrate, Item::StoneCrate, Item::MoonsaltCrate];
 
     pub fn of(code: u8) -> Option<Item> {
         Item::ALL.into_iter().find(|item| *item as u8 == code)
@@ -1099,8 +1112,25 @@ impl Item {
             Item::Haste5 => 300,
             Item::Haste60 => 3_600,
             Item::Haste480 | Item::Peace8 => 28_800,
-            Item::Iron | Item::Leather | Item::Bone | Item::Silver | Item::Tome | Item::GreatTome | Item::Summons => 0,
+            _ => 0,
         }
+    }
+
+    /// What a crate holds: ten thousand grain or timber, five thousand
+    /// stone or five hundred moonsalt. Nothing for anything else.
+    pub fn goods(self) -> Goods {
+        match self {
+            Item::GrainCrate => Goods::of(10_000, 0, 0, 0),
+            Item::TimberCrate => Goods::of(0, 10_000, 0, 0),
+            Item::StoneCrate => Goods::of(0, 0, 5_000, 0),
+            Item::MoonsaltCrate => Goods::of(0, 0, 0, 500),
+            _ => Goods::NONE,
+        }
+    }
+
+    /// Whether it is a crate of goods, opened into the city rather than used.
+    pub fn is_crate(self) -> bool {
+        Item::CRATES.contains(&self)
     }
 
     /// Whether it is a material, worked at the Forge rather than used.
@@ -1145,6 +1175,10 @@ impl Item {
             Item::Tome => "Tome of war",
             Item::GreatTome => "Great tome of war",
             Item::Summons => "Summons to the Tavern",
+            Item::GrainCrate => "Crate of grain",
+            Item::TimberCrate => "Crate of timber",
+            Item::StoneCrate => "Crate of stone",
+            Item::MoonsaltCrate => "Crate of moonsalt",
         }
     }
 
@@ -1158,6 +1192,9 @@ impl Item {
         }
         if self.is_tome() {
             return format!("Read by one of your commanders: {} more seen of war, toward their next level.", grouped(self.seen()));
+        }
+        if self.is_crate() {
+            return format!("Holds {}. Kept in your satchel no army can carry it off; opened, it goes into your city.", self.goods());
         }
         if self.is_summons() {
             return format!("Taken to your Tavern: one of the realm's commanders comes, or {SIGILS_A_DRAW} sigils for one of yours, toward their gift's next level.");

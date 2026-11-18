@@ -91,10 +91,16 @@ struct LiveDayPanel: View {
                     LiveSmall(words: "For the Forge", dim: true)
                 } else if ware.isTome {
                     LiveSmall(words: "Read by a commander", dim: true)
+                } else if ware.isSummons {
+                    LiveSmall(words: "Taken to the Tavern", dim: true)
+                } else if ware.isCrate {
+                    // Opened into the city, as many as may be at once.
+                    let count = min(world.satchel[ware.item] ?? 0, LiveWorld.mostOpened)
+                    QuietButton(title: count > 1 ? "Open \(count)" : "Open", enabled: session.asking == 0, name: "Open \(ware.name)", why: nil) { Task { await session.openCrates(ware.item, count: count) } }
                 } else if ware.isPeace {
                     // A peace is kept on the city itself, with no work to hasten.
                     QuietButton(title: "Use", enabled: session.asking == 0, name: "Use \(ware.name)", why: nil) { Task { await session.usePeace(ware.item) } }
-                } else {
+                } else if ware.isHaste {
                     QuietButton(title: "Use", enabled: work != nil && session.asking == 0, name: "Use \(ware.name)", why: work == nil ? "No work is under way in your city." : nil) { Task { await session.useItem(ware.item, on: work?.id ?? 0) } }
                 }
             }

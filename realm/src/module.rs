@@ -820,6 +820,12 @@ pub fn use_item(ctx: &ReducerContext, item: u8, job: u64) -> Result<(), String> 
     said(caller(ctx).and_then(|player| rules::use_item(&mut Stdb(ctx), player, item, job)))
 }
 
+/// Open so many of a crate of goods the caller keeps into their city.
+#[reducer]
+pub fn open_crates(ctx: &ReducerContext, item: u8, count: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::open_crates(&mut Stdb(ctx), player, item, count)).map(|_| ()))
+}
+
 /// Use one of an item of peace the caller keeps on their city.
 #[reducer]
 pub fn use_peace(ctx: &ReducerContext, item: u8) -> Result<(), String> {

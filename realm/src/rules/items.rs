@@ -1,10 +1,11 @@
 //! What a player keeps in their satchel: hastes, each taking so much time
-//! off a work under way in their city when it is used, and peace, keeping
-//! their city from attack for a while. The day's chests and the contests'
-//! prizes hold them.
+//! off a work under way in their city when it is used; peace, keeping
+//! their city from attack for a while; and crates of goods, which no army
+//! can carry off until they are opened into the city. The day's chests,
+//! the contests' prizes and the alliance's stores hold them.
 
-use super::{asking, city_of, did, realm, Refusal, TIMER_JOB};
-use crate::catalog::{self, Deed, Item};
+use super::{asking, city_of, did, goods, realm, set_goods, settle, Refusal, TIMER_JOB};
+use crate::catalog::{self, Deed, Goods, Item};
 use crate::rows::{City, Db, Job, March, Muster, Rally, Satchel, Ware};
 use crate::store::Table;
 
@@ -19,6 +20,8 @@ pub fn write_wares(db: &mut impl Db) {
             Ware::TOME
         } else if item.is_summons() {
             Ware::SUMMONS
+        } else if item.is_crate() {
+            Ware::CRATE
         } else {
             Ware::HASTE
         };
@@ -75,6 +78,9 @@ pub fn use_item(db: &mut impl Db, player: u64, item: u8, job: u64) -> Result<Job
     if item.is_summons() {
         return Err(Refusal::AtTheTavern);
     }
+    if item.is_crate() {
+        return Err(Refusal::ToBeOpened);
+    }
     let mut job = Table::<Job>::get(db, job)
         .filter(|row| row.city == city.id && matches!(row.kind, Job::RAISE | Job::STUDY | Job::TRAIN | Job::HEAL))
         .ok_or(Refusal::NoSuchJob)?;
@@ -95,6 +101,34 @@ pub fn use_item(db: &mut impl Db, player: u64, item: u8, job: u64) -> Result<Job
     db.update(job.clone());
     did(db, player, Deed::Hasten, 1);
     Ok(job)
+}
+
+/// The most crates opened at once.
+pub const MOST_OPENED: u64 = 100;
+
+/// A player opens so many of a crate they keep: what they hold goes into
+/// their city's stock, though it overfill it, as a chest's does. What went
+/// in.
+pub fn open_crates(db: &mut impl Db, player: u64, item: u8, count: u64) -> Result<Goods, Refusal> {
+    asking(db, player)?;
+    let city = city_of(db, player)?;
+    let item = Item::of(item).filter(|item| item.is_crate()).ok_or(Refusal::NotACrate)?;
+    if count == 0 {
+        return Err(Refusal::NothingAsked);
+    }
+    if count > MOST_OPENED {
+        return Err(Refusal::TooMany(MOST_OPENED));
+    }
+    if held(db, player, item) < count {
+        return Err(Refusal::NoneLeft);
+    }
+    let mut stock = settle(db, city.id)?;
+    let opened = item.goods().times(count);
+    let more = goods(&stock).plus(opened);
+    set_goods(&mut stock, more);
+    db.update(stock);
+    take(db, player, item, count);
+    Ok(opened)
 }
 
 /// Whether any of a player's armies is out against a city: sent to attack

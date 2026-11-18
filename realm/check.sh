@@ -251,7 +251,7 @@ check("no scouts go where no cairn stands", call(bryn, "send", home[0], home[1],
 check("nor to a cairn from a city without a Scout Camp", call(bryn, "send", *unpacked(cairns[0]["hex"]), 7, [{"kind": 1, "tier": 1, "count": 1}], 0), "Raise your Scout Camp to level 1 first.")
 check("no cairn's hoard is found yet", rows(bryn, "SELECT * FROM my_finds"), [])
 check("and no one reads the finds' table itself", isinstance(rows(bryn, "SELECT * FROM find"), str), True)
-check("the alliance's stores' prices are for all to read", sorted((price["item"], price["honour"]) for price in rows(nobody, "SELECT * FROM price")), [(1, 100), (2, 1000), (3, 6000), (4, 5000), (9, 250), (10, 2000)])
+check("the alliance's stores' prices are for all to read", sorted((price["item"], price["honour"]) for price in rows(nobody, "SELECT * FROM price")), [(1, 100), (2, 1000), (3, 6000), (4, 5000), (9, 250), (10, 2000), (12, 200), (13, 200), (14, 200), (15, 1000)])
 check("one in no alliance has no honour", rows(bryn, "SELECT * FROM my_honour"), [])
 check("and buys nothing from an alliance's stores", call(bryn, "buy", 1, 1), "You are in no alliance.")
 check("and no one reads the honour table itself", isinstance(rows(bryn, "SELECT * FROM honour"), str), True)
@@ -309,7 +309,7 @@ check("a player has none until they open a chest", (rows(ada, "SELECT * FROM my_
 
 # Items: the hastes a chest holds, kept in a satchel until they are used.
 wares = sorted(rows(nobody, "SELECT * FROM ware"), key=lambda ware: ware["item"])
-check("the items are written out for all to read", [(ware["name"], ware["seconds"], ware["kind"]) for ware in wares], [("Five minutes' haste", 300, 1), ("An hour's haste", 3600, 1), ("Eight hours' haste", 28800, 1), ("Eight hours' peace", 28800, 2), ("Iron", 0, 3), ("Leather", 0, 3), ("Bone", 0, 3), ("Silver", 0, 3), ("Tome of war", 0, 4), ("Great tome of war", 0, 4), ("Summons to the Tavern", 0, 5)])
+check("the items are written out for all to read", [(ware["name"], ware["seconds"], ware["kind"]) for ware in wares], [("Five minutes' haste", 300, 1), ("An hour's haste", 3600, 1), ("Eight hours' haste", 28800, 1), ("Eight hours' peace", 28800, 2), ("Iron", 0, 3), ("Leather", 0, 3), ("Bone", 0, 3), ("Silver", 0, 3), ("Tome of war", 0, 4), ("Great tome of war", 0, 4), ("Summons to the Tavern", 0, 5), ("Crate of grain", 0, 6), ("Crate of timber", 0, 6), ("Crate of stone", 0, 6), ("Crate of moonsalt", 0, 6)])
 check("the day's last chest holds a peace", [chest["peaces"] for chest in sorted(chests, key=lambda chest: chest["id"])], [0, 0, 1])
 check("and a summons to the Tavern", ([chest["summonses"] for chest in sorted(chests, key=lambda chest: chest["id"])], [w["name"] for w in rows(nobody, "SELECT * FROM ware") if w["item"] == 11]), ([0, 0, 1], ["Summons to the Tavern"]))
 check("and every chest says what hastes it holds", all(chest["brief_hastes"] + chest["hour_hastes"] + chest["long_hastes"] > 0 for chest in chests), True)
@@ -319,6 +319,9 @@ check("and a thing that is no item", call(ada, "use_item", 99, 1), "There is no 
 check("a tome is read by a commander, not used on a work", call(ada, "use_item", 9, 1), "A tome is read by one of your commanders.")
 check("a peace is kept on the city, not on a work", call(ada, "use_item", 4, 1), "That keeps your city at peace; it hastens no work.")
 check("a material is worked at the Forge, not used", call(ada, "use_item", 5, 1), "That is worked at the Forge into gear.")
+check("a crate is opened into the city, not used on a work", call(ada, "use_item", 12, 1), "A crate is opened into your city; it hastens no work.")
+check("a crate a player has not got is not opened", call(ada, "open_crates", 12, 1), "You have none of that left.")
+check("and a haste is no crate to open", call(ada, "open_crates", 1, 1), "That is not a crate of goods.")
 # The Forge: what it makes, for all to read; gear its owner's alone.
 patterns = rows(nobody, "SELECT * FROM pattern")
 check("what the Forge makes is written out for all to read", (len(patterns), sorted(p["name"] for p in patterns if p["grade"] == 1)), (12, ["Iron sword", "Leather boots", "Leather cap", "Leather coat"]))

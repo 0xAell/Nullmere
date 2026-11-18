@@ -1,7 +1,7 @@
-//! Items over a store kept in memory: what the day's chests hold, and
-//! what using a haste does to a work.
+//! Items over a store kept in memory: what the day's chests hold, what
+//! using a haste does to a work, and what opening a crate puts in a city.
 
-use realm::catalog::{self, Building as Kind, Item, Topic};
+use realm::catalog::{self, Building as Kind, Goods, Item, Topic};
 use realm::rows::{Building, Chest, City, Job, Satchel, Stock, Ware};
 use realm::rules::{self, Refusal};
 use realm::store::{Mem, Seconds, Table};
@@ -75,9 +75,15 @@ fn the_items_are_written_out_and_the_chests_say_what_they_hold() {
             (8, 0, Ware::MATERIAL),
             (9, 0, Ware::TOME),
             (10, 0, Ware::TOME),
-            (11, 0, Ware::SUMMONS)
+            (11, 0, Ware::SUMMONS),
+            (12, 0, Ware::CRATE),
+            (13, 0, Ware::CRATE),
+            (14, 0, Ware::CRATE),
+            (15, 0, Ware::CRATE)
         ]
     );
+    assert_eq!(wares[11].name, "Crate of grain");
+    assert_eq!(wares[13].words, "Holds 5,000 stone. Kept in your satchel no army can carry it off; opened, it goes into your city.");
     assert_eq!(wares[0].name, "Five minutes' haste");
     assert_eq!(wares[1].words, "Takes 1 hour off a work under way in your city.");
     for chest in Table::<Chest>::all(&db) {
@@ -188,4 +194,49 @@ fn in_a_faster_realm_a_haste_takes_off_as_much_less_as_everything_takes_less() {
     assert!(job.ends - job.started > 10, "long enough at this pace: {}", job.ends - job.started);
     let hastened = db.call(|db| rules::use_item(db, player, Item::Haste5 as u8, job.id)).unwrap();
     assert_eq!(hastened.ends, job.ends - 5, "five minutes are five seconds at sixty times the pace");
+}
+
+#[test]
+fn a_crate_opened_puts_what_it_holds_in_the_city_though_it_overfill_it() {
+    let mut db = realm();
+    let (player, city) = joined("Ada", &mut db);
+    hand(&mut db, player, Item::GrainCrate, 3);
+    hand(&mut db, player, Item::MoonsaltCrate, 1);
+    hand(&mut db, player, Item::Haste5, 1);
+    let stock = |db: &Mem| rules::goods(&rules::grown(&Table::<Stock>::get(db, city.id).unwrap(), db.clock));
+    // The city's grain as much as it holds.
+    let mut row = rules::grown(&Table::<Stock>::get(&db, city.id).unwrap(), db.clock);
+    row.grain = row.holds;
+    db.update(row);
+    let before = stock(&db);
+
+    // Two of the three crates of grain: twenty thousand grain, over what the city can hold.
+    let opened = db.call(|db| rules::open_crates(db, player, Item::GrainCrate as u8, 2)).unwrap();
+    assert_eq!(opened, Goods::of(20_000, 0, 0, 0));
+    assert_eq!(stock(&db).grain, before.grain + 20_000);
+    assert_eq!(stock(&db).grain, Table::<Stock>::get(&db, city.id).unwrap().holds + 20_000, "it overfills the stock");
+    assert_eq!(rules::held(&db, player, Item::GrainCrate), 1);
+    let opened = db.call(|db| rules::open_crates(db, player, Item::MoonsaltCrate as u8, 1)).unwrap();
+    assert_eq!(opened, Goods::of(0, 0, 0, 500));
+    assert_eq!(rules::held(&db, player, Item::MoonsaltCrate), 0, "none kept, no row");
+    assert!(Table::<Satchel>::get(&db, Satchel::key(player, Item::MoonsaltCrate as u8)).is_none());
+
+    // What is refused, each saying why, and nothing changed by it.
+    let refused = |db: &mut Mem, item: Item, count: u64| {
+        let refusal = db.call(|db| rules::open_crates(db, player, item as u8, count)).unwrap_err();
+        (refusal.clone(), refusal.to_string())
+    };
+    assert_eq!(refused(&mut db, Item::GrainCrate, 2), (Refusal::NoneLeft, "You have none of that left.".to_string()));
+    assert_eq!(refused(&mut db, Item::GrainCrate, 0), (Refusal::NothingAsked, "Ask for at least one.".to_string()));
+    assert_eq!(refused(&mut db, Item::GrainCrate, 101), (Refusal::TooMany(100), "At most 100 at once.".to_string()));
+    assert_eq!(refused(&mut db, Item::Haste5, 1), (Refusal::NotACrate, "That is not a crate of goods.".to_string()));
+    let refusal = db.call(|db| rules::open_crates(db, player, 99, 1)).unwrap_err();
+    assert_eq!(refusal, Refusal::NotACrate);
+    // A crate hastens no work.
+    let barracks = raise(&mut db, city.id, Kind::Barracks, 1);
+    let job = db.call(|db| rules::upgrade(db, player, barracks.id)).unwrap();
+    let refusal = db.call(|db| rules::use_item(db, player, Item::GrainCrate as u8, job.id)).unwrap_err();
+    assert_eq!((refusal.clone(), refusal.to_string()), (Refusal::ToBeOpened, "A crate is opened into your city; it hastens no work.".to_string()));
+    assert_eq!(rules::held(&db, player, Item::GrainCrate), 1);
+    assert_eq!(rules::held(&db, player, Item::Haste5), 1);
 }

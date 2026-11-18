@@ -317,6 +317,28 @@ fn an_empty_city_falls_at_once_and_a_storehouse_keeps_some_safe() {
 }
 
 #[test]
+fn crates_in_the_satchel_are_not_carried_off_and_are_opened_after() {
+    let (mut db, (ada, _), (bryn, his)) = neighbours(&[(Troops::Spearmen, 1, 2_000)], &[]);
+    end_peace(&mut db, his.id);
+    db.insert(Satchel { id: Satchel::key(bryn, Item::GrainCrate as u8), player: bryn, item: Item::GrainCrate as u8, count: 3 });
+    let march = db.call(|db| rules::send(db, ada, Hex::unpacked(his.hex), March::ATTACK, &spears(2_000))).unwrap();
+    let before = stock_at(&db, his.id, march.arrives + catalog::ASSAULT_SECONDS);
+    until(&mut db, march.arrives + catalog::ASSAULT_SECONDS);
+
+    // The city's open goods are carried off down to what the Storehouse keeps; the crates stay.
+    let told = reports(&db, ada).pop().unwrap();
+    assert!(told.won);
+    assert_eq!(told.grain, before.grain - catalog::kept_safe(0));
+    assert_eq!(stock(&db, his.id).grain, catalog::kept_safe(0));
+    assert_eq!(rules::held(&db, bryn, Item::GrainCrate), 3, "no crate is carried off");
+
+    // Opened once the army has gone: thirty thousand grain back in the city.
+    db.call(|db| rules::open_crates(db, bryn, Item::GrainCrate as u8, 3)).unwrap();
+    assert_eq!(stock(&db, his.id).grain, catalog::kept_safe(0) + 30_000);
+    assert_eq!(rules::held(&db, bryn, Item::GrainCrate), 0);
+}
+
+#[test]
 fn an_army_that_finds_its_city_at_peace_comes_home() {
     // Two armies set out against Bryn; the first takes his city, and the
     // second arrives to find it at peace.

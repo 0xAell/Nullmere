@@ -1224,16 +1224,21 @@ final class LiveSessionTests: XCTestCase {
     }
 
     /// Works under way are named, and hastened from the palette: by a
-    /// quarter for goods, or by a haste held; never by a peace, and not
-    /// once all but done.
+    /// quarter for goods, or by a haste held; never by a peace, a summons
+    /// or a crate, and not once all but done. A crate held is opened from
+    /// the palette, as many as the realm opens at once.
     func testWorksUnderWayAreHastenedFromThePalette() async throws {
         var rows = LiveWindowTests.rows()
         rows["blueprint"] = [[n(2 << 32 | 1), n(2), n(1), .string("Farm"), n(0), n(100), n(0), n(0), n(10), n(0), n(0), n(0), n(0), n(1), n(0), n(0), n(20)]]
         rows["my_jobs"] = [[n(4), n(7), n(1), n(22), n(3), n(0), n(2_000), n(2_100), n(9)]]
         rows["my_stock"] = [[n(7), n(60_000), n(60_000), n(60_000), n(0), n(2_000), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(200_000)]]
         rows["ware"] = [[n(1), .string("Five minutes' haste"), .string("Takes five minutes off a work."), n(300), n(1)],
-                        [n(4), .string("Eight hours' peace"), .string("Keeps your city at peace."), n(28_800), n(2)]]
-        rows["my_satchel"] = [[n(1 << 8 | 1), n(1), n(1), n(2)], [n(1 << 8 | 4), n(1), n(4), n(1)]]
+                        [n(4), .string("Eight hours' peace"), .string("Keeps your city at peace."), n(28_800), n(2)],
+                        [n(11), .string("Summons to the Tavern"), .string("Taken to your Tavern."), n(0), n(5)],
+                        [n(12), .string("Crate of grain"), .string("Holds 10,000 grain."), n(0), n(6)],
+                        [n(15), .string("Crate of moonsalt"), .string("Holds 500 moonsalt."), n(0), n(6)]]
+        rows["my_satchel"] = [[n(1 << 8 | 1), n(1), n(1), n(2)], [n(1 << 8 | 4), n(1), n(4), n(1)], [n(1 << 8 | 11), n(1), n(11), n(1)],
+                              [n(1 << 8 | 12), n(1), n(12), n(3)], [n(1 << 8 | 15), n(1), n(15), n(140)]]
         let line = StandInLine(rows: rows)
         let session = session(line)
         await session.open()
@@ -1243,10 +1248,15 @@ final class LiveSessionTests: XCTestCase {
         let commands = session.commands(at: 2_015)
         XCTAssertTrue(commands.contains(LiveCommand(title: "Hasten the Farm to level 3 by a quarter, for 300 grain, 300 timber and 300 stone", act: .speedUp(4))))
         XCTAssertTrue(commands.contains(LiveCommand(title: "Use five minutes' haste on the Farm to level 3", act: .useHaste(item: 1, job: 4))))
-        XCTAssertFalse(commands.contains { command in
-            if case .useHaste(let item, _) = command.act { return item == 4 }
-            return false
-        }, "a peace hastens no work")
+        XCTAssertEqual(commands.compactMap { command -> Int? in
+            if case .useHaste(let item, _) = command.act { return item }
+            return nil
+        }, [1], "a peace, a summons or a crate hastens no work")
+        XCTAssertEqual(session.world.heldItems.filter { $0.ware.isCrate }.map { $0.ware.item }, [12, 15])
+        XCTAssertTrue(commands.contains(LiveCommand(title: "Open crate of grain ×3", act: .openCrates(item: 12, count: 3))))
+        XCTAssertTrue(commands.contains(LiveCommand(title: "Open crate of moonsalt ×100", act: .openCrates(item: 15, count: 100))), "at most a hundred at once")
+        await session.perform(LiveCommand(title: "Open", act: .openCrates(item: 12, count: 3)))
+        XCTAssertEqual(line.asked.last, "open 3 of 12")
         await session.perform(LiveCommand(title: "Hasten", act: .speedUp(4)))
         XCTAssertEqual(line.asked.last, "speed up 4")
         await session.perform(LiveCommand(title: "Use", act: .useHaste(item: 1, job: 4)))

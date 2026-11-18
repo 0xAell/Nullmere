@@ -66,11 +66,12 @@ public struct LiveGrace: Equatable, Sendable, Identifiable {
 }
 
 /// An item a player may hold: a haste, used on a work under way to make
-/// it done sooner, or a peace, used on the city to keep it from attack;
+/// it done sooner; a peace, used on the city to keep it from attack; a
+/// material, a tome, a summons; or a crate of goods, opened into the city;
 /// what it is called, and how long it takes off or keeps.
 public struct LiveWare: Equatable, Sendable, Identifiable {
     /// Its kinds, as the module numbers them.
-    public static let haste = 1, peace = 2, material = 3, tome = 4
+    public static let haste = 1, peace = 2, material = 3, tome = 4, summons = 5, crate = 6
 
     public let item: Int
     public let name: String
@@ -84,6 +85,12 @@ public struct LiveWare: Equatable, Sendable, Identifiable {
     public var isMaterial: Bool { kind == LiveWare.material }
     /// Whether one of the player's commanders reads it, rather than it being used.
     public var isTome: Bool { kind == LiveWare.tome }
+    /// Whether it is used on a work under way, to make it done sooner.
+    public var isHaste: Bool { kind == LiveWare.haste }
+    /// Whether it is taken to the Tavern, rather than used.
+    public var isSummons: Bool { kind == LiveWare.summons }
+    /// Whether it is a crate of goods, opened into the city.
+    public var isCrate: Bool { kind == LiveWare.crate }
 
     init?(_ row: [JSONValue]) {
         let cells = Cells(row: row)
