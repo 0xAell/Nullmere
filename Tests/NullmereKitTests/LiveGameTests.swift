@@ -475,8 +475,8 @@ final class LiveGameTests: XCTestCase {
         XCTAssertNil(walked.world.nextStage)
         XCTAssertGreaterThan(try drawn(whole(.feats, of: walked).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 1_800), 800)
         // And with no feats told at all: said so.
-        let (bare, _) = await playing(LiveSample.rows())
-        XCTAssertGreaterThan(try drawn(whole(.feats, of: bare).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 400), 100)
+        let (untold, _) = await playing(LiveSample.rows())
+        XCTAssertGreaterThan(try drawn(whole(.feats, of: untold).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 400), 100)
         // And with nothing in them: no soldiers yet, no reports yet.
         let (empty, _) = await playing(LiveSample.rows())
         for side in [LiveGameView.Panel.troops, .studies, .forge, .alliance, .day, .feats, .realm, .rankings, .chat, .reports] {
