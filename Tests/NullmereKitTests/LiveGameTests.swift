@@ -800,6 +800,14 @@ final class LiveGameTests: XCTestCase {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         XCTAssertEqual(talk.lines.map(\.text), ["What now?", "As you say: What now?"])
+        // Counsel opened with a commander in their part, shown there, and closed again.
+        await held(whole(.troops, of: advised).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.press("Take counsel of Corwen"), "Among \(PressableButtons.actions.keys.sorted())")
+            spin(0.3)
+            XCTAssertNotNil(PressableButtons.fields["Ask Corwen"], "the counsel is shown")
+            XCTAssertTrue(PressableButtons.press("Close counsel with Corwen"))
+            spin(0.2)
+        }
 
         // Words in the palette that nothing answers to: said so.
         await held(LivePaletteView(session: session, seconds: 2_015, open: { _ in }) {}, width: 420, height: 320) {
