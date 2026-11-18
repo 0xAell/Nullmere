@@ -1,0 +1,27 @@
+PERF-CHECK this runner runs the plain work at 565.5 ms against 353.0: CPU figures allowed x1.60
+PERF-CHECK calibration.cpu 565.54 ms (baseline 353.00) CALIBRATION
+PERF-CHECK lake.gpu.p50 9.18 ms (baseline 8.30, allowed 16.70) OK
+PERF-CHECK lake.gpu.p95 9.37 ms (baseline 8.30, allowed 16.70) OK
+PERF-CHECK live.stage.cpu.p50 4.57 ms (baseline 4.50, allowed 10.81) OK
+PERF-CHECK live.stage.cpu.p95 8.13 ms (baseline 6.00, allowed 16.82) OK
+PERF-CHECK near.gpu.scale60.p50 8.27 ms (baseline 8.28, allowed 16.70) OK
+PERF-CHECK near.gpu.scale60.plain.p50 8.16 ms (baseline 8.66, allowed 16.70) OK
+PERF-CHECK pan.frame.p50 9.66 ms (baseline 8.96, allowed 16.70) OK
+PERF-CHECK pan.frame.p95 16.14 ms (baseline 9.39, allowed 16.70) OK
+PERF-CHECK pan.gpu.p50 9.17 ms (baseline 8.56, allowed 16.70) OK
+PERF-CHECK pan.gpu.p95 10.35 ms (baseline 8.87, allowed 16.70) OK
+PERF-CHECK wide.gpu.scale28.p50 13.53 ms (baseline 12.44, allowed 16.70) OK
+PERF-CHECK wide.gpu.scale28.whole.p50 23.79 ms (baseline 23.23, allowed 55.82) OK
+PERF-CHECK wider.gpu.scale28.bare.p50 10.76 ms RECORDED (no baseline yet)
+PERF-CHECK wider.gpu.scale28.day.bare.p50 12.35 ms RECORDED (no baseline yet)
+PERF-CHECK wider.gpu.scale28.day.p50 16.99 ms (baseline 16.09, allowed 16.70) REGRESSED
+PERF-CHECK wider.gpu.scale28.day.plain.p50 16.09 ms RECORDED (no baseline yet)
+PERF-CHECK wider.gpu.scale28.p50 15.07 ms (baseline 14.37, allowed 16.70) OK
+PERF-CHECK world.gpu.scale12.p50 7.31 ms (baseline 6.19, allowed 14.88) OK
+PERF-CHECK world.gpu.scale12.p95 8.38 ms (baseline 6.62, allowed 15.91) OK
+PERF-CHECK world.gpu.scale28.day.p50 11.17 ms (baseline 10.47, allowed 16.70) OK
+PERF-CHECK world.gpu.scale28.p50 9.52 ms (baseline 8.61, allowed 16.70) OK
+PERF-CHECK world.gpu.scale28.p95 9.77 ms (baseline 8.95, allowed 16.70) OK
+PERF-CHECK world.gpu.scale60.p50 7.33 ms (baseline 5.70, allowed 13.70) OK
+PERF-CHECK world.gpu.scale60.p95 8.28 ms (baseline 7.37, allowed 16.70) OK
+PERF-CHECK failed: a figure regressed or went missing (see above)
