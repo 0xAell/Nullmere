@@ -1,4 +1,5 @@
 import AppKit
+import FoundationModels
 import LauncherCore
 import LauncherKit
 import SwiftUI
@@ -726,6 +727,76 @@ final class LiveGameTests: XCTestCase {
         let taken = await bench.taken()
         XCTAssertEqual(taken.looks, ["the city", "themself"])
         XCTAssertTrue(taken.deeds.isEmpty)
+    }
+
+    /// The commander's looks and deeds as the model takes them, through
+    /// its tools: each look shown, a deed put forward as one to do; the
+    /// realm renewed for the next question; and what goes wrong with the
+    /// model or its stand-in said in words, never answered for it.
+    func testACommandersLooksAndDeedsAreShownAndTroubleIsSaid() async throws {
+        var counselled = rows()
+        counselled["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(3), n(4), n(200), n(0)]]
+        let (advised, _) = await playing(counselled)
+        let grounded = try XCTUnwrap(advised.counsel(of: 11))
+        let deed = try XCTUnwrap(grounded.deeds.first, "something can be done now")
+        final class Held: @unchecked Sendable { var bench: LiveCounselBench? }
+        let held = Held()
+        // A stand-in for the model that looks at the armies and puts the deed forward, as the model would through its tools.
+        let talk = LiveCounselSession(counsel: grounded, speaker: { _ in
+            guard let bench = held.bench else { return "" }
+            let look = LiveCounselLook(bench: bench)
+            _ = try await look.call(arguments: try LiveCounselLook.Arguments(GeneratedContent(properties: ["at": "armies"])))
+            let proposal = LiveCounselProposal(bench: bench)
+            let put = try await proposal.call(arguments: try LiveCounselProposal.Arguments(GeneratedContent(properties: ["deed": deed.title])))
+            return put.hasPrefix("Put to your lord") ? "Do it, my lord." : put
+        })
+        held.bench = talk.bench
+        XCTAssertEqual(LiveCounselLook(bench: talk.bench).name, "look")
+        XCTAssertEqual(LiveCounselProposal(bench: talk.bench).name, "proposeADeed")
+        talk.renew(grounded)
+        talk.ask("What should I do?")
+        for _ in 0..<100 where talk.answering {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(talk.lines.map(\.kind), [.lord, .look, .commander, .deed])
+        XCTAssertEqual(talk.lines[1].text, "Looked at the armies out")
+        XCTAssertEqual(talk.lines[2].text, "Do it, my lord.")
+        XCTAssertEqual(talk.lines[3].command, deed)
+        XCTAssertEqual(talk.lines[3].text, deed.title)
+
+        // A stand-in that fails: said, and nothing answered for it.
+        let failing = LiveCounselSession(counsel: grounded, speaker: { _ in throw URLError(.timedOut) })
+        failing.ask("Anything?")
+        for _ in 0..<100 where failing.answering {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(failing.lines.map(\.kind), [.lord, .trouble])
+        XCTAssertEqual(failing.lines.last?.text, "The commander gave no counsel. Ask again in a while.")
+
+        // The model itself, where it is said to be there: asked, and
+        // whatever it says or whatever fails, the question stands.
+        let real = LiveCounselSession(counsel: grounded, availability: { .available })
+        XCTAssertNil(real.unavailable)
+        real.ask("What now?")
+        for _ in 0..<150 where real.answering {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(real.lines.first?.kind, .lord)
+
+        // What each failure of the model is called.
+        typealias Failure = LanguageModelSession.GenerationError
+        let context = Failure.Context(debugDescription: "a test")
+        XCTAssertEqual(LiveCounselSession.trouble(Failure.exceededContextWindowSize(context)), "The counsel has run too long to hold. Start it afresh.")
+        XCTAssertEqual(LiveCounselSession.trouble(Failure.guardrailViolation(context)), "The commander will not speak of that. Ask another way.")
+        XCTAssertEqual(LiveCounselSession.trouble(Failure.rateLimited(context)), "The commander is answering another. Ask again in a moment.")
+        XCTAssertEqual(LiveCounselSession.trouble(Failure.concurrentRequests(context)), "The commander is answering another. Ask again in a moment.")
+        XCTAssertEqual(LiveCounselSession.trouble(Failure.unsupportedLanguageOrLocale(context)), "The commander can't make out that language here.")
+        XCTAssertEqual(LiveCounselSession.trouble(Failure.assetsUnavailable(context)), "The commander gave no counsel. Ask again in a while.")
+        // And why it can't be asked, for each reason the system gives.
+        XCTAssertEqual(LiveCounselSession(counsel: grounded, availability: { .unavailable(.appleIntelligenceNotEnabled) }).unavailable,
+                       "Apple Intelligence is turned off in System Settings, so your commanders can't take counsel until it is turned on.")
+        XCTAssertEqual(LiveCounselSession(counsel: grounded, availability: { .unavailable(.modelNotReady) }).unavailable,
+                       "Apple's on-device model is still downloading or preparing. Your commanders can take counsel once it is ready.")
     }
 
     func testADebugRunIsShownIntoTheRebuiltRealm() async throws {

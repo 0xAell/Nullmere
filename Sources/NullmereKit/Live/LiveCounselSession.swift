@@ -123,7 +123,9 @@ final class LiveCounselSession {
     let name: String
     private(set) var lines: [Line] = []
     private(set) var answering = false
-    private let bench: LiveCounselBench
+    /// What the model's tools look at and put forward through; a stand-in
+    /// for the model in a test takes them too.
+    nonisolated let bench: LiveCounselBench
     private var made = 0
     private var model: LanguageModelSession?
     /// What the model was told as the counsel began, and every word the
