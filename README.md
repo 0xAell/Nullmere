@@ -94,7 +94,8 @@ alliances with chat, help, rallies, gifts, honour, stores, territory,
 marks on the map, learning and carts of goods between allies, crates of
 goods kept safe from plunder, the day's work and welcome and favour,
 contests, the Barrow Road's thirty stages walked with the soldiers that
-best each host, the Lists' standing of bands challenged for places, the
+best each host, the Lists' standing of bands challenged for places,
+merits for a lifetime of deeds, a pedlar's deals turning by the day, the
 realm's milestones, the Moonspire and the gates of the ridge, envoys,
 prisoners, petitions and letters, and its chat kept at peace by reports its
 owner reads and players shutting out whom they will. CI plays it through on a real SpacetimeDB
