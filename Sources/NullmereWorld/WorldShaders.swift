@@ -1084,6 +1084,16 @@ public enum WorldShaders {
                 float3 wave = normalize(float3(-slope.x * 1.5 * daylit, 1.0, -slope.y * 1.5 * daylit));
                 float3 sun = normalize(frame.key.xyz);
                 body *= 1.0 + 0.9 * (dot(wave, sun) - sun.y);
+                // Over the shallows, the sun the waves gather dances on the
+                // bed in a net of bright lines: two drifts of it crossing,
+                // brightest where it is shallowest, gone a third of a unit
+                // down.
+                float shallow = 1.0 - smoothstep(0.03, 0.35, depth);
+                if (shallow > 0.0) {
+                    float2 bed = (world.xz + frame.origin.xy) * 6.5;
+                    float web = 1.0 - abs(nm_noise(bed + nm_drift(time, 0.11)) - nm_noise(bed * 1.3 + float2(5.2, 1.7) - nm_drift(time + 7.0, 0.09)));
+                    body += frame.keyColour.rgb * frame.key.w * pow(web, 18.0) * shallow * 0.25 * daylit;
+                }
                 float spark = pow(max(dot(reflect(look, wave), sun), 0.0), 400.0);
                 glints = frame.keyColour.rgb * frame.key.w * spark * 0.5 * daylit;
             }
