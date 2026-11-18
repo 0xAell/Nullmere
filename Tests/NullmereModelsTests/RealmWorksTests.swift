@@ -41,10 +41,13 @@ final class RealmWorksTests: XCTestCase {
         // The camp's fire and the kiln's are lit.
         XCTAssertTrue((1...5).allSatisfy { colours(.scoutCamp, $0).contains(.glow) })
         XCTAssertTrue((3...5).allSatisfy { colours(.tavern, $0).contains(.glow) })
-        // The market's awnings and the tavern's are the House's cloth; the
+        // The market's awnings are the House's cloth, and the tavern's
+        // from its second level to its fourth, where at the fifth lanterns
+        // are strung over its tables and its banners fly at its door; the
         // embassy flies the House's banner at every level.
         XCTAssertTrue((1...5).allSatisfy { colours(.market, $0).contains(.house) })
-        XCTAssertTrue((2...5).allSatisfy { colours(.tavern, $0).contains(.house) })
+        XCTAssertTrue((2...4).allSatisfy { colours(.tavern, $0).contains(.house) })
+        XCTAssertTrue(colours(.tavern, 5).contains(.cloth))
         XCTAssertTrue((1...5).allSatisfy { colours(.embassy, $0).contains(.cloth) })
         XCTAssertEqual(Library.model(.work(.scoutCamp, level: 1)).name, "scoutCamp 1")
     }
