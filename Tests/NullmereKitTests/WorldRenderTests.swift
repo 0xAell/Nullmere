@@ -399,6 +399,22 @@ final class WorldRenderTests: XCTestCase {
         }
     }
 
+    /// A ridge by day: the land's highest hex at noon, with the land's own
+    /// shadow over its lee, kept as world-ridge for an eye to judge how
+    /// deep a lee darkens on a Mac (plan 1.3), which the seat's view, on
+    /// low ground, never showed.
+    func testARidgeIsDrawnByDay() throws {
+        let renderer = try renderer()
+        let world = WorldRenderTests.world
+        let land = world.state.map.hexes.filter { !(world.state.map[$0]?.terrain.isWater ?? true) }
+        let peak = try XCTUnwrap(land.max { world.relief.height(of: $0) < world.relief.height(of: $1) })
+        var camera = Camera(scale: 34)
+        camera.focus(on: peak)
+        let day = try draw(renderer, "ridge", camera: camera, tiles: world.whole, daylight: .day)
+        try keep([day], as: "world-ridge")
+        print("RENDER ridge: the highest hex, \(peak), at \(world.relief.height(of: peak))")
+    }
+
     /// The world's day: the same land about the keeper's seat at noon, at
     /// dusk and at midnight. By day it is read in full light; the dusk is
     /// dimmer and the night dimmer again, but a night of bright moonlight,
