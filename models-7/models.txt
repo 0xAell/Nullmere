@@ -1,0 +1,49 @@
+same archer.glb
+diff archery.glb: nodes 25 -> 25, meshes 19 -> 19, points 16182 -> 16182, actions 1 -> 1
+diff archive.glb: nodes 27 -> 27, meshes 20 -> 20, points 15282 -> 15282, actions 1 -> 1
+diff beacon.glb: nodes 17 -> 17, meshes 12 -> 12, points 14104 -> 14104, actions 1 -> 1
+same carters.glb
+same colossus.glb
+same commanders.glb
+diff embassy.glb: nodes 43 -> 43, meshes 35 -> 35, points 12430 -> 12430, actions 1 -> 1
+same fixture-arm.glb
+same folk.glb
+diff forge.glb: nodes 43 -> 43, meshes 27 -> 27, points 19148 -> 19148, actions 1 -> 1
+same founder.glb
+diff furies.glb: nodes 21 -> 21, meshes 10 -> 10, points 4257 -> 4257, actions 1 -> 1
+diff furnishings.glb: nodes 19 -> 19, meshes 19 -> 19, points 4336 -> 4336, actions 0 -> 0
+diff granary.glb: nodes 26 -> 26, meshes 19 -> 19, points 20374 -> 20374, actions 1 -> 1
+diff hall.glb: nodes 7 -> 7, meshes 7 -> 7, points 6352 -> 6352, actions 0 -> 0
+same hollow.glb
+diff infirmary.glb: nodes 26 -> 26, meshes 19 -> 19, points 18452 -> 18452, actions 1 -> 1
+diff keep.glb: nodes 27 -> 27, meshes 27 -> 27, points 8165 -> 8165, actions 0 -> 0
+diff lairs.glb: nodes 17 -> 17, meshes 17 -> 17, points 24825 -> 24825, actions 0 -> 0
+same lantern.glb
+diff lodge.glb: nodes 46 -> 46, meshes 37 -> 37, points 13846 -> 13846, actions 1 -> 1
+diff lyceum.glb: nodes 3 -> 3, meshes 3 -> 3, points 6206 -> 6206, actions 0 -> 0
+same mangonel.glb
+diff market.glb: nodes 25 -> 25, meshes 18 -> 18, points 20305 -> 20305, actions 1 -> 1
+diff marks.glb: nodes 48 -> 48, meshes 31 -> 31, points 15644 -> 15644, actions 1 -> 1
+diff moonspire.glb: nodes 44 -> 44, meshes 28 -> 28, points 17304 -> 17304, actions 1 -> 1
+diff motte.glb: nodes 3 -> 3, meshes 3 -> 3, points 4358 -> 4439, actions 0 -> 0
+diff musterhall.glb: nodes 37 -> 37, meshes 29 -> 29, points 15354 -> 15354, actions 1 -> 1
+diff props.glb: nodes 41 -> 41, meshes 27 -> 27, points 2796 -> 2796, actions 2 -> 2
+diff quarry.glb: nodes 33 -> 33, meshes 25 -> 25, points 17640 -> 17640, actions 1 -> 1
+diff raising.glb: nodes 46 -> 46, meshes 35 -> 35, points 5048 -> 5048, actions 1 -> 1
+same rider.glb
+diff saltworks.glb: nodes 29 -> 29, meshes 22 -> 22, points 12952 -> 12952, actions 1 -> 1
+diff sawpit.glb: nodes 36 -> 36, meshes 25 -> 25, points 14205 -> 14205, actions 1 -> 1
+diff scoutcamp.glb: nodes 27 -> 27, meshes 20 -> 20, points 17190 -> 17190, actions 1 -> 1
+diff seat.glb: nodes 35 -> 35, meshes 35 -> 35, points 11137 -> 11137, actions 0 -> 0
+diff shrines.glb: nodes 55 -> 55, meshes 37 -> 37, points 10853 -> 10853, actions 1 -> 1
+diff sites.glb: nodes 40 -> 40, meshes 40 -> 40, points 23049 -> 23049, actions 0 -> 0
+same spearman.glb
+diff storehouse.glb: nodes 26 -> 26, meshes 19 -> 19, points 19894 -> 19894, actions 1 -> 1
+diff stores.glb: nodes 48 -> 48, meshes 39 -> 39, points 18700 -> 18700, actions 1 -> 1
+diff tavern.glb: nodes 26 -> 26, meshes 19 -> 19, points 16154 -> 16154, actions 1 -> 1
+same thornwight.glb
+diff tokens.glb: nodes 27 -> 27, meshes 27 -> 27, points 6685 -> 6685, actions 0 -> 0
+diff town.glb: nodes 25 -> 25, meshes 25 -> 25, points 2947 -> 2947, actions 0 -> 0
+diff walls.glb: nodes 56 -> 56, meshes 56 -> 56, points 24948 -> 24948, actions 0 -> 0
+diff wayhouse.glb: nodes 38 -> 38, meshes 28 -> 28, points 13248 -> 13248, actions 1 -> 1
+48 models: 13 the same to the byte, 0 failed
