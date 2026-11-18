@@ -6,6 +6,24 @@ import XCTest
 import NullmereTestSupport
 
 final class SceneTests: XCTestCase {
+    /// A batch puts what stands near a point first, counting it fine, the
+    /// rest after it plain; one whose every piece stands near is unchanged.
+    func testABatchPutsWhatStandsNearFirst() {
+        let at = { (x: Float, z: Float) in ModelInstance(model: .translation(Vec3(x, 5, z))) }
+        let batch = ModelBatch(key: .scaffold, instances: [at(30, 0), at(1, 1), at(0, 40), at(-2, 3), at(16, 0)])
+        let ordered = batch.nearFirst(to: Vec3(0, 0, 0), within: 16)
+        XCTAssertEqual(ordered.fine, 3, "two within reach, and one on its edge")
+        XCTAssertEqual(Set(ordered.instances.prefix(3).map { [$0.model.c3.x, $0.model.c3.z] }), [[1, 1], [-2, 3], [16, 0]])
+        XCTAssertEqual(Set(ordered.instances.suffix(2).map { [$0.model.c3.x, $0.model.c3.z] }), [[30, 0], [0, 40]])
+        XCTAssertEqual(ordered.key, batch.key)
+        // The height counts for nothing: only across the ground.
+        XCTAssertEqual(ModelBatch(key: .scaffold, instances: [ModelInstance(model: .translation(Vec3(0, 99, 0)))]).nearFirst(to: .zero, within: 1).fine, nil)
+        let near = ModelBatch(key: .scaffold, instances: [at(1, 1), at(2, 2)])
+        XCTAssertEqual(near.nearFirst(to: Vec3(0, 0, 0), within: 16), near)
+        XCTAssertNil(near.fine, "drawn as the frame says")
+        XCTAssertEqual(ModelBatch(key: .scaffold, instances: []).nearFirst(to: .zero, within: 1).instances, [])
+    }
+
     func testTheGPUReadsTheFrameAndTheModelsAsTheShadersDeclareThem() {
         XCTAssertEqual(MemoryLayout<FrameUniforms>.stride, 704)
         XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.origin), 688, "The last, as the shaders declare it")

@@ -139,7 +139,7 @@ final class LiveStagingTimeTests: XCTestCase {
         session.stagingParts = [:]
         for index in 1...180 { _ = session.frame(time: Double(index) / 60, size: size) }
         let parts = try XCTUnwrap(session.stagingParts)
-        XCTAssertEqual(Set(parts.keys), ["cities read", "places read", "cities staged", "armies read", "places staged", "armies staged", "ways"])
+        XCTAssertEqual(Set(parts.keys), ["cities read", "places read", "cities staged", "armies read", "places staged", "armies staged", "detail", "ways"])
         print("PERF staging by part, each frame's mean: " + parts.sorted { $0.value > $1.value }
             .map { "\($0.key) \(String(format: "%.2f", $0.value / 180)) ms" }.joined(separator: ", "))
         session.stagingParts = nil

@@ -459,6 +459,10 @@ public final class LiveSession {
     /// it reaches: what lies further out of the view is left out of a frame.
     public static let holdReach: Float = HoldLayout.reach + 1.5
     public static let companyReach: Float = 2
+    /// How far from the middle of the view, across the ground, a model is
+    /// drawn with its fine work: about nine hexes, all a laptop's window
+    /// holds at the opening zoom; further out, plain.
+    public static let fineReach: Float = 16
 
     /// The frame to draw at a moment: given the view's size, only what the
     /// camera can see of it is staged, as a crowded window's cities, each
@@ -483,7 +487,11 @@ public final class LiveSession {
                 + stage.finds(cairns.filter { seen($0.hex, within: 1) }).batches
         }
         let armies = timed("armies staged") { stage.companies(poses, houses: LiveSession.colours, into: &frame) }
-        frame.batches = holds + places + armies
+        // What stands near the middle of the view drawn with its fine work,
+        // what stands further off plain: the frame's level of detail, piece
+        // by piece.
+        let focus = camera.focus
+        frame.batches = timed("detail") { (holds + places + armies).map { $0.nearFirst(to: focus, within: Self.fineReach) } }
         // The ways the armies on the move still have to go, lit on the land.
         frame.motes += timed("ways") { stage.marchLines(window.marchWays(in: world, at: seconds), time: Float(time)) }
         return frame

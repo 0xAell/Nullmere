@@ -6,10 +6,29 @@ import NullmereModels
 public struct ModelBatch: Equatable, Sendable {
     public var key: ModelKey
     public var instances: [ModelInstance]
+    /// How many of its first instances stand near enough to the eye for
+    /// their fine work, the rest drawn plain; nil, every one as the frame
+    /// says (`SceneFrame.fine`).
+    public var fine: Int?
 
-    public init(key: ModelKey, instances: [ModelInstance]) {
+    public init(key: ModelKey, instances: [ModelInstance], fine: Int? = nil) {
         self.key = key
         self.instances = instances
+        self.fine = fine
+    }
+
+    /// The batch with its instances that stand within `reach` of a point,
+    /// across the ground, put first and counted fine; the rest after them,
+    /// to be drawn plain. Unchanged where every one stands within it.
+    public func nearFirst(to point: Vec3, within reach: Float) -> ModelBatch {
+        var ordered = instances
+        let reachSquared = reach * reach
+        let far = ordered.partition { instance in
+            let dx = instance.model.c3.x - point.x, dz = instance.model.c3.z - point.z
+            return dx * dx + dz * dz > reachSquared
+        }
+        guard far < ordered.count else { return self }
+        return ModelBatch(key: key, instances: ordered, fine: far)
     }
 }
 

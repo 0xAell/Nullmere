@@ -438,9 +438,14 @@ final class WorldRenderer {
             guard !drawn.isEmpty else { continue }
             encoder.setVertexBuffer(mesh.vertices, offset: 0, index: 0)
             for run in drawn where !run.isEmpty && run.upperBound <= batch.instances.count {
-                encoder.setVertexBuffer(buffer, offset: (first + run.lowerBound) * MemoryLayout<ModelInstance>.stride, index: 1)
-                encoder.drawIndexedPrimitives(type: .triangle, indexCount: fine ? mesh.indexCount : mesh.coarseCount, indexType: .uint32,
-                                              indexBuffer: mesh.indices, indexBufferOffset: 0, instanceCount: run.count)
+                // Within the run, those near enough for their fine work first,
+                // then the rest plain; all plain where the frame is far.
+                let split = fine ? min(max(batch.fine ?? run.upperBound, run.lowerBound), run.upperBound) : run.lowerBound
+                for (part, indexCount) in [(run.lowerBound..<split, mesh.indexCount), (split..<run.upperBound, mesh.coarseCount)] where !part.isEmpty {
+                    encoder.setVertexBuffer(buffer, offset: (first + part.lowerBound) * MemoryLayout<ModelInstance>.stride, index: 1)
+                    encoder.drawIndexedPrimitives(type: .triangle, indexCount: indexCount, indexType: .uint32,
+                                                  indexBuffer: mesh.indices, indexBufferOffset: 0, instanceCount: part.count)
+                }
             }
         }
     }
