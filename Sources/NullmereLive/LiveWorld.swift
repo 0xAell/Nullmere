@@ -247,7 +247,8 @@ public struct LiveWorld: Equatable, Sendable {
         prisoners = Dictionary(rows("my_prisoners", LivePrisoner.init).map { ($0.commander, $0) }, uniquingKeysWith: { _, new in new })
         petitions = Dictionary(rows("my_petitions", LivePetition.init).map { ($0.asker, $0) }, uniquingKeysWith: { _, new in new })
         letters = rows("my_letters", LiveLetter.init).filter { !shut.contains($0.sender) }.sorted { $0.id > $1.id }
-        marks = rows("my_marks", LiveMark.init).sorted { $0.id < $1.id }
+        // A mark set by one shut out is left unshown with the rest of what they said.
+        marks = rows("my_marks", LiveMark.init).filter { !shut.contains($0.setter) }.sorted { $0.id < $1.id }
         milestones = rows("milestone", LiveMilestone.init).sorted { $0.id < $1.id }
         claimed = Set((snapshot["my_claims"] ?? []).compactMap { Cells(row: $0).unsigned(2) })
         welcomed = rows("my_welcome", LiveWelcome.init).first

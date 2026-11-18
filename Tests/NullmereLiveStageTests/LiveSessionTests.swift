@@ -1332,6 +1332,8 @@ final class LiveSessionTests: XCTestCase {
         rows["realm_chat"] = [[n(11), n(2), .string("Bryn"), n(2_000), .string("Yield.")], [n(12), n(1), .string("Ada"), n(2_010), .string("Never.")]]
         rows["my_letters"] = [[n(41), n(2), n(1), .string("Bryn"), .string("Yield, I say."), n(1_950), .bool(false)],
                               [n(42), n(1), n(2), .string("Ada"), .string("Never."), n(1_960), .bool(true)]]
+        rows["my_marks"] = [[n(3), n(5), n(LiveHex(q: 12, r: -2).packed), .string("Yield here"), n(2), n(1_990)],
+                            [n(4), n(5), n(LiveHex(q: 13, r: -2).packed), .string("Hold"), n(1), n(1_995)]]
         let line = StandInLine(rows: rows)
         let session = session(line)
         await session.open()
@@ -1339,6 +1341,7 @@ final class LiveSessionTests: XCTestCase {
         func card() -> LiveCard { session.card(for: session.selection(at: bryns)) }
         XCTAssertEqual(session.world.realmChat.map(\.words), ["Yield.", "Never."])
         XCTAssertEqual(session.world.unreadLetters, 1)
+        XCTAssertEqual(session.world.marks.map(\.words), ["Yield here", "Hold"])
         let shut = try XCTUnwrap(card().buttons.last)
         XCTAssertEqual(shut, LiveCard.Button(title: "Shut out Bryn", act: .shutOut(2), why: nil))
         XCTAssertEqual(shut.icon, "speaker.slash")
@@ -1352,6 +1355,7 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(session.world.realmChat.map(\.words), ["Never."])
         XCTAssertEqual(session.world.letters.map(\.id), [42])
         XCTAssertEqual(session.world.unreadLetters, 0)
+        XCTAssertEqual(session.world.marks.map(\.words), ["Hold"], "a mark he set as an officer is left unshown too")
         XCTAssertTrue(card().lines.contains(LiveCard.shutOutLine), "\(card().lines)")
         let back = try XCTUnwrap(card().buttons.last)
         XCTAssertEqual(back, LiveCard.Button(title: "Let Bryn back in", act: .letIn(2), why: nil))
