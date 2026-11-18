@@ -148,6 +148,13 @@ extension LiveSession {
         return [.init(title: "Call a rally", act: .rally, why: why ?? cannotSend)]
     }
 
+    /// When the holy sites may be stormed this season: three days in, at
+    /// the realm's pace.
+    var shrinesOpenAt: Int? {
+        guard let season = world.season, let realm = world.realm else { return nil }
+        return season.began + LiveShrine.openDays * 86_400 / max(realm.pace, 1)
+    }
+
     /// When the gates of the ridge may be stormed this season: a week in,
     /// at the realm's pace.
     var gatesOpenAt: Int? {
@@ -165,6 +172,7 @@ extension LiveSession {
         case .gate(let gate): return gate.hex
         case .ward(let ward): return ward.hex
         case .cairn(let cairn): return cairn.hex
+        case .shrine(let shrine): return shrine.hex
         case .land(let hex, _): return hex
         case .army, .work: return nil
         }
@@ -330,6 +338,23 @@ extension LiveSession {
                 why = cannotSend
             }
             return LiveCard(title: "Cairn, level \(cairn.level)", lines: lines, buttons: [.init(title: "Send a scout", act: .explore, why: why)])
+
+        case .shrine(let shrine):
+            let mine = world.myMembership?.alliance
+            var lines = [shrine.holder == 0 ? "A holy site, kept by the Unquiet." : "A holy site, held by \(shrine.holderName)."]
+            lines.append("Held, it gives: \(shrine.gives)")
+            if shrine.holder != 0, shrine.holder == mine {
+                lines.append("Your alliance holds it.")
+                return LiveCard(title: shrine.name, lines: lines, buttons: [])
+            }
+            lines.append("Only an alliance's rally may storm it.")
+            var why: String?
+            let pace = world.realm?.pace ?? 1
+            let guarded = shrine.guardedUntil(pace: pace)
+            if guarded > Int(seconds) { why = "That holy site was taken lately. It may be stormed again in \(LiveWords.spoken(guarded - Int(seconds)))." }
+            if let opens = shrinesOpenAt, opens > Int(seconds) { why = "The holy sites may be stormed in \(LiveWords.spoken(opens - Int(seconds)))." }
+            if shrine.fighter != 0 { why = "Another rally is at that holy site." }
+            return LiveCard(title: shrine.name, lines: lines, buttons: rallyButton(why: why))
 
         case .ward(let ward):
             let owner = world.alliances[ward.alliance].map { "[\($0.tag)] \($0.name)" } ?? "An alliance"

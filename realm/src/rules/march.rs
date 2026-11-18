@@ -189,6 +189,7 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
                 city.id
             }
             super::rally::Aim::Gate(gate) => gate.id,
+            super::rally::Aim::Shrine(shrine) => shrine.id,
             super::rally::Aim::Ward(ward) => ward.id,
         },
         _ => return Err(Refusal::NoSuchOrder),

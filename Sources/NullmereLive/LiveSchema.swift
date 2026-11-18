@@ -68,6 +68,7 @@ public enum LiveSchema {
         "ward": .init(columns: ["id", "alliance", "hex", "raised_by", "stands_at"], key: "id"),
         "learning": .init(columns: ["id", "alliance", "topic", "level", "rises_at", "timer", "grain", "timber", "stone"], key: "id"),
         "gate": .init(columns: ["id", "hex", "holder", "holder_name", "taken_at", "fighter"], key: "id"),
+        "shrine": .init(columns: ["id", "hex", "kind", "holder", "holder_name", "taken_at", "fighter"], key: "id"),
         "pact": .init(columns: ["id", "first", "second", "terms", "began", "ends"], key: "id"),
         "title": .init(columns: ["title", "holder", "name", "since"], key: "title"),
         "fame": .init(columns: ["player", "kills", "felled", "dead"], key: "player"),

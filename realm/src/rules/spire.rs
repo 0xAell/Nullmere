@@ -221,6 +221,7 @@ pub fn turn_season(db: &mut impl Db, number: u64) {
     }
     begin_season(db, number + 1, season.ends);
     super::gates_turn(db, season.victor);
+    super::shrines_turn(db, season.victor);
     for spire in fallen.iter().filter(|spire| spire.season == number && spire.stage > 0) {
         reckon_members(db, spire.alliance);
         let words = match season.victor {

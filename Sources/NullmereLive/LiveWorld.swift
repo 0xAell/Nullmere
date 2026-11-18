@@ -53,6 +53,8 @@ public struct LiveWorld: Equatable, Sendable {
     public var learnings: [UInt64: LiveLearning] = [:]
     /// The gates of the ridge, by their number.
     public var gates: [UInt64: LiveGate] = [:]
+    /// The holy sites, by their number.
+    public var shrines: [UInt64: LiveShrine] = [:]
     /// Every pact between alliances, by its number; the titles of the Mere
     /// held, by the title.
     public var pacts: [UInt64: LivePact] = [:]
@@ -219,6 +221,7 @@ public struct LiveWorld: Equatable, Sendable {
         wards = Dictionary(rows("ward", LiveWard.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         learnings = Dictionary(rows("learning", LiveLearning.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         gates = Dictionary(rows("gate", LiveGate.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        shrines = Dictionary(rows("shrine", LiveShrine.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         pacts = Dictionary(rows("pact", LivePact.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         titles = Dictionary(rows("title", LiveTitle.init).map { ($0.title, $0) }, uniquingKeysWith: { _, new in new })
         fame = Dictionary(rows("fame", LiveFame.init).map { ($0.player, $0) }, uniquingKeysWith: { _, new in new })
@@ -633,6 +636,17 @@ public struct LiveWorld: Equatable, Sendable {
     /// The gates an alliance holds, by their number.
     public func gatesHeld(by alliance: UInt64) -> [LiveGate] {
         gates.values.filter { $0.holder == alliance && alliance != 0 }.sorted { $0.id < $1.id }
+    }
+
+    /// The holy sites an alliance holds, by their number.
+    public func shrinesHeld(by alliance: UInt64) -> [LiveShrine] {
+        shrines.values.filter { $0.holder == alliance && alliance != 0 }.sorted { $0.id < $1.id }
+    }
+
+    /// What the holy sites an alliance holds give it, a kind's once, in
+    /// the order of their kinds.
+    public func hallowing(of alliance: UInt64) -> [String] {
+        Set(shrinesHeld(by: alliance).map(\.kind)).sorted().compactMap { kind in shrines.values.first { $0.kind == kind }?.gives }
     }
 
     /// An alliance's wardstones, the oldest first.

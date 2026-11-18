@@ -407,6 +407,13 @@ first_gate = unpacked(gates[0]["hex"]) if gates else (0, 0)
 check("one in no alliance calls no rally against a gate", call(ada, "call_rally", first_gate[0], first_gate[1], [{"kind": 1, "tier": 1, "count": 1}], 0), "You are in no alliance.")
 check("nor is an army sent against one by an order of its own", call(ada, "send", first_gate[0], first_gate[1], 3, [{"kind": 1, "tier": 1, "count": 1}], 0), "There is no city to attack there.")
 
+# The holy sites: thirteen, for all to read, kept by the Unquiet as the realm opens; stormed only by an alliance's rally.
+shrines = sorted(rows(nobody, "SELECT * FROM shrine"), key=lambda shrine: shrine["id"])
+check("thirteen holy sites stand, kept by the Unquiet", [(shrine["holder"], shrine["fighter"]) for shrine in shrines], [(0, 0)] * 13)
+check("three of each outer kind and one Heartstone", sorted(shrine["kind"] for shrine in shrines), [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5])
+first_shrine = unpacked(shrines[0]["hex"]) if shrines else (0, 0)
+check("one in no alliance calls no rally against a holy site", call(ada, "call_rally", first_shrine[0], first_shrine[1], [{"kind": 1, "tier": 1, "count": 1}], 0), "You are in no alliance.")
+
 # Commanders: one to begin with, more from a Tavern.
 captains = rows(bryn, "SELECT * FROM my_commanders")
 check("a player begins with one commander, in the city", [(c["level"], c["march"], 1 <= c["way"] <= 6, len(c["name"]) >= 3) for c in captains], [(1, 0, True, True)])

@@ -16,20 +16,22 @@
 use super::{
     allied, asking, barrow_at, city_at, dispatch, fought_together, gate_at, home, hunt_of, may_attack, may_raze, may_storm, member_of, realm, release, report,
     shown_name, spend_energy, squads, stormed_gate, stormed_together, stormed_ward, travel, turn_home, ward_at, warn, way_back, Asked, Refusal, TIMER_MARCH,
+    may_hallow, shrine_at, stormed_shrine,
 };
 use crate::catalog;
 use crate::hex::{self, Hex};
-use crate::rows::{Barrow, City, Db, Gate, Haul, March, Muster, Player, Rally, Report, Ward};
+use crate::rows::{Barrow, City, Db, Gate, Haul, March, Muster, Player, Rally, Report, Shrine, Ward};
 use crate::store::Table;
 
 /// What a rally goes against: a barrow, another player's city, a gate of
-/// the ridge, or another alliance's wardstone (a rally's row names the
-/// barrow or the city, and neither for a gate or a wardstone, which stands
-/// at its hex).
+/// the ridge, a holy site, or another alliance's wardstone (a rally's row
+/// names the barrow or the city, and neither for a gate, a holy site or a
+/// wardstone, which stands at its hex).
 pub(super) enum Aim {
     Barrow(Barrow),
     City(City),
     Gate(Gate),
+    Shrine(Shrine),
     Ward(Ward),
 }
 
@@ -58,6 +60,10 @@ pub(super) fn may_go(db: &impl Db, player: u64, to: Hex) -> Result<Aim, Refusal>
     if let Some(gate) = gate_at(db, to) {
         may_storm(db, player, &gate)?;
         return Ok(Aim::Gate(gate));
+    }
+    if let Some(shrine) = shrine_at(db, to) {
+        may_hallow(db, player, &shrine)?;
+        return Ok(Aim::Shrine(shrine));
     }
     if let Some(ward) = ward_at(db, to) {
         may_raze(db, player, &ward)?;
@@ -134,6 +140,11 @@ pub fn call_rally(db: &mut impl Db, player: u64, to: Hex, asked: &[Asked], leade
             may_storm(db, player, &gate)?;
             (0, 0, 0)
         }
+        (None, None) if shrine_at(db, to).is_some() => {
+            let shrine = shrine_at(db, to).ok_or(Refusal::NothingToFight)?;
+            may_hallow(db, player, &shrine)?;
+            (0, 0, 0)
+        }
         (None, None) if ward_at(db, to).is_some() => {
             let ward = ward_at(db, to).ok_or(Refusal::NothingToFight)?;
             may_raze(db, player, &ward)?;
@@ -204,12 +215,15 @@ pub fn join_rally(db: &mut impl Db, player: u64, rally: u64, asked: &[Asked], le
 }
 
 /// Whether an army of a rally took energy to send: one against a barrow
-/// did, one against a city or a gate did not. Asked of the rally where
+/// did, one against a city, a gate or a holy site did not. Asked of the rally where
 /// there is one, and of what stands where it was going where there is not.
 fn took_energy(db: &impl Db, rally: Option<&Rally>, march: &March) -> bool {
     match rally {
         Some(rally) => rally.barrow != 0,
-        None => city_at(db, Hex::unpacked(march.to)).is_none() && gate_at(db, Hex::unpacked(march.to)).is_none(),
+        None => {
+            let to = Hex::unpacked(march.to);
+            city_at(db, to).is_none() && gate_at(db, to).is_none() && shrine_at(db, to).is_none()
+        }
     }
 }
 
@@ -274,6 +288,11 @@ pub(super) fn set_out(db: &mut impl Db, march: &March) {
             None if rally.barrow == 0 && gate_at(db, Hex::unpacked(rally.hex)).is_some() => {
                 let words = "No one joined your rally against a gate of the ridge. Your army has stood down.".to_string();
                 told(db, rally.caller, Report::GATE, &rally, 0, words);
+            }
+            None if rally.barrow == 0 && shrine_at(db, Hex::unpacked(rally.hex)).is_some() => {
+                let shrine = shrine_at(db, Hex::unpacked(rally.hex));
+                let words = shrine.as_ref().map(super::unjoined).unwrap_or_default();
+                told(db, rally.caller, Report::SHRINE, &rally, shrine.map(|shrine| shrine.id).unwrap_or(0), words);
             }
             None if rally.barrow == 0 => {
                 let words = "No one joined your rally against a wardstone. Your army has stood down.".to_string();
@@ -359,6 +378,14 @@ pub(super) fn reached(db: &mut impl Db, mut march: March) {
         gate.fighter = first.id;
         db.update(gate);
         catalog::ASSAULT_SECONDS
+    } else if let Some(mut shrine) = shrine_at(db, Hex::unpacked(rally.hex)).filter(|_| rally.barrow == 0) {
+        if !super::still_to_storm(db, &shrine, rally.alliance) {
+            let words = super::found_held(&shrine);
+            return turn_back(db, marches, &rally, Report::SHRINE, &words);
+        }
+        shrine.fighter = first.id;
+        db.update(shrine);
+        catalog::ASSAULT_SECONDS
     } else if rally.barrow == 0 {
         if ward_at(db, Hex::unpacked(rally.hex)).is_none_or(|ward| ward.alliance == rally.alliance) {
             let words = "Your alliance's rally found its wardstone gone, or your own alliance's, when its last army came up. Your army is turning for home.";
@@ -404,6 +431,8 @@ pub(super) fn ended(db: &mut impl Db, march: &March) {
         stormed_together(db, &mut marches);
     } else if rally.barrow == 0 && gate_at(db, Hex::unpacked(rally.hex)).is_some() {
         stormed_gate(db, &mut marches, &rally);
+    } else if rally.barrow == 0 && shrine_at(db, Hex::unpacked(rally.hex)).is_some() {
+        stormed_shrine(db, &mut marches, &rally);
     } else if rally.barrow == 0 {
         stormed_ward(db, &mut marches, &rally);
     } else {

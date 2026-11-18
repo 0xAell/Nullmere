@@ -134,6 +134,64 @@ pub fn outer_from(radius: u32) -> u32 {
     ((RIDGE + 0.02 + ridge_reach(radius)) * radius as f64) as u32 + 2
 }
 
+/// Where the realm's holy sites stand, each with its kind: three of each
+/// of the outer kinds spread evenly round the outer land, midway between
+/// the ridge and the mountains' rim and off the passes' lines, and the
+/// Heartstone in the lake country, midway between the shore and the
+/// ridge. Each stands on open ground with open ground about it, three
+/// steps at least from any other; where its place falls on water or rock
+/// it is set on the nearest ground that will do, within a twelfth of the
+/// world, or not at all.
+pub fn shrines(seed: u64, radius: u32) -> Vec<(Hex, crate::catalog::Holy)> {
+    use crate::catalog::Holy;
+    let fit = |hex: Hex, inner: bool| {
+        let ground = ground(seed, radius, hex);
+        hex.length() <= radius
+            && matches!(ground, Ground::Plain | Ground::Heath | Ground::Salt | Ground::Wood | Ground::Strand)
+            && lakeland(radius, hex) == inner
+            && (inner || hex.length() >= outer_from(radius))
+            && !on_axis(hex)
+            && hex.neighbours().iter().filter(|near| ground_of(seed, radius, **near).is_open()).count() >= 4
+    };
+    // How far from its place a site may be sought: a twelfth of the world,
+    // never less than four steps; and if nothing will do there, from places
+    // further along its ring, up to half the way to the next site's.
+    let reach = (radius / 12).max(4);
+    let mut placed: Vec<(Hex, Holy)> = Vec::new();
+    let set = |ring: &[Hex], at: usize, spread: usize, inner: bool, kind: Holy, placed: &mut Vec<(Hex, Holy)>| {
+        let wants = (0..=spread).flat_map(|along| [at + along, at + ring.len() - along]).map(|index| ring[index % ring.len()]);
+        let found = wants
+            .flat_map(|want| (0..=reach).flat_map(move |step| want.ring(step)))
+            .find(|hex| fit(*hex, inner) && placed.iter().all(|(other, _)| other.distance(*hex) >= 3));
+        if let Some(hex) = found {
+            placed.push((hex, kind));
+        }
+    };
+    let rim = radius * 88 / 100;
+    let outer = (outer_from(radius) + rim) / 2;
+    let ring = Hex::new(0, 0).ring(outer.max(1));
+    let count = 3 * Holy::OUTER.len();
+    for nth in 0..count {
+        // An eighth of a step's turn off the even spacing, so none falls
+        // on a pass's line.
+        let at = (nth * ring.len() + ring.len() / 8) / count;
+        set(&ring, at, ring.len() / count / 2, false, Holy::OUTER[nth % Holy::OUTER.len()], &mut placed);
+    }
+    let lake = ((radius as f64 * 0.24) as u32 + (radius as f64 * (RIDGE - ridge_reach(radius) - 0.02)) as u32) / 2;
+    let heart = Hex::new(0, 0).ring(lake.max(1));
+    set(&heart, heart.len() / 12, heart.len() / 4, true, Holy::Heartstone, &mut placed);
+    placed
+}
+
+/// The ground at a hex, mountain beyond the world.
+fn ground_of(seed: u64, radius: u32, hex: Hex) -> Ground {
+    if hex.length() > radius {
+        Ground::Mountain
+    } else {
+        ground(seed, radius, hex)
+    }
+}
+
 /// Whether a hex is of the lake country, within the ridge.
 pub fn lakeland(radius: u32, hex: Hex) -> bool {
     (hex.length() as f64) < (RIDGE - ridge_reach(radius) - 0.02) * radius as f64

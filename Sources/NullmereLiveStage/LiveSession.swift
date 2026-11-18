@@ -117,6 +117,8 @@ public enum LiveSelection: Equatable, Sendable {
     case ward(LiveWard)
     /// A cairn of the old folk.
     case cairn(LiveCairn)
+    /// A holy site.
+    case shrine(LiveShrine)
     /// An army there now, and whether it is the player's own.
     case army(LiveMarch, own: Bool)
     /// Bare land: its ground, as the module numbers it, where it is known.
@@ -547,6 +549,8 @@ public final class LiveSession {
                 if let ward = world.wards[place.id] { return .ward(ward) }
             case LivePlace.cairn:
                 if let cairn = world.cairns[place.id] { return .cairn(cairn) }
+            case LivePlace.shrine:
+                if let shrine = world.shrines[place.id] { return .shrine(shrine) }
             default: break
             }
         }

@@ -160,6 +160,7 @@ fn put_out(db: &mut impl Db, member: &Member) {
         super::clear_marks(db, alliance.id);
         super::forget_together(db, alliance.id);
         super::gates_fall(db, alliance.id);
+        super::shrines_fall(db, alliance.id);
         super::pacts_end(db, alliance.id);
         Table::<Alliance>::delete(db, alliance.id);
     } else {

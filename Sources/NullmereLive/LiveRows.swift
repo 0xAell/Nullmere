@@ -176,6 +176,7 @@ public struct LivePlace: Equatable, Sendable {
     public static let ward = 4
     public static let gate = 5
     public static let cairn = 6
+    public static let shrine = 7
 
     public let hex: LiveHex
     public let kind: Int
@@ -535,6 +536,9 @@ public struct LiveReport: Equatable, Sendable, Identifiable {
     public static let road = 19
     /// A challenge in the Lists, made or met: `foe` is the other player.
     public static let lists = 20
+    /// A rally's fight at a holy site, or a holy site of the alliance's
+    /// taken by another: `foe` is the site.
+    public static let shrine = 21
 
     public let id: UInt64
     public let at: Int

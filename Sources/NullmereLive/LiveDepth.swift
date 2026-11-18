@@ -487,6 +487,63 @@ public struct LiveGate: Equatable, Sendable, Identifiable {
     }
 }
 
+/// A holy site: where it stands, its kind, who holds it (0 for the
+/// Unquiet), since when, and whether a rally is at it. An alliance that
+/// holds one lends each of its members' cities what its kind gives, a
+/// kind's once.
+public struct LiveShrine: Equatable, Sendable, Identifiable {
+    /// The kinds, as the realm numbers them.
+    public static let moonwell = 1, stillStone = 2, saltAltar = 3, brokenSpire = 4, heartstone = 5
+    /// How many days into a season they may be stormed, and for how long
+    /// one just taken may not be, in seconds; both at the realm's pace.
+    public static let openDays = 3
+    public static let guarded = 86_400
+
+    public let id: UInt64
+    public let hex: LiveHex
+    public let kind: Int
+    public let holder: UInt64
+    public let holderName: String
+    public let takenAt: Int
+    public let fighter: UInt64
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let hex = cells.unsigned(1), let kind = cells.whole(2), let holder = cells.unsigned(3),
+              let holderName = cells.text(4), let takenAt = cells.whole(5), let fighter = cells.unsigned(6) else { return nil }
+        (self.id, self.hex, self.kind, self.holder, self.holderName, self.takenAt, self.fighter) = (id, LiveHex(packed: hex), kind, holder, holderName, takenAt, fighter)
+    }
+
+    /// Its name, as a title.
+    public var name: String {
+        switch kind {
+        case LiveShrine.moonwell: return "The Moonwell"
+        case LiveShrine.stillStone: return "The Still Stone"
+        case LiveShrine.saltAltar: return "The Salt Altar"
+        case LiveShrine.brokenSpire: return "The Broken Spire"
+        case LiveShrine.heartstone: return "The Heartstone"
+        default: return "A holy site"
+        }
+    }
+
+    /// What it gives the alliance that holds it, as the realm says it.
+    public var gives: String {
+        switch kind {
+        case LiveShrine.moonwell: return "Your alliance's armies gather 20% faster."
+        case LiveShrine.stillStone: return "Your alliance's soldiers are 9% harder to bring down."
+        case LiveShrine.saltAltar: return "Your alliance's Saltworks bring in 20% more moonsalt."
+        case LiveShrine.brokenSpire: return "Your alliance's buildings are raised 9% sooner."
+        case LiveShrine.heartstone: return "Your alliance's Spearmen, Archers and Riders strike 9% harder."
+        default: return ""
+        }
+    }
+
+    /// When it may be stormed again, having been taken; 0 if it never was.
+    public func guardedUntil(pace: Int) -> Int {
+        holder == 0 ? 0 : takenAt + LiveShrine.guarded / max(pace, 1)
+    }
+}
+
 /// What an alliance has learnt of a topic, and what is given toward its
 /// next level, or till when it is studied.
 public struct LiveLearning: Equatable, Sendable, Identifiable {

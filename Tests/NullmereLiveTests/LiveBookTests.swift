@@ -487,6 +487,26 @@ final class LiveBookTests: XCTestCase {
         XCTAssertTrue(alliance.contains("pub const ALLIANCE_NAME_SHORTEST: usize = 3;") && alliance.contains("pub const ALLIANCE_NAME_LONGEST: usize = 20;"))
     }
 
+    /// The holy sites as the client tells them are as the realm keeps
+    /// them: their kinds' numbers, when they open and how long one taken
+    /// is guarded, and what each gives.
+    func testTheHolySitesAreToldAsTheRealmKeepsThem() throws {
+        let catalog = try source("catalog.rs"), rules = try source("rules/mod.rs")
+        for (name, kind) in [("Moonwell", LiveShrine.moonwell), ("StillStone", LiveShrine.stillStone), ("SaltAltar", LiveShrine.saltAltar),
+                             ("BrokenSpire", LiveShrine.brokenSpire), ("Heartstone", LiveShrine.heartstone)] {
+            XCTAssertTrue(catalog.contains("    \(name) = \(kind),"), name)
+        }
+        XCTAssertTrue(catalog.contains("pub const SHRINES_OPEN_DAYS: i64 = \(LiveShrine.openDays);"))
+        XCTAssertTrue(catalog.contains("pub const SHRINE_GUARDED: i64 = DAY;") && LiveShrine.guarded == 86_400)
+        XCTAssertTrue(catalog.contains("Holy::Moonwell => &[(Topic::Gathering, 2)]") && catalog.contains("Topic::Storage | Topic::Gathering | Topic::Medicine => 10"))
+        XCTAssertTrue(catalog.contains("Holy::SaltAltar => &[(Topic::Saltcraft, 4)]") && catalog.contains("Topic::Tillage | Topic::Forestry | Topic::Masonry | Topic::Saltcraft | Topic::Marching => 5"))
+        for sentence in ["Your alliance holds that holy site.", "Another rally is at that holy site."] {
+            XCTAssertTrue(rules.contains("\"\(sentence)\""), sentence)
+        }
+        XCTAssertTrue(rules.contains("\"That holy site was taken lately. It may be stormed again in {}.\""))
+        XCTAssertTrue(rules.contains("\"The holy sites may be stormed in {}.\""))
+    }
+
     /// The Tavern: its summons free once a day, then with one kept; a chest
     /// that holds one says so; and a gift raised once its sigils are held.
     func testTheTavernSummonsAndGiftsAreReckoned() throws {

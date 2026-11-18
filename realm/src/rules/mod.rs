@@ -38,6 +38,7 @@ mod road;
 mod lists;
 mod merits;
 mod pedlar;
+mod shrines;
 mod shun;
 mod siege;
 mod spire;
@@ -81,6 +82,7 @@ pub use road::*;
 pub use lists::*;
 pub use merits::*;
 pub use pedlar::*;
+pub use shrines::*;
 pub use shun::*;
 pub use siege::*;
 pub use spire::*;
@@ -283,6 +285,12 @@ pub enum Refusal {
     GatesShut(i64),
     OwnGate,
     GateFought,
+    /// The holy sites may not be stormed for so many seconds yet.
+    ShrinesShut(i64),
+    OwnShrine,
+    ShrineFought,
+    /// A holy site was taken lately: so many seconds until it may be stormed.
+    ShrineGuarded(i64),
     LakelandShut,
     OwnWard,
     OwnAlliance,
@@ -468,6 +476,8 @@ impl fmt::Display for Refusal {
             Refusal::PetitionTooLarge(most) => return write!(f, "A petition asks {} of each good at most.", crate::catalog::grouped(*most)),
             Refusal::NoSuchTerms(most) => return write!(f, "A pact is a truce or passage, for a day to {most} days."),
             Refusal::GatesShut(left) => return write!(f, "The gates of the ridge may be stormed in {}.", crate::catalog::spoken(*left)),
+            Refusal::ShrinesShut(left) => return write!(f, "The holy sites may be stormed in {}.", crate::catalog::spoken(*left)),
+            Refusal::ShrineGuarded(left) => return write!(f, "That holy site was taken lately. It may be stormed again in {}.", crate::catalog::spoken(*left)),
             Refusal::NothingMoreToLearn(topic) => return write!(f, "You have learnt all there is of {}.", topic.name()),
             Refusal::StudyFirst(topic, level) => return write!(f, "Learn {} to level {level} first.", topic.name()),
             Refusal::TaskNotDone(words) => return write!(f, "Not done yet: {words}"),
@@ -605,6 +615,8 @@ impl fmt::Display for Refusal {
             Refusal::NothingNeeded => "Nothing more of those goods is needed for that.",
             Refusal::OwnGate => "Your alliance holds that gate.",
             Refusal::GateFought => "Another rally is at that gate.",
+            Refusal::OwnShrine => "Your alliance holds that holy site.",
+            Refusal::ShrineFought => "Another rally is at that holy site.",
             Refusal::LakelandShut => "Only an alliance that holds a gate of the ridge may move into the lake country.",
             Refusal::OwnWard => "That wardstone is your alliance's.",
             Refusal::OwnAlliance => "That is your own alliance.",

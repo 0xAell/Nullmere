@@ -470,7 +470,7 @@ fn a_city_moves_to_new_ground_for_goods_and_its_buildings_go_with_it() {
                         break 'search;
                     }
                     Err(Refusal::TooFast) => wait(&mut db, 10),
-                    Err(Refusal::NoSiteThere) => break,
+                    Err(Refusal::NoSiteThere | Refusal::LakelandShut) => break,
                     Err(other) => panic!("{other:?}"),
                 }
             }

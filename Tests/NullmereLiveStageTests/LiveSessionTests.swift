@@ -1364,6 +1364,59 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(line.asked.last, "let in 2")
     }
 
+    /// The holy sites: one kept by the Unquiet, shut to rallies until
+    /// three days into the season and stormed by one after; one Ada's
+    /// alliance holds, saying what it gives; one another alliance took
+    /// lately, guarded a day.
+    func testAHolySiteSaysWhatItGivesAndIsStormedByARally() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["alliance"] = [[n(5), n(77), n(78), .string("Keepers"), .string("MERE"), n(1), n(1_500), n(2), .bool(true), .string("")],
+                            [n(6), n(79), n(80), .string("Wardens"), .string("WRD"), n(2), n(1_600), n(1), .bool(true), .string("")]]
+        rows["member"] = [[n(1), n(5), n(5), n(1_500)]]
+        rows["season"] = [[n(1), n(1_000), n(2_420_200), n(0), .string(""), n(0)]]
+        rows["march"] = rows["march"]?.filter { $0[1] != .number(1) }
+        let (well, altar, heart) = (LiveHex(q: 4, r: -6), LiveHex(q: 12, r: -8), LiveHex(q: 2, r: -9))
+        rows["shrine"] = [[n(1), n(well.packed), n(LiveShrine.moonwell), n(0), .string(""), n(0), n(0)],
+                          [n(2), n(altar.packed), n(LiveShrine.saltAltar), n(5), .string("[MERE] Keepers"), n(1_200), n(0)],
+                          [n(3), n(heart.packed), n(LiveShrine.heartstone), n(6), .string("[WRD] Wardens"), n(290_000), n(0)]]
+        for (id, hex) in [(1, well), (2, altar), (3, heart)] {
+            rows["place"]?.append([n(hex.packed), n(LivePlace.shrine), n(id)])
+        }
+        let line = StandInLine(rows: rows)
+        let early = session(line)
+        await early.open()
+        XCTAssertEqual(early.world.shrines.count, 3)
+        XCTAssertEqual(early.world.shrinesHeld(by: 5).map(\.id), [2])
+        XCTAssertEqual(early.world.hallowing(of: 5), ["Your alliance's Saltworks bring in 20% more moonsalt."])
+        XCTAssertEqual(early.world.hallowing(of: 7), [])
+        guard case .shrine(let moonwell) = early.selection(at: well) else { return XCTFail("the Moonwell is chosen") }
+        XCTAssertEqual(moonwell.name, "The Moonwell")
+
+        // Kept by the Unquiet, and shut until three days into the season.
+        XCTAssertEqual(early.card(for: early.selection(at: well)),
+                       LiveCard(title: "The Moonwell",
+                                lines: ["A holy site, kept by the Unquiet.", "Held, it gives: Your alliance's armies gather 20% faster.", "Only an alliance's rally may storm it."],
+                                buttons: [.init(title: "Call a rally", act: .rally, why: "The holy sites may be stormed in 2 days 23 hours.")]))
+        // Her alliance's own: what it gives, and nothing to do.
+        XCTAssertEqual(early.card(for: early.selection(at: altar)),
+                       LiveCard(title: "The Salt Altar",
+                                lines: ["A holy site, held by [MERE] Keepers.", "Held, it gives: Your alliance's Saltworks bring in 20% more moonsalt.", "Your alliance holds it."],
+                                buttons: []))
+        XCTAssertTrue(early.mapItems().contains { $0.hex == well && $0.kind == .shrine && $0.label == "The Moonwell. A holy site, kept by the Unquiet." }, "\(early.mapItems())")
+
+        // Three days in, the Moonwell may be stormed; the Heartstone, taken within the day, not yet.
+        let later = session(line, at: 300_000)
+        await later.open()
+        let call = try XCTUnwrap(later.card(for: later.selection(at: well)).buttons.first)
+        XCTAssertNil(call.why)
+        XCTAssertEqual(later.card(for: later.selection(at: heart)).lines.first, "A holy site, held by [WRD] Wardens.")
+        XCTAssertEqual(later.card(for: later.selection(at: heart)).buttons.first?.why,
+                       "That holy site was taken lately. It may be stormed again in \(LiveWords.spoken(290_000 + 86_400 - 300_000)).")
+        later.selected = well
+        await later.press(call)
+        XCTAssertTrue(line.asked.last?.hasPrefix("rally at 4,-6 with ") == true, "\(line.asked)")
+    }
+
     /// Ada, who leads her alliance, marks the grove for it from the
     /// palette; the mark is said on the grove's card and over it on the
     /// map, members go to it, and she clears it.

@@ -44,6 +44,7 @@ pub fn open(db: &mut impl Db, seed: u64, pace: u32, radius: u32) {
     write_trials(db);
     begin_season(db, 1, now);
     write_gates(db, radius);
+    super::write_shrines(db, seed, radius);
     scatter_sites(db);
     scatter_barrows(db);
     super::scatter_cairns(db);

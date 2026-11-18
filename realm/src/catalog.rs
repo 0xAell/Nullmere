@@ -795,6 +795,83 @@ pub fn gate_shelter() -> u64 {
     shelter(10)
 }
 
+/// The holy sites of the realm. Three of each of the first four stand in
+/// the outer land, and the Heartstone alone in the lake country. An
+/// alliance that holds one lends each of its members' cities levels of a
+/// study, the Heartstone of three; holding two of a kind lends no more
+/// than one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Holy {
+    Moonwell = 1,
+    StillStone = 2,
+    SaltAltar = 3,
+    BrokenSpire = 4,
+    Heartstone = 5,
+}
+
+impl Holy {
+    pub const ALL: [Holy; 5] = [Holy::Moonwell, Holy::StillStone, Holy::SaltAltar, Holy::BrokenSpire, Holy::Heartstone];
+    /// The kinds that stand in the outer land, three of each.
+    pub const OUTER: [Holy; 4] = [Holy::Moonwell, Holy::StillStone, Holy::SaltAltar, Holy::BrokenSpire];
+
+    pub fn of(code: u8) -> Option<Holy> {
+        Holy::ALL.into_iter().find(|holy| *holy as u8 == code)
+    }
+
+    /// Its name in a sentence.
+    pub fn name(self) -> &'static str {
+        match self {
+            Holy::Moonwell => "the Moonwell",
+            Holy::StillStone => "the Still Stone",
+            Holy::SaltAltar => "the Salt Altar",
+            Holy::BrokenSpire => "the Broken Spire",
+            Holy::Heartstone => "the Heartstone",
+        }
+    }
+
+    /// The studies it lends its holders' cities, and as many levels of each.
+    pub fn lends(self) -> &'static [(Topic, u32)] {
+        match self {
+            Holy::Moonwell => &[(Topic::Gathering, 2)],
+            Holy::StillStone => &[(Topic::Shields, 3)],
+            Holy::SaltAltar => &[(Topic::Saltcraft, 4)],
+            Holy::BrokenSpire => &[(Topic::Building, 3)],
+            Holy::Heartstone => &[(Topic::Spearcraft, 3), (Topic::Archery, 3), (Topic::Horsemanship, 3)],
+        }
+    }
+
+    /// What it gives its holders, in a player's words.
+    pub fn words(self) -> String {
+        let lent = |topic: Topic, levels: u32| topic.each() * levels as u64;
+        match self {
+            Holy::Moonwell => format!("Your alliance's armies gather {}% faster.", lent(Topic::Gathering, 2)),
+            Holy::StillStone => format!("Your alliance's soldiers are {}% harder to bring down.", lent(Topic::Shields, 3)),
+            Holy::SaltAltar => format!("Your alliance's Saltworks bring in {}% more moonsalt.", lent(Topic::Saltcraft, 4)),
+            Holy::BrokenSpire => format!("Your alliance's buildings are raised {}% sooner.", lent(Topic::Building, 3)),
+            Holy::Heartstone => format!("Your alliance's Spearmen, Archers and Riders strike {}% harder.", lent(Topic::Spearcraft, 3)),
+        }
+    }
+
+    /// Who keeps it: as many Unquiet as hold the strongest barrow, the
+    /// Heartstone three times as many; whoever takes it fights the same.
+    pub fn garrison(self) -> Vec<Unit> {
+        let times = if self == Holy::Heartstone { 3 } else { 1 };
+        barrow(TOP_BARROW).into_iter().map(|unit| Unit { count: unit.count * times, ..unit }).collect()
+    }
+}
+
+/// How many days into each season, at the realm's pace, the holy sites
+/// may be stormed; and for how long, in seconds at the realm's pace, one
+/// just taken may not be stormed again.
+pub const SHRINES_OPEN_DAYS: i64 = 3;
+pub const SHRINE_GUARDED: i64 = DAY;
+
+/// What a holy site's stones give those who keep it, as a wall's levels do.
+pub fn shrine_shelter() -> u64 {
+    shelter(5)
+}
+
 /// The highest level an alliance learns a topic to: each level gives its
 /// members what a level of it learnt in their own city does.
 pub const TOP_ALLIANCE_STUDY: u32 = 5;

@@ -59,6 +59,7 @@ impl Place {
     pub const WARD: u8 = 4;
     pub const GATE: u8 = 5;
     pub const CAIRN: u8 = 6;
+    pub const SHRINE: u8 = 7;
 }
 
 /// Somewhere on the land where goods lie to be gathered, until they run
@@ -555,6 +556,9 @@ impl Report {
     pub const ROAD: u8 = 19;
     /// A challenge in the Lists, made or met: `foe` is the other player.
     pub const LISTS: u8 = 20;
+    /// A rally's fight at a holy site, or a holy site of the alliance's
+    /// taken by another; `foe` the site.
+    pub const SHRINE: u8 = 21;
 }
 
 /// An alliance of players. Everyone may read it.
@@ -868,6 +872,24 @@ pub struct Gate {
     pub fighter: u64,
 }
 row!(Gate in gate, by id);
+
+/// A holy site (`catalog::Holy`): where it stands, its kind, whose it
+/// is (the Unquiet's, 0, until an alliance takes it, and the alliance's
+/// name then), since when, and the march of the rally at it, if one is.
+/// For everyone to read.
+#[spacetimedb::table(accessor = shrine, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Shrine {
+    #[primary_key]
+    pub id: u64,
+    pub hex: u64,
+    pub kind: u8,
+    pub holder: u64,
+    pub holder_name: String,
+    pub taken_at: Seconds,
+    pub fighter: u64,
+}
+row!(Shrine in shrine, by id);
 
 /// A letter from one player to another: who wrote it and their name as
 /// it was then, its words, when, and whether it has been read. The two
@@ -1967,6 +1989,7 @@ pub trait Db:
     + Table<Ward>
     + Table<Learning>
     + Table<Gate>
+    + Table<Shrine>
     + Table<Envoy>
     + Table<Pact>
     + Table<Prisoner>
@@ -2059,6 +2082,7 @@ impl<
             + Table<Ward>
             + Table<Learning>
             + Table<Gate>
+    + Table<Shrine>
             + Table<Envoy>
             + Table<Pact>
             + Table<Prisoner>
