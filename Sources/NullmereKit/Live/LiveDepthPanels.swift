@@ -840,6 +840,61 @@ struct LiveForgePanel: View {
     }
 }
 
+/// The Lists: the player's place and band, the challenges left them today
+/// and the day's purse, and those above them to challenge; or a way in.
+struct LiveListsPanel: View {
+    let session: LiveSession
+    let seconds: Double
+
+    var body: some View {
+        let world = session.world
+        let left = world.challengesLeft(at: seconds)
+        Caps("The Lists", size: LiveType.small)
+            .foregroundStyle(LiveEmphasis.secondary)
+        if let mine = world.myEntry {
+            LiveSmall(words: "You stand \(LiveWords.ordinal(Int(mine.place))) of \(world.entrants.count), with \(world.bandWords(of: mine.player)).")
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                LiveSmall(words: "\(left) of \(LiveWorld.listsTries) challenges left today.", dim: true)
+                Spacer(minLength: 0)
+                QuietButton(title: "Set anew", enabled: !world.listsBand.isEmpty && session.asking == 0, name: "Set your band in the Lists anew") {
+                    Task { await session.enterLists() }
+                }
+            }
+            if world.purseWaits(at: seconds), let words = world.purseWords(of: mine.place) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    LiveSmall(words: "Today's purse: \(words).")
+                    Spacer(minLength: 0)
+                    QuietButton(title: "Claim", prominent: true, enabled: session.asking == 0, name: "Claim the Lists' purse") {
+                        Task { await session.claimPurse() }
+                    }
+                }
+            }
+            ForEach(world.challengeable) { entrant in
+                let name = world.shownName(of: entrant.player) ?? "Player \(entrant.player)"
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        LiveSmall(words: "\(LiveWords.ordinal(Int(entrant.place))): \(name)")
+                        LiveSmall(words: world.bandWords(of: entrant.player), dim: true)
+                    }
+                    Spacer(minLength: 0)
+                    QuietButton(title: "Challenge", enabled: left > 0 && session.asking == 0, name: "Challenge \(name)", why: left > 0 ? nil : "No challenges left today.") {
+                        Task { await session.challenge(entrant.player) }
+                    }
+                }
+            }
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                LiveSmall(words: "Set a band of your best soldiers to enter, at the foot of the standing. None are lost in it.")
+                Spacer(minLength: 0)
+                QuietButton(title: "Enter", prominent: true, enabled: !world.listsBand.isEmpty && session.asking == 0, name: "Enter the Lists",
+                            why: world.listsBand.isEmpty ? "No soldiers stand ready." : nil) {
+                    Task { await session.enterLists() }
+                }
+            }
+        }
+    }
+}
+
 /// The realm's rankings: its most powerful players, the players with the
 /// most kill points from battles between cities, and its most powerful
 /// alliances; and where the player stands.

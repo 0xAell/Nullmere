@@ -119,6 +119,10 @@ final class LiveGameTests: XCTestCase {
         // The realm's milestones: fifty cities founded, reached; a hundred barrows cleared, 37 of them.
         rows["milestone"] = [[n(1), n(1), n(50), n(50), n(2_000), .string("Fifty cities founded in the realm."), n(20_000), n(20_000), n(20_000), n(2), n(1)],
                              [n(3), n(2), n(100), n(37), n(0), .string("A hundred barrows of the Unquiet cleared."), n(30_000), n(30_000), n(30_000), n(9), n(1)]]
+        // The Lists: Bryn first, Ada second under Halen; their bands; two purses.
+        rows["entrant"] = [[n(2), n(1), n(0), n(1_000)], [n(1), n(2), n(12), n(1_000)]]
+        rows["guard"] = [[n(2 << 16 | 1 << 8 | 1), n(2), n(1), n(1), n(300)], [n(1 << 16 | 1 << 8 | 1), n(1), n(1), n(1), n(40)]]
+        rows["purse"] = [[n(1), n(1), n(1), n(30_000), n(30_000), n(30_000), n(300)], [n(2), n(2), n(3), n(20_000), n(20_000), n(20_000), n(200)]]
         // The Barrow Road's first two stages, never walked.
         rows["stage"] = [[n(1), n(1), n(15), n(0), n(21), n(36), n(1_200), n(1_200), n(500), n(0), n(0), n(0)],
                          [n(2), n(1), n(50), n(34), n(0), n(84), n(2_400), n(2_400), n(1_000), n(0), n(2), n(2)]]
@@ -203,11 +207,42 @@ final class LiveGameTests: XCTestCase {
             case .day: LiveDayPanel(session: session, seconds: seconds)
             case .realm: LiveRealmPanel(session: session, seconds: seconds)
             case .forge: LiveForgePanel(session: session, seconds: seconds)
-            case .rankings: LiveRankingsPanel(session: session)
+            case .rankings:
+                LiveListsPanel(session: session, seconds: seconds)
+                LiveRankingsPanel(session: session)
             }
         }
         .padding(14)
         .background(NullmereKit.Palette.panel)
+    }
+
+    /// The Lists in the Rankings part: her purse claimed, Bryn above her
+    /// challenged and her band set anew; and, not yet entered, entered.
+    func testTheListsAreEnteredChallengedAndPaidFromTheRankings() async throws {
+        let (listing, line) = await playing()
+        await held(whole(.rankings, of: listing).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.press("Claim the Lists' purse"), "Among \(PressableButtons.actions.keys.sorted())")
+            let challenge = PressableButtons.actions.keys.first { $0.hasPrefix("Challenge ") } ?? "Challenge"
+            XCTAssertTrue(PressableButtons.press(challenge), "Among \(PressableButtons.actions.keys.sorted())")
+            XCTAssertTrue(PressableButtons.press("Set your band in the Lists anew"), "Among \(PressableButtons.actions.keys.sorted())")
+        }
+        XCTAssertEqual(line.asked.suffix(3), ["claim the purse", "challenge 2", "enter the lists with 40 of 1.1 led by 12"])
+        // Her challenges spent today: none to press.
+        var spent = rows()
+        spent["my_tilt"] = [[n(1), n(0), n(5), n(1)]]
+        let (tired, tiredLine) = await playing(spent)
+        await held(whole(.rankings, of: tired).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertFalse(PressableButtons.actions.keys.contains { $0.hasPrefix("Challenge ") || $0 == "Claim the Lists' purse" })
+        }
+        XCTAssertFalse(tiredLine.asked.contains("challenge 2"))
+        // Not yet entered: entered with her best.
+        var outside = rows()
+        outside["entrant"] = [[n(2), n(1), n(0), n(1_000)]]
+        let (newcomer, newcomerLine) = await playing(outside)
+        await held(whole(.rankings, of: newcomer).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.press("Enter the Lists"), "Among \(PressableButtons.actions.keys.sorted())")
+        }
+        XCTAssertEqual(newcomerLine.asked.last, "enter the lists with 40 of 1.1 led by 12")
     }
 
     /// A card's buttons, in its ring or at the foot: Buildings and Troops
