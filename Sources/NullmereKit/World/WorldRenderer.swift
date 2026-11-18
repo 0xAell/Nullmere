@@ -68,6 +68,8 @@ final class WorldRenderer {
 
     /// The passes a debug build leaves out, named in NULLMERE_DEBUG_PASSES
     /// (land, furniture, models, water, motes, shadows), to see which draws what.
+    /// With the water left out the lake's bed under its deeps is black: the
+    /// land leaves it unshaded, as the water covers it (nm_landShade).
     /// The shaders' own parts a debug build leaves out, from the same
     /// list: haze (the distance haze), fog (what the keeper knows), light
     /// (the moon and lamps), grain (the ground's grain), wash (the froth at

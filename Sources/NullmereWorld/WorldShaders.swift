@@ -904,6 +904,23 @@ public enum WorldShaders {
         int2 h = nm_hexRound(nm_axial(p));
         float3 edge = nm_hexEdge(p, h);
         float pixel = max(fwidth(p.x), fwidth(p.y));
+        // The lake's bed under its deeps is never seen: the water, drawn
+        // over it last, covers it whole wherever it lies 0.14 deep or more
+        // (nm_waterShade's `clear`), so none of it is shaded. How deep is
+        // read where the line from the eye meets the water's face, as the
+        // water reads it there, with a margin; and only over the water's
+        // own extent. (A realm's wide view is half lake: its bed was shaded
+        // in full and then hidden, CI run 1191's day frame over its limit.)
+        if (world.y < -0.14) {
+            float down = frame.eye.y / max(frame.eye.y - world.y, 0.0001);
+            float2 face = frame.eye.xz + (world.xz - frame.eye.xz) * down;
+            if (min(face.x - frame.extent.x, face.y - frame.extent.y) > 0.0 && max(face.x - frame.extent.z, face.y - frame.extent.w) < 0.0) {
+                float2 grid = (face - frame.heights.xy) / frame.haze.w + 0.5;
+                if (NM_HEIGHT(grid / frame.heights.zw) < -0.2) {
+                    return float4(0.0, 0.0, 0.0, 1.0);
+                }
+            }
+        }
         // What the keeper knows of the ground, blended between the hexes'
         // hearts, so the edge of sight is a soft falling-off and never a
         // terrace of lit and grey hexes.
