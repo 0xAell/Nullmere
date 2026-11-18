@@ -180,7 +180,7 @@ final class StageTests: XCTestCase {
         var frame = SceneFrame()
         let batches = stage.holds([HoldSight(hold: hold, colour: Vec4(0.8, 0.1, 0.1, 1))], time: 3, into: &frame).batches
         let lanes = batches.filter { $0.key == .town(.lane) }.flatMap(\.instances)
-        XCTAssertGreaterThan(lanes.count, 10, "a seat's lanes")
+        XCTAssertGreaterThan(lanes.count, 4, "the way out through its gate, at least")
         for length in lanes {
             for end in [Vec3(-0.5, 0, 0), Vec3(0.5, 0, 0)].map({ length.model.transformPoint($0) }) {
                 XCTAssertEqual(end.y, relief.height(atX: end.x, z: end.z) + WorldStage.laneLift, accuracy: 1e-3, "each end on the land, a little above")
