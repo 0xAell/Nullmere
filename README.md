@@ -91,10 +91,11 @@ gather and fight, in the field as well as at barrows and cities, the
 Unquiet's barrows, cairns for scouts to find, kill points and rankings,
 research, commanders with talents, skills, tomes and gear from the Forge,
 alliances with chat, help, rallies, gifts, honour, stores, territory,
-learning and carts of goods between allies, crates of goods kept safe from
-plunder, the day's work and favour, contests, the Moonspire and the gates
-of the ridge, envoys, prisoners, petitions and letters, and its chat kept at
-peace by reports its owner reads. CI plays it through on a real SpacetimeDB
+marks on the map, learning and carts of goods between allies, crates of
+goods kept safe from plunder, the day's work and favour, contests, the
+realm's milestones, the Moonspire and the gates of the ridge, envoys,
+prisoners, petitions and letters, and its chat kept at peace by reports its
+owner reads and players shutting out whom they will. CI plays it through on a real SpacetimeDB
 server whenever it changes, holds its rules to a budget at a thousand
 players, and builds, tests and bundles the Mac app and opens it on that
 realm through Play. The public realm on maincloud is not raised yet; until
