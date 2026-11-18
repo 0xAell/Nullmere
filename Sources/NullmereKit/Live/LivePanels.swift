@@ -55,6 +55,7 @@ struct LiveSidePanel: View {
                         LiveLetters(session: session, seconds: seconds)
                         LiveReports(session: session, seconds: seconds)
                     case .day: LiveDayPanel(session: session, seconds: seconds)
+                    case .feats: LiveFeatsPanel(session: session, seconds: seconds)
                     case .realm: LiveRealmPanel(session: session, seconds: seconds)
                     case .forge: LiveForgePanel(session: session, seconds: seconds)
                     case .rankings:

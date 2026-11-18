@@ -27,6 +27,7 @@ public struct LiveGameView: View {
         case realm
         case forge
         case rankings
+        case feats
 
         var title: String {
             switch self {
@@ -40,6 +41,7 @@ public struct LiveGameView: View {
             case .realm: return "The Mere"
             case .forge: return "Forge"
             case .rankings: return "Rankings"
+            case .feats: return "Feats"
             }
         }
 
@@ -48,7 +50,7 @@ public struct LiveGameView: View {
 
         /// The part the palette names (`LiveSession.parts`).
         init?(part: String) {
-            let all: [String: Panel] = ["city": .city, "troops": .troops, "studies": .studies, "forge": .forge, "day": .day, "alliance": .alliance,
+            let all: [String: Panel] = ["city": .city, "troops": .troops, "studies": .studies, "forge": .forge, "day": .day, "feats": .feats, "alliance": .alliance,
                                         "realm": .realm, "rankings": .rankings, "chat": .chat, "reports": .reports]
             guard let panel = all[part] else { return nil }
             self = panel
@@ -56,7 +58,7 @@ public struct LiveGameView: View {
     }
 
     /// The four places beside the world: the player's House (their city,
-    /// troops, studies and the day's work), their alliance, the realm
+    /// troops, studies, the day's work and their feats), their alliance, the realm
     /// (its season, contests, rankings and what is said in it), and their
     /// mail.
     enum Destination: CaseIterable, Hashable {
@@ -77,7 +79,7 @@ public struct LiveGameView: View {
         /// What it holds, the first opened when it is.
         var panels: [Panel] {
             switch self {
-            case .house: return [.city, .troops, .studies, .forge, .day]
+            case .house: return [.city, .troops, .studies, .forge, .day, .feats]
             case .alliance: return [.alliance]
             case .realm: return [.realm, .rankings, .chat]
             case .mail: return [.reports]

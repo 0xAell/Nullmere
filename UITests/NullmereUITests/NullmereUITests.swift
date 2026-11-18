@@ -165,7 +165,7 @@ final class NullmereUITests: XCTestCase {
         }
 
         // Each destination from the dock, and each of its parts, then closed again.
-        for (place, parts) in [("House", ["Buildings", "Troops", "Studies", "Forge", "Today"]), ("Alliance", ["Alliance"]),
+        for (place, parts) in [("House", ["Buildings", "Troops", "Studies", "Forge", "Today", "Feats"]), ("Alliance", ["Alliance"]),
                                ("Realm", ["The Mere", "Rankings", "Chat"]), ("Mail", ["Reports"])] {
             let door = window.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", place)).firstMatch
             guard door.waitForExistence(timeout: 10) else {

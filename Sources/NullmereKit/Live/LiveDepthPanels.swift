@@ -121,6 +121,51 @@ struct LiveDayPanel: View {
             LiveSmall(words: "Today's welcome claimed: day \(streak) of \(LiveWorld.welcomeDays) in a row. Come again tomorrow.", dim: true)
         }
 
+        // The pedlar: the deals he brings today, each taken once.
+        let dealing = world.dealsToday(at: seconds)
+        if !dealing.isEmpty {
+            Caps("The pedlar", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
+        }
+        ForEach(dealing) { deal in
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    LiveSmall(words: "Sells \(world.dealWords(of: deal)).")
+                    LiveSmall(words: "For \(deal.cost.words).", dim: true)
+                }
+                Spacer(minLength: 0)
+                if world.taken(deal, at: seconds) {
+                    LiveSmall(words: "Taken", dim: true)
+                } else {
+                    QuietButton(title: "Buy", enabled: session.asking == 0, name: "Buy from the pedlar: \(world.dealWords(of: deal))") {
+                        Task { await session.buyDeal(deal.id) }
+                    }
+                }
+            }
+        }
+
+        if let favour = world.favour {
+            LiveSmall(words: "Favour: level \(favour.level), \(LiveWords.grouped(favour.points)) points.")
+            if let words = world.favourWords {
+                LiveSmall(words: words, dim: true)
+            }
+        }
+        LiveAccount(session: session, seconds: seconds)
+    }
+}
+
+/// Feats: what the player does beyond the day's work, and what the whole
+/// realm does together: the Barrow Road's next stage, each deed's merit,
+/// and the realm's milestones.
+struct LiveFeatsPanel: View {
+    let session: LiveSession
+    let seconds: Double
+
+    var body: some View {
+        let world = session.world
+        if world.stages.isEmpty && world.merits.isEmpty && world.milestones.isEmpty {
+            LiveSmall(words: "Nothing of the realm's feats has been told yet.", dim: true)
+        }
         // What the whole realm does together: how near each milestone
         // stands, and once reached, what it gives each player to claim.
         if !world.milestones.isEmpty {
@@ -192,37 +237,6 @@ struct LiveDayPanel: View {
                 }
             }
         }
-
-        // The pedlar: the deals he brings today, each taken once.
-        let dealing = world.dealsToday(at: seconds)
-        if !dealing.isEmpty {
-            Caps("The pedlar", size: LiveType.small)
-                .foregroundStyle(LiveEmphasis.secondary)
-        }
-        ForEach(dealing) { deal in
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    LiveSmall(words: "Sells \(world.dealWords(of: deal)).")
-                    LiveSmall(words: "For \(deal.cost.words).", dim: true)
-                }
-                Spacer(minLength: 0)
-                if world.taken(deal, at: seconds) {
-                    LiveSmall(words: "Taken", dim: true)
-                } else {
-                    QuietButton(title: "Buy", enabled: session.asking == 0, name: "Buy from the pedlar: \(world.dealWords(of: deal))") {
-                        Task { await session.buyDeal(deal.id) }
-                    }
-                }
-            }
-        }
-
-        if let favour = world.favour {
-            LiveSmall(words: "Favour: level \(favour.level), \(LiveWords.grouped(favour.points)) points.")
-            if let words = world.favourWords {
-                LiveSmall(words: words, dim: true)
-            }
-        }
-        LiveAccount(session: session, seconds: seconds)
     }
 }
 

@@ -72,7 +72,7 @@ extension LiveSession {
     /// The parts of the destinations, by the names the palette opens them
     /// by and the words it shows, in the order the destinations hold them.
     public static let parts: [(name: String, title: String)] = [
-        ("city", "Buildings"), ("troops", "Troops"), ("studies", "Studies"), ("forge", "Forge"), ("day", "Today"), ("alliance", "Alliance"),
+        ("city", "Buildings"), ("troops", "Troops"), ("studies", "Studies"), ("forge", "Forge"), ("day", "Today"), ("feats", "Feats"), ("alliance", "Alliance"),
         ("realm", "The Mere"), ("rankings", "Rankings"), ("chat", "Chat"), ("reports", "Reports and letters"),
     ]
 

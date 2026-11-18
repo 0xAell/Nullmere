@@ -213,6 +213,7 @@ final class LiveGameTests: XCTestCase {
                 LiveLetters(session: session, seconds: seconds)
                 LiveReports(session: session, seconds: seconds)
             case .day: LiveDayPanel(session: session, seconds: seconds)
+            case .feats: LiveFeatsPanel(session: session, seconds: seconds)
             case .realm: LiveRealmPanel(session: session, seconds: seconds)
             case .forge: LiveForgePanel(session: session, seconds: seconds)
             case .rankings:
@@ -422,7 +423,7 @@ final class LiveGameTests: XCTestCase {
         XCTAssertGreaterThan(try drawn(LiveDock(session: session, panel: binding), width: 640, height: 50), 100)
         // Four destinations: the House of four parts, the alliance, the realm of two, the mail.
         XCTAssertEqual(LiveDock.destinations.map(\.title), ["House", "Alliance", "Realm", "Mail"])
-        XCTAssertEqual(LiveGameView.Destination.house.panels, [.city, .troops, .studies, .forge, .day])
+        XCTAssertEqual(LiveGameView.Destination.house.panels, [.city, .troops, .studies, .forge, .day, .feats])
         XCTAssertEqual(LiveGameView.Destination.realm.panels, [.realm, .rankings, .chat])
         XCTAssertEqual([LiveGameView.Panel.day, LiveGameView.Panel.chat, LiveGameView.Panel.reports].map(\.destination), [.house, .realm, .mail])
         // Pressed, a destination opens at its first part, and closes again from any of its parts.
@@ -435,7 +436,7 @@ final class LiveGameTests: XCTestCase {
                        LiveGameView.Destination.allCases.flatMap(\.panels), "the palette's parts are the destinations', in order")
         XCTAssertNil(LiveGameView.Panel(part: "nowhere"))
         // Each side panel, with something of everything in it.
-        for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
+        for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .feats, .realm, .rankings, .chat, .reports] {
             let lit = try drawn(LiveSidePanel(session: session, seconds: 2_015, panel: side) {}, width: 340, height: 700, as: "live-\(side).png")
             XCTAssertGreaterThan(lit, 800, "\(side)")
         }
@@ -445,31 +446,40 @@ final class LiveGameTests: XCTestCase {
         // The realm's milestones there too, how near each stands: the one reached claimed from it.
         let (claiming, claimingLine) = await playing()
         await held(whole(.day, of: claiming).frame(width: LiveSidePanel.width - 28)) {
-            XCTAssertTrue(PressableButtons.press("Claim what the realm's milestone gave: Fifty cities founded in the realm."),
-                          "Among \(PressableButtons.actions.keys.sorted())")
             XCTAssertTrue(PressableButtons.press("Claim the day's welcome"), "Among \(PressableButtons.actions.keys.sorted())")
-            XCTAssertTrue(PressableButtons.press("Walk the Barrow Road"), "Among \(PressableButtons.actions.keys.sorted())")
-            XCTAssertTrue(PressableButtons.press("Claim the merit Drillmaster, tier 1"), "Among \(PressableButtons.actions.keys.sorted())")
             XCTAssertTrue(PressableButtons.press("Buy from the pedlar: 6 × five minutes' haste"), "Among \(PressableButtons.actions.keys.sorted())")
             XCTAssertFalse(PressableButtons.actions.keys.contains { $0.hasPrefix("Buy from the pedlar: 3 ×") }, "taken today")
+            XCTAssertFalse(PressableButtons.actions.keys.contains { $0.hasPrefix("Walk the Barrow Road") || $0.hasPrefix("Claim the merit") }, "those are feats")
         }
-        XCTAssertEqual(claimingLine.asked.suffix(5), ["claim milestone 1", "claim the welcome", "walk the road with 36 of 1.1 led by 11", "claim merit of deed 1", "buy deal 1"])
+        XCTAssertEqual(claimingLine.asked.suffix(2), ["claim the welcome", "buy deal 1"])
+        // The realm's milestones, the Barrow Road and the merits in the Feats part.
+        let (feating, featingLine) = await playing()
+        await held(whole(.feats, of: feating).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.press("Claim what the realm's milestone gave: Fifty cities founded in the realm."),
+                          "Among \(PressableButtons.actions.keys.sorted())")
+            XCTAssertTrue(PressableButtons.press("Walk the Barrow Road"), "Among \(PressableButtons.actions.keys.sorted())")
+            XCTAssertTrue(PressableButtons.press("Claim the merit Drillmaster, tier 1"), "Among \(PressableButtons.actions.keys.sorted())")
+        }
+        XCTAssertEqual(featingLine.asked.suffix(3), ["claim milestone 1", "walk the road with 36 of 1.1 led by 11", "claim merit of deed 1"])
         // The road walked a minute ago, its soldiers resting; and walked whole.
         var rested = rows()
         rested["my_road"] = [[n(1), n(1), n(2_000)]]
         let (resting, restingLine) = await playing(rested)
         XCTAssertEqual(resting.world.roadRests(at: 2_015), 45)
-        await held(whole(.day, of: resting).frame(width: LiveSidePanel.width - 28)) {
+        await held(whole(.feats, of: resting).frame(width: LiveSidePanel.width - 28)) {
             XCTAssertFalse(PressableButtons.press("Walk the Barrow Road"), "resting")
         }
         XCTAssertFalse(restingLine.asked.contains { $0.hasPrefix("walk the road") })
         rested["my_road"] = [[n(1), n(2), n(2_000)]]
         let (walked, _) = await playing(rested)
         XCTAssertNil(walked.world.nextStage)
-        XCTAssertGreaterThan(try drawn(whole(.day, of: walked).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 1_800), 800)
+        XCTAssertGreaterThan(try drawn(whole(.feats, of: walked).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 1_800), 800)
+        // And with no feats told at all: said so.
+        let (bare, _) = await playing(LiveSample.rows())
+        XCTAssertGreaterThan(try drawn(whole(.feats, of: bare).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 400), 100)
         // And with nothing in them: no soldiers yet, no reports yet.
         let (empty, _) = await playing(LiveSample.rows())
-        for side in [LiveGameView.Panel.troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
+        for side in [LiveGameView.Panel.troops, .studies, .forge, .alliance, .day, .feats, .realm, .rankings, .chat, .reports] {
             XCTAssertGreaterThan(try drawn(LiveSidePanel(session: empty, seconds: 2_015, panel: side) {}, width: 340, height: 700), 150, "\(side)")
         }
         // In an alliance with nothing yet in it, each panel's whole content:
@@ -479,7 +489,7 @@ final class LiveGameTests: XCTestCase {
         unrallied["member"] = rows()["member"]
         let (allied, _) = await playing(unrallied)
         XCTAssertNotNil(allied.world.myMembership)
-        for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
+        for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .feats, .realm, .rankings, .chat, .reports] {
             _ = try drawn(whole(side, of: allied).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600)
         }
         // A Barracks of the fifth level, its first tier's spearmen to be
@@ -493,7 +503,7 @@ final class LiveGameTests: XCTestCase {
         XCTAssertGreaterThan(try drawn(whole(.troops, of: promoting).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800)
         // And each panel's whole content, as long as it runs, with no
         // scrolling to leave what lies below a panel's fold unbuilt.
-        for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
+        for side in [LiveGameView.Panel.city, .troops, .studies, .forge, .alliance, .day, .feats, .realm, .rankings, .chat, .reports] {
             XCTAssertGreaterThan(try drawn(whole(side, of: session).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800,
                                  "\(side), whole")
         }
