@@ -485,6 +485,31 @@ final class CatalogueTests: XCTestCase {
         XCTAssertEqual(piece.smoke, [Holds.chimney(seat: false) + Vec3(2, 1, 0)])
     }
 
+    /// Every building is shaded where little of the sky reaches it, under
+    /// its eaves, between its stores, where its walls meet: Blender bakes
+    /// how much of the sky each corner sees (Art/blender/building.py) and
+    /// it comes with the corner to the GPU, beside its material. Open to
+    /// the sky elsewhere: never all in shade.
+    func testBuildingsAreShadedWhereLittleSkyReachesThem() {
+        var buildings = 0
+        for key in CatalogueTests.keys {
+            switch key {
+            case .work, .walls, .study, .keep, .keepOf, .youngKeep: break
+            default: continue
+            }
+            let vertices = Library.model(key).mesh.vertices
+            XCTAssertTrue(vertices.allSatisfy { (0...1).contains($0.occlusion) }, "\(key)")
+            let shaded = Float(vertices.filter { $0.occlusion < 0.8 }.count) / Float(vertices.count)
+            let open = Float(vertices.filter { $0.occlusion >= 0.9 }.count) / Float(vertices.count)
+            XCTAssertGreaterThan(shaded, 0.2, "\(key) is shaded where the sky is hidden")
+            XCTAssertGreaterThan(open, 0.05, "\(key) sees the sky elsewhere")
+            let packed = PackedVertex(vertices[0])
+            XCTAssertEqual(packed.occlusion, vertices[0].occlusion, accuracy: 0.5 / 31 + 1e-6, "\(key) carries its shade")
+            buildings += 1
+        }
+        XCTAssertGreaterThan(buildings, 60)
+    }
+
     func testPiecesSayWhereTheyStand() {
         let piece = Piece(key: .scaffold, transform: .translation(Vec3(1, 2, 3)), hex: Hex(4, 5))
         XCTAssertEqual(piece.position, Vec3(1, 2, 3))
