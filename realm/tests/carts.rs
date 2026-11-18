@@ -89,7 +89,10 @@ fn carts_carry_goods_to_an_ally_and_the_carters_keep_a_tenth() {
     assert_eq!(before.minus(after), load);
     let haul = Table::<Haul>::get(&db, carts.id).unwrap();
     assert_eq!(Goods::of(haul.grain, haul.timber, haul.stone, haul.moonsalt), Goods::of(45_000, 27_000, 9_000, 900));
-    assert_eq!(rules::carters_due(load), (Goods::of(5_000, 3_000, 1_000, 100), Goods::of(45_000, 27_000, 9_000, 900)));
+    assert_eq!(rules::carters_due(load, 0), (Goods::of(5_000, 3_000, 1_000, 100), Goods::of(45_000, 27_000, 9_000, 900)));
+    // A Market's carters know the roads: from its ninth level they keep seven hundredths, never fewer than two.
+    assert_eq!(rules::carters_due(load, 9).0, Goods::of(3_500, 2_100, 700, 70));
+    assert_eq!(rules::carters_due(load, 99).0, Goods::of(1_000, 600, 200, 20));
 
     // Carts keep no army from marching: Ada still sends her three.
     let city = cities[0].id;
@@ -185,4 +188,15 @@ fn carts_come_to_a_city_no_longer_an_ally_s_and_bring_back_what_they_carry() {
     let told = last_report(&db, ada);
     assert_eq!(told.kind, Report::CARTS);
     assert_eq!(told.words, "The city your carts were sent to is no ally's now. What they carried is back in your city: 18,000 grain.");
+}
+
+#[test]
+fn a_market_s_carters_keep_less_of_a_load() {
+    let (mut db, players, cities) = allies(&["Ada", "Bryn"], &[]);
+    db.insert(Building { id: 0, city: cities[0].id, kind: Kind::Market as u8, level: 9 });
+    let bryn_before = Table::<Stock>::get(&db, cities[1].id).unwrap();
+    let carts = db.call(|db| rules::send_goods(db, players[0], Hex::unpacked(cities[1].hex), Goods::of(10_000, 0, 0, 0))).unwrap();
+    let ahead = carts.arrives - db.clock;
+    wait(&mut db, ahead);
+    assert_eq!(added(&db, cities[1].id, &bryn_before), Goods::of(9_300, 0, 0, 0), "seven hundredths kept, not ten");
 }

@@ -2,7 +2,9 @@
 //!
 //! A player loads carts at their Storehouse with goods for an ally: so
 //! much in all as the Storehouse's level allows a load, taken from their
-//! city at once. The carters keep a tenth of it for their trouble; the
+//! city at once. The carters keep a tenth of it for their trouble, less
+//! from a city with a Market, as the road takes of what answers a petition
+//! (`catalog::petition_toll`); the
 //! rest is unloaded into the ally's city when the carts come to it, though
 //! it overfill it, and both are told. No army goes with carts and none is
 //! kept from marching by them: a city may have as many loads on the road
@@ -17,8 +19,6 @@ use crate::land;
 use crate::rows::{City, Db, Haul, March, Player, Report};
 use crate::store::{Seconds, Table};
 
-/// The hundredths of a load the carters keep.
-pub const CARTERS_DUE: u64 = 10;
 /// Seconds a load of carts takes over each hex of its way, at the written
 /// pace: as slow as the slowest soldiers.
 pub const CART_PACE: Seconds = 60;
@@ -29,9 +29,11 @@ pub fn cartload(storehouse: u32) -> u64 {
     20_000 + 20_000 * storehouse.min(catalog::TOP_LEVEL) as u64
 }
 
-/// What the carters keep of a load, and what is unloaded at its end.
-pub fn carters_due(load: Goods) -> (Goods, Goods) {
-    let due = Goods::from_parts(load.parts().map(|part| part * CARTERS_DUE / 100));
+/// What the carters keep of a load from a city with a Market of a level,
+/// and what is unloaded at its end.
+pub fn carters_due(load: Goods, market: u32) -> (Goods, Goods) {
+    let toll = catalog::petition_toll(market);
+    let due = Goods::from_parts(load.parts().map(|part| part * toll / 100));
     (due, load.minus(due))
 }
 
@@ -100,7 +102,8 @@ pub fn send_goods(db: &mut impl Db, player: u64, to: Hex, load: Goods) -> Result
     });
     carts.timer = db.after(arrives, TIMER_MARCH, carts.id);
     db.update(carts.clone());
-    let (_, unloaded) = carters_due(load);
+    let market = building_of(db, city.id, Kind::Market).map(|building| building.level).unwrap_or(0);
+    let (_, unloaded) = carters_due(load, market);
     db.insert(Haul { march: carts.id, owner: player, grain: unloaded.grain, timber: unloaded.timber, stone: unloaded.stone, moonsalt: unloaded.moonsalt });
     Ok(carts)
 }
