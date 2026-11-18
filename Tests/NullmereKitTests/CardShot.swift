@@ -26,7 +26,9 @@ enum CardShot {
         window.appearance = NSAppearance(named: .darkAqua)
         window.contentView = hosting
         window.orderFrontRegardless()
-        defer { window.orderOut(nil) }
+        // Closed once drawn, so nothing in it, the world's Metal view above
+        // all, is left drawing behind the tests that follow.
+        defer { window.close() }
         // Laid out and drawn in the window, as it would be shown.
         for _ in 0..<4 {
             hosting.layoutSubtreeIfNeeded()

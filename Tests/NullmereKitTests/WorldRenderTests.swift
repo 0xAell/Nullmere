@@ -429,6 +429,9 @@ final class WorldRenderTests: XCTestCase {
         // In an async test Metal's own async compile is the one called.
         let library = try await device.makeLibrary(source: WorldShaders.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
+        // The models' meshes from the library, as the play view's renderer
+        // takes them: without, nothing staged is drawn but the ways.
+        renderer.meshSource = { Library.model($0).mesh }
         renderer.setHouses(LiveSession.palette)
         let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
         func drawn(_ name: String, kind: Int, scale: Double) async throws -> Drawn {
