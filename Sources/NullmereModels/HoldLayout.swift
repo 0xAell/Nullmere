@@ -73,7 +73,11 @@ public enum HoldLayout {
         /// keeps the slot it always had, and where a hold's ground is short
         /// of slots for every work, given one only once raised, as a
         /// keeper's own are.
-        static let realmsOwn: [Work] = [.building(.storehouse)]
+        /// In the order the realm opens them: the Storehouse at Keep 2,
+        /// the Scout Camp at 3, the Range and the Tavern at 4, the Embassy
+        /// at 5 and the Market at 8.
+        static let realmsOwn: [Work] = [.building(.storehouse), .building(.scoutCamp), .building(.range), .building(.tavern),
+                                        .building(.embassy), .building(.market)]
 
         /// The works a hold need not keep a slot for while it has not
         /// raised them, where its ground is short.
@@ -404,6 +408,14 @@ public enum HoldLayout {
         case .building(.lodge): score += 10 - abs(around - 1.8)
         // The Storehouse on the far side from the gate, out of a raider's way.
         case .building(.storehouse): score += 10 - abs(around - 2.6)
+        // The Scout Camp to a side, the Range away from the gate where its
+        // shafts fly clear, the Tavern and the Market by the way in, the
+        // Embassy near it to meet the envoys who come.
+        case .building(.scoutCamp): score += 10 - abs(around - 1.5)
+        case .building(.range): score += 10 - abs(around - 2.2)
+        case .building(.tavern): score += 10 - abs(around - 0.4)
+        case .building(.embassy): score += 10 - abs(around - 0.9)
+        case .building(.market): score += 10 - abs(around - 0.2)
         case .building(let kind):
             score += affinity(kind, terrain: relief.terrain(of: hex), feature: relief.map[hex]?.feature) * 10 + around * 0.2
         }

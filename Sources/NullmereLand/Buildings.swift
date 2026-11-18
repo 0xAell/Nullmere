@@ -33,6 +33,17 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Where a city keeps its grain, timber, stone and moonsalt against the
     /// lean months and the raiders: the realm's Storehouse.
     case storehouse
+    /// Where a city's scouts ride out from to learn what the land holds:
+    /// the realm's Scout Camp.
+    case scoutCamp
+    /// Where a city's bowmen learn their craft: the realm's Archery Range.
+    case range
+    /// Where a city's folk drink and its news is told: the realm's Tavern.
+    case tavern
+    /// Where a city receives its allies' envoys: the realm's Embassy.
+    case embassy
+    /// Where a city's goods are bought and sold: the realm's Market.
+    case market
 
     public var maxLevel: Int {
         switch self {

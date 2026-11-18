@@ -26,6 +26,11 @@ enum Works {
         case .wayhouse: return Art.work(Art.wayhouseFile, level: level, name: name)
         case .lodge: return Art.work(Art.lodgeFile, level: level, name: name)
         case .storehouse: return Art.work(Art.storehouseFile, level: level, name: name)
+        case .scoutCamp: return Art.work(Art.scoutCampFile, level: level, name: name)
+        case .range: return Art.work(Art.archeryFile, level: level, name: name)
+        case .tavern: return Art.work(Art.tavernFile, level: level, name: name)
+        case .embassy: return Art.work(Art.embassyFile, level: level, name: name)
+        case .market: return Art.work(Art.marketFile, level: level, name: name)
         }
     }
 

@@ -128,9 +128,13 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(other.level(.archive), 2)
         XCTAssertEqual([other.level(.forge), other.level(.wayhouse), other.level(.lodge)], [2, 2, 0],
                        "its Forge and Stable, open by Keep 8; its Workshop not till Keep 10")
-        XCTAssertEqual(other.level(.storehouse), 2, "its Storehouse, open from Keep 2")
-        XCTAssertEqual(LiveWindow.building(for: .storehouse), 6)
-        XCTAssertEqual(LiveWindow.opensAt(6), 2)
+        XCTAssertEqual([other.level(.storehouse), other.level(.scoutCamp), other.level(.range), other.level(.tavern), other.level(.embassy),
+                        other.level(.market)], [2, 2, 2, 2, 2, 2], "its Storehouse, Scout Camp, Range, Tavern, Embassy and Market, all open by Keep 8")
+        XCTAssertEqual([BuildingKind.storehouse, .scoutCamp, .range, .tavern, .embassy, .market].compactMap(LiveWindow.building(for:)),
+                       [6, 18, 8, 16, 15, 17])
+        XCTAssertEqual([6, 18, 8, 16, 15, 17].map(LiveWindow.opensAt), [2, 3, 4, 4, 5, 8])
+        // Every building of the realm's but the Keep is drawn as a work.
+        XCTAssertEqual(Set(BuildingKind.allCases.compactMap(LiveWindow.building(for:))), Set(2...19))
         XCTAssertEqual(holds[0].colour, colours[1])
         XCTAssertEqual(holds[1].colour, colours[2])
         XCTAssertEqual([1, 5, 6, 10, 11, 25, 99].map(LiveWindow.shown), [1, 1, 2, 2, 3, 5, 5])

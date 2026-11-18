@@ -1,0 +1,65 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#2a2c33}canvas{display:block}#labels div{position:absolute;color:#ddd;font:13px sans-serif}</style></head>
+<body><div id="labels"></div>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const params = new URLSearchParams(location.search);
+const data = await (await fetch(params.get('data'))).json();
+const variants = (params.get('variants') || '1,2,3,4,5').split(',');
+const near = params.get('near') !== '0';
+const W = 300 * variants.length, H = 360;
+const renderer = new THREE.WebGLRenderer({antialias: true, preserveDrawingBuffer: true});
+renderer.setSize(W, H); renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+function drawn(name, variant) {
+  const base = name.replace('!fine', '');
+  if (!base.includes('@')) return true;
+  const tags = base.split('@').pop().split(',');
+  if (!/^\d/.test(variant)) return tags.includes(variant);
+  const tier = +variant;
+  return tags.some(t => { if (!/^\d/.test(t)) return false; const [a, b] = t.split('-'); return +a <= tier && tier <= +(b ?? a); });
+}
+const scale = +(params.get('scale') || 0.1);
+const stats = [];
+variants.forEach((variant, k) => {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x2a2c33);
+  scene.add(new THREE.HemisphereLight(0xcfd8ff, 0x403830, 1.1));
+  const sun = new THREE.DirectionalLight(0xfff2dd, 2.2); sun.position.set(0.6, 1.0, 0.8); scene.add(sun);
+  let reach = 0, top = 0, tris = 0;
+  for (const m of data.meshes) {
+    if (!drawn(m.name, variant) || (!near && m.name.endsWith('!fine'))) continue;
+    const pos = [], col = [];
+    for (const [face, mat] of m.faces) {
+      const c = data.materials[mat] || [1, 0, 1, 1];
+      for (let i = 1; i + 1 < face.length; i++) {
+        for (const vi of [face[0], face[i], face[i + 1]]) {
+          const p = m.points[vi];
+          pos.push(p[0] * scale, p[2] * scale, -p[1] * scale);
+          col.push(c[0], c[1], c[2]);
+        }
+        tris++;
+      }
+    }
+    if (!m.name.startsWith('pad')) for (const p of m.points) { reach = Math.max(reach, Math.hypot(p[0], p[1]) * scale); top = Math.max(top, p[2] * scale); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.computeVertexNormals();
+    scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({vertexColors: true, flatShading: true, roughness: 0.9, side: THREE.DoubleSide})));
+  }
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.328, 0.332, 64), new THREE.MeshBasicMaterial({color: 0xff5050, side: THREE.DoubleSide}));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.002; scene.add(ring);
+  const yaw = +(params.get('yaw') || 0.5), tilt = +(params.get('tilt') || 0.9), dist = +(params.get('dist') || 1.25);
+  const cam = new THREE.PerspectiveCamera(30, 300 / H, 0.01, 50);
+  cam.position.set(Math.sin(yaw) * Math.sin(tilt) * dist, Math.cos(tilt) * dist + 0.1, Math.cos(yaw) * Math.sin(tilt) * dist);
+  cam.lookAt(0, 0.12, 0);
+  renderer.setViewport(k * 300, 0, 300, H); renderer.setScissor(k * 300, 0, 300, H); renderer.setScissorTest(true);
+  renderer.render(scene, cam);
+  stats.push(`${variant}: ${tris} tris, reach ${reach.toFixed(3)}, top ${top.toFixed(3)}`);
+  const d = document.createElement('div'); d.style.left = (k * 300 + 6) + 'px'; d.style.top = (H - 20) + 'px';
+  d.textContent = `${variant}: ${tris} tris, reach ${reach.toFixed(2)}`; document.getElementById('labels').appendChild(d);
+});
+window.stats = stats;
+document.title = 'ready';
+</script></body></html>

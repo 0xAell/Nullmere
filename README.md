@@ -90,7 +90,8 @@ in real time, every rule inside the SpacetimeDB module. Cities and their
 buildings on timers, troops trained and raised a tier, armies that march,
 gather and fight, in the field as well as at barrows and cities, the
 Unquiet's barrows, cairns for scouts to find, kill points and rankings,
-research, commanders with talents, skills, tomes and gear from the Forge,
+research, every building drawn among the city's works and grown in five
+looks as it is raised, commanders with talents, skills, tomes and gear from the Forge,
 alliances with chat, help, rallies, gifts, honour, stores, territory,
 marks on the map, learning and carts of goods between allies, crates of
 goods kept safe from plunder, the day's work and welcome and favour,

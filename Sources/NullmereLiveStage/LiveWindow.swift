@@ -220,6 +220,11 @@ public struct LiveWindow: Sendable {
         case .wayhouse: return 9
         case .lodge: return 10
         case .storehouse: return 6
+        case .range: return 8
+        case .embassy: return 15
+        case .tavern: return 16
+        case .market: return 17
+        case .scoutCamp: return 18
         default: return nil
         }
     }
@@ -229,11 +234,12 @@ public struct LiveWindow: Sendable {
         switch building {
         case 2, 3: return 1
         case 4, 6, 7: return 2
-        case 11, 12: return 3
-        case 14, 19: return 5
+        case 11, 12, 18: return 3
+        case 8, 16: return 4
+        case 14, 15, 19: return 5
         case 9: return 6
         case 5: return 7
-        case 13: return 8
+        case 13, 17: return 8
         case 10: return 10
         default: return 99
         }
