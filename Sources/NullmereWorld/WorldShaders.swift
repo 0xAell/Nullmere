@@ -1097,13 +1097,17 @@ public enum WorldShaders {
                 body *= 1.0 + 0.9 * (dot(wave, sun) - sun.y);
                 // Over the shallows, the sun the waves gather dances on the
                 // bed in a net of bright lines: two drifts of it crossing,
-                // brightest where it is shallowest and the sun highest,
-                // gone a third of a unit down and as the sun sinks.
-                float shallow = (1.0 - smoothstep(0.03, 0.35, depth)) * smoothstep(0.1, 0.5, sun.y);
+                // in patches where the swell gathers it rather than over all
+                // of it, brightest where it is shallowest and the sun
+                // highest, gone a third of a unit down and well before dusk.
+                // (A finer net over every shallow, CI run 1171's pictures
+                // showed, read as scratches on the water.)
+                float shallow = (1.0 - smoothstep(0.03, 0.35, depth)) * smoothstep(0.35, 0.75, sun.y);
                 if (shallow > 0.0) {
-                    float2 bed = (world.xz + frame.origin.xy) * 6.5;
+                    float2 bed = (world.xz + frame.origin.xy) * 3.4;
+                    float gathered = smoothstep(0.45, 0.75, nm_noise(bed * 0.22 + nm_drift(time, 0.02)));
                     float web = 1.0 - abs(nm_noise(bed + nm_drift(time, 0.11)) - nm_noise(bed * 1.3 + float2(5.2, 1.7) - nm_drift(time + 7.0, 0.09)));
-                    body += frame.keyColour.rgb * frame.key.w * pow(web, 18.0) * shallow * 0.25 * daylit;
+                    body += frame.keyColour.rgb * frame.key.w * pow(web, 10.0) * gathered * shallow * 0.18 * daylit;
                 }
                 float spark = pow(max(dot(reflect(look, wave), sun), 0.0), 400.0);
                 glints = frame.keyColour.rgb * frame.key.w * spark * 0.5 * daylit;
