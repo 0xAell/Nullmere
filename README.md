@@ -92,7 +92,9 @@ Unquiet's barrows, cairns for scouts to find, kill points and rankings,
 research, commanders with talents, skills, tomes and gear from the Forge,
 alliances with chat, help, rallies, gifts, honour, stores, territory,
 marks on the map, learning and carts of goods between allies, crates of
-goods kept safe from plunder, the day's work and favour, contests, the
+goods kept safe from plunder, the day's work and welcome and favour,
+contests, the Barrow Road's thirty stages walked with the soldiers that
+best each host, the Lists' standing of bands challenged for places, the
 realm's milestones, the Moonspire and the gates of the ridge, envoys,
 prisoners, petitions and letters, and its chat kept at peace by reports its
 owner reads and players shutting out whom they will. CI plays it through on a real SpacetimeDB
