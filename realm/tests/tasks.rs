@@ -45,7 +45,7 @@ fn the_tasks_are_written_out_in_their_order_and_in_plain_words() {
     let written = Table::<Task>::all(&db);
     let tasks = catalog::tasks();
     assert_eq!(written.len(), tasks.len());
-    assert_eq!(written.len(), 24);
+    assert_eq!(written.len(), 40);
     for (index, task) in written.iter().enumerate() {
         let (goal, gives) = tasks[index];
         assert_eq!(task.step, index as u64 + 1);
@@ -163,15 +163,15 @@ fn the_last_task_claimed_leaves_none() {
     let last = catalog::tasks().len() as u64;
     db.update(Progress { player, step: last });
     let mut row = Table::<City>::get(&db, city.id).unwrap();
-    row.power = 5_000;
+    row.power = 80_000;
     db.update(row);
     let before = stock(&db, city.id);
-    assert_eq!(db.call(|db| rules::claim_task(db, player)), Ok(Goods::of(20_000, 20_000, 10_000, 500)));
+    assert_eq!(db.call(|db| rules::claim_task(db, player)), Ok(Goods::of(60_000, 60_000, 30_000, 2_000)));
     let after = stock(&db, city.id);
-    assert_eq!(after, before.plus(Goods::of(20_000, 20_000, 10_000, 500)), "given in full, though it overfill what the city holds");
+    assert_eq!(after, before.plus(Goods::of(60_000, 60_000, 30_000, 2_000)), "given in full, though it overfill what the city holds");
     assert!(after.grain > Table::<Stock>::get(&db, city.id).unwrap().holds.min(after.grain - 1));
     assert_eq!(rules::progress_of(&db, player).step, last + 1);
-    assert_eq!((rules::held(&db, player, Item::Haste480), rules::held(&db, player, Item::Tome)), (1, 3), "an eight hours' haste and three tomes besides");
+    assert_eq!((rules::held(&db, player, Item::Haste480), rules::held(&db, player, Item::Tome)), (2, 8), "two eight hours' hastes and eight tomes besides");
     db.advance(START + 30, |db, timer| rules::fire(db, timer));
     assert_eq!(db.call(|db| rules::claim_task(db, player)), Err(Refusal::NoTasksLeft));
     assert_eq!(Refusal::NoTasksLeft.to_string(), "You have done every task there is.");

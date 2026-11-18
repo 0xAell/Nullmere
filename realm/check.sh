@@ -260,7 +260,7 @@ check("no tome is read by a commander one does not have", call(bryn, "read_tome"
 
 # A player's first tasks: the first is to raise the Keep, which Ada has done.
 tasks = rows(nobody, "SELECT * FROM task")
-check("the first tasks are written out for all to read", (len(tasks), sorted(tasks, key=lambda task: task["step"])[0]["words"]), (24, "Raise your Keep to level 2."))
+check("the first tasks are written out for all to read", (len(tasks), sorted(tasks, key=lambda task: task["step"])[0]["words"]), (40, "Raise your Keep to level 2."))
 check("some give hastes and tomes besides", [(task["brief_hastes"], task["tomes"]) for task in sorted(tasks, key=lambda task: task["step"])[1:4]], [(2, 0), (3, 0), (0, 1)])
 check("a player is on the first", rows(ada, "SELECT * FROM my_progress"), [{"player": rows(ada, "SELECT * FROM me")[0]["id"], "step": 1}])
 grain = rows(ada, "SELECT * FROM my_stock")[0]["grain"]

@@ -1039,6 +1039,25 @@ pub fn tasks() -> Vec<(Goal, Goods)> {
         (Goal::Soldiers(500), give(12_000, 12_000, 6_000)),
         (Goal::Cleared(5), give(15_000, 15_000, 8_000)),
         (Goal::Power(5_000), Goods::of(20_000, 20_000, 10_000, 500)),
+        // Then on to a Keep of the tenth level, through the works an older
+        // city wants: studies, riders, moonsalt and trade, and bigger
+        // barrows.
+        (Goal::Raised(Building::Academy, 1), give(8_000, 8_000, 4_000)),
+        (Goal::Keep(6), give(12_000, 12_000, 6_000)),
+        (Goal::Raised(Building::Stable, 1), give(10_000, 10_000, 5_000)),
+        (Goal::Soldiers(1_000), give(14_000, 14_000, 7_000)),
+        (Goal::Cleared(7), give(16_000, 16_000, 8_000)),
+        (Goal::Keep(7), give(20_000, 20_000, 10_000)),
+        (Goal::Found(3), give(15_000, 15_000, 8_000)),
+        (Goal::Raised(Building::Saltworks, 1), give(18_000, 18_000, 9_000)),
+        (Goal::Keep(8), Goods::of(25_000, 25_000, 12_000, 500)),
+        (Goal::Cleared(10), give(25_000, 25_000, 12_000)),
+        (Goal::Raised(Building::Market, 1), give(15_000, 15_000, 8_000)),
+        (Goal::Keep(9), Goods::of(30_000, 30_000, 15_000, 800)),
+        (Goal::Power(20_000), Goods::of(30_000, 30_000, 15_000, 800)),
+        (Goal::Soldiers(3_000), give(35_000, 35_000, 18_000)),
+        (Goal::Keep(10), Goods::of(50_000, 50_000, 25_000, 1_500)),
+        (Goal::Power(80_000), Goods::of(60_000, 60_000, 30_000, 2_000)),
     ]
 }
 
@@ -1062,6 +1081,19 @@ pub fn task_items(step: u64) -> Vec<(Item, u64)> {
         22 => vec![(Item::Haste60, 1)],
         23 => vec![(Item::Tome, 3)],
         24 => vec![(Item::Haste480, 1), (Item::Tome, 3)],
+        25 => vec![(Item::Haste60, 2)],
+        26 => vec![(Item::Tome, 3)],
+        28 => vec![(Item::Haste60, 3)],
+        29 => vec![(Item::Tome, 4)],
+        30 => vec![(Item::Haste480, 1)],
+        32 => vec![(Item::Haste60, 3)],
+        33 => vec![(Item::Tome, 5)],
+        34 => vec![(Item::Haste480, 1)],
+        36 => vec![(Item::Haste60, 4)],
+        37 => vec![(Item::Tome, 6)],
+        38 => vec![(Item::Haste480, 2)],
+        39 => vec![(Item::Tome, 8)],
+        40 => vec![(Item::Haste480, 2), (Item::Tome, 8)],
         _ => Vec::new(),
     }
 }
