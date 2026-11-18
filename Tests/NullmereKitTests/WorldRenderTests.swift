@@ -426,7 +426,8 @@ final class WorldRenderTests: XCTestCase {
     @MainActor
     func testALoadOfCartsIsDrawnOnTheRoadByDay() async throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
-        let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
+        // In an async test Metal's own async compile is the one called.
+        let library = try await device.makeLibrary(source: WorldShaders.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
         renderer.setHouses(LiveSession.palette)
         let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
