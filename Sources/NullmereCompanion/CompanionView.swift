@@ -13,6 +13,8 @@ struct CompanionView: View {
     let session: LiveSession
     /// Whether a code given at launch has been taken.
     @State private var tried = false
+    /// How many times in a row the realm has been tried again by itself.
+    @State private var retries = 0
 
     var body: some View {
         NavigationStack {
@@ -44,7 +46,19 @@ struct CompanionView: View {
             #endif
             // This phone named among the player's devices, once it plays.
             if session.phase == .playing {
+                retries = 0
                 await session.nameDevice(CompanionView.deviceName)
+            }
+            // Lost, the realm is tried again by itself, a little longer
+            // between tries each time, to half a minute: a phone opened
+            // before its network is up, or as it drops, comes in once it
+            // answers, without "Try again" pressed.
+            while session.phase == .lost, !Task.isCancelled {
+                let wait = UInt64(min(3 << min(retries, 4), 30))
+                try? await Task.sleep(nanoseconds: wait * 1_000_000_000)
+                guard !Task.isCancelled, session.phase == .lost else { return }
+                retries += 1
+                await session.open()
             }
         }
     }
