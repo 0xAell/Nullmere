@@ -547,10 +547,10 @@ impl Report {
     /// another's army fell on the player's: `foe` is the other player's
     /// number, and the goods what was carried off.
     pub const FIELD: u8 = 16;
+    pub const FIELD_DEFENCE: u8 = 17;
     /// Carts of goods unloaded, or come back: `foe` is the other player's
     /// number, and the goods what was unloaded.
-    pub const CARTS: u8 = 17;
-    pub const FIELD_DEFENCE: u8 = 17;
+    pub const CARTS: u8 = 18;
 }
 
 /// An alliance of players. Everyone may read it.

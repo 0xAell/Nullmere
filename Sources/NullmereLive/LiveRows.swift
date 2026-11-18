@@ -525,6 +525,12 @@ public struct LiveReport: Equatable, Sendable, Identifiable {
     /// Another's army is marching on the player's city: `foe` is that
     /// player's number, and the words say when it arrives.
     public static let warning = 4
+    /// The player's army fell on another's gathering at a site, and
+    /// another's army fell on the player's: `foe` is the other player.
+    public static let field = 16
+    public static let fieldDefence = 17
+    /// Carts of goods unloaded at an ally's city, or come back.
+    public static let carts = 18
 
     public let id: UInt64
     public let at: Int

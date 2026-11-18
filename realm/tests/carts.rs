@@ -200,3 +200,14 @@ fn a_market_s_carters_keep_less_of_a_load() {
     wait(&mut db, ahead);
     assert_eq!(added(&db, cities[1].id, &bryn_before), Goods::of(9_300, 0, 0, 0), "seven hundredths kept, not ten");
 }
+
+#[test]
+fn every_kind_of_report_is_told_apart() {
+    let kinds = [
+        Report::HUNT, Report::ATTACK, Report::DEFENCE, Report::WARNING, Report::SCOUTED, Report::REINFORCED,
+        Report::SPIRE, Report::LEARNING, Report::GATE, Report::WARD, Report::PACT, Report::PRISONER,
+        Report::PETITION, Report::TITLE, Report::CAIRN, Report::FIELD, Report::FIELD_DEFENCE, Report::CARTS,
+    ];
+    let apart: std::collections::BTreeSet<u8> = kinds.iter().copied().collect();
+    assert_eq!(apart.len(), kinds.len(), "no two kinds of report share a number");
+}
