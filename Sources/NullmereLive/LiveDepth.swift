@@ -647,6 +647,28 @@ public struct LiveTitle: Equatable, Sendable, Identifiable {
     }
 }
 
+/// A mark an officer of the player's alliance set on the map: where, what
+/// it says, who set it and when.
+public struct LiveMark: Equatable, Sendable, Identifiable {
+    /// The most characters a mark says, and the most an alliance keeps.
+    public static let longest = 40
+    public static let most = 10
+
+    public let id: UInt64
+    public let alliance: UInt64
+    public let hex: LiveHex
+    public let words: String
+    public let setter: UInt64
+    public let at: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let alliance = cells.unsigned(1), let hex = cells.unsigned(2), let words = cells.text(3),
+              let setter = cells.unsigned(4), let at = cells.whole(5) else { return nil }
+        (self.id, self.alliance, self.hex, self.words, self.setter, self.at) = (id, alliance, LiveHex(packed: hex), words, setter, at)
+    }
+}
+
 /// A letter the player has written or been written.
 public struct LiveLetter: Equatable, Sendable, Identifiable {
     /// The most characters a letter holds.

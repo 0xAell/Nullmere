@@ -365,6 +365,14 @@ public final class LiveClient: @unchecked Sendable {
     /// Writes one letter to every other member of the player's alliance, as an officer.
     public func sendAllianceLetter(_ words: String) async throws { try await ask("send_alliance_letter", [.string(words)]) }
 
+    /// Sets a mark of the player's alliance on the map, as an officer.
+    public func setMark(at hex: LiveHex, _ words: String) async throws {
+        try await ask("set_mark", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .string(words)])
+    }
+
+    /// Clears a mark of the player's alliance, as an officer.
+    public func clearMark(_ mark: UInt64) async throws { try await ask("clear_mark", [.integer(mark)]) }
+
     /// Shuts a player out: their letters to the player are no longer taken.
     public func shutOut(_ player: UInt64) async throws { try await ask("shut_out", [.integer(player)]) }
 

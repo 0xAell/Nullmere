@@ -23,6 +23,7 @@ mod help;
 mod forge;
 mod items;
 mod letters;
+mod marks;
 mod links;
 mod learning;
 mod march;
@@ -60,6 +61,7 @@ pub use help::*;
 pub use forge::*;
 pub use items::*;
 pub use letters::*;
+pub use marks::*;
 pub use links::*;
 pub use learning::*;
 pub use march::*;
@@ -296,6 +298,12 @@ pub enum Refusal {
     /// A letter to one who has shut its writer out.
     LettersShutOut,
     OwnShun,
+    /// A mark says so many characters at most.
+    MarkTooLong(usize),
+    BeyondTheRealm,
+    /// An alliance keeps so many marks at most.
+    MarksAll(usize),
+    NoSuchMark,
     ShutOutAlready,
     NotShutOut,
     /// A player shuts out so many others at most.
@@ -422,6 +430,8 @@ impl fmt::Display for Refusal {
             Refusal::AlreadyPaired(name) => return write!(f, "{name} already goes out with another commander."),
             Refusal::WardsAll(most) => return write!(f, "Your alliance has all the wardstones it may: {most}. It may raise one more for every five members, twenty at most."),
             Refusal::OthersLand(theirs) => return write!(f, "That land is {theirs}'s."),
+            Refusal::MarkTooLong(most) => return write!(f, "A mark says {most} characters at most, and nothing unprintable."),
+            Refusal::MarksAll(most) => return write!(f, "Your alliance has all the marks it may: {most}. Clear one first."),
             Refusal::TooManyShutOut(most) => return write!(f, "You may shut out {most} players at most. Let one back in first."),
             Refusal::LetterTooLong(most) => return write!(f, "A letter holds {} characters at most, and nothing unprintable.", crate::catalog::grouped(*most as u64)),
             Refusal::PetitionTooLarge(most) => return write!(f, "A petition asks {} of each good at most.", crate::catalog::grouped(*most)),
@@ -574,6 +584,8 @@ impl fmt::Display for Refusal {
             Refusal::OwnLetter => "A letter goes to another player.",
             Refusal::LettersShutOut => "They take no letters from you.",
             Refusal::OwnShun => "You can't shut yourself out.",
+            Refusal::BeyondTheRealm => "That lies beyond the realm.",
+            Refusal::NoSuchMark => "Your alliance has no such mark.",
             Refusal::ShutOutAlready => "You have shut them out already.",
             Refusal::NotShutOut => "You haven't shut them out.",
             Refusal::NoSuchLetter => "There is no such letter of yours.",

@@ -471,7 +471,8 @@ final class LiveSessionTests: XCTestCase {
         session.refresh()
         XCTAssertEqual(card(14, -4), LiveCard(title: "Bryn", lines: ["[MERE] Bryn's city. Keep level 8, power 9,000. They are here now.", "Your ally."],
                                               buttons: [.init(title: "Reinforce with 40 soldiers", act: .reinforce, why: nil),
-                                                        .init(title: "Send goods", act: .sendGoods, why: "Your city has no grain, timber or stone to send.")]))
+                                                        .init(title: "Send goods", act: .sendGoods, why: "Your city has no grain, timber or stone to send."),
+                                                        .init(title: "Shut out Bryn", act: .shutOut(2), why: nil)]))
         await session.press(card(14, -4).buttons[0])
         XCTAssertEqual(line.asked.last, "reinforce 14,-4 with 40 of 1.1 led by 0")
         line.change { rows in
@@ -1357,6 +1358,54 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(back.icon, "speaker.wave.2")
         await session.press(back)
         XCTAssertEqual(line.asked.last, "let in 2")
+    }
+
+    /// Ada, who leads her alliance, marks the grove for it from the
+    /// palette; the mark is said on the grove's card and over it on the
+    /// map, members go to it, and she clears it.
+    func testAnOfficerMarksAPlaceForTheAlliance() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["alliance"] = [[n(5), n(77), n(78), .string("Keepers"), .string("MERE"), n(1), n(1_500), n(2), .bool(true), .string("")]]
+        rows["member"] = [[n(1), n(5), n(5), n(1_500)], [n(2), n(5), n(1), n(1_600)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        let grove = LiveHex(q: 12, r: -2)
+        XCTAssertFalse(session.commands(at: 2_015).contains { $0.title.contains("for your alliance") }, "nothing chosen, nothing to mark")
+        session.selected = grove
+        let mark = try XCTUnwrap(session.commands(at: 2_015).first { $0.title == "Mark Timber, level 4 for your alliance" },
+                                 "\(session.commands(at: 2_015).map(\.title))")
+        XCTAssertEqual(mark.act, .setMark(grove, "Timber, level 4"))
+        _ = await session.perform(mark)
+        XCTAssertEqual(line.asked.last, "mark 12,-2: Timber, level 4")
+
+        // The realm writes it down: said on the grove's card, over it on the map, and to go to.
+        line.change { $0["my_marks"] = [[self.n(3), self.n(5), self.n(grove.packed), .string("Take the grove"), self.n(1), self.n(2_015)]] }
+        session.refresh()
+        XCTAssertEqual(session.world.marks.map(\.words), ["Take the grove"])
+        XCTAssertEqual(session.world.mark(at: grove)?.id, 3)
+        XCTAssertEqual(session.card(for: session.selection(at: grove)).lines.last, "Your alliance's mark: Take the grove")
+        XCTAssertNil(session.card(for: session.selection(at: LiveHex(q: 14, r: -4))).lines.last { $0.hasPrefix("Your alliance's mark") })
+        let size = CGSize(width: 1280, height: 800)
+        session.go(to: grove)
+        let label = try XCTUnwrap(session.markLabels(in: size).first)
+        XCTAssertEqual(label.words, "Take the grove")
+        let under = try XCTUnwrap(session.viewPoint(of: grove, in: size))
+        XCTAssertEqual(label.point.x, under.x, accuracy: 0.5)
+        XCTAssertEqual(label.point.y, under.y - LiveSession.markLift, accuracy: 0.5)
+        let commands = session.commands(at: 2_015)
+        XCTAssertTrue(commands.contains(LiveCommand(title: "Go to your alliance's mark: Take the grove", act: .go(grove))))
+        XCTAssertFalse(commands.contains { $0.title.hasPrefix("Mark ") }, "where one stands, none is set")
+        let clear = try XCTUnwrap(commands.first { $0.act == .clearMark(3) })
+        XCTAssertEqual(clear.title, "Clear your alliance's mark here: Take the grove")
+        _ = await session.perform(clear)
+        XCTAssertEqual(line.asked.last, "clear mark 3")
+
+        // A member who is no officer goes to marks, and sets none.
+        line.change { $0["member"] = [[self.n(1), self.n(5), self.n(1), self.n(1_500)]] }
+        session.refresh()
+        XCTAssertTrue(session.commands(at: 2_015).contains { $0.act == .go(grove) && $0.title.hasPrefix("Go to your alliance's mark") })
+        XCTAssertFalse(session.commands(at: 2_015).contains { $0.act == .clearMark(3) })
     }
 
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {

@@ -408,6 +408,24 @@ struct LiveHUD: View {
                     .accessibilityHidden(true)
                     // Over each army in view, whose it is; over the player's own, who
                     // leads it and how many; edged red where it marches on their city.
+                    // Over each place the alliance marked, a flag and what it says.
+                    ForEach(session.markLabels(in: proxy.size).filter { !LiveRing.covers($0.point, ringAt: ring) }) { label in
+                        HStack(spacing: 4) {
+                            Image(systemName: "flag.fill")
+                                .foregroundStyle(Palette.good)
+                            Text(verbatim: label.words)
+                                .foregroundStyle(LiveEmphasis.primary)
+                        }
+                        .font(.nm(LiveType.small, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Palette.panel.opacity(0.8), in: Capsule())
+                        .overlay(Capsule().strokeBorder(Palette.good.opacity(0.8), lineWidth: 1))
+                        .fixedSize()
+                        .position(label.point)
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
                     ForEach(session.armyLabels(in: proxy.size).filter { !LiveRing.covers($0.point, ringAt: ring) }) { label in
                         Text(verbatim: label.words)
                             .font(.nm(LiveType.small, weight: label.own ? .semibold : .regular))

@@ -146,3 +146,28 @@ extension LiveSession {
         }
     }
 }
+
+/// A mark of the player's alliance as it stands over its hex on the map:
+/// what it says.
+public struct LiveMarkLabel: Equatable, Identifiable, Sendable {
+    public let id: UInt64
+    public let words: String
+    public let point: CGPoint
+}
+
+extension LiveSession {
+    /// How far above a marked hex its mark stands, in points: over a
+    /// city's name, where it marks a city.
+    public static let markLift: CGFloat = 56
+
+    /// The alliance's marks in the window whose words would stand within
+    /// a view of a size.
+    public func markLabels(in size: CGSize) -> [LiveMarkLabel] {
+        world.marks.compactMap { mark in
+            guard let at = viewPoint(of: mark.hex, in: size) else { return nil }
+            let point = CGPoint(x: at.x, y: at.y - LiveSession.markLift)
+            guard point.x > 0, point.x < size.width, point.y > 0, point.y < size.height else { return nil }
+            return LiveMarkLabel(id: mark.id, words: mark.words, point: point)
+        }
+    }
+}

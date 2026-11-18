@@ -212,6 +212,8 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func forgetLetter(_ letter: UInt64) async throws { try take("forget letter \(letter)") }
     public func shutOut(_ player: UInt64) async throws { try take("shut out \(player)") }
     public func letIn(_ player: UInt64) async throws { try take("let in \(player)") }
+    public func setMark(at hex: LiveHex, _ words: String) async throws { try take("mark \(hex.q),\(hex.r): \(words)") }
+    public func clearMark(_ mark: UInt64) async throws { try take("clear mark \(mark)") }
 }
 
 /// How many times something has been tried.

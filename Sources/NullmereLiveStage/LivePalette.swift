@@ -38,6 +38,9 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case draw
         /// Raise a commander's gift a level.
         case raiseGift(UInt64)
+        /// Mark a hex for the player's alliance with words, or clear a mark.
+        case setMark(LiveHex, String)
+        case clearMark(UInt64)
     }
 
     public let title: String
@@ -179,6 +182,19 @@ extension LiveSession {
             guard let laurel = world.laurelToClaim(of: trial, day: day) else { continue }
             all.append(LiveCommand(title: "Claim what your place in \(trial.name) gave: \(LiveWords.ordinal(laurel.place))", act: .claimPlace(contest: trial.id)))
         }
+        // The alliance's marks, to go to; an officer's to set where is
+        // chosen, saying what is there, or to clear there.
+        for mark in world.marks {
+            all.append(LiveCommand(title: "Go to your alliance's mark: \(mark.words)", act: .go(mark.hex)))
+        }
+        if world.isOfficer, let selection, let hex = LiveSession.hex(of: selection) {
+            if let mark = world.mark(at: hex) {
+                all.append(LiveCommand(title: "Clear your alliance's mark here: \(mark.words)", act: .clearMark(mark.id)))
+            } else if world.marks.count < LiveMark.most {
+                let words = String(bareCard(for: selection).title.prefix(LiveMark.longest))
+                all.append(LiveCommand(title: "Mark \(words) for your alliance", act: .setMark(hex, words)))
+            }
+        }
         if let home = world.city?.hex {
             func nearest<T>(_ things: [T], _ hex: (T) -> LiveHex) -> T? {
                 things.min { (hex($0).distance(to: home), hex($0).packed) < (hex($1).distance(to: home), hex($1).packed) }
@@ -280,6 +296,8 @@ extension LiveSession {
         case .speedUp(let job): await speedUp(job: job)
         case .useHaste(let item, let job): await useItem(item, on: job)
         case .openCrates(let item, let count): await openCrates(item, count: count)
+        case .setMark(let hex, let words): await setMark(at: hex, words)
+        case .clearMark(let mark): await clearMark(mark)
         }
         return nil
     }

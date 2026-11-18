@@ -155,8 +155,30 @@ extension LiveSession {
         return season.began + 7 * 86_400 / max(realm.pace, 1)
     }
 
-    /// The card for what lies at a chosen hex.
+    /// Where what is chosen stands, for a mark of the player's alliance
+    /// there; nil for an army, which moves, and a building of their city.
+    static func hex(of selection: LiveSelection) -> LiveHex? {
+        switch selection {
+        case .home(let city), .city(let city, _): return city.hex
+        case .site(let site): return site.hex
+        case .barrow(let barrow): return barrow.hex
+        case .gate(let gate): return gate.hex
+        case .ward(let ward): return ward.hex
+        case .cairn(let cairn): return cairn.hex
+        case .land(let hex, _): return hex
+        case .army, .work: return nil
+        }
+    }
+
+    /// The card for what lies at a chosen hex: what it is, and what the
+    /// player's alliance marked there, if it did.
     public func card(for selection: LiveSelection) -> LiveCard {
+        let card = bareCard(for: selection)
+        guard let mark = LiveSession.hex(of: selection).flatMap({ world.mark(at: $0) }) else { return card }
+        return LiveCard(title: card.title, lines: card.lines + ["Your alliance's mark: \(mark.words)"], buttons: card.buttons)
+    }
+
+    func bareCard(for selection: LiveSelection) -> LiveCard {
         let seconds = now
         let ready = world.troops.reduce(0) { $0 + $1.ready }
         switch selection {

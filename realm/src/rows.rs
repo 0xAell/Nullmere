@@ -885,6 +885,24 @@ pub struct Letter {
 }
 row!(Letter in letter, auto, by id, sender, receiver);
 
+/// A mark an officer set on the map for their alliance: where, what it
+/// says, who set it and when. Its alliance's alone to read, through
+/// `my_marks`. Keyed by number.
+#[spacetimedb::table(accessor = mark)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Mark {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    #[index(btree)]
+    pub alliance: u64,
+    pub hex: u64,
+    pub words: String,
+    pub setter: u64,
+    pub at: Seconds,
+}
+row!(Mark in mark, auto, by id, alliance);
+
 /// One player shutting out another: the letters of the one shut out
 /// never reach them, and their client leaves the other's sayings
 /// unshown. Its keeper's alone to read, through `my_shunned`. Keyed by
@@ -1699,6 +1717,7 @@ pub trait Db:
     + Table<Title>
     + Table<Letter>
     + Table<Shun>
+    + Table<Mark>
     + Table<Gear>
     + Table<Pattern>
     + Table<Lore>
@@ -1777,6 +1796,7 @@ impl<
             + Table<Title>
             + Table<Letter>
             + Table<Shun>
+            + Table<Mark>
             + Table<Gear>
             + Table<Pattern>
             + Table<Lore>

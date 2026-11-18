@@ -115,6 +115,8 @@ public struct LiveWorld: Equatable, Sendable {
     /// The players the player has shut out: their letters are not taken,
     /// and what they say, in either chat or a letter, is left unshown.
     public var shunned: Set<UInt64> = []
+    /// The marks of the player's alliance on the map, the first set first.
+    public var marks: [LiveMark] = []
     /// What the Forge makes, by piece; and the player's gear.
     public var patterns: [Int: LivePattern] = [:]
     public var gear: [LiveGear] = []
@@ -220,6 +222,7 @@ public struct LiveWorld: Equatable, Sendable {
         prisoners = Dictionary(rows("my_prisoners", LivePrisoner.init).map { ($0.commander, $0) }, uniquingKeysWith: { _, new in new })
         petitions = Dictionary(rows("my_petitions", LivePetition.init).map { ($0.asker, $0) }, uniquingKeysWith: { _, new in new })
         letters = rows("my_letters", LiveLetter.init).filter { !shut.contains($0.sender) }.sorted { $0.id > $1.id }
+        marks = rows("my_marks", LiveMark.init).sorted { $0.id < $1.id }
         patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
         gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
         boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }
@@ -343,6 +346,9 @@ public struct LiveWorld: Equatable, Sendable {
 
     /// Whether the player is the Lord of the Mere.
     public var isLord: Bool { me.map { $0.id == lord } ?? false }
+
+    /// The mark of the player's alliance at a hex, if it has one there.
+    public func mark(at hex: LiveHex) -> LiveMark? { marks.first { $0.hex == hex } }
 
     /// The letters written to the player, the latest first, and how many
     /// are unread.
