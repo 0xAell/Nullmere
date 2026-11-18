@@ -21,8 +21,9 @@ arrived with them, raises its buildings on timers, trains troops in four
 kinds and five tiers, and sends armies under commanders to gather from the
 land, clear the barrows of the Unquiet and find the cairns the old folk
 left, or to fall on other players' cities and armies. Alliances help each
-other build, rally against barrows, cities and the gates of the ridge,
-share learning and stores, and race to raise their Moonspire first in each
+other build, rally against barrows, cities, the gates of the ridge and the
+holy sites, whose keeping lends every member's city their gifts, share
+learning and stores, and race to raise their Moonspire first in each
 season of twenty-eight days; the season's victor names the Lord of the Mere.
 
 It is a native Mac app for Apple silicon: SwiftUI and AppKit, every frame
@@ -96,7 +97,7 @@ goods kept safe from plunder, the day's work and welcome and favour,
 contests, the Barrow Road's thirty stages walked with the soldiers that
 best each host, the Lists' standing of bands challenged for places,
 merits for a lifetime of deeds, a pedlar's deals turning by the day, the
-realm's milestones, the Moonspire and the gates of the ridge, envoys,
+realm's milestones, the Moonspire, the gates of the ridge and thirteen holy sites, envoys,
 prisoners, petitions and letters, and its chat kept at peace by reports its
 owner reads and players shutting out whom they will. CI plays it through on a real SpacetimeDB
 server whenever it changes, holds its rules to a budget at a thousand
