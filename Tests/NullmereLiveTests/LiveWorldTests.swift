@@ -687,7 +687,7 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertEqual(fighting.position(at: 100).x, way[3].centre.x, accuracy: 1e-9)
         XCTAssertEqual(fighting.position(at: 109).x, way[3].centre.x, accuracy: 1e-9)
         XCTAssertEqual([LiveMarch.gather, LiveMarch.hunt, LiveMarch.attack], [1, 2, 3])
-        XCTAssertEqual([LiveReport.hunt, LiveReport.attack, LiveReport.defence, LiveReport.field, LiveReport.fieldDefence, LiveReport.carts, LiveReport.road], [1, 2, 3, 16, 17, 18, 19])
+        XCTAssertEqual([LiveReport.hunt, LiveReport.attack, LiveReport.defence, LiveReport.field, LiveReport.fieldDefence, LiveReport.carts, LiveReport.road, LiveReport.lists], [1, 2, 3, 16, 17, 18, 19, 20])
         XCTAssertNil(LiveMarch(march(state: 1, route: .string("xyz"))), "a way that doesn't read")
 
         var world = LiveWorld()

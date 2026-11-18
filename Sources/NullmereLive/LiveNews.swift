@@ -43,7 +43,7 @@ extension LiveWorld {
             let kind: LiveTold
             switch report.kind {
             case LiveReport.warning: kind = .threat
-            case LiveReport.hunt, LiveReport.attack, LiveReport.defence, LiveReport.field, LiveReport.fieldDefence, LiveReport.road: kind = report.won ? .won : .lost
+            case LiveReport.hunt, LiveReport.attack, LiveReport.defence, LiveReport.field, LiveReport.fieldDefence, LiveReport.road, LiveReport.lists: kind = report.won ? .won : .lost
             default: kind = .report
             }
             told.append((report.kind == LiveReport.warning ? report.words : "A report: \(first).", kind))

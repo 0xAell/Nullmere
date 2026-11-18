@@ -219,6 +219,11 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func walkRoad(soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {
         try take("walk the road with \(listed(soldiers)) led by \(leader)")
     }
+    public func enterLists(soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws {
+        try take("enter the lists with \(listed(soldiers)) led by \(leader)")
+    }
+    public func challenge(_ opponent: UInt64) async throws { try take("challenge \(opponent)") }
+    public func claimPurse() async throws { try take("claim the purse") }
 }
 
 /// How many times something has been tried.

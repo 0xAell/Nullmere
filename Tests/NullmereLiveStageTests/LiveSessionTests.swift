@@ -1524,6 +1524,61 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(line.asked.count, asked)
     }
 
+    /// The Lists: entered with the best soldiers ready, those above her
+    /// challenged while challenges are left today, and the day's purse of
+    /// her place claimed once.
+    func testTheListsAreEnteredChallengedAndPaid() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(900), n(0)], [n(7 << 16 | 3 << 8 | 2), n(7), n(3), n(2), n(50), n(0)]]
+        rows["my_commanders"] = [[n(11), n(1), .string("Corran Ash"), n(1), n(1), n(0), n(0), n(3), n(1), n(12)]]
+        rows["purse"] = [[n(1), n(1), n(1), n(30_000), n(30_000), n(30_000), n(300)], [n(2), n(2), n(3), n(20_000), n(20_000), n(20_000), n(200)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        // Not yet entered: her best soldiers, the best tier first, as many as a Keep of the third level allows.
+        XCTAssertNil(session.world.myEntry)
+        XCTAssertEqual(session.world.listsBand.map { [$0.kind, $0.tier, Int($0.count)] }, [[3, 2, 50], [1, 1, 550]])
+        XCTAssertTrue(session.world.challengeable.isEmpty)
+        XCTAssertFalse(session.world.purseWaits(at: 2_015))
+        let enter = try XCTUnwrap(session.commands(at: 2_015).first { $0.act == .enterLists })
+        XCTAssertEqual(enter.title, "Enter the Lists with your best soldiers")
+        _ = await session.perform(enter)
+        XCTAssertEqual(line.asked.last, "enter the lists with 50 of 3.2, 550 of 1.1 led by 11")
+
+        // Entered second, under Bryn; Bryn's band for all to read.
+        line.change {
+            $0["entrant"] = [[self.n(2), self.n(1), self.n(0), self.n(2_000)], [self.n(1), self.n(2), self.n(11), self.n(2_010)]]
+            $0["guard"] = [[self.n(2 << 16 | 2 << 8 | 1), self.n(2), self.n(2), self.n(1), self.n(300)], [self.n(2 << 16 | 1 << 8 | 3), self.n(2), self.n(1), self.n(3), self.n(20)]]
+        }
+        session.refresh()
+        XCTAssertEqual(session.world.myEntry?.place, 2)
+        XCTAssertEqual(session.world.challengeable.map(\.player), [2])
+        XCTAssertEqual(session.world.bandWords(of: 2), "20 spearmen of tier 3 and 300 archers of tier 1")
+        XCTAssertEqual(session.world.bandWords(of: 1), "no one")
+        XCTAssertEqual(session.world.challengesLeft(at: 2_015), 5)
+        XCTAssertEqual(session.world.purseWords(of: 2), "20,000 grain, 20,000 timber and 20,000 stone, with 200 honour")
+        XCTAssertNil(session.world.purseWords(of: 9), "no purse written for that place")
+        XCTAssertTrue(session.commands(at: 2_015).contains { $0.title == "Set your band in the Lists anew" })
+        let challenge = try XCTUnwrap(session.commands(at: 2_015).first { $0.act == .challenge(2) })
+        XCTAssertEqual(challenge.title, "Challenge Bryn, 1st in the Lists")
+        _ = await session.perform(challenge)
+        XCTAssertEqual(line.asked.last, "challenge 2")
+        let purse = try XCTUnwrap(session.commands(at: 2_015).first { $0.act == .claimPurse })
+        XCTAssertEqual(purse.title, "Claim the Lists' purse for the 2nd place: 20,000 grain, 20,000 timber and 20,000 stone, with 200 honour")
+        _ = await session.perform(purse)
+        XCTAssertEqual(line.asked.last, "claim the purse")
+
+        // Five challenges made today and the purse claimed: neither is offered; tomorrow both again.
+        line.change { $0["my_tilt"] = [[self.n(1), self.n(0), self.n(5), self.n(1)]] }
+        session.refresh()
+        XCTAssertEqual(session.world.tilt, LiveTilt(day: 0, tries: 5, claimed: 1))
+        XCTAssertEqual(session.world.challengesLeft(at: 2_015), 0)
+        XCTAssertFalse(session.world.purseWaits(at: 2_015))
+        XCTAssertFalse(session.commands(at: 2_015).contains { $0.act == .challenge(2) || $0.act == .claimPurse })
+        XCTAssertEqual(session.world.challengesLeft(at: 1_000 + 86_400), 5)
+        XCTAssertTrue(session.world.purseWaits(at: 1_000 + 86_400))
+    }
+
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
         let line = StandInLine(rows: LiveWindowTests.rows())
         // Seventeen seconds along its way of twenty-four: on 11, -2.

@@ -10,12 +10,12 @@ use spacetimedb::{reducer, table, view, Identity, ReducerContext, ScheduleAt, Sp
 use crate::hex::Hex;
 use crate::rows::{
     alliance as _, alliance_chat as _, alliance_chat__view as _, applicant as _, applicant__view as _, barrow as _, blueprint as _, building as _,
-    chest as _, daily as _, daily__view as _, duty as _, fame as _, boon as _, boon__view as _, cairn as _, find as _, find__view as _, honour as _, honour__view as _, price as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, standing as _, laurel as _, link as _, link__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _, prisoner as _, prisoner__view as _, petition as _, petition__view as _, title as _, letter as _, letter__view as _, shun as _, shun__view as _, mark as _, mark__view as _, milestone as _, claim as _, claim__view as _, welcome as _, welcome__view as _, stage as _, road as _, road__view as _, gear as _, gear__view as _, pattern as _,
+    chest as _, daily as _, daily__view as _, duty as _, fame as _, boon as _, boon__view as _, cairn as _, find as _, find__view as _, honour as _, honour__view as _, price as _, favour as _, favour__view as _, grace as _, satchel as _, satchel__view as _, ware as _, prize as _, tally as _, tally__view as _, standing as _, laurel as _, link as _, link__view as _, trial as _, muster as _, muster__view as _, rally as _, rally__view as _, helper as _, helper__view as _, plea as _, plea__view as _, gift as _, gift__view as _, season as _, spire as _, bond as _, bond__view as _, keeper as _, keeper__view as _, skill as _, skill__view as _, ward as _, learning as _, gate as _, envoy as _, envoy__view as _, pact as _, prisoner as _, prisoner__view as _, petition as _, petition__view as _, title as _, letter as _, letter__view as _, shun as _, shun__view as _, mark as _, mark__view as _, milestone as _, claim as _, claim__view as _, welcome as _, welcome__view as _, stage as _, road as _, road__view as _, entrant as _, guard as _, purse as _, tilt as _, tilt__view as _, gear as _, gear__view as _, pattern as _,
     building__view as _, city as _, city__view as _, commander as _, commander__view as _, haul as _, haul__view as _, hunt as _, hunt__view as _, job as _, job__view as _, land as _, lore as _, lore__view as _,
     march as _, march__view as _, member as _, member__view as _, pace as _, place as _, player as _, player__view as _, progress as _, progress__view as _, realm as _,
     realm_chat as _, complaint as _, bar as _, report as _, report__view as _, site as _, soldier as _, squad as _, squad__view as _, stock as _, stock__view as _, study as _, task as _,
     person as _, troop as _, troop__view as _, Alliance, AllianceChat, Applicant, Barrow, Blueprint, Bond, Building, Chest, City, Commander, Daily, Duty, Fame, Boon, Cairn, Find, Honour, Price, Favour, Gift, Grace, Haul, Helper, Hunt, Job, Keeper, Land, Lore, March, Member, Muster, Rally,
-    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Complaint, Bar, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Standing, Laurel, Link, Task, Trial, Troop, Ware, Person, Ward, Learning, Gate, Envoy, Pact, Prisoner, Petition, Title, Letter, Shun, Mark, Milestone, Claim, Welcome, Stage, Road, Gear, Pattern,
+    Pace, Place, Player, Plea, Prize, Progress, Realm, RealmChat, Complaint, Bar, Report, Satchel, Season, Site, Skill, Soldier, Spire, Squad, Stock, Study, Tally, Standing, Laurel, Link, Task, Trial, Troop, Ware, Person, Ward, Learning, Gate, Envoy, Pact, Prisoner, Petition, Title, Letter, Shun, Mark, Milestone, Claim, Welcome, Stage, Road, Entrant, Guard, Purse, Tilt, Gear, Pattern,
 };
 use crate::rules::{self, Refusal};
 use crate::store::{Seconds, Table, World};
@@ -207,6 +207,10 @@ stored!(Claim in claim by key, player);
 stored!(Welcome in welcome by player);
 stored!(Stage in stage by id);
 stored!(Road in road by player);
+stored!(Entrant in entrant by player, place);
+stored!(Guard in guard by key, player);
+stored!(Purse in purse by id);
+stored!(Tilt in tilt by player);
 stored!(Gear in gear by id, owner, commander);
 stored!(Pattern in pattern by piece);
 stored!(Lore in lore by id, city);
@@ -611,6 +615,27 @@ pub fn claim_welcome(ctx: &ReducerContext) -> Result<(), String> {
 pub fn walk_road(ctx: &ReducerContext, soldiers: Vec<Soldiers>, leader: u64) -> Result<(), String> {
     let asked: Vec<rules::Asked> = soldiers.iter().map(|s| rules::Asked { kind: s.kind, tier: s.tier, count: s.count }).collect();
     said(caller(ctx).and_then(|player| rules::walk_road(&mut Stdb(ctx), player, &asked, leader)))
+}
+
+/// Set the caller's band in the Lists, entering them if they were not:
+/// soldiers of their city standing ready, under one of their commanders
+/// or under none with 0.
+#[reducer]
+pub fn enter_lists(ctx: &ReducerContext, soldiers: Vec<Soldiers>, leader: u64) -> Result<(), String> {
+    let asked: Vec<rules::Asked> = soldiers.iter().map(|s| rules::Asked { kind: s.kind, tier: s.tier, count: s.count }).collect();
+    said(caller(ctx).and_then(|player| rules::enter_lists(&mut Stdb(ctx), player, &asked, leader)))
+}
+
+/// Challenge another player above the caller in the Lists.
+#[reducer]
+pub fn challenge(ctx: &ReducerContext, opponent: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::challenge(&mut Stdb(ctx), player, opponent)))
+}
+
+/// Claim what the Lists' purse gives the caller's place today.
+#[reducer]
+pub fn claim_purse(ctx: &ReducerContext) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::claim_purse(&mut Stdb(ctx), player)))
 }
 
 /// Claim what a milestone the realm has reached gives.
@@ -1069,6 +1094,12 @@ fn my_welcome(ctx: &ViewContext) -> Option<Welcome> {
 #[view(accessor = my_road, public)]
 fn my_road(ctx: &ViewContext) -> Option<Road> {
     ctx.db.road().player().find(viewer(ctx)?)
+}
+
+/// The caller's day in the Lists.
+#[view(accessor = my_tilt, public)]
+fn my_tilt(ctx: &ViewContext) -> Option<Tilt> {
+    ctx.db.tilt().player().find(viewer(ctx)?)
 }
 
 /// The milestones whose gifts the caller has claimed.

@@ -128,6 +128,12 @@ public struct LiveWorld: Equatable, Sendable {
     /// player has come.
     public var stages: [LiveStage] = []
     public var road: LiveRoad?
+    /// The Lists: those in it, by place; their bands; what its purse
+    /// gives; and the player's day in it.
+    public var entrants: [LiveEntrant] = []
+    public var guards: [LiveGuard] = []
+    public var purses: [LivePurse] = []
+    public var tilt: LiveTilt?
     /// What the Forge makes, by piece; and the player's gear.
     public var patterns: [Int: LivePattern] = [:]
     public var gear: [LiveGear] = []
@@ -239,6 +245,13 @@ public struct LiveWorld: Equatable, Sendable {
         welcomed = rows("my_welcome", LiveWelcome.init).first
         stages = rows("stage", LiveStage.init).sorted { $0.id < $1.id }
         road = rows("my_road", LiveRoad.init).first
+        entrants = rows("entrant", LiveEntrant.init).sorted { $0.place < $1.place }
+        guards = rows("guard", LiveGuard.init).sorted { first, second in
+            if first.player != second.player { return first.player < second.player }
+            return first.tier != second.tier ? first.tier > second.tier : first.kind < second.kind
+        }
+        purses = rows("purse", LivePurse.init).sorted { $0.first < $1.first }
+        tilt = rows("my_tilt", LiveTilt.init).first
         patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
         gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
         boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }
@@ -450,6 +463,65 @@ public struct LiveWorld: Equatable, Sendable {
             parts.append("\(LiveWorld.inLine(ware.name)) ×\(stage.items)")
         }
         return parts.joined(separator: ", ")
+    }
+
+    /// How many challenges a player makes in the Lists a day, and how far
+    /// above their own place, as the module's catalogue has them.
+    public static let listsTries: UInt64 = 5
+    public static let listsReach: UInt64 = 10
+
+    /// The most soldiers a band in the Lists holds, by the Keep's level.
+    public static func listsMost(keep: Int) -> UInt64 { 200 * UInt64(max(keep, 1)) }
+
+    /// The player's own entry in the Lists, if they have entered.
+    public var myEntry: LiveEntrant? { entrants.first { $0.player == me?.id } }
+
+    /// Those the player may challenge: in the Lists above them, and no more
+    /// than so many places up, the nearest first.
+    public var challengeable: [LiveEntrant] {
+        guard let mine = myEntry else { return [] }
+        return entrants.filter { $0.place < mine.place && mine.place - $0.place <= LiveWorld.listsReach }.reversed()
+    }
+
+    /// How many challenges the player has left today.
+    public func challengesLeft(at seconds: Double) -> UInt64 {
+        guard let tilt, tilt.day == today(at: seconds) else { return LiveWorld.listsTries }
+        return LiveWorld.listsTries - min(tilt.tries, LiveWorld.listsTries)
+    }
+
+    /// Whether the purse of the player's place waits on them today.
+    public func purseWaits(at seconds: Double) -> Bool {
+        myEntry != nil && tilt?.claimed != today(at: seconds) + 1
+    }
+
+    /// The purse of a place in the Lists, in words.
+    public func purseWords(of place: UInt64) -> String? {
+        guard let purse = purses.first(where: { $0.first <= place && place <= $0.last }) else { return nil }
+        return "\(purse.gives.words), with \(LiveWords.grouped(purse.honour)) honour"
+    }
+
+    /// A player's band in the Lists in words: "300 spearmen of tier 1 and
+    /// 50 riders of tier 3".
+    public func bandWords(of player: UInt64) -> String {
+        let named = guards.filter { $0.player == player }.map {
+            "\(LiveWords.grouped($0.count)) \((LiveWorld.kindNames[$0.kind] ?? "soldiers").lowercased()) of tier \($0.tier)"
+        }
+        return named.isEmpty ? "no one" : named.joined(separator: " and ")
+    }
+
+    /// The band to set: the best of those ready, the best tiers first, as
+    /// many as the Keep allows.
+    public var listsBand: [(kind: Int, tier: Int, count: UInt64)] {
+        func order(_ troop: LiveTroop) -> [Int] { [-troop.tier, troop.kind] }
+        let ready = troops.filter { $0.ready > 0 }.sorted { order($0).lexicographicallyPrecedes(order($1)) }
+        var room = LiveWorld.listsMost(keep: city?.keep ?? 1)
+        var band: [(kind: Int, tier: Int, count: UInt64)] = []
+        for troop in ready where room > 0 {
+            let count = min(troop.ready, room)
+            band.append((troop.kind, troop.tier, count))
+            room -= count
+        }
+        return band
     }
 
     /// The mark of the player's alliance at a hex, if it has one there.

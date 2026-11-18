@@ -95,6 +95,9 @@ public protocol LiveLine: AnyObject, Sendable {
     func claimMilestone(_ milestone: UInt64) async throws
     func claimWelcome() async throws
     func walkRoad(soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
+    func enterLists(soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
+    func challenge(_ opponent: UInt64) async throws
+    func claimPurse() async throws
 }
 
 extension LiveClient: LiveLine {}
@@ -726,6 +729,20 @@ public final class LiveSession {
         let leader = world.freeLeader?.id ?? 0
         await ask { try await $0.walkRoad(soldiers: asked, leader: leader) }
     }
+
+    /// Sets the player's band in the Lists: the best of those ready, as
+    /// many as the Keep allows, under their highest commander.
+    public func enterLists() async {
+        let band = world.listsBand
+        let leader = world.commanders.max { ($0.level, $1.id) < ($1.level, $0.id) }?.id ?? 0
+        await ask { try await $0.enterLists(soldiers: band, leader: leader) }
+    }
+
+    /// Challenges another player above the player in the Lists.
+    public func challenge(_ opponent: UInt64) async { await ask { try await $0.challenge(opponent) } }
+
+    /// Claims the Lists' purse of the player's place.
+    public func claimPurse() async { await ask { try await $0.claimPurse() } }
 
     /// One soldier of the first kind and tier standing ready: a scout.
     public var scoutParty: [(kind: Int, tier: Int, count: UInt64)] {

@@ -553,6 +553,8 @@ impl Report {
     pub const CARTS: u8 = 18;
     /// A walk of the Barrow Road: `foe` is the stage.
     pub const ROAD: u8 = 19;
+    /// A challenge in the Lists, made or met: `foe` is the other player.
+    pub const LISTS: u8 = 20;
 }
 
 /// An alliance of players. Everyone may read it.
@@ -935,6 +937,74 @@ pub struct Road {
     pub walked: Seconds,
 }
 row!(Road in road, by player);
+
+/// A player entered in the Lists: their place in its standing (1 the
+/// first), the commander their band stands under (0 for none), and when
+/// they last set it. For all to read. Keyed by player.
+#[spacetimedb::table(accessor = entrant, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Entrant {
+    #[primary_key]
+    pub player: u64,
+    #[index(btree)]
+    pub place: u64,
+    pub leader: u64,
+    pub set_at: Seconds,
+}
+row!(Entrant in entrant, by player, place);
+
+/// Soldiers of one kind and tier in a player's band in the Lists, as they
+/// set it. For all to read, so a challenger sees whom they face. Keyed by
+/// player, kind and tier (`Guard::key`).
+#[spacetimedb::table(accessor = guard, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Guard {
+    #[primary_key]
+    pub key: u64,
+    #[index(btree)]
+    pub player: u64,
+    pub kind: u8,
+    pub tier: u32,
+    pub count: u64,
+}
+row!(Guard in guard, by key, player);
+
+impl Guard {
+    pub fn key(player: u64, kind: u8, tier: u32) -> u64 {
+        player << 16 | (kind as u64) << 8 | tier as u64
+    }
+}
+
+/// What the Lists' purse gives each day to the places from `first` to
+/// `last`. For all to read. Keyed by number, from 1.
+#[spacetimedb::table(accessor = purse, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Purse {
+    #[primary_key]
+    pub id: u64,
+    pub first: u64,
+    pub last: u64,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub honour: u64,
+}
+row!(Purse in purse, by id);
+
+/// A player's day in the Lists: the day of the realm, how many challenges
+/// they have made in it, and the day after the last they claimed the
+/// purse on (0 for never). Theirs alone to read, through `my_tilt`. Keyed
+/// by player.
+#[spacetimedb::table(accessor = tilt)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Tilt {
+    #[primary_key]
+    pub player: u64,
+    pub day: u64,
+    pub tries: u64,
+    pub claimed: u64,
+}
+row!(Tilt in tilt, by player);
 
 /// One of the realm's milestones: the feat it counts (`catalog::Feat`),
 /// how many of it reach it and how many the realm has done, when it was
@@ -1816,6 +1886,10 @@ pub trait Db:
     + Table<Welcome>
     + Table<Stage>
     + Table<Road>
+    + Table<Entrant>
+    + Table<Guard>
+    + Table<Purse>
+    + Table<Tilt>
     + Table<Gear>
     + Table<Pattern>
     + Table<Lore>
@@ -1900,6 +1974,10 @@ impl<
             + Table<Welcome>
             + Table<Stage>
             + Table<Road>
+            + Table<Entrant>
+            + Table<Guard>
+            + Table<Purse>
+            + Table<Tilt>
             + Table<Gear>
             + Table<Pattern>
             + Table<Lore>

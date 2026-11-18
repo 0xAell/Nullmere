@@ -2194,3 +2194,35 @@ pub fn road_gives(stage: u64) -> (Goods, Option<(Item, u64)>) {
     };
     (goods, item)
 }
+
+/// How many challenges a player makes in the Lists each day of the realm.
+pub const LISTS_TRIES: u64 = 5;
+
+/// How many places above their own a player may challenge in the Lists.
+pub const LISTS_REACH: u64 = 10;
+
+/// The most soldiers a player's band in the Lists holds, by their Keep's
+/// level.
+pub fn lists_most(keep: u32) -> u64 {
+    200 * keep.max(1) as u64
+}
+
+/// What the Lists' purse gives each day of the realm, by place: the first
+/// and last place of each part of the standing, and the goods and honour
+/// it gives.
+pub fn lists_purses() -> [(u64, u64, Goods, u64); 5] {
+    [
+        (1, 1, Goods::of(30_000, 30_000, 30_000, 0), 300),
+        (2, 3, Goods::of(20_000, 20_000, 20_000, 0), 200),
+        (4, 10, Goods::of(12_000, 12_000, 12_000, 0), 120),
+        (11, 50, Goods::of(6_000, 6_000, 6_000, 0), 60),
+        (51, u64::MAX, Goods::of(2_000, 2_000, 2_000, 0), 20),
+    ]
+}
+
+/// The purse of a place in the Lists.
+pub fn lists_purse(place: u64) -> (Goods, u64) {
+    let purses = lists_purses();
+    let (_, _, goods, honour) = purses.iter().copied().find(|(first, last, _, _)| (*first..=*last).contains(&place)).unwrap_or(purses[4]);
+    (goods, honour)
+}

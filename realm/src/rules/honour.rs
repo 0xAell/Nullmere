@@ -99,6 +99,13 @@ pub(super) fn honoured_for_rally(db: &mut impl Db, player: u64, level: u32) {
     keep(db, row);
 }
 
+/// A player claimed the Lists' purse: so much honour with it.
+pub(super) fn honoured_for_lists(db: &mut impl Db, player: u64, honour: u64) {
+    let mut row = honour_of(db, player);
+    row.honour += honour;
+    keep(db, row);
+}
+
 /// The honour one of a thing costs in the stores, if they sell it.
 pub fn price_of(item: Item) -> Option<u64> {
     PRICES.iter().find(|(sold, _)| *sold == item).map(|(_, honour)| *honour)

@@ -543,6 +543,19 @@ check("spearmen led by a commander best its riders, and none of them are lost",
 check("how far they have come is theirs alone to read", ([r["cleared"] for r in rows(bryn, "SELECT * FROM my_road")], isinstance(rows(bryn, "SELECT * FROM road"), str)), ([1], True))
 check("and they rest before walking it again", str(call(bryn, "walk_road", [{"kind": 1, "tier": 1, "count": 36}], 0)).startswith("Your soldiers rest from the road another "), True)
 
+# The Lists: a band set enters its player at the foot of the standing, for all to read; challenges only of those in it; the day's purse claimed once.
+check("the Lists' five purses are for all to read", [(p["first"], p["grain"], p["honour"]) for p in sorted(rows(nobody, "SELECT * FROM purse"), key=lambda p: p["id"])],
+      [(1, 30_000, 300), (2, 20_000, 200), (4, 12_000, 120), (11, 6_000, 60), (51, 2_000, 20)])
+check("one not in the Lists challenges no one", call(ada, "challenge", 2), "Enter the Lists first: set your band.")
+check("a band set enters its player first, the only one in the standing",
+      (call(bryn, "enter_lists", [{"kind": 1, "tier": 1, "count": 10}], 0), [(e["player"], e["place"]) for e in rows(nobody, "SELECT * FROM entrant")],
+       [(g["player"], g["kind"], g["tier"], g["count"]) for g in rows(nobody, "SELECT * FROM guard")]), (None, [(2, 1)], [(2, 1, 1, 10)]))
+check("and no one is challenged who is not in it", call(bryn, "challenge", 1), "They are not in the Lists.")
+check("the purse of the first place is claimed", call(bryn, "claim_purse"), None)
+check("once a day, and the day is its player's alone to read",
+      (call(bryn, "claim_purse"), [t["tries"] for t in rows(bryn, "SELECT * FROM my_tilt")], isinstance(rows(bryn, "SELECT * FROM tilt"), str)),
+      ("You have claimed today's purse. Come again tomorrow.", [0], True))
+
 # A player leaves the realm for good, their own name typed to be sure.
 leaver = someone()
 check("a player who would leave", call(leaver, "join", "Lea Leaving"), None)

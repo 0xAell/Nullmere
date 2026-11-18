@@ -719,6 +719,69 @@ public struct LiveRoad: Equatable, Sendable {
     }
 }
 
+/// A player entered in the Lists: their place in its standing (1 the
+/// first), and the commander their band stands under (0 for none).
+public struct LiveEntrant: Equatable, Sendable, Identifiable {
+    public let player: UInt64
+    public let place: UInt64
+    public let leader: UInt64
+    public var id: UInt64 { player }
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let player = cells.unsigned(0), let place = cells.unsigned(1), let leader = cells.unsigned(2) else { return nil }
+        (self.player, self.place, self.leader) = (player, place, leader)
+    }
+}
+
+/// Soldiers of one kind and tier in a player's band in the Lists.
+public struct LiveGuard: Equatable, Sendable {
+    public let player: UInt64
+    public let kind: Int
+    public let tier: Int
+    public let count: UInt64
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let player = cells.unsigned(1), let kind = cells.whole(2), let tier = cells.whole(3), let count = cells.unsigned(4) else { return nil }
+        (self.player, self.kind, self.tier, self.count) = (player, kind, tier, count)
+    }
+}
+
+/// What the Lists' purse gives each day to the places from `first` to
+/// `last`.
+public struct LivePurse: Equatable, Sendable {
+    public let first: UInt64
+    public let last: UInt64
+    public let gives: LiveGoods
+    public let honour: UInt64
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let first = cells.unsigned(1), let last = cells.unsigned(2), let grain = cells.unsigned(3), let timber = cells.unsigned(4),
+              let stone = cells.unsigned(5), let honour = cells.unsigned(6) else { return nil }
+        (self.first, self.last, self.gives, self.honour) = (first, last, LiveGoods(grain: grain, timber: timber, stone: stone), honour)
+    }
+}
+
+/// The player's day in the Lists: the day of the realm, the challenges
+/// made in it, and the day after the last they claimed the purse on.
+public struct LiveTilt: Equatable, Sendable {
+    public let day: UInt64
+    public let tries: UInt64
+    public let claimed: UInt64
+
+    public init(day: UInt64, tries: UInt64, claimed: UInt64) {
+        (self.day, self.tries, self.claimed) = (day, tries, claimed)
+    }
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let day = cells.unsigned(1), let tries = cells.unsigned(2), let claimed = cells.unsigned(3) else { return nil }
+        (self.day, self.tries, self.claimed) = (day, tries, claimed)
+    }
+}
+
 /// One of the realm's milestones: how many of a feat of every player's
 /// reach it and how many the realm has done, when it was reached (0 while
 /// it is not), its words, and what each player may claim once it is.

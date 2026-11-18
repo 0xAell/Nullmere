@@ -46,6 +46,11 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case claimWelcome
         /// Walk the next stage of the Barrow Road.
         case walkRoad
+        /// Set the player's band in the Lists, challenge one above them,
+        /// and claim the day's purse.
+        case enterLists
+        case challenge(UInt64)
+        case claimPurse
     }
 
     public let title: String
@@ -194,6 +199,18 @@ extension LiveSession {
         if let stage = world.nextStage, world.roadRests(at: seconds) == 0, !world.roadArmy(for: stage).isEmpty {
             all.append(LiveCommand(title: "Walk the Barrow Road: stage \(stage.id) of \(world.stages.count), against \(world.host(of: stage))", act: .walkRoad))
         }
+        if !world.listsBand.isEmpty {
+            all.append(LiveCommand(title: world.myEntry == nil ? "Enter the Lists with your best soldiers" : "Set your band in the Lists anew", act: .enterLists))
+        }
+        if world.challengesLeft(at: seconds) > 0 {
+            for entrant in world.challengeable {
+                let name = world.shownName(of: entrant.player) ?? "Player \(entrant.player)"
+                all.append(LiveCommand(title: "Challenge \(name), \(LiveWords.ordinal(Int(entrant.place))) in the Lists", act: .challenge(entrant.player)))
+            }
+        }
+        if world.purseWaits(at: seconds), let place = world.myEntry?.place, let words = world.purseWords(of: place) {
+            all.append(LiveCommand(title: "Claim the Lists' purse for the \(LiveWords.ordinal(Int(place))) place: \(words)", act: .claimPurse))
+        }
         for milestone in world.milestonesToClaim {
             all.append(LiveCommand(title: "Claim what the realm's milestone gave: \(milestone.words)", act: .claimMilestone(milestone.id)))
         }
@@ -316,6 +333,9 @@ extension LiveSession {
         case .claimMilestone(let milestone): await claimMilestone(milestone)
         case .claimWelcome: await claimWelcome()
         case .walkRoad: await walkRoad()
+        case .enterLists: await enterLists()
+        case .challenge(let opponent): await challenge(opponent)
+        case .claimPurse: await claimPurse()
         }
         return nil
     }

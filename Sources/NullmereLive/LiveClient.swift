@@ -374,6 +374,17 @@ public final class LiveClient: @unchecked Sendable {
         try await ask("walk_road", [records(soldiers), .integer(leader)])
     }
 
+    /// Sets the player's band in the Lists, entering them if they were not.
+    public func enterLists(soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
+        try await ask("enter_lists", [records(soldiers), .integer(leader)])
+    }
+
+    /// Challenges another player above the player in the Lists.
+    public func challenge(_ opponent: UInt64) async throws { try await ask("challenge", [.integer(opponent)]) }
+
+    /// Claims what the Lists' purse gives the player's place today.
+    public func claimPurse() async throws { try await ask("claim_purse", []) }
+
     /// Claims what a milestone the realm has reached gives.
     public func claimMilestone(_ milestone: UInt64) async throws { try await ask("claim_milestone", [.integer(milestone)]) }
 

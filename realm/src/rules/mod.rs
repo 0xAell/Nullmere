@@ -35,6 +35,7 @@ mod petitions;
 mod prisoners;
 mod rally;
 mod road;
+mod lists;
 mod shun;
 mod siege;
 mod spire;
@@ -75,6 +76,7 @@ pub use petitions::*;
 pub use prisoners::*;
 pub use rally::*;
 pub use road::*;
+pub use lists::*;
 pub use shun::*;
 pub use siege::*;
 pub use spire::*;
@@ -315,6 +317,13 @@ pub enum Refusal {
     RoadWalked,
     RoadResting(i64),
     RoadNarrow(u64),
+    BandTooBig(u64),
+    NotInTheLists,
+    NoSuchEntrant,
+    NotAbove,
+    TooFarAbove(u64),
+    NoChallengesLeft(u64),
+    PurseClaimed,
     ShutOutAlready,
     NotShutOut,
     /// A player shuts out so many others at most.
@@ -456,6 +465,9 @@ impl fmt::Display for Refusal {
             Refusal::RallyTooStrong(level) => return write!(f, "A rally of yours may go against a barrow of level {level} at most."),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
             Refusal::RoadResting(left) => return write!(f, "Your soldiers rest from the road another {}.", crate::catalog::spoken(*left)),
+            Refusal::BandTooBig(most) => return write!(f, "Your band holds no more than {} soldiers. Raise your Keep for more.", crate::catalog::grouped(*most)),
+            Refusal::TooFarAbove(reach) => return write!(f, "You may challenge only those up to {reach} places above you."),
+            Refusal::NoChallengesLeft(tries) => return write!(f, "You have made all {tries} of today's challenges. Come again tomorrow."),
             Refusal::RoadNarrow(most) => return write!(f, "The road is narrow there: no more than {} soldiers may go.", crate::catalog::grouped(*most)),
             Refusal::AtPeaceLonger(left) => return write!(f, "Your city is at peace for another {} already.", crate::catalog::spoken(*left)),
             Refusal::TooManyReports(most) => return write!(f, "You have {most} reports waiting already. Wait for the realm's owner to read them."),
@@ -604,6 +616,10 @@ impl fmt::Display for Refusal {
             Refusal::MilestoneClaimed => "You have claimed what that milestone gave.",
             Refusal::WelcomeClaimed => "You have claimed today's welcome. Come again tomorrow.",
             Refusal::RoadWalked => "You have walked the whole of the Barrow Road.",
+            Refusal::NotInTheLists => "Enter the Lists first: set your band.",
+            Refusal::NoSuchEntrant => "They are not in the Lists.",
+            Refusal::NotAbove => "Challenge one above you in the Lists.",
+            Refusal::PurseClaimed => "You have claimed today's purse. Come again tomorrow.",
             Refusal::ShutOutAlready => "You have shut them out already.",
             Refusal::NotShutOut => "You haven't shut them out.",
             Refusal::NoSuchLetter => "There is no such letter of yours.",
