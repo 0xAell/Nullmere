@@ -68,7 +68,7 @@ front. Press it for the popup:
 | **Runs scriptlets** | 30 filters name a site where a short script of Stillwater's own is to run in its pages, in the page's own world and before the site's scripts: most stop the script of an anti-adblock wall (Admiral's, on many news sites), others give a property a value the page can't change, take a script out before it runs, take a part out of what the page reads as JSON, or answer a tracker's request without sending it. Eleven kinds, written for Stillwater under the names the lists use. Only on the sites a filter names, never on a site let through, and none while paused. |
 | **Hides ad slots** | 30,975 selectors. A site's own are applied as its pages begin. The 13,637 generic ones are not thrown at every page: a content script tells the extension which classes and ids a page has, and only the selectors that could match are added. They are added as the user's own style, so a page's `!important` can't undo them. A list's exception turns hiding off for a site, or for part of one by its address (a search engine's results, a router's own pages). |
 | **Follows worded filters** | 295 filters pick an element by the words in it (*hide the card whose label says Sponsored*), by an XPath expression, by the declarations the page's own style sheets give it, or by a `:has()` within a `:has()` (*the article whose header holds a sponsor's mark*), which CSS refuses. No style sheet can; the content script follows them as short plans. A style sheet from another site can't be read by any extension, so what only it gives is not seen. |
-| **Closes pop-up ads** | 2,977 filters name the addresses of pop-up ads. A tab or window a page opens to one is closed: at once if it is opened straight there, or as it gets there if it is opened empty or by way of another address. A tab you open yourself (a new tab, a bookmark, an address you type) is never touched. |
+| **Closes pop-up ads** | 2,977 filters name the addresses of pop-up ads. A tab or window a page opens to one is closed: at once if it is opened straight there, or as it gets there if it is opened empty or by way of another address. A page that sends its own tab to one as it opens another has that tab put back on it. A tab you open yourself (a new tab, a bookmark, an address you type) is never touched. |
 | **Lets sites through** | Per site, from the popup or the options page, subdomains included. |
 | **Picks an element to hide** | From the popup, *Hide an element*: point at something on the page and click it, and Stillwater offers a few ways of naming it (by its id, its classes, where it stands), each with how many elements on the page it names, the chosen one outlined; *Wider* chooses what holds it. *Hide it* keeps the way chosen as one of your own filters for the site and hides it at once. Escape stops, and keeps nothing. |
 | **Takes your own filters** | Written on the options page, one to a line, in the lists' own syntax, and read by the same reader the build uses, so a line of your own blocks, hides or lets through as the same line in EasyList would. Each line not taken is listed with why: a scriptlet of your own can't be run (Chrome runs only the extension's own scripts), and pop-up filters of your own aren't followed. A selector this browser can't read is said to do nothing, and is kept in a style rule of its own so it takes no other with it. |
@@ -189,9 +189,11 @@ it first shows a page, is taken for the page's doing, since Chrome does
 not say whether a person pressed something. After that a link you press
 in it is yours, and so is anywhere you go by the address bar. A link you
 click yourself that opens a new tab to one of these addresses is closed
-too, as it is by other blockers using these lists. An ad that takes over the tab
-you were in, having moved the page you wanted into a new one, is not
-caught.
+too, as it is by other blockers using these lists. A page that opens what
+you asked for in a new tab and, within three seconds, sends the tab you
+were in to one of these addresses (a "tab-under") has that tab put back on
+the page it was showing: loaded afresh, so where you had scrolled to and
+anything typed into it are not kept, and the ad's first request has left.
 
 **YouTube is the hardest, and only part of it is verified against YouTube.**
 Its ads come from the same hosts as its videos, so no rule can block
@@ -265,7 +267,7 @@ history of either.
 | `declarativeNetRequest` | The rules that block requests. |
 | `declarativeNetRequestFeedback` | Reading Chrome's count of what it blocked on a tab, for the popup. |
 | `storage` | The sites let through and the switches. Kept on this computer. |
-| `webNavigation` | Being told when a page opens a tab or window, and where it goes in its first seconds, so a pop-up ad can be closed. |
+| `webNavigation` | Being told when a page opens a tab or window, and where it and the page's own tab go in the first seconds, so a pop-up ad can be closed, or the page's tab put back. |
 | `scripting` | Adding the style that hides ad slots to a page; registering the two YouTube scripts only while their switch is on; registering each scriptlet for the sites its filter names, while its list is on; and putting the element picker into the page in front, only when you ask for it from the popup. |
 | Access to all sites | The content script that reports a page's classes and ids and follows the worded filters. It reads class names, ids, and for worded filters the text of the elements a list points at; none of it leaves the browser. |
 

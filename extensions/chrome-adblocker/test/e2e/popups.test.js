@@ -1,6 +1,7 @@
 // Pop-ups, in a real Chromium with the small list of test/e2e/lists: a
 // tab a page opens to an address the list names as a pop-up is closed,
-// however it gets there, and every other tab is left alone.
+// however it gets there, and every other tab is left alone; and a page's
+// own tab it sends to one as it opens another is put back on the page.
 
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -146,6 +147,40 @@ test('a tab the person opens for themselves is theirs, whatever its address', as
   assert.equal(again.isClosed(), false, 'a link pressed in it is the person\'s doing');
   await again.close();
   await opener.close();
+});
+
+test('a page that opens a tab and sends its own to a pop-up address has its own tab put back on it', async () => {
+  const article = server.url('plain.test', '/read');
+  const ad = server.url('popup-only.test', '/under');
+  // As a tab-under does: what was asked for opened in a new tab, and the
+  // page's own tab sent to an ad a moment after.
+  const sending = (to) => `<a id="go" target="_blank" href="${article}" onclick="setTimeout(() => { location.href = '${to}'; }, 50)">read on</a>`;
+  server.page('news.test', '/under', `<!doctype html><title>under</title><body>${sending(ad)}</body>`);
+  const under = server.url('news.test', '/under');
+  const { page } = await open(browser.context, under);
+  const made = browser.context.waitForEvent('page');
+  await click(page);
+  const opened = await made;
+  await until(() => server.reached('popup-only.test', '/under'), 'the page to send its own tab to the ad');
+  await until(async () => page.url() === under && !(await tabs()).some((tab) => tab.url.startsWith(ad)), 'its own tab, put back on the page');
+  await opened.waitForLoadState();
+  assert.equal(opened.url(), article, 'what was asked for, kept in its new tab');
+  assert.equal(await page.title(), 'under');
+  await opened.close();
+
+  // One that sends its own tab anywhere else is left where it went.
+  const next = server.url('plain.test', '/next');
+  server.page('news.test', '/onward', `<!doctype html><title>onward</title><body>${sending(next)}</body>`);
+  const { page: onward } = await open(browser.context, server.url('news.test', '/onward'));
+  const other = browser.context.waitForEvent('page');
+  await click(onward);
+  const second = await other;
+  await onward.waitForURL(next);
+  await onward.waitForTimeout(500);
+  assert.equal(onward.url(), next, 'left where its page sent it');
+  await second.close();
+  await onward.close();
+  await page.close();
 });
 
 test('with a list switched off its pop-ups are no longer closed', async () => {

@@ -365,6 +365,7 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener(async (details) => {
   const opener = hostOf(source?.url);
   if (!opener) return;
   opened.set(details.tabId, { opener, since: Date.now(), settled: false, shown: 0 });
+  openers.set(details.sourceTabId, { opener, page: source.url, since: Date.now() });
   // The address a page opens a tab to is the page's doing. Wherever the
   // tab goes after that is judged as it arrives, when Chrome says how it
   // came to go there: an address typed into a tab still empty is not.
@@ -404,8 +405,39 @@ chrome.webNavigation.onCommitted.addListener((details) => {
   judge(details.tabId, details.url);
 });
 
+// A page that opens what was asked for in a new tab and sends its own tab
+// to an ad (a "tab-under"): the tab it sends there is put back on the page
+// it was showing, so the ad is gone and the person has both: the page they
+// were on, and what they asked for in the new tab.
+
+/** How long after a page opens a tab its own tab going to a pop-up address is taken for that. */
+const UNDER = 3_000;
+/** Tabs whose pages have just opened another: tab id to { opener: the page's host, page: its address, since }. */
+const openers = new Map();
+
+chrome.webNavigation.onCommitted.addListener((details) => {
+  const source = openers.get(details.tabId);
+  if (details.frameId !== 0 || !source) return;
+  const how = details.transitionQualifiers;
+  if (BY_HAND.has(details.transitionType) || how.includes('from_address_bar') || how.includes('forward_back') || Date.now() - source.since > UNDER) {
+    openers.delete(details.tabId);
+    return;
+  }
+  takeBack(details.tabId, details.url, source).catch(() => {});
+});
+
+/** Puts a tab its page sent to a pop-up address back on that page. A failure here changes nothing. */
+async function takeBack(tabId, url, source) {
+  const settings = await readSettings();
+  if (settings.paused || !settings.popups || isAllowed(settings.allowlist, source.opener)) return;
+  if (!(await popupIndex()).closes(url, source.opener)) return;
+  openers.delete(tabId);
+  await chrome.tabs.update(tabId, { url: source.page });
+}
+
 chrome.tabs.onRemoved.addListener((tabId) => {
   opened.delete(tabId);
+  openers.delete(tabId);
 });
 
 // ---------------------------------------------------------------------------
