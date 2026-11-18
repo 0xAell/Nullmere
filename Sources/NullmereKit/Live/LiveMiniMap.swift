@@ -4,8 +4,10 @@ import NullmereLiveStage
 import SwiftUI
 
 /// The whole realm small, in the corner: its grounds, every city on it
-/// (the player's own brightest, an ally's green), and a ring where the
-/// view looks; a click anywhere on it looks there.
+/// (the player's own brightest, an ally's green), the holy sites as small
+/// diamonds (the player's alliance's green, another's grey, the Unquiet's
+/// dark), and a ring where the view looks; a click anywhere on it looks
+/// there.
 struct LiveMiniMap: View {
     let session: LiveSession
 
@@ -29,6 +31,17 @@ struct LiveMiniMap: View {
                         let r: CGFloat = own ? 3 : (ally ? 2.5 : 1.5)
                         let dot = CGRect(x: at.u * size.width - r, y: at.v * size.height - r, width: 2 * r, height: 2 * r)
                         context.fill(Path(ellipseIn: dot), with: .color(own ? .white : (ally ? Palette.good : Color(white: 0.75))))
+                    }
+                    let alliance = world.myMembership?.alliance
+                    for shrine in world.shrines.values {
+                        let at = map.place(of: shrine.hex)
+                        let (x, y) = (at.u * size.width, at.v * size.height)
+                        var diamond = Path()
+                        diamond.addLines([CGPoint(x: x, y: y - 3), CGPoint(x: x + 3, y: y), CGPoint(x: x, y: y + 3), CGPoint(x: x - 3, y: y)])
+                        diamond.closeSubpath()
+                        let ours = shrine.holder != 0 && shrine.holder == alliance
+                        context.fill(diamond, with: .color(ours ? Palette.good : (shrine.holder == 0 ? Color(white: 0.2) : Color(white: 0.75))))
+                        context.stroke(diamond, with: .color(.white.opacity(0.7)), lineWidth: 0.5)
                     }
                     let ring = CGRect(x: look.u * size.width - 7, y: look.v * size.height - 7, width: 14, height: 14)
                     context.stroke(Path(ellipseIn: ring), with: .color(.white.opacity(0.9)), lineWidth: 1)
