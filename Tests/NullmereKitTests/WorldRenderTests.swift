@@ -3,6 +3,8 @@ import ImageIO
 import Metal
 @testable import NullmereKit
 import NullmereLand
+import NullmereLive
+import NullmereLiveStage
 import NullmereModels
 import NullmereRealm
 import NullmereTestSupport
@@ -413,6 +415,50 @@ final class WorldRenderTests: XCTestCase {
         let day = try draw(renderer, "ridge", camera: camera, tiles: world.whole, daylight: .day)
         try keep([day], as: "world-ridge")
         print("RENDER ridge: the highest hex, \(peak), at \(world.relief.height(of: peak))")
+    }
+
+    /// A load of carts on the road from Ada's city to the grove, staged
+    /// from the realm's rows as the play view stages them and drawn by
+    /// day at the view's opening zoom, then closer: a carter with a
+    /// handcart, where the same march as an army is drawn as spearmen.
+    /// Kept as live-carts (plan 2.13), carts being drawn on Metal nowhere
+    /// else: no picture of the app's has carts on the road.
+    @MainActor
+    func testALoadOfCartsIsDrawnOnTheRoadByDay() async throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
+        let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
+        let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
+        renderer.setHouses(LiveSession.palette)
+        let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
+        func drawn(_ name: String, kind: Int, scale: Double) async throws -> Drawn {
+            var rows = LiveSample.rows()
+            // Ada's army on its way to the grove, made what is asked.
+            rows["march"] = rows["march"]?.map { row in row[0] == .number(3) ? Array(row[0..<3]) + [.number(Double(kind))] + Array(row[4...]) : row }
+            let session = LiveSession(line: StandInLine(rows: rows)) { 2_015 }
+            await session.open()
+            // Five-eighths of its way gone, between the way's third hex and its fourth.
+            session.go(to: LiveHex(q: 11, r: -3))
+            var camera = session.camera
+            camera.scale = scale
+            session.moved(camera)
+            let land = try XCTUnwrap(session.land(), "\(name): the window's land")
+            try renderer.setLand(land.terrain, for: land.map)
+            try renderer.updateTiles(try XCTUnwrap(session.tiles()), side: TileTexture.side(for: land.map))
+            let scene = session.frame(time: 20, size: WorldRenderTests.size)
+            var frame = FrameUniforms.make(camera: session.camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: 20, motion: 1,
+                                           radius: land.map.radius, terrain: land.terrain, hovered: nil, selected: nil, daylight: .day)
+            frame.light(with: PointLight.strongest(scene.lights, near: session.camera.focus))
+            let pixels = try XCTUnwrap(renderer.pixels(frame, scene: scene, into: target), "\(name) drawn")
+            return Drawn(name: name, pixels: pixels, camera: session.camera)
+        }
+        let carts = try await drawn("carts", kind: LiveMarch.carts, scale: LiveSession.openingScale)
+        let army = try await drawn("army", kind: LiveMarch.gather, scale: LiveSession.openingScale)
+        let close = try await drawn("carts close", kind: LiveMarch.carts, scale: 2 * LiveSession.openingScale)
+        try keep([carts, army, close], as: "live-carts")
+        let differ = WorldRenderTests.changed(carts, army)
+        print("RENDER carts: \(differ) of the grid's points differ from the same march drawn as an army")
+        XCTAssertGreaterThan(differ, 10, "The carts are not drawn as the army is")
+        XCTAssertLessThan(differ, WorldRenderTests.width * WorldRenderTests.height / 40, "but in the same land: only the marchers differ")
     }
 
     /// The world's day: the same land about the keeper's seat at noon, at
