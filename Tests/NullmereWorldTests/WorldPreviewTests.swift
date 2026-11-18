@@ -83,7 +83,7 @@ final class WorldPreviewTests: XCTestCase {
         let companies = stage.companies(poses, houses: houses, into: &frame)
         let lake = Relief.centre(of: Hex(0, 0))
         let flights = WorldStage.flights(arrows: [], birdsOver: Vec3(lake.x, 0, lake.z), hearths: hearths, time: 20, into: &frame)
-        frame.fixed = stage.furnish(occupied: Set(poses.map(\.hex)), holds: Set(world.holds.map(\.position)))
+        frame.fixed = stage.furnish(occupied: Set(poses.map(\.hex)), holds: Set(world.holds.map(\.position)), grounds: stage.grounds(of: sights))
         // The fishers out on the lake, their lanterns on the water, as the
         // game stages them.
         let fishers = stage.boats(about: Vec3(lake.x, Relief.waterline, lake.z), time: 20, into: &frame)
