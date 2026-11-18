@@ -3,7 +3,9 @@ name: Models
 # Every model of the world made again in Blender, each from its script in
 # Art/blender, with Blender's own Python module (plan 5.1): what it made, and
 # how each compares with the model committed, kept on the ci-shots branch in
-# a folder of the run's own (models-<run>). Run by hand, or when a model's
+# a folder of the run's own (models-<run>); then drawn as the game takes
+# them, the holds, the works and the figures on sheets by day, as
+# Tools/model-preview draws them, kept beside them. Run by hand, or when a model's
 # script changes on main. Nothing is committed: what it made is fetched,
 # looked at in Tools/model-preview and committed by hand, with the Swift
 # that embeds it (scripts/build-models.sh --embed).
@@ -57,6 +59,12 @@ jobs:
       - name: Compare them with those committed
         run: python3 scripts/compare-models.py build/before Art/models | tee build/models.txt
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: models
+          path: Art/models/*.glb
+          retention-days: 3
+
       - name: Keep them on ci-shots
         if: ${{ !cancelled() }}
         env:
@@ -66,4 +74,55 @@ jobs:
         run: |
           cp Art/models/*.glb build/kept/ 2>/dev/null || true
           cp build/models.txt build/kept/ 2>/dev/null || true
+          scripts/push-ci-shots.sh build/kept
+
+  # The models just made, embedded as the game reads them, written out on
+  # sheets by the preview's own export (PreviewTests) and drawn in Chromium
+  # by Tools/model-preview: how a script's change looks, without a Mac.
+  sheets:
+    name: The models on sheets, drawn by day
+    needs: models
+    runs-on: ubuntu-24.04
+    container: swift:6.2-noble
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: models
+          path: Art/models
+
+      - name: Embed the models just made
+        run: |
+          apt-get update -qq && apt-get install -y -qq python3 nodejs npm > /dev/null
+          scripts/build-models.sh --embed
+
+      - name: Write the sheets
+        run: |
+          NULLMERE_MODEL_PREVIEW=build/sheets swift test --filter "NullmereModelsTests.PreviewTests" 2>&1 | tail -n 15
+          ls build/sheets
+
+      - name: Draw them
+        run: |
+          npm install --no-save --silent playwright@1.48.2
+          npx playwright install --with-deps chromium > /dev/null
+          mkdir -p build/kept
+          for sheet in holds works figures; do
+            node Tools/model-preview/shoot.js "build/sheets/$sheet.json" "build/kept/$sheet-day.png" "light=day"
+          done
+
+      - name: Keep them on ci-shots
+        if: ${{ !cancelled() }}
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN: models-${{ github.run_number }}
+          SHA: ${{ github.sha }}
+        run: |
+          git config --global --add safe.directory "$PWD"
           scripts/push-ci-shots.sh build/kept
