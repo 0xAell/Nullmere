@@ -647,6 +647,32 @@ public struct LiveTitle: Equatable, Sendable, Identifiable {
     }
 }
 
+/// One of the realm's milestones: how many of a feat of every player's
+/// reach it and how many the realm has done, when it was reached (0 while
+/// it is not), its words, and what each player may claim once it is.
+public struct LiveMilestone: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let feat: Int
+    public let goal: UInt64
+    public let done: UInt64
+    public let reached: Int
+    public let words: String
+    public let gives: LiveGoods
+    public let item: Int
+    public let items: UInt64
+
+    public var isReached: Bool { reached > 0 }
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let feat = cells.whole(1), let goal = cells.unsigned(2), let done = cells.unsigned(3),
+              let reached = cells.whole(4), let words = cells.text(5), let grain = cells.unsigned(6), let timber = cells.unsigned(7),
+              let stone = cells.unsigned(8), let item = cells.whole(9), let items = cells.unsigned(10) else { return nil }
+        (self.id, self.feat, self.goal, self.done, self.reached, self.words) = (id, feat, goal, done, reached, words)
+        (self.gives, self.item, self.items) = (LiveGoods(grain: grain, timber: timber, stone: stone), item, items)
+    }
+}
+
 /// A mark an officer of the player's alliance set on the map: where, what
 /// it says, who set it and when.
 public struct LiveMark: Equatable, Sendable, Identifiable {

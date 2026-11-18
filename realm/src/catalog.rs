@@ -2114,3 +2114,29 @@ pub fn spoils_of(level: u32, mut chance: impl FnMut() -> u64) -> [u64; 4] {
     }
     yielded
 }
+
+/// What the whole realm does together, counted toward its milestones.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Feat {
+    /// A city founded.
+    Founded = 1,
+    /// A barrow of the Unquiet cleared, alone or by a rally.
+    Cleared = 2,
+    /// An alliance founded.
+    Allied = 3,
+    /// A cairn of the old folk found by a player's scouts.
+    Found = 4,
+}
+
+/// The realm's milestones, by number: the feat each counts, how many of it
+/// reach it, its words, and what every player may claim once it is reached.
+pub fn milestones() -> [(u64, Feat, u64, &'static str, Goods, Item, u64); 6] {
+    [
+        (1, Feat::Founded, 50, "Fifty cities founded in the realm.", Goods::of(20_000, 20_000, 20_000, 0), Item::Haste60, 1),
+        (2, Feat::Allied, 10, "Ten alliances founded.", Goods::of(20_000, 20_000, 20_000, 0), Item::Haste60, 2),
+        (3, Feat::Cleared, 100, "A hundred barrows of the Unquiet cleared.", Goods::of(30_000, 30_000, 30_000, 0), Item::Tome, 1),
+        (4, Feat::Found, 100, "A hundred cairns of the old folk found.", Goods::of(30_000, 30_000, 30_000, 0), Item::Summons, 1),
+        (5, Feat::Founded, 200, "Two hundred cities founded in the realm.", Goods::of(50_000, 50_000, 50_000, 0), Item::Haste60, 3),
+        (6, Feat::Cleared, 1_000, "A thousand barrows of the Unquiet cleared.", Goods::of(100_000, 100_000, 100_000, 0), Item::Haste480, 1),
+    ]
+}

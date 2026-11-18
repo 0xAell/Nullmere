@@ -391,6 +391,11 @@ check("and lets back in", (call(bryn, "let_in", 1), rows(bryn, "SELECT * FROM my
 # Marks on the map: an alliance's, set by its officers; one in no alliance sets none and reads none.
 check("one in no alliance sets no mark on the map", call(ada, "set_mark", 2, -1, "Gather here"), "You are in no alliance.")
 check("and reads none, and no one reads the table itself", (rows(ada, "SELECT * FROM my_marks"), isinstance(rows(ada, "SELECT * FROM mark"), str)), ([], True))
+# The realm's milestones: six, for all to read, each counting the realm's feats; none reached yet, so none claimed.
+milestones = sorted(rows(nobody, "SELECT * FROM milestone"), key=lambda m: m["id"])
+check("the realm's six milestones are for all to read, its cities founded counted", ([m["id"] for m in milestones], milestones[0]["done"] >= 2 if milestones else False, [m["reached"] for m in milestones]), (list(range(1, 7)), True, [0] * 6))
+check("one not reached gives nothing", call(ada, "claim_milestone", 1), "The realm has not reached that milestone yet.")
+check("and what a player claimed is theirs alone to read", (rows(ada, "SELECT * FROM my_claims"), isinstance(rows(ada, "SELECT * FROM claim"), str)), ([], True))
 # The gates of the ridge: six, for all to read, held by the Unquiet as the realm opens; stormed only by an alliance's rally.
 gates = sorted(rows(nobody, "SELECT * FROM gate"), key=lambda gate: gate["id"])
 check("six gates stand in the ridge's passes, held by the Unquiet", [(gate["id"], gate["holder"], gate["fighter"]) for gate in gates], [(n, 0, 0) for n in range(1, 7)])

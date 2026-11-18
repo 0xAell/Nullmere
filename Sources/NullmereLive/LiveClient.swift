@@ -365,6 +365,9 @@ public final class LiveClient: @unchecked Sendable {
     /// Writes one letter to every other member of the player's alliance, as an officer.
     public func sendAllianceLetter(_ words: String) async throws { try await ask("send_alliance_letter", [.string(words)]) }
 
+    /// Claims what a milestone the realm has reached gives.
+    public func claimMilestone(_ milestone: UInt64) async throws { try await ask("claim_milestone", [.integer(milestone)]) }
+
     /// Sets a mark of the player's alliance on the map, as an officer.
     public func setMark(at hex: LiveHex, _ words: String) async throws {
         try await ask("set_mark", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .string(words)])

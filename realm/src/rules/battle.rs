@@ -305,6 +305,7 @@ pub(super) fn fought(db: &mut impl Db, march: &mut March) {
         keep_hunt(db, hunt);
         did(db, march.owner, Deed::Clear, 1);
         scored(db, march.owner, Contest::Hunt, 10 * barrow.level as u64);
+        super::feat_done(db, crate::catalog::Feat::Cleared);
         // And what it yields for the Forge; and a gift for every other member of the alliance.
         found = super::yielded(db, march.owner, barrow.level, barrow.id);
         super::give_boons(db, march.owner, barrow.level);
@@ -441,6 +442,7 @@ pub(super) fn fought_together(db: &mut impl Db, marches: &mut [March]) {
             scored(db, march.owner, Contest::Hunt, 10 * barrow.level as u64);
             super::honoured_for_rally(db, march.owner, barrow.level);
         }
+        super::feat_done(db, crate::catalog::Feat::Cleared);
         found = super::yielded(db, marches[0].owner, barrow.level, barrow.id);
         super::give_boons(db, marches[0].owner, barrow.level);
     } else {

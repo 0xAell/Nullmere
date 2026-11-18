@@ -117,6 +117,10 @@ public struct LiveWorld: Equatable, Sendable {
     public var shunned: Set<UInt64> = []
     /// The marks of the player's alliance on the map, the first set first.
     public var marks: [LiveMark] = []
+    /// The realm's milestones, by number, and those whose gifts the player
+    /// has claimed.
+    public var milestones: [LiveMilestone] = []
+    public var claimed: Set<UInt64> = []
     /// What the Forge makes, by piece; and the player's gear.
     public var patterns: [Int: LivePattern] = [:]
     public var gear: [LiveGear] = []
@@ -223,6 +227,8 @@ public struct LiveWorld: Equatable, Sendable {
         petitions = Dictionary(rows("my_petitions", LivePetition.init).map { ($0.asker, $0) }, uniquingKeysWith: { _, new in new })
         letters = rows("my_letters", LiveLetter.init).filter { !shut.contains($0.sender) }.sorted { $0.id > $1.id }
         marks = rows("my_marks", LiveMark.init).sorted { $0.id < $1.id }
+        milestones = rows("milestone", LiveMilestone.init).sorted { $0.id < $1.id }
+        claimed = Set((snapshot["my_claims"] ?? []).compactMap { Cells(row: $0).unsigned(2) })
         patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
         gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
         boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }
@@ -346,6 +352,19 @@ public struct LiveWorld: Equatable, Sendable {
 
     /// Whether the player is the Lord of the Mere.
     public var isLord: Bool { me.map { $0.id == lord } ?? false }
+
+    /// The milestones the realm has reached whose gifts the player has not claimed.
+    public var milestonesToClaim: [LiveMilestone] { milestones.filter { $0.isReached && !claimed.contains($0.id) } }
+
+    /// What a milestone gives each player, in words.
+    public func gifts(of milestone: LiveMilestone) -> String {
+        var parts = milestone.gives.isNone ? [] : [milestone.gives.words]
+        if milestone.items > 0, let ware = wares[milestone.item] {
+            let name = LiveWorld.inLine(ware.name)
+            parts.append(milestone.items == 1 ? name : "\(name) ×\(milestone.items)")
+        }
+        return parts.isEmpty ? "nothing" : parts.joined(separator: ", ")
+    }
 
     /// The mark of the player's alliance at a hex, if it has one there.
     public func mark(at hex: LiveHex) -> LiveMark? { marks.first { $0.hex == hex } }

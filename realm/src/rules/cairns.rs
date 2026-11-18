@@ -130,6 +130,7 @@ pub(super) fn explored(db: &mut impl Db, march: &March) {
     }
     let now = db.now();
     db.insert(Find { id: Find::key(march.owner, cairn.id), player: march.owner, cairn: cairn.id, at: now });
+    super::feat_done(db, crate::catalog::Feat::Found);
     let (hoard, items) = hoard_of(cairn.level);
     if let Ok(city) = city_of(db, march.owner) {
         if let Ok(mut stock) = settle(db, city.id) {

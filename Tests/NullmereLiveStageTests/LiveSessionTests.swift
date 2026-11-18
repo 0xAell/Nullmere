@@ -1408,6 +1408,35 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertFalse(session.commands(at: 2_015).contains { $0.act == .clearMark(3) })
     }
 
+    /// The realm's milestones: how near each stands, and the one reached
+    /// claimed from the palette, once.
+    func testTheRealmsMilestonesAreClaimedOnceReached() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["ware"] = [[n(2), .string("An hour's haste"), .string("An hour sooner."), n(3_600), n(1)]]
+        rows["milestone"] = [[n(1), n(1), n(50), n(50), n(2_000), .string("Fifty cities founded in the realm."), n(20_000), n(20_000), n(20_000), n(2), n(1)],
+                             [n(3), n(2), n(100), n(37), n(0), .string("A hundred barrows of the Unquiet cleared."), n(30_000), n(30_000), n(30_000), n(9), n(1)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        XCTAssertEqual(session.world.milestones.map(\.id), [1, 3])
+        XCTAssertEqual(session.world.milestones.map(\.isReached), [true, false])
+        XCTAssertEqual(session.world.milestones[1].done, 37)
+        XCTAssertEqual(session.world.gifts(of: session.world.milestones[0]), "20,000 grain, 20,000 timber and 20,000 stone, an hour's haste")
+        XCTAssertEqual(session.world.milestonesToClaim.map(\.id), [1])
+        let claim = try XCTUnwrap(session.commands(at: 2_015).first { $0.act == .claimMilestone(1) })
+        XCTAssertEqual(claim.title, "Claim what the realm's milestone gave: Fifty cities founded in the realm.")
+        XCTAssertFalse(session.commands(at: 2_015).contains { $0.act == .claimMilestone(3) }, "not reached")
+        _ = await session.perform(claim)
+        XCTAssertEqual(line.asked.last, "claim milestone 1")
+
+        // Claimed: none left to claim.
+        line.change { $0["my_claims"] = [[self.n(1 << 32 | 1), self.n(1), self.n(1), self.n(2_015)]] }
+        session.refresh()
+        XCTAssertEqual(session.world.claimed, [1])
+        XCTAssertTrue(session.world.milestonesToClaim.isEmpty)
+        XCTAssertFalse(session.commands(at: 2_015).contains { if case .claimMilestone = $0.act { return true } else { return false } })
+    }
+
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
         let line = StandInLine(rows: LiveWindowTests.rows())
         // Seventeen seconds along its way of twenty-four: on 11, -2.

@@ -75,6 +75,7 @@ final class LiveClientTests: XCTestCase {
         try await client.letIn(2)
         try await client.setMark(at: LiveHex(q: 3, r: -2), "Gather here")
         try await client.clearMark(3)
+        try await client.claimMilestone(2)
         // Commanders.
         try await client.hire()
         try await client.draw()
@@ -132,7 +133,7 @@ final class LiveClientTests: XCTestCase {
         let reducers = try Self.reducers()
         XCTAssertGreaterThan(reducers.count, 60, "the module's reducers are read")
         let requests = server.requests
-        XCTAssertEqual(requests.count, 80)
+        XCTAssertEqual(requests.count, 81)
         var asked: Set<String> = []
         for request in requests {
             let reducer = request.url.lastPathComponent

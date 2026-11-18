@@ -116,6 +116,9 @@ final class LiveGameTests: XCTestCase {
                             [n(2 << 24 | 1), n(1), n(2), n(1), n(0), n(90), n(1_800), .bool(false)]]
         rows["laurel"] = [[n(257), n(1), n(1), n(60_000), n(60_000), n(30_000), n(900), n(0), n(0), n(3), n(0)],
                           [n(258), n(1), n(2), n(40_000), n(40_000), n(20_000), n(600), n(0), n(0), n(2), n(0)]]
+        // The realm's milestones: fifty cities founded, reached; a hundred barrows cleared, 37 of them.
+        rows["milestone"] = [[n(1), n(1), n(50), n(50), n(2_000), .string("Fifty cities founded in the realm."), n(20_000), n(20_000), n(20_000), n(2), n(1)],
+                             [n(3), n(2), n(100), n(37), n(0), .string("A hundred barrows of the Unquiet cleared."), n(30_000), n(30_000), n(30_000), n(9), n(1)]]
         // A code asked for to link her phone, good until 2,600.
         rows["my_link"] = [[n(77), n(1), .string("ABCDE23456"), n(2_600)]]
         // Her devices: this Mac, and the phone she linked, away.
@@ -392,7 +395,14 @@ final class LiveGameTests: XCTestCase {
         }
         // Today's part whole, down to the satchel: two crates to open, and what her favour does.
         XCTAssertEqual(session.world.favourWords, "Level 1: every work done a hundredth sooner.")
-        XCTAssertGreaterThan(try drawn(whole(.day, of: session).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 1_400, as: "live-satchel.png"), 800)
+        XCTAssertGreaterThan(try drawn(whole(.day, of: session).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 1_800, as: "live-satchel.png"), 800)
+        // The realm's milestones there too, how near each stands: the one reached claimed from it.
+        let (claiming, claimingLine) = await playing()
+        await held(whole(.day, of: claiming).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.press("Claim what the realm's milestone gave: Fifty cities founded in the realm."),
+                          "Among \(PressableButtons.actions.keys.sorted())")
+        }
+        XCTAssertEqual(claimingLine.asked.last, "claim milestone 1")
         // And with nothing in them: no soldiers yet, no reports yet.
         let (empty, _) = await playing(LiveSample.rows())
         for side in [LiveGameView.Panel.troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
@@ -840,8 +850,10 @@ final class LiveGameTests: XCTestCase {
         later["my_tallies"] = [[n(5), n(1), n(1), n(0), n(120), n(1)]]
         later["ware"]?.append([n(11), .string("Summons to the Tavern"), .string("Taken to your Tavern."), n(0), n(5)])
         later["my_satchel"]?.append([n(1 << 8 | 11), n(1), n(11), n(1)])
+        later["my_claims"] = [[n(1 << 32 | 1), n(1), n(1), n(2_010)]]
         let (session, _) = await playing(later)
         XCTAssertEqual(session.world.daily?.hasOpened(1), true)
+        XCTAssertTrue(session.world.milestonesToClaim.isEmpty, "the milestone reached, claimed")
         XCTAssertEqual(session.world.summonses, 1)
         for part in [LiveGameView.Panel.day, .realm] {
             XCTAssertGreaterThan(try drawn(whole(part, of: session).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800, "\(part)")

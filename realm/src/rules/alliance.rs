@@ -76,6 +76,7 @@ pub fn found_alliance(db: &mut impl Db, player: u64, name: &str, tag: &str) -> R
     });
     Table::<Applicant>::delete(db, player);
     db.insert(Member { player, alliance: alliance.id, rank: Member::LEADER, joined: now });
+    super::feat_done(db, catalog::Feat::Allied);
     Ok(alliance)
 }
 

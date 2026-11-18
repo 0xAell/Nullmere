@@ -41,6 +41,8 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         /// Mark a hex for the player's alliance with words, or clear a mark.
         case setMark(LiveHex, String)
         case clearMark(UInt64)
+        /// Claim what a milestone the realm reached gives.
+        case claimMilestone(UInt64)
     }
 
     public let title: String
@@ -182,6 +184,9 @@ extension LiveSession {
             guard let laurel = world.laurelToClaim(of: trial, day: day) else { continue }
             all.append(LiveCommand(title: "Claim what your place in \(trial.name) gave: \(LiveWords.ordinal(laurel.place))", act: .claimPlace(contest: trial.id)))
         }
+        for milestone in world.milestonesToClaim {
+            all.append(LiveCommand(title: "Claim what the realm's milestone gave: \(milestone.words)", act: .claimMilestone(milestone.id)))
+        }
         // The alliance's marks, to go to; an officer's to set where is
         // chosen, saying what is there, or to clear there.
         for mark in world.marks {
@@ -298,6 +303,7 @@ extension LiveSession {
         case .openCrates(let item, let count): await openCrates(item, count: count)
         case .setMark(let hex, let words): await setMark(at: hex, words)
         case .clearMark(let mark): await clearMark(mark)
+        case .claimMilestone(let milestone): await claimMilestone(milestone)
         }
         return nil
     }

@@ -885,6 +885,48 @@ pub struct Letter {
 }
 row!(Letter in letter, auto, by id, sender, receiver);
 
+/// One of the realm's milestones: the feat it counts (`catalog::Feat`),
+/// how many of it reach it and how many the realm has done, when it was
+/// reached (0 while it is not), its words, and what every player may
+/// claim once it is. For all to read. Keyed by number.
+#[spacetimedb::table(accessor = milestone, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Milestone {
+    #[primary_key]
+    pub id: u64,
+    pub feat: u8,
+    pub goal: u64,
+    pub done: u64,
+    pub reached: Seconds,
+    pub words: String,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub item: u8,
+    pub items: u64,
+}
+row!(Milestone in milestone, by id);
+
+/// A player's claim of what a milestone of the realm gave: theirs alone to
+/// read, through `my_claims`. Keyed by the two (`Claim::key`).
+#[spacetimedb::table(accessor = claim)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Claim {
+    #[primary_key]
+    pub key: u64,
+    #[index(btree)]
+    pub player: u64,
+    pub milestone: u64,
+    pub at: Seconds,
+}
+row!(Claim in claim, by key, player);
+
+impl Claim {
+    pub fn key(player: u64, milestone: u64) -> u64 {
+        (player << 32) | milestone
+    }
+}
+
 /// A mark an officer set on the map for their alliance: where, what it
 /// says, who set it and when. Its alliance's alone to read, through
 /// `my_marks`. Keyed by number.
@@ -1718,6 +1760,8 @@ pub trait Db:
     + Table<Letter>
     + Table<Shun>
     + Table<Mark>
+    + Table<Milestone>
+    + Table<Claim>
     + Table<Gear>
     + Table<Pattern>
     + Table<Lore>
@@ -1797,6 +1841,8 @@ impl<
             + Table<Letter>
             + Table<Shun>
             + Table<Mark>
+            + Table<Milestone>
+            + Table<Claim>
             + Table<Gear>
             + Table<Pattern>
             + Table<Lore>

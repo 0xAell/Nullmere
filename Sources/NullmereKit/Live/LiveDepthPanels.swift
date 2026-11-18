@@ -107,6 +107,30 @@ struct LiveDayPanel: View {
             }
         }
 
+        // What the whole realm does together: how near each milestone
+        // stands, and once reached, what it gives each player to claim.
+        if !world.milestones.isEmpty {
+            Caps("The realm's milestones", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
+        }
+        ForEach(world.milestones) { milestone in
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    LiveSmall(words: milestone.words)
+                    LiveSmall(words: milestone.isReached ? "Reached. Gives \(world.gifts(of: milestone))."
+                        : "\(LiveWords.grouped(milestone.done)) of \(LiveWords.grouped(milestone.goal)) so far. Gives \(world.gifts(of: milestone)).", dim: true)
+                }
+                Spacer(minLength: 0)
+                if world.claimed.contains(milestone.id) {
+                    LiveSmall(words: "Claimed", dim: true)
+                } else if milestone.isReached {
+                    QuietButton(title: "Claim", prominent: true, enabled: session.asking == 0, name: "Claim what the realm's milestone gave: \(milestone.words)") {
+                        Task { await session.claimMilestone(milestone.id) }
+                    }
+                }
+            }
+        }
+
         if let favour = world.favour {
             LiveSmall(words: "Favour: level \(favour.level), \(LiveWords.grouped(favour.points)) points.")
             if let words = world.favourWords {
