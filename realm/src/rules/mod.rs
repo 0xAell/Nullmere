@@ -32,6 +32,7 @@ mod raid;
 mod petitions;
 mod prisoners;
 mod rally;
+mod shun;
 mod siege;
 mod spire;
 mod study;
@@ -68,6 +69,7 @@ use raid::*;
 pub use petitions::*;
 pub use prisoners::*;
 pub use rally::*;
+pub use shun::*;
 pub use siege::*;
 pub use spire::*;
 pub use study::*;
@@ -291,6 +293,13 @@ pub enum Refusal {
     /// A letter holds so many characters at most.
     LetterTooLong(usize),
     OwnLetter,
+    /// A letter to one who has shut its writer out.
+    LettersShutOut,
+    OwnShun,
+    ShutOutAlready,
+    NotShutOut,
+    /// A player shuts out so many others at most.
+    TooManyShutOut(usize),
     NoSuchLetter,
     NoSuchTopic,
     AlreadyStudying,
@@ -413,6 +422,7 @@ impl fmt::Display for Refusal {
             Refusal::AlreadyPaired(name) => return write!(f, "{name} already goes out with another commander."),
             Refusal::WardsAll(most) => return write!(f, "Your alliance has all the wardstones it may: {most}. It may raise one more for every five members, twenty at most."),
             Refusal::OthersLand(theirs) => return write!(f, "That land is {theirs}'s."),
+            Refusal::TooManyShutOut(most) => return write!(f, "You may shut out {most} players at most. Let one back in first."),
             Refusal::LetterTooLong(most) => return write!(f, "A letter holds {} characters at most, and nothing unprintable.", crate::catalog::grouped(*most as u64)),
             Refusal::PetitionTooLarge(most) => return write!(f, "A petition asks {} of each good at most.", crate::catalog::grouped(*most)),
             Refusal::NoSuchTerms(most) => return write!(f, "A pact is a truce or passage, for a day to {most} days."),
@@ -562,6 +572,10 @@ impl fmt::Display for Refusal {
             Refusal::TitleHeld => "They hold that title already.",
             Refusal::NoSuchPlayer => "There is no such player.",
             Refusal::OwnLetter => "A letter goes to another player.",
+            Refusal::LettersShutOut => "They take no letters from you.",
+            Refusal::OwnShun => "You can't shut yourself out.",
+            Refusal::ShutOutAlready => "You have shut them out already.",
+            Refusal::NotShutOut => "You haven't shut them out.",
             Refusal::NoSuchLetter => "There is no such letter of yours.",
             Refusal::AlreadyStudying => "Your Academy is already at its studies. Wait for them to finish.",
             Refusal::BusyStudying => "Your Academy is at its studies. Wait for them to finish.",

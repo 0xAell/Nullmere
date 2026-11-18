@@ -365,6 +365,12 @@ public final class LiveClient: @unchecked Sendable {
     /// Writes one letter to every other member of the player's alliance, as an officer.
     public func sendAllianceLetter(_ words: String) async throws { try await ask("send_alliance_letter", [.string(words)]) }
 
+    /// Shuts a player out: their letters to the player are no longer taken.
+    public func shutOut(_ player: UInt64) async throws { try await ask("shut_out", [.integer(player)]) }
+
+    /// Lets back in a player the player shut out.
+    public func letIn(_ player: UInt64) async throws { try await ask("let_in", [.integer(player)]) }
+
     /// Marks a letter to the player read.
     public func readLetter(_ letter: UInt64) async throws { try await ask("read_letter", [.integer(letter)]) }
 

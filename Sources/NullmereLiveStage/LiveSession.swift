@@ -88,6 +88,8 @@ public protocol LiveLine: AnyObject, Sendable {
     func sendAllianceLetter(_ words: String) async throws
     func readLetter(_ letter: UInt64) async throws
     func forgetLetter(_ letter: UInt64) async throws
+    func shutOut(_ player: UInt64) async throws
+    func letIn(_ player: UInt64) async throws
 }
 
 extension LiveClient: LiveLine {}
@@ -696,6 +698,8 @@ public final class LiveSession {
     public func sendAllianceLetter(_ words: String) async { await ask { try await $0.sendAllianceLetter(words) } }
     public func readLetter(_ letter: UInt64) async { await ask { try await $0.readLetter(letter) } }
     public func forgetLetter(_ letter: UInt64) async { await ask { try await $0.forgetLetter(letter) } }
+    public func shutOut(_ player: UInt64) async { await ask { try await $0.shutOut(player) } }
+    public func letIn(_ player: UInt64) async { await ask { try await $0.letIn(player) } }
 
     /// One soldier of the first kind and tier standing ready: a scout.
     public var scoutParty: [(kind: Int, tier: Int, count: UInt64)] {

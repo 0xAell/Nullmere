@@ -71,6 +71,8 @@ final class LiveClientTests: XCTestCase {
         try await client.sendAllianceLetter("Gather at dusk.")
         try await client.readLetter(41)
         try await client.forgetLetter(41)
+        try await client.shutOut(2)
+        try await client.letIn(2)
         // Commanders.
         try await client.hire()
         try await client.draw()
@@ -128,7 +130,7 @@ final class LiveClientTests: XCTestCase {
         let reducers = try Self.reducers()
         XCTAssertGreaterThan(reducers.count, 60, "the module's reducers are read")
         let requests = server.requests
-        XCTAssertEqual(requests.count, 76)
+        XCTAssertEqual(requests.count, 78)
         var asked: Set<String> = []
         for request in requests {
             let reducer = request.url.lastPathComponent

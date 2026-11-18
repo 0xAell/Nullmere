@@ -112,6 +112,9 @@ public struct LiveWorld: Equatable, Sendable {
     public var petitions: [UInt64: LivePetition] = [:]
     /// The letters the player has written and been written, the latest first.
     public var letters: [LiveLetter] = []
+    /// The players the player has shut out: their letters are not taken,
+    /// and what they say, in either chat or a letter, is left unshown.
+    public var shunned: Set<UInt64> = []
     /// What the Forge makes, by piece; and the player's gear.
     public var patterns: [Int: LivePattern] = [:]
     public var gear: [LiveGear] = []
@@ -132,6 +135,9 @@ public struct LiveWorld: Equatable, Sendable {
     public init(snapshot: [String: [[JSONValue]]]) {
         func rows<Row>(_ table: String, _ make: ([JSONValue]) -> Row?) -> [Row] { (snapshot[table] ?? []).compactMap(make) }
         realm = rows("realm", LiveRealm.init).first
+        // Those the player shut out first: what they said is left unshown.
+        let shut = Set((snapshot["my_shunned"] ?? []).compactMap { Cells(row: $0).unsigned(2) })
+        shunned = shut
         players = Dictionary(rows("player", LivePlayer.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         cities = Dictionary(rows("city", LiveCity.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         places = Dictionary(rows("place", LivePlace.init).map { ($0.hex, $0) }, uniquingKeysWith: { _, new in new })
@@ -140,7 +146,7 @@ public struct LiveWorld: Equatable, Sendable {
         marches = Dictionary(rows("march", LiveMarch.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         alliances = Dictionary(rows("alliance", LiveAlliance.init).map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         members = Dictionary(rows("member", LiveMember.init).map { ($0.player, $0) }, uniquingKeysWith: { _, new in new })
-        realmChat = rows("realm_chat", LiveSaying.init(realm:)).sorted { $0.id < $1.id }
+        realmChat = rows("realm_chat", LiveSaying.init(realm:)).filter { !shut.contains($0.player) }.sorted { $0.id < $1.id }
         tasks = Dictionary(rows("task", LiveTask.init).map { ($0.step, $0) }, uniquingKeysWith: { _, new in new })
         studies = Dictionary(rows("study", LiveStudy.init).map { (LiveWorld.key($0.topic, $0.level), $0) }, uniquingKeysWith: { _, new in new })
         for row in snapshot["land"] ?? [] {
@@ -161,7 +167,7 @@ public struct LiveWorld: Equatable, Sendable {
         hauls = rows("my_hauls", LiveHaul.init).sorted { $0.march < $1.march }
         hunt = rows("my_hunt", LiveHunt.init).first
         reports = rows("my_reports", LiveReport.init).sorted { $0.id > $1.id }
-        allianceChat = rows("my_alliance_chat", LiveSaying.init(alliance:)).sorted { $0.id < $1.id }
+        allianceChat = rows("my_alliance_chat", LiveSaying.init(alliance:)).filter { !shut.contains($0.player) }.sorted { $0.id < $1.id }
         applicants = rows("my_applicants", LiveApplicant.init).sorted { $0.at < $1.at }
         step = (snapshot["my_progress"] ?? []).compactMap { Cells(row: $0).whole(1) }.first
         commanders = rows("my_commanders", LiveCommander.init).sorted { $0.id < $1.id }
@@ -213,7 +219,7 @@ public struct LiveWorld: Equatable, Sendable {
         envoys = rows("my_envoys", LiveEnvoy.init).sorted { $0.id < $1.id }
         prisoners = Dictionary(rows("my_prisoners", LivePrisoner.init).map { ($0.commander, $0) }, uniquingKeysWith: { _, new in new })
         petitions = Dictionary(rows("my_petitions", LivePetition.init).map { ($0.asker, $0) }, uniquingKeysWith: { _, new in new })
-        letters = rows("my_letters", LiveLetter.init).sorted { $0.id > $1.id }
+        letters = rows("my_letters", LiveLetter.init).filter { !shut.contains($0.sender) }.sorted { $0.id > $1.id }
         patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
         gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
         boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }

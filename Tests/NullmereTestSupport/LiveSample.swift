@@ -210,6 +210,8 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func sendAllianceLetter(_ words: String) async throws { try take("letter to the alliance: \(words)") }
     public func readLetter(_ letter: UInt64) async throws { try take("read letter \(letter)") }
     public func forgetLetter(_ letter: UInt64) async throws { try take("forget letter \(letter)") }
+    public func shutOut(_ player: UInt64) async throws { try take("shut out \(player)") }
+    public func letIn(_ player: UInt64) async throws { try take("let in \(player)") }
 }
 
 /// How many times something has been tried.

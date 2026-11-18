@@ -27,6 +27,9 @@ public struct LiveCard: Equatable, Sendable {
         case reinforce
         /// Send a load of carts with goods to the ally's city chosen.
         case sendGoods
+        /// Shut out the player whose city is chosen, or let them back in.
+        case shutOut(UInt64)
+        case letIn(UInt64)
         /// Send a scout to find what the cairn chosen holds.
         case explore
         /// Send everyone ready against the army gathering at the site chosen.
@@ -40,6 +43,9 @@ public struct LiveCard: Equatable, Sendable {
         case upgrade(UInt64)
         case build(Int)
     }
+
+    /// Said on the city card of a player shut out.
+    public static let shutOutLine = "You have shut them out: their letters are not taken, and what they say is left unshown."
 
     public struct Button: Equatable, Sendable {
         public let title: String
@@ -61,6 +67,8 @@ public struct LiveCard: Equatable, Sendable {
             case .scout: return "eye"
             case .reinforce: return "shield"
             case .sendGoods: return "cart"
+            case .shutOut: return "speaker.slash"
+            case .letIn: return "speaker.wave.2"
             case .explore: return "binoculars"
             case .raid: return "flame"
             case .hasten: return "forward.fill"
@@ -125,6 +133,13 @@ extension LiveSession {
 
     /// A button to call a rally against what is chosen, for a member of an
     /// alliance; none for anyone else.
+    /// Shutting out the player whose city is chosen, or letting them back in.
+    private func shunButton(_ player: UInt64) -> LiveCard.Button {
+        let name = world.players[player]?.name ?? "them"
+        return world.shunned.contains(player) ? .init(title: "Let \(name) back in", act: .letIn(player), why: nil)
+            : .init(title: "Shut out \(name)", act: .shutOut(player), why: nil)
+    }
+
     private func rallyButton(why: String?) -> [LiveCard.Button] {
         guard world.myMembership != nil else { return [] }
         if let mine = world.myRally {
@@ -201,19 +216,22 @@ extension LiveSession {
                 why = "That city is at peace for another \(LiveWords.spoken(city.peace(at: seconds)))."
             }
             // An ally's city is never attacked: soldiers are sent to stay in it.
+            let shut = world.shunned.contains(city.owner) ? [LiveCard.shutOutLine] : []
             if world.isAlly(city.owner) {
-                var allied = [lines[0], "Your ally."]
+                var allied = [lines[0], "Your ally."] + shut
                 if cannotSend == nil, let leaderLine { allied.append(leaderLine) }
                 return LiveCard(title: city.name, lines: allied,
-                                buttons: [.init(title: ready > 0 ? "Reinforce with \(soldiers(ready))" : "Reinforce", act: .reinforce, why: cannotSend), cartsButton])
+                                buttons: [.init(title: ready > 0 ? "Reinforce with \(soldiers(ready))" : "Reinforce", act: .reinforce, why: cannotSend), cartsButton,
+                                          shunButton(city.owner)])
             }
+            lines += shut
             if why == nil, let leaderLine { lines.append(leaderLine) }
             let peace = city.peace(at: seconds) > 0 ? "That city is at peace for another \(LiveWords.spoken(city.peace(at: seconds)))." : nil
             // A scout, one soldier, sees its garrison and comes home whole.
             let scout = world.building(LiveSession.scoutCamp) == nil ? "Raise a Scout Camp first." : cannotSend
             return LiveCard(title: city.name, lines: lines,
                             buttons: [.init(title: ready > 0 ? "Attack with \(soldiers(ready))" : "Attack", act: .send, why: why),
-                                      .init(title: "Scout", act: .scout, why: scout)] + rallyButton(why: peace))
+                                      .init(title: "Scout", act: .scout, why: scout)] + rallyButton(why: peace) + [shunButton(city.owner)])
 
         case .site(let site):
             let good = LiveSession.goods.indices.contains(site.kind - 1) ? LiveSession.goods[site.kind - 1] : "Goods"
@@ -370,6 +388,8 @@ extension LiveSession {
             if let selected { await reinforce(at: selected) }
         case .sendGoods:
             if let selected { await sendGoods(to: selected) }
+        case .shutOut(let player): await shutOut(player)
+        case .letIn(let player): await letIn(player)
         case .explore:
             if let selected { await explore(at: selected) }
         case .raid:

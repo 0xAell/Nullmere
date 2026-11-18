@@ -4,9 +4,10 @@
 //! A letter holds a thousand characters at most, lines and all, and
 //! nothing unprintable; one may be written every two seconds, apart from
 //! what is said. Each player keeps their last hundred letters received. Only
-//! the one a letter is to marks it read or forgets it.
+//! the one a letter is to marks it read or forgets it. None reaches one who
+//! has shut its writer out (`shun`).
 
-use super::{asking, officer, shown_name, Refusal};
+use super::{asking, officer, shown_name, shuts_out, Refusal};
 use crate::catalog;
 use crate::rows::{Db, Letter, Member, Pace, Player};
 use crate::store::Table;
@@ -56,13 +57,16 @@ pub fn send_letter(db: &mut impl Db, player: u64, to: u64, words: &str) -> Resul
         return Err(Refusal::OwnLetter);
     }
     Table::<Player>::get(db, to).ok_or(Refusal::NoSuchPlayer)?;
+    if shuts_out(db, to, player) {
+        return Err(Refusal::LettersShutOut);
+    }
     paced(db, player)?;
     let name = shown_name(db, &writer);
     Ok(deliver(db, player, to, &name, &words))
 }
 
-/// An officer writes one letter to every other member of their alliance.
-/// How many it went to.
+/// An officer writes one letter to every other member of their alliance
+/// but those who have shut them out. How many it went to.
 pub fn send_alliance_letter(db: &mut impl Db, player: u64, words: &str) -> Result<usize, Refusal> {
     let writer = asking(db, player)?;
     let member = officer(db, player)?;
@@ -70,6 +74,7 @@ pub fn send_alliance_letter(db: &mut impl Db, player: u64, words: &str) -> Resul
     paced(db, player)?;
     let name = shown_name(db, &writer);
     let to: Vec<u64> = Table::<Member>::by(db, 0, member.alliance).into_iter().map(|member| member.player).filter(|other| *other != player).collect();
+    let to: Vec<u64> = to.into_iter().filter(|other| !shuts_out(db, *other, player)).collect();
     for receiver in &to {
         deliver(db, player, *receiver, &name, &words);
     }

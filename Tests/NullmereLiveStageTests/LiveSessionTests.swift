@@ -382,7 +382,8 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(home.buttons.map(\.act), [.city, .troops, .hasten(4)])
         XCTAssertEqual(home.buttons.map(\.icon), ["building.2", "person.3", "forward.fill"], "each drawn as a symbol in the ring about it")
         XCTAssertEqual(home.buttons[2].why, "Hastening takes 300 grain, 300 timber and 300 stone.", "no goods in her city to hasten with")
-        let acts: [LiveCard.Act] = [.city, .troops, .send, .recall(1), .rally, .raiseWard, .razeWard(1), .scout, .reinforce, .sendGoods, .explore, .hasten(1), .moveCity]
+        let acts: [LiveCard.Act] = [.city, .troops, .send, .recall(1), .rally, .raiseWard, .razeWard(1), .scout, .reinforce, .sendGoods, .shutOut(2), .letIn(2),
+                                    .explore, .hasten(1), .moveCity]
         XCTAssertEqual(Set(acts.map { LiveCard.Button(title: "", act: $0, why: nil).icon }).count, acts.count, "no two acts drawn alike")
         XCTAssertEqual(LiveCard.Button(title: "Gather with 40 soldiers", act: .send, why: nil).icon, "shippingbox")
         // Ada has one army out and a Keep of the third level: no second
@@ -391,7 +392,8 @@ final class LiveSessionTests: XCTestCase {
         // Another's: whose, that they are here, and that it may be attacked or scouted.
         XCTAssertEqual(card(14, -4), LiveCard(title: "Bryn", lines: ["Bryn's city. Keep level 8, power 9,000. They are here now."],
                                               buttons: [.init(title: "Attack with 40 soldiers", act: .send, why: oneOut),
-                                                        .init(title: "Scout", act: .scout, why: "Raise a Scout Camp first.")]))
+                                                        .init(title: "Scout", act: .scout, why: "Raise a Scout Camp first."),
+                                                        .init(title: "Shut out Bryn", act: .shutOut(2), why: nil)]))
         XCTAssertEqual(card(7, 1), LiveCard(title: "Grain, level 2", lines: ["40,000 left to gather."],
                                             buttons: [.init(title: "Gather with 40 soldiers", act: .send, why: oneOut)]))
         // The grove Bryn's army works; the barrow his other army fights at.
@@ -967,7 +969,7 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertNil(fourth.buttons[1].why)
         XCTAssertEqual(card(5, -1).buttons[1].why, "A rally of yours may go against a barrow of level 5 at most.")
         // And against another's city, which may be scouted from a Scout Camp: one soldier goes.
-        XCTAssertEqual(card(14, -4).buttons.map(\.act), [.send, .scout, .rally])
+        XCTAssertEqual(card(14, -4).buttons.map(\.act), [.send, .scout, .rally, .shutOut(2)])
         XCTAssertEqual(card(14, -4).buttons[1].why, "Raise a Scout Camp first.")
         line.change { $0["my_buildings"]?.append([self.n(31), self.n(7), self.n(18), self.n(1)]) }
         session.refresh()
@@ -1291,7 +1293,7 @@ final class LiveSessionTests: XCTestCase {
 
         XCTAssertEqual(LiveWorld.cartload(storehouse: 1), 40_000)
         XCTAssertEqual(session.world.cartLoad(at: 2_015), LiveGoods(grain: 13_333, timber: 5_000, stone: 13_333))
-        XCTAssertEqual(card().buttons.count, 2)
+        XCTAssertEqual(card().buttons.map(\.act), [.reinforce, .sendGoods, .shutOut(2)])
         XCTAssertNil(card().buttons[0].why)
         XCTAssertEqual(card().buttons[1], LiveCard.Button(title: "Send 13,333 grain, 5,000 timber and 13,333 stone", act: .sendGoods, why: nil))
         XCTAssertEqual(card().buttons[1].icon, "cart")
@@ -1320,6 +1322,41 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertNil(card().buttons[0].why)
         XCTAssertEqual(card().buttons[1].why, "You have a load of carts on the road already, as many as your Keep allows.")
         XCTAssertTrue(session.commands(at: 2_015).contains { $0.title == "Go to your carts: Carts on their way to Bryn's city with 900 grain" })
+    }
+
+    /// Bryn shut out from his city's card: what he said and wrote left
+    /// unshown, the card saying so and offering to let him back in.
+    func testAPlayerIsShutOutFromTheirCitysCard() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["realm_chat"] = [[n(11), n(2), .string("Bryn"), n(2_000), .string("Yield.")], [n(12), n(1), .string("Ada"), n(2_010), .string("Never.")]]
+        rows["my_letters"] = [[n(41), n(2), n(1), .string("Bryn"), .string("Yield, I say."), n(1_950), .bool(false)],
+                              [n(42), n(1), n(2), .string("Ada"), .string("Never."), n(1_960), .bool(true)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        let bryns = LiveHex(q: 14, r: -4)
+        func card() -> LiveCard { session.card(for: session.selection(at: bryns)) }
+        XCTAssertEqual(session.world.realmChat.map(\.words), ["Yield.", "Never."])
+        XCTAssertEqual(session.world.unreadLetters, 1)
+        let shut = try XCTUnwrap(card().buttons.last)
+        XCTAssertEqual(shut, LiveCard.Button(title: "Shut out Bryn", act: .shutOut(2), why: nil))
+        XCTAssertEqual(shut.icon, "speaker.slash")
+        await session.press(shut)
+        XCTAssertEqual(line.asked.last, "shut out 2")
+
+        // The realm writes it down: his sayings and his letter are left unshown, hers kept.
+        line.change { $0["my_shunned"] = [[self.n(1 << 32 | 2), self.n(1), self.n(2), self.n(2_015)]] }
+        session.refresh()
+        XCTAssertEqual(session.world.shunned, [2])
+        XCTAssertEqual(session.world.realmChat.map(\.words), ["Never."])
+        XCTAssertEqual(session.world.letters.map(\.id), [42])
+        XCTAssertEqual(session.world.unreadLetters, 0)
+        XCTAssertTrue(card().lines.contains(LiveCard.shutOutLine), "\(card().lines)")
+        let back = try XCTUnwrap(card().buttons.last)
+        XCTAssertEqual(back, LiveCard.Button(title: "Let Bryn back in", act: .letIn(2), why: nil))
+        XCTAssertEqual(back.icon, "speaker.wave.2")
+        await session.press(back)
+        XCTAssertEqual(line.asked.last, "let in 2")
     }
 
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {

@@ -383,6 +383,11 @@ check("no one bestows a title before a season is won", call(ada, "bestow_title",
 check("a letter goes to another player", call(ada, "send_letter", 2, "Well met, neighbour."), None)
 check("who reads it in their letters, and no one reads the table itself", ([(l["sender"], l["words"], l["read"]) for l in rows(bryn, "SELECT * FROM my_letters")], isinstance(rows(bryn, "SELECT * FROM letter"), str)), ([(1, "Well met, neighbour.", False)], True))
 check("an officer's letter to the alliance needs an alliance", call(ada, "send_alliance_letter", "To all."), "You are in no alliance.")
+# Shutting out: Bryn shuts Ada out, her letters no longer taken; his own to read; let back in.
+check("a player shuts another out", call(bryn, "shut_out", 1), None)
+check("whose letters are then not taken", call(ada, "send_letter", 2, "Hear me."), "They take no letters from you.")
+check("which the one who shut them out reads alone", ([(s["player"], s["shunned"]) for s in rows(bryn, "SELECT * FROM my_shunned")], rows(ada, "SELECT * FROM my_shunned"), isinstance(rows(bryn, "SELECT * FROM shun"), str)), ([(2, 1)], [], True))
+check("and lets back in", (call(bryn, "let_in", 1), rows(bryn, "SELECT * FROM my_shunned"), call(bryn, "let_in", 1)), (None, [], "You haven't shut them out."))
 # The gates of the ridge: six, for all to read, held by the Unquiet as the realm opens; stormed only by an alliance's rally.
 gates = sorted(rows(nobody, "SELECT * FROM gate"), key=lambda gate: gate["id"])
 check("six gates stand in the ridge's passes, held by the Unquiet", [(gate["id"], gate["holder"], gate["fighter"]) for gate in gates], [(n, 0, 0) for n in range(1, 7)])

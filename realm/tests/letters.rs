@@ -89,3 +89,64 @@ fn an_officer_writes_to_the_whole_alliance_and_a_hundred_letters_are_kept() {
     assert_eq!(kept[0].words, "Letter 2", "of 103, the alliance's letter and Edda's first two are gone");
     assert_eq!(kept.last().unwrap().words, format!("Letter {}", catalog::LETTERS_KEPT + 1));
 }
+
+#[test]
+fn one_shut_out_writes_no_letters_to_them_till_let_back_in() {
+    let (mut db, [ada, bryn, cole, edda]) = realm();
+    let shun = db.call(|db| rules::shut_out(db, ada, edda)).unwrap();
+    assert_eq!((shun.player, shun.shunned, shun.at), (ada, edda, db.clock));
+    assert!(rules::shuts_out(&db, ada, edda));
+    assert!(!rules::shuts_out(&db, edda, ada), "one way only");
+
+    // Edda's letter to Ada is not taken, and she is told so; Ada still writes to her.
+    assert_eq!(db.call(|db| rules::send_letter(db, edda, ada, "Hear me.")), Err(Refusal::LettersShutOut));
+    assert_eq!(Refusal::LettersShutOut.to_string(), "They take no letters from you.");
+    assert!(letters_to(&db, ada).is_empty());
+    assert!(db.call(|db| rules::send_letter(db, ada, edda, "No.")).is_ok());
+    // An officer's letter to the whole alliance passes by a member who shut them out.
+    db.call(|db| rules::shut_out(db, cole, ada)).unwrap();
+    wait(&mut db, 2);
+    assert_eq!(db.call(|db| rules::send_alliance_letter(db, ada, "Muster at dusk.")), Ok(1));
+    assert_eq!(letters_to(&db, bryn).len(), 1);
+    assert!(letters_to(&db, cole).is_empty());
+    // An ally shut out is an ally still.
+    assert!(rules::allied(&db, cole, ada));
+
+    // Held to sense.
+    assert_eq!(db.call(|db| rules::shut_out(db, ada, edda)), Err(Refusal::ShutOutAlready));
+    assert_eq!(db.call(|db| rules::shut_out(db, ada, ada)), Err(Refusal::OwnShun));
+    assert_eq!(db.call(|db| rules::shut_out(db, ada, 999)), Err(Refusal::NoSuchPlayer));
+    assert_eq!(db.call(|db| rules::let_in(db, ada, bryn)), Err(Refusal::NotShutOut));
+    assert_eq!(Refusal::ShutOutAlready.to_string(), "You have shut them out already.");
+    assert_eq!(Refusal::OwnShun.to_string(), "You can't shut yourself out.");
+    assert_eq!(Refusal::NotShutOut.to_string(), "You haven't shut them out.");
+    assert_eq!(Refusal::TooManyShutOut(rules::MOST_SHUT_OUT).to_string(), "You may shut out 100 players at most. Let one back in first.");
+
+    // Let back in, Edda writes to Ada again.
+    db.call(|db| rules::let_in(db, ada, edda)).unwrap();
+    assert!(!rules::shuts_out(&db, ada, edda));
+    wait(&mut db, 2);
+    assert!(db.call(|db| rules::send_letter(db, edda, ada, "Hear me now.")).is_ok());
+    assert_eq!(letters_to(&db, ada).len(), 1);
+}
+
+#[test]
+fn a_hundred_are_shut_out_at_most_and_one_forgotten_keeps_none_shut_out() {
+    let (mut db, [ada, bryn, _, edda]) = realm();
+    let others: Vec<u64> = (0..rules::MOST_SHUT_OUT).map(|at| db.call(|db| rules::join(db, &format!("Stranger{at}"))).unwrap().id).collect();
+    for other in &others {
+        db.call(|db| rules::shut_out(db, edda, *other)).unwrap();
+        // Within what one may ask of the realm in ten seconds.
+        wait(&mut db, 1);
+    }
+    assert_eq!(db.call(|db| rules::shut_out(db, edda, ada)), Err(Refusal::TooManyShutOut(100)));
+    db.call(|db| rules::let_in(db, edda, others[0])).unwrap();
+    db.call(|db| rules::shut_out(db, edda, ada)).unwrap();
+
+    // Edda asks to be forgotten: she keeps no one shut out. Bryn's shutting her out stands.
+    db.call(|db| rules::shut_out(db, bryn, edda)).unwrap();
+    db.call(|db| rules::forget(db, edda)).unwrap();
+    assert!(!rules::shuts_out(&db, edda, ada));
+    assert!(others.iter().all(|other| !rules::shuts_out(&db, edda, *other)));
+    assert!(rules::shuts_out(&db, bryn, edda));
+}

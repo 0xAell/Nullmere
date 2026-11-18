@@ -885,6 +885,28 @@ pub struct Letter {
 }
 row!(Letter in letter, auto, by id, sender, receiver);
 
+/// One player shutting out another: the letters of the one shut out
+/// never reach them, and their client leaves the other's sayings
+/// unshown. Its keeper's alone to read, through `my_shunned`. Keyed by
+/// the two (`Shun::key`).
+#[spacetimedb::table(accessor = shun)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Shun {
+    #[primary_key]
+    pub key: u64,
+    #[index(btree)]
+    pub player: u64,
+    pub shunned: u64,
+    pub at: Seconds,
+}
+row!(Shun in shun, by key, player);
+
+impl Shun {
+    pub fn key(player: u64, shunned: u64) -> u64 {
+        (player << 32) | shunned
+    }
+}
+
 /// A piece of gear a player owns, and the commander wearing it: its
 /// owner's alone to read. Keyed by number.
 #[spacetimedb::table(accessor = gear)]
@@ -1676,6 +1698,7 @@ pub trait Db:
     + Table<Petition>
     + Table<Title>
     + Table<Letter>
+    + Table<Shun>
     + Table<Gear>
     + Table<Pattern>
     + Table<Lore>
@@ -1753,6 +1776,7 @@ impl<
             + Table<Petition>
             + Table<Title>
             + Table<Letter>
+            + Table<Shun>
             + Table<Gear>
             + Table<Pattern>
             + Table<Lore>
