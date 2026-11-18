@@ -107,6 +107,7 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(uniforms.origin.y, Float(heart.y), accuracy: 1e-4)
     }
 
+    @MainActor
     func testCitiesStandAsHoldsAndArmiesAsCompaniesWhereTheyAre() throws {
         let world = world()
         let window = LiveWindow(world: world, centre: LiveHex(q: 10, r: -4), radius: 12)
