@@ -176,7 +176,7 @@ struct CompanionHome: View {
                         ForEach(armies) { line in
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(verbatim: "\(line.doing), \(LiveWords.grouped(line.soldiers)) soldiers")
+                                    Text(verbatim: line.withSoldiers)
                                     Text(verbatim: LiveWords.clock(line.march.arrives - Int(seconds)))
                                         .font(.footnote).monospacedDigit().foregroundStyle(.secondary)
                                 }

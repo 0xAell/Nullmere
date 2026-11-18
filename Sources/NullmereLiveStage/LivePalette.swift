@@ -78,7 +78,8 @@ extension LiveSession {
         }
         for line in world.marchLines() {
             let place = line.march.stands ? line.march.to : (line.march.route.last ?? line.march.to)
-            all.append(LiveCommand(title: "Go to your army: \(line.doing)", act: .go(place)))
+            let what = line.march.kind == LiveMarch.carts ? "your carts" : "your army"
+            all.append(LiveCommand(title: "Go to \(what): \(line.doing)", act: .go(place)))
         }
         for part in LiveSession.parts {
             all.append(LiveCommand(title: "Open \(part.title)", act: .open(part.name)))

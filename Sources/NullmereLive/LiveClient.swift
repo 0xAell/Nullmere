@@ -307,6 +307,11 @@ public final class LiveClient: @unchecked Sendable {
     /// Uses one of the player's items of peace on their city.
     public func usePeace(_ item: Int) async throws { try await ask("use_peace", [.integer(UInt64(item))]) }
 
+    /// Sends a load of goods by cart to the city of an ally at a hex.
+    public func sendGoods(to hex: LiveHex, _ goods: LiveGoods) async throws {
+        try await ask("send_goods", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(goods.grain), .integer(goods.timber), .integer(goods.stone), .integer(goods.moonsalt)])
+    }
+
     /// Opens so many of the player's crates of goods into their city.
     public func openCrates(_ item: Int, count: UInt64) async throws { try await ask("open_crates", [.integer(UInt64(item)), .integer(count)]) }
 

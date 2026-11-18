@@ -344,7 +344,7 @@ pub fn relocate(db: &mut impl Db, player: u64, to: Hex) -> Result<City, Refusal>
     asking(db, player)?;
     let mut city = super::city_of(db, player)?;
     let realm = realm(db)?;
-    if !super::city_marches(db, &city).is_empty() {
+    if !super::armies_out(db, city.id).is_empty() {
         return Err(Refusal::ArmyOut);
     }
     let fits = to.length() <= realm.radius && land::ground(realm.seed, realm.radius, to).is_buildable() && clear_for_city(db, to, CITY_SPACING);

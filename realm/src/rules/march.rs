@@ -189,7 +189,7 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
         }
     }
     let most = catalog::marches(city.keep);
-    if Table::<March>::by(db, 1, city.id).len() as u32 >= most {
+    if armies_out(db, city.id).len() as u32 >= most {
         return Err(Refusal::NoFreeMarch(most));
     }
     let led: Option<Commander> = if leader == 0 { None } else { Some(leader_for(db, player, leader)?) };
@@ -361,6 +361,8 @@ pub fn arrive(db: &mut impl Db, march: u64) {
                 turn_home(db, march, way);
             }
         }
+        // Carts are unloaded where they were sent, and are done.
+        March::GOING if march.kind == March::CARTS => super::unloaded(db, &march),
         March::GOING if march.kind == March::EXPLORE => {
             // Scouts find what a cairn holds, and come home unhurt.
             super::explored(db, &march);
@@ -459,6 +461,9 @@ pub fn recall(db: &mut impl Db, player: u64, march: u64) -> Result<March, Refusa
     if march.owner != player {
         return Err(Refusal::NotYours);
     }
+    if march.kind == March::CARTS {
+        return Err(Refusal::CartsGoOn);
+    }
     if march.kind == March::RALLY {
         // Mustering, it stands down where it is; once the rally has set out it goes where the rally goes.
         return match march.state {
@@ -511,4 +516,10 @@ pub(super) fn clear_for_city(db: &impl Db, hex: Hex, spacing: u32) -> bool {
 /// A city's soldiers, wherever they are: for its owner's count.
 pub fn city_marches(db: &impl Db, city: &City) -> Vec<March> {
     Table::<March>::by(db, 1, city.id)
+}
+
+/// A city's armies out, its carts not among them: what keeps it from
+/// sending another, or from moving.
+pub fn armies_out(db: &impl Db, city: u64) -> Vec<March> {
+    Table::<March>::by(db, 1, city).into_iter().filter(|march| march.kind != March::CARTS).collect()
 }

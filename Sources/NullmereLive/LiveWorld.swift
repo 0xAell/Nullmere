@@ -429,6 +429,29 @@ public struct LiveWorld: Equatable, Sendable {
         return marches.values.filter { $0.owner == me.id }.sorted { $0.id < $1.id }
     }
 
+    /// The player's armies out, their carts not among them: what keeps
+    /// another from being sent, or the city from moving.
+    public var myArmies: [LiveMarch] { myMarches.filter { $0.kind != LiveMarch.carts } }
+
+    /// The player's loads of carts on the road.
+    public var myCarts: [LiveMarch] { myMarches.filter { $0.kind == LiveMarch.carts } }
+
+    /// The most goods, all four together, one load of carts takes, by the
+    /// Storehouse's level, as the module reckons it.
+    public static func cartload(storehouse: Int) -> UInt64 { 20_000 + 20_000 * UInt64(min(max(storehouse, 0), topLevel)) }
+
+    /// The Storehouse's number among the buildings.
+    public static let storehouse = 6
+
+    /// A load of carts for an ally at a moment: a third of what a load
+    /// takes of each of grain, timber and stone, or what the city has of
+    /// it where that is less.
+    public func cartLoad(at seconds: Double) -> LiveGoods {
+        let third = LiveWorld.cartload(storehouse: building(LiveWorld.storehouse)?.level ?? 0) / 3
+        let have = stock?.goods(at: seconds) ?? LiveGoods()
+        return LiveGoods(grain: min(have.grain, third), timber: min(have.timber, third), stone: min(have.stone, third))
+    }
+
     /// The ground at a hex, as the land's chunks have it (the module's
     /// `land::Ground` codes); nil where its chunk is not known.
     public func ground(at hex: LiveHex) -> UInt8? {

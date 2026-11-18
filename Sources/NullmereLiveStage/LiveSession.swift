@@ -63,6 +63,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func readTome(commander: UInt64, item: Int, count: UInt64) async throws
     func usePeace(_ item: Int) async throws
     func openCrates(_ item: Int, count: UInt64) async throws
+    func sendGoods(to hex: LiveHex, _ goods: LiveGoods) async throws
     func openChest(_ chest: Int) async throws
     func claimPrize(contest: Int, place: Int) async throws
     func claimPlace(contest: Int) async throws
@@ -727,6 +728,13 @@ public final class LiveSession {
         let asked = everyoneReady
         let leader = world.freeLeader?.id ?? 0
         await ask { try await $0.reinforce(at: hex, soldiers: asked, leader: leader) }
+    }
+
+    /// Sends a load of carts to the ally's city at a hex: a third of a
+    /// load each of grain, timber and stone, as much as the city has.
+    public func sendGoods(to hex: LiveHex) async {
+        let load = world.cartLoad(at: now)
+        await ask { try await $0.sendGoods(to: hex, load) }
     }
 
     /// Moves the player's city to clear ground at a hex.

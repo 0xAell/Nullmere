@@ -382,7 +382,7 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(home.buttons.map(\.act), [.city, .troops, .hasten(4)])
         XCTAssertEqual(home.buttons.map(\.icon), ["building.2", "person.3", "forward.fill"], "each drawn as a symbol in the ring about it")
         XCTAssertEqual(home.buttons[2].why, "Hastening takes 300 grain, 300 timber and 300 stone.", "no goods in her city to hasten with")
-        let acts: [LiveCard.Act] = [.city, .troops, .send, .recall(1), .rally, .raiseWard, .razeWard(1), .scout, .reinforce, .explore, .hasten(1), .moveCity]
+        let acts: [LiveCard.Act] = [.city, .troops, .send, .recall(1), .rally, .raiseWard, .razeWard(1), .scout, .reinforce, .sendGoods, .explore, .hasten(1), .moveCity]
         XCTAssertEqual(Set(acts.map { LiveCard.Button(title: "", act: $0, why: nil).icon }).count, acts.count, "no two acts drawn alike")
         XCTAssertEqual(LiveCard.Button(title: "Gather with 40 soldiers", act: .send, why: nil).icon, "shippingbox")
         // Ada has one army out and a Keep of the third level: no second
@@ -468,7 +468,8 @@ final class LiveSessionTests: XCTestCase {
         }
         session.refresh()
         XCTAssertEqual(card(14, -4), LiveCard(title: "Bryn", lines: ["[MERE] Bryn's city. Keep level 8, power 9,000. They are here now.", "Your ally."],
-                                              buttons: [.init(title: "Reinforce with 40 soldiers", act: .reinforce, why: nil)]))
+                                              buttons: [.init(title: "Reinforce with 40 soldiers", act: .reinforce, why: nil),
+                                                        .init(title: "Send goods", act: .sendGoods, why: "Your city has no grain, timber or stone to send.")]))
         await session.press(card(14, -4).buttons[0])
         XCTAssertEqual(line.asked.last, "reinforce 14,-4 with 40 of 1.1 led by 0")
         line.change { rows in
@@ -1266,6 +1267,59 @@ final class LiveSessionTests: XCTestCase {
         session.refresh()
         let briefing = try XCTUnwrap(session.counsel(of: 11)).briefing
         XCTAssertTrue(briefing.contains("Works under way: the Farm to level 3, 1 minute 25 seconds left."), briefing)
+    }
+
+    /// An ally's city is sent carts of goods: a third of a load each of
+    /// grain, timber and stone, or what the city has where that is less,
+    /// the load by the Storehouse's level. Carts on the road are named for
+    /// what they carry, are never called home, and keep no army from being
+    /// sent; as many loads go at once as armies.
+    func testAnAllysCityIsSentCartsOfGoods() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["alliance"] = [[n(5), n(77), n(78), .string("Keepers"), .string("MERE"), n(1), n(1_500), n(2), .bool(true), .string("")]]
+        rows["member"] = [[n(1), n(5), n(5), n(1_500)], [n(2), n(5), n(1), n(1_600)]]
+        rows["my_buildings"] = (rows["my_buildings"] ?? []) + [[n(24), n(7), n(6), n(1)]]
+        rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]
+        rows["my_stock"] = [[n(7), n(60_000), n(5_000), n(60_000), n(0), n(2_000), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(0), n(200_000)]]
+        let route = try XCTUnwrap(rows["march"]?.first?[11])
+        rows["march"] = rows["march"]?.filter { $0[1] != n(1) }
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        let bryns = LiveHex(q: 14, r: -4)
+        func card() -> LiveCard { session.card(for: session.selection(at: bryns)) }
+
+        XCTAssertEqual(LiveWorld.cartload(storehouse: 1), 40_000)
+        XCTAssertEqual(session.world.cartLoad(at: 2_015), LiveGoods(grain: 13_333, timber: 5_000, stone: 13_333))
+        XCTAssertEqual(card().buttons.count, 2)
+        XCTAssertNil(card().buttons[0].why)
+        XCTAssertEqual(card().buttons[1], LiveCard.Button(title: "Send 13,333 grain, 5,000 timber and 13,333 stone", act: .sendGoods, why: nil))
+        XCTAssertEqual(card().buttons[1].icon, "cart")
+        session.selected = bryns
+        await session.press(card().buttons[1])
+        XCTAssertEqual(line.asked.last, "send [13333, 5000, 13333, 0] to 14,-4")
+
+        // On the road: told for what they carry, and not called home.
+        line.change { rows in
+            rows["march"] = (rows["march"] ?? []) + [[self.n(11), self.n(1), self.n(7), self.n(9), self.n(1), self.n(0), self.n(bryns.packed), self.n(8), self.n(2_000), self.n(2_060), self.n(0), route, self.n(0)]]
+            rows["my_hauls"] = [[self.n(11), self.n(1), self.n(900), self.n(0), self.n(0), self.n(0)]]
+        }
+        session.refresh()
+        let carts = try XCTUnwrap(session.world.marchLines().first { $0.march.id == 11 })
+        XCTAssertEqual(carts.doing, "Carts on their way to Bryn's city with 900 grain")
+        XCTAssertEqual(carts.withSoldiers, carts.doing, "carts carry no soldiers")
+        XCTAssertFalse(carts.canRecall)
+        XCTAssertEqual(session.world.myArmies.count, 0)
+        XCTAssertEqual(session.world.myCarts.count, 1)
+        let cartsOut = try XCTUnwrap(session.world.marches[11])
+        let shown = session.card(for: .army(cartsOut, own: true))
+        XCTAssertEqual(shown.title, "Your carts")
+        XCTAssertTrue(shown.lines.first?.hasPrefix("Carts on their way to Bryn's city with 900 grain: ") == true, "\(shown.lines)")
+        XCTAssertTrue(shown.buttons.isEmpty)
+        // A Keep that sends one army sends one load: no more carts, but an army still may go.
+        XCTAssertNil(card().buttons[0].why)
+        XCTAssertEqual(card().buttons[1].why, "You have a load of carts on the road already, as many as your Keep allows.")
+        XCTAssertTrue(session.commands(at: 2_015).contains { $0.title == "Go to your carts: Carts on their way to Bryn's city with 900 grain" })
     }
 
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {

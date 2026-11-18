@@ -224,6 +224,8 @@ public struct LiveMarch: Equatable, Sendable, Identifiable {
     public static let explore = 7
     /// Against another player's army gathering at a site.
     public static let raid = 8
+    /// Carts of goods to an ally's city, with no army; done once unloaded.
+    public static let carts = 9
 
     public static let going = 1
     public static let working = 2

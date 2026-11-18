@@ -140,6 +140,9 @@ impl March {
     pub const EXPLORE: u8 = 7;
     /// Against another player's army gathering at a site (`target` the site).
     pub const RAID: u8 = 8;
+    /// Carts of goods to an ally's city (`target` the city), with no army;
+    /// what they carry is their `Haul`.
+    pub const CARTS: u8 = 9;
 
     pub const GOING: u8 = 1;
     pub const WORKING: u8 = 2;
@@ -544,6 +547,9 @@ impl Report {
     /// another's army fell on the player's: `foe` is the other player's
     /// number, and the goods what was carried off.
     pub const FIELD: u8 = 16;
+    /// Carts of goods unloaded, or come back: `foe` is the other player's
+    /// number, and the goods what was unloaded.
+    pub const CARTS: u8 = 17;
     pub const FIELD_DEFENCE: u8 = 17;
 }
 

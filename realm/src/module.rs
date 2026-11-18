@@ -820,6 +820,12 @@ pub fn use_item(ctx: &ReducerContext, item: u8, job: u64) -> Result<(), String> 
     said(caller(ctx).and_then(|player| rules::use_item(&mut Stdb(ctx), player, item, job)))
 }
 
+/// Send a load of goods by cart to the city of an ally at a hex.
+#[reducer]
+pub fn send_goods(ctx: &ReducerContext, q: i32, r: i32, grain: u64, timber: u64, stone: u64, moonsalt: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| rules::send_goods(&mut Stdb(ctx), player, Hex::new(q, r), crate::catalog::Goods::of(grain, timber, stone, moonsalt))).map(|_| ()))
+}
+
 /// Open so many of a crate of goods the caller keeps into their city.
 #[reducer]
 pub fn open_crates(ctx: &ReducerContext, item: u8, count: u64) -> Result<(), String> {

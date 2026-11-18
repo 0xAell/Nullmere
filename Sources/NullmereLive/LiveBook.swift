@@ -196,6 +196,8 @@ public struct LiveMarchLine: Equatable, Identifiable, Sendable {
     /// What it is doing, in plain words.
     public let doing: String
     public let soldiers: UInt64
+    /// What it is doing, with how many soldiers go with it; carts have none.
+    public var withSoldiers: String { march.kind == LiveMarch.carts ? doing : "\(doing), \(LiveWords.grouped(soldiers)) soldiers" }
     public let wounded: UInt64
     public let carrying: LiveGoods
     /// Whether it can be called home now.
@@ -340,10 +342,13 @@ extension LiveWorld {
             case (LiveMarch.attack, LiveMarch.fighting): doing = "Attacking \(cities[march.target].map { "\($0.name)'s city" } ?? "a city")"
             case (LiveMarch.explore, LiveMarch.going): doing = cairns[march.target].map { "Scouting a level \($0.level) cairn" } ?? "Scouting a cairn"
             case (LiveMarch.raid, LiveMarch.going): doing = good.map { "On its way to fall on the army gathering \($0)" } ?? "On its way to fall on an army gathering"
+            case (LiveMarch.carts, _):
+                let to = cities[march.target].map { "\($0.name)'s city" } ?? "an ally's city"
+                doing = haul.isNone ? "Carts on their way to \(to)" : "Carts on their way to \(to) with \(haul.words)"
             default: doing = haul.isNone ? "Coming home" : "Coming home with \(haul.words)"
             }
             return LiveMarchLine(march: march, doing: doing, soldiers: march.soldiers, wounded: own.reduce(0) { $0 + $1.wounded }, carrying: haul,
-                                 canRecall: march.state == LiveMarch.going || march.state == LiveMarch.working)
+                                 canRecall: march.kind != LiveMarch.carts && (march.state == LiveMarch.going || march.state == LiveMarch.working))
         }
     }
 

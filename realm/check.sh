@@ -322,6 +322,8 @@ check("a material is worked at the Forge, not used", call(ada, "use_item", 5, 1)
 check("a crate is opened into the city, not used on a work", call(ada, "use_item", 12, 1), "A crate is opened into your city; it hastens no work.")
 check("a crate a player has not got is not opened", call(ada, "open_crates", 12, 1), "You have none of that left.")
 check("and a haste is no crate to open", call(ada, "open_crates", 1, 1), "That is not a crate of goods.")
+check("carts of goods go to no one's own city", call(bryn, "send_goods", home[0], home[1], 1000, 0, 0, 0), "That is your own city.")
+check("and nowhere without a city", call(bryn, "send_goods", home[0] + 1, home[1], 1000, 0, 0, 0), "There is no city there to send carts to.")
 # The Forge: what it makes, for all to read; gear its owner's alone.
 patterns = rows(nobody, "SELECT * FROM pattern")
 check("what the Forge makes is written out for all to read", (len(patterns), sorted(p["name"] for p in patterns if p["grade"] == 1)), (12, ["Iron sword", "Leather boots", "Leather cap", "Leather coat"]))

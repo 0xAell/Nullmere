@@ -63,7 +63,7 @@ public struct LiveCounsel: Sendable {
         lines += world.threats(at: seconds).map(\.words)
         let out = world.marchLines()
         if !out.isEmpty {
-            lines.append("Armies out: " + out.map { "\($0.doing), \(LiveWords.grouped($0.soldiers)) soldiers" }.joined(separator: "; ") + ".")
+            lines.append("Armies out: " + out.map(\.withSoldiers).joined(separator: "; ") + ".")
         }
         let idle = world.idle(at: seconds)
         if !idle.isEmpty {
@@ -211,7 +211,7 @@ public struct LiveCounsel: Sendable {
         let out = world.marchLines()
         guard !out.isEmpty else { return "No army of your lord's is out." }
         return out.map { line in
-            var told = "\(line.doing), \(LiveWords.grouped(line.soldiers)) soldiers"
+            var told = line.withSoldiers
             if line.wounded > 0 { told += ", \(LiveWords.grouped(line.wounded)) wounded" }
             return told + "."
         }.joined(separator: " ")

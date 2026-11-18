@@ -116,6 +116,7 @@ final class LiveClientTests: XCTestCase {
         try await client.buy(item: 1, count: 1)
         try await client.usePeace(4)
         try await client.openCrates(12, count: 3)
+        try await client.sendGoods(to: hex, LiveGoods(grain: 1_000))
         try await client.openChest(1)
         // Devices, and leaving.
         try await client.offerLink()

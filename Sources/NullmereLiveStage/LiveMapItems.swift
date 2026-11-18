@@ -133,7 +133,9 @@ extension LiveSession {
             guard point.x > 0, point.x < size.width, point.y > 0, point.y < size.height else { return nil }
             let own = march.owner == world.me?.id
             let words: String
-            if own {
+            if march.kind == LiveMarch.carts {
+                words = own ? "Your carts" : "\(world.shownName(of: march.owner) ?? "An ally")'s carts"
+            } else if own {
                 let leader = world.commanders.first { $0.id == march.leader }?.name ?? "Your army"
                 words = "\(leader) · \(LiveWords.grouped(march.soldiers))"
             } else {

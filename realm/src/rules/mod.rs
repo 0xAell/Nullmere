@@ -8,6 +8,7 @@
 mod alliance;
 mod boons;
 mod cairns;
+mod carts;
 mod honour;
 mod army;
 mod battle;
@@ -43,6 +44,7 @@ mod ward;
 pub use alliance::*;
 pub use boons::*;
 pub use cairns::*;
+pub use carts::*;
 pub use honour::*;
 pub use army::*;
 pub use battle::*;
@@ -177,6 +179,14 @@ pub enum Refusal {
     NoWay,
     NoSuchMarch,
     AlreadyReturning,
+    /// More goods than a load of carts takes.
+    TooMuchForCarts(u64),
+    /// As many loads of carts on the road as the city may send.
+    CartsOnTheRoad(u32),
+    /// Carts are not called back.
+    CartsGoOn,
+    NoCityForCarts,
+    CartsToAlliesOnly,
     /// No barrow stands at the hex named.
     NothingToFight,
     /// Another army is fighting there.
@@ -376,6 +386,9 @@ impl fmt::Display for Refusal {
             Refusal::AlreadyBuilt(building) => return write!(f, "Your city already has a {}.", building.name()),
             Refusal::AlreadyRising(building) => return write!(f, "Your {} is already being built.", building.name()),
             Refusal::AtTopLevel(building) => return write!(f, "Your {} is at its highest level.", building.name()),
+            Refusal::TooMuchForCarts(most) => return write!(f, "A load of carts takes at most {} goods; raise your Storehouse for more.", crate::catalog::grouped(*most)),
+            Refusal::CartsOnTheRoad(1) => return f.write_str("You have a load of carts on the road already, as many as your Keep allows."),
+            Refusal::CartsOnTheRoad(most) => return write!(f, "You have {most} loads of carts on the road already, as many as your Keep allows."),
             Refusal::NeedsKeep(level) => return write!(f, "Raise your Keep to level {level} first."),
             Refusal::NeedsOther(building, level) => return write!(f, "Raise your {} to level {level} first.", building.name()),
             Refusal::CannotAfford(short) => return write!(f, "You need {short} more."),
@@ -460,6 +473,9 @@ impl fmt::Display for Refusal {
             Refusal::NoWay => "There is no way there over open ground.",
             Refusal::NoSuchMarch => "There is no such army.",
             Refusal::AlreadyReturning => "That army is already on its way home.",
+            Refusal::CartsGoOn => "Carts go on to the city they were sent to; they are not called back.",
+            Refusal::NoCityForCarts => "There is no city there to send carts to.",
+            Refusal::CartsToAlliesOnly => "Carts go only to an ally's city.",
             Refusal::NothingToFight => "There is nothing to fight there.",
             Refusal::BarrowTaken => "Another army is fighting there.",
             Refusal::Fighting => "That army is fighting. Wait for the fight to end.",
