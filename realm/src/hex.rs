@@ -36,8 +36,10 @@ impl Hex {
 
     /// How many steps lie between two hexes.
     pub fn distance(self, other: Hex) -> u32 {
-        let (dq, dr) = (self.q - other.q, self.r - other.r);
-        ((dq.abs() + dr.abs() + (dq + dr).abs()) / 2) as u32
+        // In a wider number, so hexes asked for far beyond any realm come
+        // out far, not wrapped round to near.
+        let (dq, dr) = (self.q as i64 - other.q as i64, self.r as i64 - other.r as i64);
+        ((dq.abs() + dr.abs() + (dq + dr).abs()) / 2).min(u32::MAX as i64) as u32
     }
 
     /// How far the hex lies from the lake's heart.

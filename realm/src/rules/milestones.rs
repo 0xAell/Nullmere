@@ -56,6 +56,17 @@ pub fn claim_milestone(db: &mut impl Db, player: u64, milestone: u64) -> Result<
     if Table::<Claim>::get(db, key).is_some() {
         return Err(Refusal::MilestoneClaimed);
     }
+    // For those of the realm who were in it when it was reached, a day at
+    // least, and have raised their Keep so far: not for a name made to
+    // push a milestone along and take what it gives.
+    let pace = super::realm(db).map(|realm| realm.pace).unwrap_or(1);
+    let joined = Table::<crate::rows::Player>::get(db, player).map(|row| row.joined).unwrap_or(row.reached);
+    if joined + catalog::paced(catalog::DAY, pace) > row.reached {
+        return Err(Refusal::MilestoneBeforeYou);
+    }
+    if city.keep < catalog::MILESTONE_KEEP {
+        return Err(Refusal::NeedsKeep(catalog::MILESTONE_KEEP));
+    }
     let gives = Goods::of(row.grain, row.timber, row.stone, 0);
     let mut stock = settle(db, city.id)?;
     let more = goods(&stock).plus(gives);

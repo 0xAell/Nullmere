@@ -56,6 +56,11 @@ fn a_milestone_reached_is_claimed_by_every_player_once() {
     rules::open(&mut db, 7, 1, 48);
     let ada = db.call(|db| rules::join(db, "Ada")).unwrap().id;
     let bryn = db.call(|db| rules::join(db, "Bryn")).unwrap().id;
+    // Both in the realm a day and more, with Keeps of the fifth level.
+    for player in [ada, bryn] {
+        keep_at(&mut db, player, catalog::MILESTONE_KEEP);
+    }
+    wait(&mut db, catalog::DAY);
     // Nine alliances more of the ten the second milestone asks, then the tenth.
     for _ in 0..8 {
         rules::feat_done(&mut db, Feat::Allied);
@@ -81,4 +86,43 @@ fn a_milestone_reached_is_claimed_by_every_player_once() {
     assert_eq!(Refusal::MilestoneClaimed.to_string(), "You have claimed what that milestone gave.");
     // Bryn claims it too.
     assert!(db.call(|db| rules::claim_milestone(db, bryn, 2)).is_ok());
+    // One who came after it was reached, or within a day before, claims nothing of it; nor one whose Keep is low.
+    let cole = db.call(|db| rules::join(db, "Cole")).unwrap().id;
+    keep_at(&mut db, cole, catalog::MILESTONE_KEEP);
+    assert_eq!(db.call(|db| rules::claim_milestone(db, cole, 2)), Err(Refusal::MilestoneBeforeYou));
+    assert_eq!(Refusal::MilestoneBeforeYou.to_string(), "The realm reached that milestone before you had been a day in it.");
+}
+
+/// Sets a player's Keep to a level.
+fn keep_at(db: &mut Mem, player: u64, level: u32) {
+    let mut city = rules::city_of(db, player).unwrap();
+    city.keep = level;
+    db.update(city.clone());
+    let mut keep = rules::building_of(db, city.id, Kind::Keep).unwrap();
+    keep.level = level;
+    db.update(keep);
+}
+
+#[test]
+fn a_milestone_is_not_for_a_name_made_to_push_it() {
+    let mut db = Mem::new(START, 5);
+    rules::open(&mut db, 7, 1, 48);
+    let ada = db.call(|db| rules::join(db, "Ada")).unwrap().id;
+    wait(&mut db, catalog::DAY);
+    // One player founds and leaves alliance after alliance, and reaches the
+    // milestone of ten alone: their Keep is low, so they claim nothing.
+    let city = rules::city_of(&db, ada).unwrap();
+    db.insert(Building { id: 0, city: city.id, kind: Kind::Embassy as u8, level: 1 });
+    for round in 0..10 {
+        db.call(|db| rules::found_alliance(db, ada, &format!("Solo {round}"), &format!("SO{round}"))).unwrap();
+        wait(&mut db, 1);
+        db.call(|db| rules::leave_alliance(db, ada)).unwrap();
+        wait(&mut db, 1);
+    }
+    assert!(milestone(&db, 2).reached > 0);
+    assert_eq!(db.call(|db| rules::claim_milestone(db, ada, 2)), Err(Refusal::NeedsKeep(catalog::MILESTONE_KEEP)));
+    // And a name made since claims nothing however high its Keep.
+    let alt = db.call(|db| rules::join(db, "Alt")).unwrap().id;
+    keep_at(&mut db, alt, catalog::MILESTONE_KEEP);
+    assert_eq!(db.call(|db| rules::claim_milestone(db, alt, 2)), Err(Refusal::MilestoneBeforeYou));
 }

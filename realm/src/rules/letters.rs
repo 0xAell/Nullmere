@@ -19,7 +19,7 @@ fn letter_words(words: &str) -> Result<String, Refusal> {
     if words.is_empty() {
         return Err(Refusal::NothingSaid);
     }
-    if words.chars().count() > catalog::LETTER_LONGEST || words.chars().any(|c| c.is_control() && c != '\n') {
+    if words.chars().count() > catalog::LETTER_LONGEST || words.chars().any(|c| super::unseen(c) && c != '\n') || super::piled(&words) {
         return Err(Refusal::LetterTooLong(catalog::LETTER_LONGEST));
     }
     Ok(words)

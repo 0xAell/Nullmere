@@ -329,6 +329,7 @@ pub enum Refusal {
     NoChallengesLeft(u64),
     PurseClaimed,
     NoSuchMerit,
+    MilestoneBeforeYou,
     NoSuchDeal,
     NotOfferedToday,
     DealTaken,
@@ -634,6 +635,7 @@ impl fmt::Display for Refusal {
             Refusal::NotAbove => "Challenge one above you in the Lists.",
             Refusal::PurseClaimed => "You have claimed today's purse. Come again tomorrow.",
             Refusal::NoSuchMerit => "There is no such merit.",
+            Refusal::MilestoneBeforeYou => "The realm reached that milestone before you had been a day in it.",
             Refusal::NoSuchDeal => "The pedlar has no such deal.",
             Refusal::NotOfferedToday => "The pedlar does not offer that today.",
             Refusal::DealTaken => "You have taken that deal today. Come again tomorrow.",
@@ -666,4 +668,26 @@ impl fmt::Display for Refusal {
             _ => "",
         })
     }
+}
+
+/// Whether a character has no place in words a player writes: one that
+/// controls, or one unseen or that turns the writing about (spaces and
+/// joiners of no width, marks of direction and their overrides, the
+/// byte-order mark, the line and paragraph separators, a soft hyphen).
+pub fn unseen(c: char) -> bool {
+    c.is_control()
+        || matches!(c, '\u{00AD}' | '\u{061C}' | '\u{180E}' | '\u{200B}'..='\u{200F}' | '\u{2028}'..='\u{202E}' | '\u{2060}'..='\u{206F}' | '\u{FEFF}' | '\u{FFF9}'..='\u{FFFB}')
+}
+
+/// Whether words heap more than two combining marks on one letter.
+pub fn piled(words: &str) -> bool {
+    let combining = |c: char| matches!(c, '\u{0300}'..='\u{036F}' | '\u{1AB0}'..='\u{1AFF}' | '\u{1DC0}'..='\u{1DFF}' | '\u{20D0}'..='\u{20FF}' | '\u{FE20}'..='\u{FE2F}');
+    let mut run = 0;
+    for c in words.chars() {
+        run = if combining(c) { run + 1 } else { 0 };
+        if run > 2 {
+            return true;
+        }
+    }
+    false
 }

@@ -150,3 +150,12 @@ fn a_hundred_are_shut_out_at_most_and_one_forgotten_keeps_none_shut_out() {
     assert!(others.iter().all(|other| !rules::shuts_out(&db, edda, *other)));
     assert!(rules::shuts_out(&db, bryn, edda));
 }
+
+#[test]
+fn a_letter_holds_no_unseen_or_turned_writing_but_keeps_its_lines() {
+    let (mut db, [ada, _, _, edda]) = realm();
+    for words in ["Meet me\u{2028}at the shore", "\u{202E}erohs eht ta", "Meet\u{FEFF}me", "M\u{0300}\u{0301}\u{0302}eet"] {
+        assert_eq!(db.call(|db| rules::send_letter(db, ada, edda, words)), Err(Refusal::LetterTooLong(catalog::LETTER_LONGEST)), "{words:?}");
+    }
+    assert!(db.call(|db| rules::send_letter(db, ada, edda, "Meet me\nat the shore, by the café.")).is_ok());
+}

@@ -91,3 +91,40 @@ fn an_alliance_keeps_ten_marks_and_none_once_it_ends() {
     assert!(Table::<Mark>::get(&db, 1).is_none());
     assert!(marks(&db, mere).is_empty());
 }
+
+#[test]
+fn no_mark_is_set_far_beyond_the_realm_nor_in_unseen_letters() {
+    let (mut db, [ada, ..], _) = realm();
+    // So far out that the reckoning of distance once wrapped round to near.
+    assert_eq!(db.call(|db| rules::set_mark(db, ada, Hex::new(1_073_741_824, 1_073_741_825), "Here")), Err(Refusal::BeyondTheRealm));
+    // Writing turned about, a space of no width, and a letter heaped with marks.
+    for words in ["\u{202E}ereh rehtaG", "Gather\u{200B}here", "Gathe\u{0301}\u{0302}\u{0303}r"] {
+        assert_eq!(db.call(|db| rules::set_mark(db, ada, Hex::new(2, -1), words)), Err(Refusal::MarkTooLong(rules::MARK_LONGEST)), "{words:?}");
+    }
+    // An accent or two on a letter is writing.
+    assert!(db.call(|db| rules::set_mark(db, ada, Hex::new(2, -1), "Café of the shore")).is_ok());
+}
+
+#[test]
+fn a_leader_forgotten_hands_the_alliance_on_and_a_member_forgotten_leaves_it() {
+    let (mut db, [ada, bryn, cole, edda], mere) = realm();
+    db.call(|db| rules::set_rank(db, ada, cole, realm::rows::Member::OFFICER)).unwrap();
+    wait(&mut db, 1);
+    // Edda asks to join, then Ada, the leader, is forgotten: the officer leads now.
+    let mut alliance = Table::<realm::rows::Alliance>::get(&db, mere).unwrap();
+    alliance.open = false;
+    db.update(alliance);
+    db.call(|db| rules::join_alliance(db, edda, mere)).unwrap();
+    db.call(|db| rules::forget(db, ada)).unwrap();
+    assert!(Table::<Member>::get(&db, ada).is_none(), "out of it");
+    assert_eq!(Table::<Member>::get(&db, cole).unwrap().rank, Member::LEADER);
+    assert_eq!(Table::<realm::rows::Alliance>::get(&db, mere).unwrap().leader, cole);
+    assert_eq!(Table::<realm::rows::Alliance>::get(&db, mere).unwrap().members, 2);
+    // Edda, forgotten while asking to join, is asking no more.
+    db.call(|db| rules::forget(db, edda)).unwrap();
+    assert!(Table::<realm::rows::Applicant>::get(&db, edda).is_none());
+    // Bryn, a member, forgotten, leaves it; Cole alone, forgotten, ends it.
+    db.call(|db| rules::forget(db, bryn)).unwrap();
+    db.call(|db| rules::forget(db, cole)).unwrap();
+    assert!(Table::<realm::rows::Alliance>::get(&db, mere).is_none(), "an alliance of no one is no more");
+}

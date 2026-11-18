@@ -24,7 +24,7 @@ pub fn set_mark(db: &mut impl Db, player: u64, at: Hex, words: &str) -> Result<M
     if words.is_empty() {
         return Err(Refusal::NothingSaid);
     }
-    if words.chars().count() > MARK_LONGEST || words.chars().any(char::is_control) {
+    if words.chars().count() > MARK_LONGEST || words.chars().any(super::unseen) || super::piled(&words) {
         return Err(Refusal::MarkTooLong(MARK_LONGEST));
     }
     if at.length() > realm(db)?.radius {

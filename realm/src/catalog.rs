@@ -2141,6 +2141,10 @@ pub fn milestones() -> [(u64, Feat, u64, &'static str, Goods, Item, u64); 6] {
     ]
 }
 
+/// The Keep's level a player has raised before they claim what the realm's
+/// milestones give.
+pub const MILESTONE_KEEP: u32 = 5;
+
 /// How many days in a row the day's welcome grows over, then begins again.
 pub const WELCOME_DAYS: u64 = 7;
 

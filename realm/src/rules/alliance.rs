@@ -167,6 +167,28 @@ fn put_out(db: &mut impl Db, member: &Member) {
     }
 }
 
+/// A player forgotten leaves their alliance, whatever their rank: a leader
+/// hands it first to the highest of the rest, the longest in it first, so
+/// no alliance is left led by no one.
+pub(super) fn forgotten_from(db: &mut impl Db, player: u64) {
+    let Some(member) = member_of(db, player) else { return };
+    if member.rank == Member::LEADER {
+        let heir = Table::<Member>::by(db, 0, member.alliance)
+            .into_iter()
+            .filter(|other| other.player != player)
+            .max_by_key(|other| (other.rank, std::cmp::Reverse(other.joined), std::cmp::Reverse(other.player)));
+        if let Some(mut heir) = heir {
+            heir.rank = Member::LEADER;
+            if let Some(mut alliance) = Table::<Alliance>::get(db, member.alliance) {
+                alliance.leader = heir.player;
+                db.update(alliance);
+            }
+            db.update(heir);
+        }
+    }
+    put_out(db, &member);
+}
+
 /// A player leaves their alliance. Its leader may only leave it to
 /// someone else, unless they are its last member.
 pub fn leave_alliance(db: &mut impl Db, player: u64) -> Result<(), Refusal> {
@@ -250,7 +272,7 @@ fn spoken_words(words: &str, may_be_empty: bool) -> Result<String, Refusal> {
     if words.is_empty() && !may_be_empty {
         return Err(Refusal::NothingSaid);
     }
-    if words.chars().count() > catalog::SAID_LONGEST || words.chars().any(char::is_control) {
+    if words.chars().count() > catalog::SAID_LONGEST || words.chars().any(super::unseen) || super::piled(&words) {
         return Err(Refusal::SaidTooLong);
     }
     Ok(words)

@@ -180,9 +180,11 @@ pub fn forget(db: &mut impl Db, player: u64) -> Result<String, Refusal> {
         letter.name = name.clone();
         db.update(letter);
     }
-    if let Some(mut applicant) = Table::<Applicant>::get(db, player) {
-        applicant.name = name.clone();
-        db.update(applicant);
+    // Out of their alliance, a leader's handed on, and their asking to join
+    // one let go: no seat is kept, and no letter or cart goes to them.
+    super::forgotten_from(db, player);
+    if Table::<Applicant>::get(db, player).is_some() {
+        Table::<Applicant>::delete(db, player);
     }
     for mut plea in Table::<Plea>::all(db).into_iter().filter(|plea| plea.asker == player) {
         plea.name = name.clone();

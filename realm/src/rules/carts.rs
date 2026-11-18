@@ -71,14 +71,16 @@ pub fn send_goods(db: &mut impl Db, player: u64, to: Hex, load: Goods) -> Result
     if carts_out(db, city.id).len() as u32 >= roads {
         return Err(Refusal::CartsOnTheRoad(roads));
     }
-    let realm = realm(db)?;
-    let barred = gates_barred_to(db, player);
-    let way = land::way_by(realm.seed, realm.radius, Hex::unpacked(city.hex), to, |hex| barred.contains(&hex)).ok_or(Refusal::NoWay)?;
+    // What is sent is counted before the way is looked for, the dearer
+    // work, which a refusal would otherwise have paid for.
     let mut stock = settle(db, city.id)?;
     let have = goods(&stock);
     if !have.covers(load) {
         return Err(Refusal::CannotAfford(have.short_of(load)));
     }
+    let realm = realm(db)?;
+    let barred = gates_barred_to(db, player);
+    let way = land::way_by(realm.seed, realm.radius, Hex::unpacked(city.hex), to, |hex| barred.contains(&hex)).ok_or(Refusal::NoWay)?;
     set_goods(&mut stock, have.minus(load));
     db.update(stock);
 
