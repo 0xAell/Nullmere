@@ -2,33 +2,59 @@
 """Line coverage of each module, from the JSON `swift test --enable-code-coverage`
 leaves (its path is what `swift test --show-codecov-path` prints).
 
-    scripts/coverage.py <codecov.json> [Module=floor ...] [--worst N] [--lines N]
+    scripts/coverage.py <codecov.json> [Module=floor ...] [--worst N] [--lines N] [--every Module]
     scripts/coverage.py --self-test
 
 Prints a line per module under Sources/, and fails if any named module's
 coverage is under its floor, in percent. With --worst, also lists the N
 files with the most lines no test runs, where tests would do most good;
-with --lines, the lines themselves of the first N of those.
+with --lines, the lines themselves of the first N of those; with --every,
+every line no test runs in every file of that module. The lines are
+reckoned from each file's segments as llvm-cov reckons its own count, and
+a COVERCHECK line says in how many files the two agree.
 """
 import json
 import sys
 
 
-def unrun_lines(segments):
-    """The lines a file's coverage segments say were never run: each
-    segment's count holds from its start to the next segment's."""
+def line_counts(segments):
+    """Each line llvm-cov counts in a file, with how often it ran, as its
+    line coverage reckons it from the file's segments ([line, column,
+    count, has count, region entry, gap]): a line counts where a region
+    with a count begins on it or one runs across it, and is not where a
+    region skipped begins; it ran as often as the most of those."""
     counts = {}
-    for here, after in zip(segments, segments[1:] + [None]):
-        line, column, count, has_count = here[0], here[1], here[2], here[3]
-        gap = len(here) > 5 and here[5]
-        if not has_count or gap:
-            continue
-        end = after[0] if after is not None else line
-        if after is not None and after[1] == 1 and end > line:
-            end -= 1
-        for number in range(line, end + 1):
-            counts[number] = max(counts.get(number, 0), count)
-    return sorted(number for number, count in counts.items() if count == 0)
+    if not segments:
+        return counts
+    wrapped = None
+    at = 0
+    for line in range(segments[0][0], segments[-1][0] + 1):
+        starts = []
+        while at < len(segments) and segments[at][0] == line:
+            starts.append(segments[at])
+            at += 1
+
+        def entry(segment):
+            gap = len(segment) > 5 and segment[5]
+            return segment[3] and len(segment) > 4 and segment[4] and not gap
+
+        entries = [segment for segment in starts if entry(segment)]
+        skipped = bool(starts) and not starts[0][3] and len(starts[0]) > 4 and starts[0][4]
+        # Any region with a count beginning on it, a gap's too, maps the line.
+        counted = any(segment[3] and len(segment) > 4 and segment[4] for segment in starts)
+        if (not skipped and ((wrapped is not None and wrapped[3]) or entries)) or counted:
+            count = wrapped[2] if wrapped is not None else 0
+            for segment in entries:
+                count = max(count, segment[2])
+            counts[line] = count
+        if starts:
+            wrapped = starts[-1]
+    return counts
+
+
+def unrun_lines(segments):
+    """The lines llvm-cov counts that no test ran."""
+    return sorted(line for line, count in line_counts(segments).items() if count == 0)
 
 
 def ranges(numbers, most=30):
@@ -46,10 +72,26 @@ def ranges(numbers, most=30):
 
 
 def self_test():
-    # Lines 1-3 run; 4-6 not; 7 runs again; a gap region counts for nothing.
-    segments = [[1, 1, 5, True, True], [4, 1, 0, True, True], [7, 1, 2, True, True],
-                [8, 1, 0, True, False, True], [9, 1, 0, False, False]]
-    assert unrun_lines(segments) == [4, 5, 6], unrun_lines(segments)
+    # [line, column, count, has count, region entry, gap], as llvm-cov
+    # exports them; each case worked through as llvm-cov's own line
+    # coverage reckons it (LineCoverageStats in CoverageMapping.cpp).
+    # A region run four times, and a closure in it on line 2 never run:
+    # the line still ran, by the region about it.
+    closure = [[1, 1, 4, True, True], [2, 10, 0, True, True], [2, 20, 4, True, False], [3, 1, 0, False, False]]
+    assert line_counts(closure) == {1: 4, 2: 4, 3: 4}, line_counts(closure)
+    # A region never run from line 3 to its brace on line 5, inside one run
+    # twice: line 3 ran by the region about it, 4 and 5 did not.
+    unrun = [[1, 1, 2, True, True], [3, 1, 0, True, True], [5, 2, 2, True, False], [7, 1, 0, False, False]]
+    assert unrun_lines(unrun) == [4, 5], unrun_lines(unrun)
+    assert line_counts(unrun)[3] == 2, "a line where a region ending at it began runs as that region did"
+    # A region skipped (no count) maps nothing, nor what follows it uncounted.
+    skipped = [[1, 1, 2, True, True], [2, 1, 0, False, True], [4, 1, 2, True, False], [5, 1, 0, False, False]]
+    assert line_counts(skipped) == {1: 2, 5: 2}, line_counts(skipped)
+    # A gap region beginning on a line with its own count maps it, at the
+    # count about it.
+    gap = [[1, 1, 1, True, True], [2, 1, 0, True, True, True], [3, 1, 0, False, False]]
+    assert line_counts(gap) == {1: 1, 2: 1, 3: 0}, line_counts(gap)
+    assert line_counts([]) == {}
     assert ranges([1, 2, 3, 7, 9, 10]) == "1-3, 7, 9-10"
     assert ranges(list(range(0, 100, 2)), most=2) == "0, 2, and 48 more"
     print("coverage self-test passed")
@@ -77,6 +119,11 @@ def main(argv):
     if "--worst" in args:
         at = args.index("--worst")
         worst = int(args[at + 1])
+        del args[at:at + 2]
+    every = None
+    if "--every" in args:
+        at = args.index("--every")
+        every = args[at + 1]
         del args[at:at + 2]
     shown = 0
     if "--lines" in args:
@@ -116,8 +163,17 @@ def main(argv):
     for missed, count, name, _ in ranked[:worst]:
         print(f"COVERFILE {name} {count - missed}/{count} lines, {missed} unrun")
     for missed, _, name, segments in ranked[:shown]:
-        if missed:
+        if missed and not (every and name.startswith(every + "/")):
             print(f"COVERLINES {name}: {ranges(unrun_lines(segments))}")
+    if every:
+        for missed, _, name, segments in ranked:
+            if missed and name.startswith(every + "/"):
+                print(f"COVERLINES {name}: {ranges(unrun_lines(segments), most=10_000)}")
+    # Whether the lines reckoned here are llvm-cov's own: its count of each
+    # file's unrun lines beside the count of those reckoned.
+    differ = [(name, missed, len(unrun_lines(segments))) for missed, _, name, segments in ranked if missed != len(unrun_lines(segments))]
+    print(f"COVERCHECK the unrun lines reckoned agree with llvm-cov's count in {len(ranked) - len(differ)} of {len(ranked)} files"
+          + "".join(f"; {name} {mine} beside {theirs}" for name, theirs, mine in differ[:8]))
     for module in floors:
         if module not in counted:
             print(f"COVERAGE {module}: no lines measured")

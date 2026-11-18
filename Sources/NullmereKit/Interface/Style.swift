@@ -325,7 +325,9 @@ struct QuietButton: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        let _ = pressable ? PressableButtons.note(title, enabled: enabled, action) : ()
+        // Noted by its full name where it has one, so that two buttons of one
+        // title in a list, "Use" beside each item, are each pressed.
+        let _ = pressable ? PressableButtons.note(name ?? title, enabled: enabled, action) : ()
         Button(action: action) {
             Caps(title, size: size, weight: prominent ? .medium : .regular)
                 .lineLimit(1)
