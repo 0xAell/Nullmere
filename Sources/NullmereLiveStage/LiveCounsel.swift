@@ -252,6 +252,18 @@ public struct LiveCounsel: Sendable {
                 lines.append("Your lord was \(LiveWords.ordinal(laurel.place)) in \(trial.name) when its last round ended, and may claim \(world.holdings(laurel.goods, laurel.hastes)).")
             }
         }
+        // The Lists, and the Barrow Road: where the lord stands in the one
+        // and how far along the other, where the realm has them.
+        if let entry = world.myEntry {
+            lines.append("In the Lists your lord stands \(LiveWords.ordinal(Int(entry.place))) of \(world.entrants.count), with \(world.challengesLeft(at: seconds)) challenges left today.")
+        } else if !world.entrants.isEmpty {
+            lines.append("Your lord has not entered the Lists, where \(world.entrants.count) stand.")
+        }
+        if let stage = world.nextStage {
+            lines.append("On the Barrow Road your lord's soldiers have cleared \(stage.id - 1) of \(world.stages.count) stages; the next host is \(world.host(of: stage)), bested by \((LiveWorld.kindNames[stage.bestedBy] ?? "soldiers").lowercased()).")
+        } else if !world.stages.isEmpty {
+            lines.append("Your lord's soldiers have walked the whole of the Barrow Road.")
+        }
         return lines.isEmpty ? "Little is known of the realm beyond the city." : lines.joined(separator: " ")
     }
 

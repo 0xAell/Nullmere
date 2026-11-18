@@ -1498,6 +1498,9 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(walk.title, "Walk the Barrow Road: stage 1 of 2, against 21 riders and 15 spearmen of tier 1")
         _ = await session.perform(walk)
         XCTAssertEqual(line.asked.last, "walk the road with 10 of 1.2, 26 of 1.1 led by 11")
+        // And her commander's counsel knows how far along it she is.
+        let roadLook = try XCTUnwrap(session.counsel(of: 11)).realmLook
+        XCTAssertTrue(roadLook.contains("On the Barrow Road your lord's soldiers have cleared 0 of 2 stages; the next host is 21 riders and 15 spearmen of tier 1, bested by spearmen."), roadLook)
 
         // The first cleared at 2,010: the second is next, its soldiers resting a minute.
         line.change { $0["my_road"] = [[self.n(1), self.n(1), self.n(2_010)]] }
@@ -1518,6 +1521,7 @@ final class LiveSessionTests: XCTestCase {
         line.change { $0["my_road"] = [[self.n(1), self.n(2), self.n(2_010)]] }
         session.refresh()
         XCTAssertNil(session.world.nextStage)
+        XCTAssertTrue(try XCTUnwrap(session.counsel(of: 11)).realmLook.contains("Your lord's soldiers have walked the whole of the Barrow Road."))
         XCTAssertFalse(session.commands(at: 3_000).contains { $0.act == .walkRoad })
         let asked = line.asked.count
         await session.walkRoad()
@@ -1537,6 +1541,7 @@ final class LiveSessionTests: XCTestCase {
         await session.open()
         // Not yet entered: her best soldiers, the best tier first, as many as a Keep of the third level allows.
         XCTAssertNil(session.world.myEntry)
+        XCTAssertFalse(try XCTUnwrap(session.counsel(of: 11)).realmLook.contains("Lists"), "no one in the Lists, nothing said of them")
         XCTAssertEqual(session.world.listsBand.map { [$0.kind, $0.tier, Int($0.count)] }, [[3, 2, 50], [1, 1, 550]])
         XCTAssertTrue(session.world.challengeable.isEmpty)
         XCTAssertFalse(session.world.purseWaits(at: 2_015))
@@ -1552,6 +1557,8 @@ final class LiveSessionTests: XCTestCase {
         }
         session.refresh()
         XCTAssertEqual(session.world.myEntry?.place, 2)
+        let listsLook = try XCTUnwrap(session.counsel(of: 11)).realmLook
+        XCTAssertTrue(listsLook.contains("In the Lists your lord stands 2nd of 2, with 5 challenges left today."), listsLook)
         XCTAssertEqual(session.world.challengeable.map(\.player), [2])
         XCTAssertEqual(session.world.bandWords(of: 2), "20 spearmen of tier 3 and 300 archers of tier 1")
         XCTAssertEqual(session.world.bandWords(of: 1), "no one")
