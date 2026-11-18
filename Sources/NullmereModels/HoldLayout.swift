@@ -110,6 +110,10 @@ public enum HoldLayout {
         public var heritage: Heritage?
         /// The places its keeper has set works in, each by its place.
         public var places: [Work: Int]
+        /// How its keep stands, where something besides whether it is a
+        /// seat says (a city of the realm's by its Keep's level); nil, a
+        /// seat's or a hold's.
+        public var keep: KeepLook?
 
         public init(hex: Hex, isSeat: Bool, levels: [Work: Int] = [:], rising: Rising? = nil, heritage: Heritage? = nil,
                     places: [Work: Int] = [:]) {
@@ -148,6 +152,23 @@ public enum HoldLayout {
         pieces(Plan(hold: hold, study: study, progress: progress), relief: relief)
     }
 
+    /// How a hold's keep stands: a young city's tower of timber on its
+    /// motte, a hold's keep of stone, or a seat's with its round towers.
+    public enum KeepLook: Sendable, Equatable {
+        case young, hold, seat
+    }
+
+    /// The keep a plan draws: by its look where it has one, else a seat's
+    /// or a hold's by whether it is a seat; of its House's people where it
+    /// has one, but the young keep, which every people raises alike.
+    public static func keepKey(_ plan: Plan) -> ModelKey {
+        switch plan.keep ?? (plan.isSeat ? .seat : .hold) {
+        case .young: return .youngKeep
+        case .hold: return plan.heritage.map { .keepOf($0, seat: false) } ?? .keep(seat: false)
+        case .seat: return plan.heritage.map { .keepOf($0, seat: true) } ?? .keep(seat: true)
+        }
+    }
+
     /// The keep, the walls and every work, each on the land.
     public static func pieces(_ plan: Plan, relief: Relief) -> [Piece] {
         let centre = Relief.centre(of: plan.hex)
@@ -157,7 +178,7 @@ public enum HoldLayout {
         var pieces: [Piece] = []
         // The keep, on the lowest of the ground under it.
         let keepY = lowest(relief, around: heart, radius: 0.36)
-        let keep = plan.heritage.map { ModelKey.keepOf($0, seat: plan.isSeat) } ?? .keep(seat: plan.isSeat)
+        let keep = keepKey(plan)
         pieces.append(Piece(key: keep, transform: .translation(Vec3(heart.x, keepY, heart.z)) * .rotationY(turn), hex: plan.hex))
         // The walls, at the ring's mean height, their footings reaching below its lowest.
         let wallsLevel = plan.levels[.building(.walls)] ?? 0

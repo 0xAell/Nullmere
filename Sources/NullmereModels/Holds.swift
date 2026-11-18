@@ -56,6 +56,10 @@ enum Holds {
         return Vec3(0.13, 0.43, (half - 0.06 + front) / 2)
     }
 
+    /// The top of a young keep's hall chimney, where Art/blender/motte.py
+    /// builds it (its FLUE).
+    static let youngChimney = Vec3(0.06, 0.17, 0.235)
+
     // MARK: The walls
 
     /// The walls' ring: corners on this radius, flats facing ±z with the

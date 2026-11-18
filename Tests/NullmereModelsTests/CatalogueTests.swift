@@ -315,7 +315,7 @@ final class CatalogueTests: XCTestCase {
         for key in CatalogueTests.keys {
             let materials = Set(Library.model(key).mesh.vertices.map(\.material))
             switch key {
-            case .figure, .signature, .commander, .keep, .keepOf, .folk:
+            case .figure, .signature, .commander, .keep, .keepOf, .youngKeep, .folk:
                 XCTAssertTrue(materials.contains(.house), "\(key) wears its House's colour")
             case .wild:
                 XCTAssertTrue(materials.isDisjoint(with: CatalogueTests.housely), "\(key) answers to no House")
@@ -440,7 +440,7 @@ final class CatalogueTests: XCTestCase {
             case .figure, .signature, .wild, .commander, .folk:
                 XCTAssertNotNil(model.skeleton?.actions[.idle], "\(key) moves by its skeleton")
                 XCTAssertGreaterThanOrEqual(model.rig.count, 17, "\(key) has a body's parts")
-            case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .prop(.stone), .prop(.materials), .prop(.waystone), .prop(.waystoneLit), .lair, .gatehold, .hostBanner, .talentSigil, .helpLight, .borderStone, .commanderStar, .crestBoard, .crestCharge, .barge, .allianceHall, .lyceumHall, .lyceumOrrery,
+            case .furnishing, .scaffold, .site, .keep, .keepOf, .youngKeep, .walls, .prop(.arrow), .prop(.stone), .prop(.materials), .prop(.waystone), .prop(.waystoneLit), .lair, .gatehold, .hostBanner, .talentSigil, .helpLight, .borderStone, .commanderStar, .crestBoard, .crestCharge, .barge, .allianceHall, .lyceumHall, .lyceumOrrery,
                  .yard(.grain), .town:
                 XCTAssertEqual(model.rig.count, 1, "\(key) stands still: no bone of its own to move")
             case .standard, .rallyCamp, .drownedCrown, .listeningStone, .pedlarSkiff:

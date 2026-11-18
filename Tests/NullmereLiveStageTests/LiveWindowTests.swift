@@ -138,6 +138,10 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(holds[0].colour, colours[1])
         XCTAssertEqual(holds[1].colour, colours[2])
         XCTAssertEqual([1, 5, 6, 10, 11, 25, 99].map(LiveWindow.shown), [1, 1, 2, 2, 3, 5, 5])
+        // Each city's keep as its Keep's level stands: Ada's at the third a
+        // tower of timber on its motte, Bryn's at the eighth of stone.
+        XCTAssertEqual(holds.map(\.keep), [.young, .hold])
+        XCTAssertEqual([1, 4, 5, 11, 12, 25].map(LiveWindow.keepLook), [.young, .young, .hold, .hold, .seat, .seat])
         XCTAssertTrue(LiveWindow(world: world, centre: LiveHex(q: -20, r: 20), radius: 4).holds(in: world, colours: colours, at: 0).isEmpty)
 
         // The window's tiles: all of it watched, a hold where each city

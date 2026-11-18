@@ -88,7 +88,7 @@ final class LiveStagingTimeTests: XCTestCase {
         XCTAssertGreaterThan(first.instanceCount, 0, "staged")
         let keeps = first.batches.filter { batch in
             switch batch.key {
-            case .keep, .keepOf: return true
+            case .keep, .keepOf, .youngKeep: return true
             default: return false
             }
         }

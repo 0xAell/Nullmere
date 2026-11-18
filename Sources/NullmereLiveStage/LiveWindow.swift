@@ -114,6 +114,7 @@ public struct LiveWindow: Sendable {
             }
             hold.ward = Hold.maximumWard(wallLevel: hold.level(.walls), isSeat: true)
             var sight = HoldSight(hold: hold, colour: WorldStage.colour(colours, sigil: LiveWindow.sigil(of: city.owner)))
+            sight.keep = LiveWindow.keepLook(city.keep)
             if own {
                 sight.envoys = world.envoysWaiting(at: seconds).map { WorldStage.colour(colours, sigil: LiveWindow.allianceSigil(of: $0.sender)) }
                 let waiting = world.petitionsStanding(at: seconds).contains { $0.asker != world.me?.id }
@@ -200,6 +201,14 @@ public struct LiveWindow: Sendable {
     /// A building's level, 1 to 25, as one of the five the stage's works
     /// are drawn at.
     static func shown(_ level: Int) -> Int { min(max(1 + (level - 1) / 5, 1), 5) }
+
+    /// How a city's keep stands by its Keep's level: a tower of timber on
+    /// its motte while the Keep is below the fifth level, the hold's keep of
+    /// stone to the eleventh, and the seat's, its round towers either side,
+    /// from the twelfth.
+    static func keepLook(_ level: Int) -> HoldLayout.KeepLook {
+        level < 5 ? .young : level < 12 ? .hold : .seat
+    }
 
     /// The realm's building that one of the stage's works shows, by its
     /// number in the module's catalogue; nil for works the realm has not.

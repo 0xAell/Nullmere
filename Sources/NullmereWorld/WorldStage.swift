@@ -178,6 +178,9 @@ public struct HoldSight: Equatable, Sendable {
     public var finishing: HoldLayout.Plan.Rising?
     /// The people its House comes of, whose keep it raises.
     public var heritage: Heritage?
+    /// How its keep stands, where not by whether it is a seat: a city of
+    /// the realm's by its Keep's level.
+    public var keep: HoldLayout.KeepLook?
     /// Which of the townsfolk stands at its gate with a plea for its keeper
     /// (`Folk`'s variants), while one waits on the answer; nil for none.
     public var petitioner: Int?
@@ -253,7 +256,8 @@ public final class WorldStage: @unchecked Sendable {
         if case .furnishing(let furnishing) = key { return furnishing.isLandmark }
         return false
     }
-    private var laid: [Int: (hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?, pieces: [Piece])] = [:]
+    private var laid: [Int: (hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?, keep: HoldLayout.KeepLook?,
+                              pieces: [Piece])] = [:]
     /// Each hold's pieces as drawn, `HoldLayout.grandeur` times its plan,
     /// kept with the plan they were drawn from: carried out and set on the
     /// land once, not each frame.
@@ -813,20 +817,22 @@ public final class WorldStage: @unchecked Sendable {
     /// A hold's pieces, laid out again only when it, its rising or its
     /// House's people change. A work `finishing` stands at the level below
     /// it until it has risen.
-    public func pieces(of hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising? = nil, heritage: Heritage? = nil) -> [Piece] {
-        if let kept = laid[hold.id], kept.hold == hold, kept.progress == progress, kept.finishing == finishing, kept.heritage == heritage {
+    public func pieces(of hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising? = nil, heritage: Heritage? = nil,
+                       keep: HoldLayout.KeepLook? = nil) -> [Piece] {
+        if let kept = laid[hold.id], kept.hold == hold, kept.progress == progress, kept.finishing == finishing, kept.heritage == heritage,
+           kept.keep == keep {
             return kept.pieces
         }
-        let plan = WorldStage.plan(of: hold, progress: progress, finishing: finishing, heritage: heritage)
+        let plan = WorldStage.plan(of: hold, progress: progress, finishing: finishing, heritage: heritage, keep: keep)
         let made = HoldLayout.pieces(plan, relief: relief) + HoldLayout.town(plan, relief: relief)
-        laid[hold.id] = (hold, progress, finishing, heritage, made)
+        laid[hold.id] = (hold, progress, finishing, heritage, keep, made)
         return made
     }
 
     /// A hold's pieces as they are drawn: its plan carried out about its
     /// middle, again only when the plan is laid out again.
     func drawn(_ sight: HoldSight) -> [Piece] {
-        let plan = pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
+        let plan = pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage, keep: sight.keep)
         if let kept = drawnPieces[sight.hold.id], kept.plan == plan { return kept.drawn }
         let middle = Relief.centre(of: sight.hold.position)
         let made = plan.map { grand($0, about: middle) }
@@ -860,7 +866,7 @@ public final class WorldStage: @unchecked Sendable {
     /// raised, as the hold is drawn: its plot carried out from the hold's
     /// middle as its works are, on the land there (`HoldLayout.plots`).
     public func plots(of sight: HoldSight, for works: Set<HoldLayout.Work>) -> [(work: HoldLayout.Work, foot: Vec3)] {
-        let plan = WorldStage.plan(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
+        let plan = WorldStage.plan(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage, keep: sight.keep)
         let middle = Relief.centre(of: sight.hold.position)
         return HoldLayout.plots(plan, relief: relief, for: works).map { plot in
             let out = WorldStage.grand(plot.position, about: middle)
@@ -902,8 +908,10 @@ public final class WorldStage: @unchecked Sendable {
 
     /// How a hold is laid out: as the rules keep it, or with the work
     /// `finishing` still rising as the watch's turn eases it up.
-    static func plan(of hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?) -> HoldLayout.Plan {
+    static func plan(of hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?,
+                     keep: HoldLayout.KeepLook? = nil) -> HoldLayout.Plan {
         var plan = HoldLayout.Plan(hold: hold, progress: progress, heritage: heritage)
+        plan.keep = keep
         if let finishing, plan.rising == nil {
             plan.levels[finishing.work] = finishing.level > 1 ? finishing.level - 1 : nil
             plan.rising = finishing
@@ -1100,10 +1108,10 @@ public final class WorldStage: @unchecked Sendable {
     public func porters(of sight: HoldSight) -> [Errand] { plan(of: sight).porters }
 
     private func plan(of sight: HoldSight) -> (errands: [Errand], porters: [Errand]) {
-        let pieces = pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
+        let pieces = pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage, keep: sight.keep)
         guard let keep = pieces.first(where: { piece in
             switch piece.key {
-            case .keep, .keepOf: return true
+            case .keep, .keepOf, .youngKeep: return true
             default: return false
             }
         }) else { return ([], []) }
@@ -1225,7 +1233,7 @@ public final class WorldStage: @unchecked Sendable {
     public func gatherings(of sight: HoldSight) -> [HoldLayout.Gathered] { folk(of: sight).gathered }
 
     private func folk(of sight: HoldSight) -> (ways: [Errand], gathered: [HoldLayout.Gathered]) {
-        var plan = WorldStage.plan(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
+        var plan = WorldStage.plan(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage, keep: sight.keep)
         plan.rising?.progress = 0
         if let kept = strolled[sight.hold.id], kept.plan == plan { return (kept.ways, kept.gathered) }
         let middle = Relief.centre(of: sight.hold.position)

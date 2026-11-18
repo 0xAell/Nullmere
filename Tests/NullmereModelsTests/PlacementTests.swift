@@ -140,7 +140,7 @@ final class PlacementTests: XCTestCase {
         let heart = SIMD2(centre.x, centre.z)
         let land = HoldLayout.land(of: plan.hex, relief: relief)
         let layout = HexLayout(size: 1)
-        XCTAssertEqual(pieces.first?.key, plan.heritage.map { .keepOf($0, seat: plan.isSeat) } ?? .keep(seat: plan.isSeat), file: file, line: line)
+        XCTAssertEqual(pieces.first?.key, HoldLayout.keepKey(plan), file: file, line: line)
         var works: [(SIMD2<Float>, Piece)] = []
         func ground(_ point: Vec3) -> Float { relief.height(atX: point.x, z: point.z) }
         /// Points over a footprint: its middle and two rings, finer than the layout samples.
@@ -170,7 +170,7 @@ final class PlacementTests: XCTestCase {
             XCTAssertEqual(piece.hex, layout.hex(atX: Double(at.x), y: Double(at.y)), "\(piece.key) names its hex", file: file, line: line)
             XCTAssertGreaterThan(piece.position.y, ground(piece.position) - 0.4, "\(piece.key) is not buried", file: file, line: line)
             switch piece.key {
-            case .keep, .keepOf:
+            case .keep, .keepOf, .youngKeep:
                 XCTAssertLessThan((at - heart).length, 1e-4, file: file, line: line)
                 for point in footprint(piece.position, 0.36) {
                     XCTAssertLessThanOrEqual(piece.position.y + model.mesh.bounds.min.y, ground(point) + 1e-3,
@@ -226,6 +226,31 @@ final class PlacementTests: XCTestCase {
         }
     }
 
+    /// A young city's keep, its tower of timber on its motte, stands at
+    /// the heart as the keep of stone does, every piece of the hold still on
+    /// its land and clear of the rest; each look draws its own keep.
+    func testAYoungKeepStandsAtTheHeart() throws {
+        let state = PlacementTests.worlds[0]
+        let relief = Relief(map: state.map)
+        for hold in state.holds.prefix(4) {
+            var plan = PlacementTests.grandPlan(hold.position)
+            plan.keep = .young
+            let pieces = HoldLayout.pieces(plan, relief: relief)
+            XCTAssertEqual(pieces.first?.key, .youngKeep)
+            PlacementTests.check(pieces, plan, relief)
+            XCTAssertFalse(HoldLayout.town(plan, relief: relief).isEmpty, "its town about it")
+        }
+        var plan = HoldLayout.Plan(hex: try XCTUnwrap(state.holds.first).position, isSeat: true)
+        XCTAssertEqual(HoldLayout.keepKey(plan), .keep(seat: true))
+        plan.keep = .hold
+        XCTAssertEqual(HoldLayout.keepKey(plan), .keep(seat: false))
+        plan.heritage = .fenfolk
+        XCTAssertEqual(HoldLayout.keepKey(plan), .keepOf(.fenfolk, seat: false))
+        plan.keep = .young
+        XCTAssertEqual(HoldLayout.keepKey(plan), .youngKeep, "every people raises the young keep alike")
+        XCTAssertEqual(Library.smoke(of: .youngKeep), [Holds.youngChimney])
+    }
+
     func testTheKeepAndWallsFitTheHex() {
         let layout = HexLayout(size: 1)
         for level in 1...5 {
@@ -242,6 +267,7 @@ final class PlacementTests: XCTestCase {
         for seat in [false, true] {
             XCTAssertLessThan(PlacementTests.reach(.keep(seat: seat)), Holds.wallRadius * 0.866 - 0.1, "the keep within its walls")
         }
+        XCTAssertLessThan(PlacementTests.reach(.youngKeep), Holds.wallRadius * 0.866 - 0.1, "the young keep within its walls")
         for key in Library.catalogue {
             switch key {
             case .work, .study:

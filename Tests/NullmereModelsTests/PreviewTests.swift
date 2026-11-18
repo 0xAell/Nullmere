@@ -43,7 +43,7 @@ final class PreviewTests: XCTestCase {
         }
         let holds = family {
             switch $0 {
-            case .keep, .keepOf, .walls, .scaffold, .allianceHall, .storehouse: return true
+            case .keep, .keepOf, .youngKeep, .walls, .scaffold, .allianceHall, .storehouse: return true
             default: return false
             }
         }

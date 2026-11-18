@@ -123,7 +123,7 @@ extension HoldLayout {
                 let c = Relief.centre(of: hex)
                 return Vec3(c.x, 0, c.z)
             }
-            let keep = Library.model(plan.heritage.map { ModelKey.keepOf($0, seat: plan.isSeat) } ?? .keep(seat: plan.isSeat)).mesh.bounds
+            let keep = Library.model(keepKey(plan)).mesh.bounds
             keepClear = max(-keep.min.x, keep.max.x, -keep.min.z, keep.max.z) + 0.03
             land = HoldLayout.land(of: plan.hex, relief: relief)
         }

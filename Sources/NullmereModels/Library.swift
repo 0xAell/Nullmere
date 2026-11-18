@@ -14,6 +14,9 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// A hold's keep as its House's people build one: their walls, roof
     /// and crown (see `KeepStyle`).
     case keepOf(Heritage, seat: Bool)
+    /// A young city's keep, before it is raised in stone: a tower of timber
+    /// on an earthen motte, the keeper's hall at its foot.
+    case youngKeep
     /// A hold's walls at their level.
     case walls(level: Int)
     /// A work at its level. A hold's walls are `walls(level:)`.
@@ -119,6 +122,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .signature(let heritage): return "\(heritage.rawValue) own"
         case .keep(let seat): return seat ? "seat keep" : "keep"
         case .keepOf(let heritage, let seat): return "\(heritage.rawValue) \(seat ? "seat keep" : "keep")"
+        case .youngKeep: return "young keep"
         case .walls(let level): return "walls \(level)"
         case .work(let kind, let level): return "\(kind.rawValue) \(level)"
         case .scaffold: return "scaffold"
@@ -196,7 +200,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .folk(let variant): return .folk(variant: (variant % Folk.variants + Folk.variants) % Folk.variants)
         case .talentSigil(let tree): return .talentSigil(tree: min(max(tree, 0), 2))
         case .crestCharge(let charge): return .crestCharge(min(max(charge, 0), 9))
-        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .listeningStone, .commanderStar, .pedlarSkiff, .crestBoard, .barge, .raising, .drownedCrown, .allianceHall, .lyceumHall, .lyceumOrrery, .storehouse,
+        case .keep, .keepOf, .youngKeep, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .listeningStone, .commanderStar, .pedlarSkiff, .crestBoard, .barge, .raising, .drownedCrown, .allianceHall, .lyceumHall, .lyceumOrrery, .storehouse,
              .yard, .signature, .town, .fury:
             return self
         }
@@ -214,7 +218,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .figure, .signature, .wild, .commander, .folk: return 4000
         case .prop(.boat): return 700
         case .furnishing, .prop, .town: return 300
-        case .keep, .keepOf, .allianceHall, .lyceumHall: return 4500
+        case .keep, .keepOf, .youngKeep, .allianceHall, .lyceumHall: return 4500
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .barge, .raising, .drownedCrown, .storehouse, .yard: return 3000
         case .hostBanner, .talentSigil, .helpLight, .borderStone, .crestBoard, .crestCharge: return 300
         case .listeningStone, .lyceumOrrery, .fury: return 900
@@ -368,7 +372,7 @@ public enum Library {
         }
         keys += (1...ModelKey.wildTiers).map { .wild(tier: $0) }
         keys += (0..<ModelKey.commanderVariants).map { .commander(variant: $0) }
-        keys += [.keep(seat: false), .keep(seat: true)]
+        keys += [.keep(seat: false), .keep(seat: true), .youngKeep]
         keys += Heritage.allCases.flatMap { [ModelKey.keepOf($0, seat: false), .keepOf($0, seat: true)] }
         keys += (1...ModelKey.wallLevels).map { .walls(level: $0) }
         for kind in BuildingKind.allCases where kind != .walls && kind != .archive {
@@ -418,6 +422,7 @@ public enum Library {
         case .keep(let seat): return Art.keep(seat: seat, style: .common, people: "common", name: key.canonical.description)
         case .keepOf(let heritage, let seat):
             return Art.keep(seat: seat, style: .of(heritage), people: heritage.rawValue, name: key.canonical.description)
+        case .youngKeep: return Art.work(Art.motteFile, level: 1, name: key.canonical.description)
         case .walls(let level): return Works.build(.walls, level: level, name: key.canonical.description)
         case .work(let kind, let level): return Works.build(kind, level: level, name: key.canonical.description)
         case .study(let level): return Art.work(Art.archiveFile, level: level, name: key.canonical.description)
@@ -459,6 +464,7 @@ public enum Library {
     public static func smoke(of key: ModelKey) -> [Vec3] {
         switch key.canonical {
         case .keep(let seat), .keepOf(_, let seat): return [Holds.chimney(seat: seat)]
+        case .youngKeep: return [Holds.youngChimney]
         case .work(.saltworks, let level): return Works.saltworksChimney(level).map { [$0] } ?? []
         case .lair(let kind): return Lairs.fire(of: kind).map { [$0] } ?? []
         case .gatehold: return [Lairs.gateFire]
