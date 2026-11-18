@@ -211,10 +211,6 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertTrue(LiveWindow(world: world, centre: LiveHex(q: -20, r: 20), radius: 4).companies(in: world, relief: relief, at: 2_012).isEmpty)
     }
 
-    /// The window staged as the app stages a world, with its land's
-    /// furniture: written out for the browser preview where a folder is
-    /// named, from the rows above or, where a realm is named, from it.
-    @MainActor
     /// Carts of goods go on the road as a carter with a handcart, never as
     /// a company of soldiers, and march like any army.
     func testCartsGoAsACarterWithAHandcart() throws {
@@ -230,6 +226,10 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(companies.first { $0.unit == 4 }?.key, .figure(.spear, tier: 1), "an army is drawn as soldiers still")
     }
 
+    /// The window staged as the app stages a world, with its land's
+    /// furniture: written out for the browser preview where a folder is
+    /// named, from the rows above or, where a realm is named, from it.
+    @MainActor
     func testAnAlliancesLandIsTintedInItsColour() {
         var rows = LiveWindowTests.rows()
         // A wardstone of the fifth alliance two hexes east of Ada's city, standing since 1,500; another raised but not yet standing.
