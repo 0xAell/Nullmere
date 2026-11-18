@@ -227,6 +227,12 @@ public struct LiveCounsel: Sendable {
         if pleas > 0 { lines.append("Allies ask help with \(pleas) \(pleas == 1 ? "work" : "works").") }
         if let rally = world.myRally { lines.append("Your lord has an army in a rally: \(world.rallyWords(rally, at: seconds))") }
         if !world.boons.isEmpty { lines.append("Gifts wait: \(world.boonGoods.words).") }
+        // The holy sites it holds, and what they give it.
+        let held = world.shrinesHeld(by: alliance.id)
+        if !held.isEmpty {
+            let named = held.map { $0.name.replacingOccurrences(of: "The ", with: "the ") }
+            lines.append("It holds \(named.joined(separator: ", ")). " + world.hallowing(of: alliance.id).joined(separator: " "))
+        }
         return lines.joined(separator: " ")
     }
 

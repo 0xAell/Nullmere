@@ -605,6 +605,23 @@ struct LiveAllianceDepth: View {
             let raised = wards.count == 1 ? "1 wardstone raised." : "\(wards.count) wardstones raised."
             let held = gates.count == 1 ? "1 gate of the ridge held" : "\(gates.count) gates of the ridge held"
             LiveSmall(words: gates.isEmpty ? "\(raised) No gate of the ridge held." : "\(raised) \(held): the lake country is open to you.")
+            // The holy sites it holds: what each gives, each to go to.
+            let hallowed = world.shrinesHeld(by: alliance)
+            Caps("Holy sites", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
+            if hallowed.isEmpty {
+                LiveSmall(words: "None held. Three days into a season, a rally of your alliance may take one from the Unquiet.", dim: true)
+            }
+            ForEach(hallowed) { shrine in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    LiveSmall(words: "\(shrine.name): \(shrine.gives)")
+                    Spacer(minLength: 0)
+                    QuietButton(title: "Go", name: "Go to \(shrine.name)") {
+                        session.go(to: shrine.hex)
+                        session.selected = shrine.hex
+                    }
+                }
+            }
             // The places its officers marked: each to go to, and an officer's to clear.
             if !world.marks.isEmpty {
                 Caps("Marks", size: LiveType.small)

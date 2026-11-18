@@ -1375,6 +1375,7 @@ final class LiveSessionTests: XCTestCase {
         rows["member"] = [[n(1), n(5), n(5), n(1_500)]]
         rows["season"] = [[n(1), n(1_000), n(2_420_200), n(0), .string(""), n(0)]]
         rows["march"] = rows["march"]?.filter { $0[1] != .number(1) }
+        rows["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(3), n(4), n(200), n(0)]]
         let (well, altar, heart) = (LiveHex(q: 4, r: -6), LiveHex(q: 12, r: -8), LiveHex(q: 2, r: -9))
         rows["shrine"] = [[n(1), n(well.packed), n(LiveShrine.moonwell), n(0), .string(""), n(0), n(0)],
                           [n(2), n(altar.packed), n(LiveShrine.saltAltar), n(5), .string("[MERE] Keepers"), n(1_200), n(0)],
@@ -1389,6 +1390,8 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(early.world.shrinesHeld(by: 5).map(\.id), [2])
         XCTAssertEqual(early.world.hallowing(of: 5), ["Your alliance's Saltworks bring in 20% more moonsalt."])
         XCTAssertEqual(early.world.hallowing(of: 7), [])
+        let counsel = try XCTUnwrap(early.counsel(of: 11))
+        XCTAssertTrue(counsel.allianceLook.hasSuffix("It holds the Salt Altar. Your alliance's Saltworks bring in 20% more moonsalt."), counsel.allianceLook)
         guard case .shrine(let moonwell) = early.selection(at: well) else { return XCTFail("the Moonwell is chosen") }
         XCTAssertEqual(moonwell.name, "The Moonwell")
 
