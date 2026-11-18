@@ -288,8 +288,12 @@ extension HoldLayout {
     }
 
     /// How far out each lane laid runs, by its place from the gate's: the
-    /// gate's to the hold's edge, a work's to its foot.
-    static func laneEnds(_ plan: Plan, relief: Relief) -> [Int: Float] {
+    /// gate's to the hold's edge, a work's to its foot; to the farthest
+    /// work's on it, or, `nearest`, to the nearest's, short of the works
+    /// behind it (where a work of the outer ring stands behind one of the
+    /// inner, its lane runs on under the nearer to it, but no one walks
+    /// through a work).
+    static func laneEnds(_ plan: Plan, relief: Relief, nearest: Bool = false) -> [Int: Float] {
         let centre = Relief.centre(of: plan.hex)
         let heart = Vec3(centre.x, 0, centre.z)
         let front = frontAngle(of: plan.hex)
@@ -298,7 +302,8 @@ extension HoldLayout {
             let offset = slot.position - heart
             let turn = Float(atan2(Double(offset.z), Double(offset.x))) - front
             let index = (Int((turn / (2 * .pi / Float(lanes))).rounded()) % lanes + lanes) % lanes
-            ends[index] = max(ends[index] ?? 0, offset.length - workRadius + 0.04)
+            let foot = offset.length - workRadius + 0.04
+            ends[index] = nearest && index != 0 ? min(ends[index] ?? .infinity, foot) : max(ends[index] ?? 0, foot)
         }
         return ends
     }
@@ -331,7 +336,7 @@ extension HoldLayout {
         let heart = Vec3(centre.x, 0, centre.z)
         let angles = laneAngles(of: plan.hex)
         let walled = isWalled(plan)
-        let ends = laneEnds(plan, relief: relief)
+        let ends = laneEnds(plan, relief: relief, nearest: true)
         let homes = lots(plan, relief: relief).filter { Town.homes.contains($0.piece) }.count
         let count = min(homes / homesPerStroll, plan.isSeat ? seatStrollsMost : strollsMost)
         func way(_ angle: Float) -> Vec3 { Vec3(Float(cos(Double(angle))), 0, Float(sin(Double(angle)))) }
