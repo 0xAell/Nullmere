@@ -215,6 +215,7 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     public func setMark(at hex: LiveHex, _ words: String) async throws { try take("mark \(hex.q),\(hex.r): \(words)") }
     public func clearMark(_ mark: UInt64) async throws { try take("clear mark \(mark)") }
     public func claimMilestone(_ milestone: UInt64) async throws { try take("claim milestone \(milestone)") }
+    public func claimWelcome() async throws { try take("claim the welcome") }
 }
 
 /// How many times something has been tried.

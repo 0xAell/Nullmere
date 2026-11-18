@@ -4,7 +4,7 @@
 
 use super::{asking, city_of, earn_favour, give, goods, realm, set_goods, settle, Refusal};
 use crate::catalog::{self, Deed, Goods, Item};
-use crate::rows::{Chest, Daily, Db, Duty};
+use crate::rows::{Chest, Daily, Db, Duty, Welcome};
 use crate::store::Table;
 
 /// Writes the deeds and the chests out as rows, for clients to show, as
@@ -113,4 +113,38 @@ pub fn open_chest(db: &mut impl Db, player: u64, chest: u8) -> Result<Goods, Ref
     }
     earn_favour(db, player, catalog::chest_favour(chest));
     Ok(holds)
+}
+
+/// A player claims the day's welcome, once each day of the realm: so many
+/// days in a row they have claimed it, to the seventh, then afresh; a day
+/// missed begins the count again. What it gave, and the day it counts as.
+pub fn claim_welcome(db: &mut impl Db, player: u64) -> Result<(Goods, u64), Refusal> {
+    asking(db, player)?;
+    let city = city_of(db, player)?;
+    let day = today(db);
+    let kept = Table::<Welcome>::get(db, player);
+    if let Some(row) = &kept {
+        if row.day == day && row.streak > 0 {
+            return Err(Refusal::WelcomeClaimed);
+        }
+    }
+    let streak = match &kept {
+        Some(row) if row.day + 1 == day && row.streak < catalog::WELCOME_DAYS => row.streak + 1,
+        _ => 1,
+    };
+    let (gives, item) = catalog::welcome(streak);
+    let mut stock = settle(db, city.id)?;
+    let more = goods(&stock).plus(gives);
+    set_goods(&mut stock, more);
+    db.update(stock);
+    if let Some((item, count)) = item {
+        give(db, player, item, count);
+    }
+    let row = Welcome { player, day, streak };
+    if kept.is_some() {
+        db.update(row);
+    } else {
+        db.insert(row);
+    }
+    Ok((gives, streak))
 }

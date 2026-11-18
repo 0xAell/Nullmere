@@ -1437,6 +1437,40 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertFalse(session.commands(at: 2_015).contains { if case .claimMilestone = $0.act { return true } else { return false } })
     }
 
+    /// The day's welcome: waiting each day, the day in a row it counts as,
+    /// what it gives, and claimed from the palette.
+    func testTheDaysWelcomeIsClaimedOnceADay() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["ware"] = [[n(2), .string("An hour's haste"), .string("An hour sooner."), n(3_600), n(1)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        // The realm opened at 1,000, so 2,015 is its first day, day 0.
+        XCTAssertEqual(session.world.today(at: 2_015), 0)
+        XCTAssertTrue(session.world.welcomeWaits(at: 2_015), "never claimed")
+        XCTAssertEqual(session.world.welcomeStreak(at: 2_015), 1)
+        XCTAssertEqual(session.world.welcomeGifts(1), "1,000 grain, 1,000 timber and 500 stone")
+        XCTAssertEqual(session.world.welcomeGifts(7), "7,000 grain, 7,000 timber and 3,500 stone, an hour's haste")
+        XCTAssertEqual(session.world.welcomeGifts(99), session.world.welcomeGifts(7))
+        let claim = try XCTUnwrap(session.commands(at: 2_015).first { $0.act == .claimWelcome })
+        XCTAssertEqual(claim.title, "Claim the day's welcome: day 1 of 7 in a row")
+        _ = await session.perform(claim)
+        XCTAssertEqual(line.asked.last, "claim the welcome")
+
+        // Claimed today, the sixth day in a row: nothing waits; tomorrow it is the seventh, and the day after, the first again.
+        line.change { $0["my_welcome"] = [[self.n(1), self.n(0), self.n(6)]] }
+        session.refresh()
+        XCTAssertEqual(session.world.welcomed, LiveWelcome(day: 0, streak: 6))
+        XCTAssertFalse(session.world.welcomeWaits(at: 2_015))
+        XCTAssertFalse(session.commands(at: 2_015).contains { $0.act == .claimWelcome })
+        XCTAssertEqual(session.world.welcomeStreak(at: 2_015), 6)
+        XCTAssertEqual(session.world.welcomeStreak(at: 1_000 + 86_400), 7)
+        XCTAssertEqual(session.world.welcomeStreak(at: 1_000 + 2 * 86_400), 1)
+        line.change { $0["my_welcome"] = [[self.n(1), self.n(0), self.n(7)]] }
+        session.refresh()
+        XCTAssertEqual(session.world.welcomeStreak(at: 1_000 + 86_400), 1, "after the seventh, afresh")
+    }
+
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
         let line = StandInLine(rows: LiveWindowTests.rows())
         // Seventeen seconds along its way of twenty-four: on 11, -2.

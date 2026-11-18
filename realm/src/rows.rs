@@ -885,6 +885,19 @@ pub struct Letter {
 }
 row!(Letter in letter, auto, by id, sender, receiver);
 
+/// A player's welcome: the day of the realm they last claimed it on, and
+/// how many days in a row they have. Theirs alone to read, through
+/// `my_welcome`. Keyed by player.
+#[spacetimedb::table(accessor = welcome)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Welcome {
+    #[primary_key]
+    pub player: u64,
+    pub day: u64,
+    pub streak: u64,
+}
+row!(Welcome in welcome, by player);
+
 /// One of the realm's milestones: the feat it counts (`catalog::Feat`),
 /// how many of it reach it and how many the realm has done, when it was
 /// reached (0 while it is not), its words, and what every player may
@@ -1762,6 +1775,7 @@ pub trait Db:
     + Table<Mark>
     + Table<Milestone>
     + Table<Claim>
+    + Table<Welcome>
     + Table<Gear>
     + Table<Pattern>
     + Table<Lore>
@@ -1843,6 +1857,7 @@ impl<
             + Table<Mark>
             + Table<Milestone>
             + Table<Claim>
+            + Table<Welcome>
             + Table<Gear>
             + Table<Pattern>
             + Table<Lore>

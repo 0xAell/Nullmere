@@ -223,3 +223,34 @@ fn a_barrow_cleared_counts_and_one_that_beats_the_army_does_not() {
     assert_eq!(done.cleared, 1);
     assert!(rules::marks(&done) >= Deed::Clear.marks());
 }
+
+#[test]
+fn the_days_welcome_grows_over_seven_days_in_a_row_and_begins_again() {
+    let (mut db, ada, city) = joined();
+    let before = stock(&db, city.id);
+    let (gives, streak) = db.call(|db| rules::claim_welcome(db, ada)).unwrap();
+    assert_eq!((gives, streak), (Goods::of(1_000, 1_000, 500, 0), 1));
+    assert_eq!(stock(&db, city.id).timber, before.timber + 1_000);
+    // Once a day.
+    assert_eq!(db.call(|db| rules::claim_welcome(db, ada)), Err(Refusal::WelcomeClaimed));
+    assert_eq!(Refusal::WelcomeClaimed.to_string(), "You have claimed today's welcome. Come again tomorrow.");
+
+    // Six days more in a row: the seventh gives the most, and an hour's haste.
+    let hastes = rules::held(&db, ada, catalog::Item::Haste60);
+    for day in 2..=7 {
+        wait(&mut db, catalog::DAY);
+        let (gives, streak) = db.call(|db| rules::claim_welcome(db, ada)).unwrap();
+        assert_eq!(streak, day);
+        assert_eq!(gives, Goods::of(1_000 * day, 1_000 * day, 500 * day, 0));
+    }
+    assert_eq!(rules::held(&db, ada, catalog::Item::Haste60), hastes + 1);
+    // Then afresh.
+    wait(&mut db, catalog::DAY);
+    assert_eq!(db.call(|db| rules::claim_welcome(db, ada)).unwrap().1, 1);
+    // A day missed begins the count again.
+    wait(&mut db, catalog::DAY);
+    assert_eq!(db.call(|db| rules::claim_welcome(db, ada)).unwrap().1, 2);
+    wait(&mut db, 2 * catalog::DAY);
+    assert_eq!(db.call(|db| rules::claim_welcome(db, ada)).unwrap().1, 1);
+    assert_eq!(catalog::welcome(99), catalog::welcome(catalog::WELCOME_DAYS), "no day past the seventh");
+}

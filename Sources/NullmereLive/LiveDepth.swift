@@ -647,6 +647,23 @@ public struct LiveTitle: Equatable, Sendable, Identifiable {
     }
 }
 
+/// The day of the realm the player last claimed the day's welcome on, and
+/// how many days in a row they had then.
+public struct LiveWelcome: Equatable, Sendable {
+    public let day: UInt64
+    public let streak: UInt64
+
+    public init(day: UInt64, streak: UInt64) {
+        (self.day, self.streak) = (day, streak)
+    }
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let day = cells.unsigned(1), let streak = cells.unsigned(2) else { return nil }
+        (self.day, self.streak) = (day, streak)
+    }
+}
+
 /// One of the realm's milestones: how many of a feat of every player's
 /// reach it and how many the realm has done, when it was reached (0 while
 /// it is not), its words, and what each player may claim once it is.

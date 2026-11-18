@@ -41,8 +41,9 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         /// Mark a hex for the player's alliance with words, or clear a mark.
         case setMark(LiveHex, String)
         case clearMark(UInt64)
-        /// Claim what a milestone the realm reached gives.
+        /// Claim what a milestone the realm reached gives, and the day's welcome.
         case claimMilestone(UInt64)
+        case claimWelcome
     }
 
     public let title: String
@@ -184,6 +185,10 @@ extension LiveSession {
             guard let laurel = world.laurelToClaim(of: trial, day: day) else { continue }
             all.append(LiveCommand(title: "Claim what your place in \(trial.name) gave: \(LiveWords.ordinal(laurel.place))", act: .claimPlace(contest: trial.id)))
         }
+        if world.welcomeWaits(at: seconds) {
+            all.append(LiveCommand(title: "Claim the day's welcome: day \(world.welcomeStreak(at: seconds)) of \(LiveWorld.welcomeDays) in a row",
+                                   act: .claimWelcome))
+        }
         for milestone in world.milestonesToClaim {
             all.append(LiveCommand(title: "Claim what the realm's milestone gave: \(milestone.words)", act: .claimMilestone(milestone.id)))
         }
@@ -304,6 +309,7 @@ extension LiveSession {
         case .setMark(let hex, let words): await setMark(at: hex, words)
         case .clearMark(let mark): await clearMark(mark)
         case .claimMilestone(let milestone): await claimMilestone(milestone)
+        case .claimWelcome: await claimWelcome()
         }
         return nil
     }

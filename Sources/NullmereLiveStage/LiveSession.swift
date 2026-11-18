@@ -93,6 +93,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func setMark(at hex: LiveHex, _ words: String) async throws
     func clearMark(_ mark: UInt64) async throws
     func claimMilestone(_ milestone: UInt64) async throws
+    func claimWelcome() async throws
 }
 
 extension LiveClient: LiveLine {}
@@ -706,6 +707,7 @@ public final class LiveSession {
     public func setMark(at hex: LiveHex, _ words: String) async { await ask { try await $0.setMark(at: hex, words) } }
     public func clearMark(_ mark: UInt64) async { await ask { try await $0.clearMark(mark) } }
     public func claimMilestone(_ milestone: UInt64) async { await ask { try await $0.claimMilestone(milestone) } }
+    public func claimWelcome() async { await ask { try await $0.claimWelcome() } }
 
     /// One soldier of the first kind and tier standing ready: a scout.
     public var scoutParty: [(kind: Int, tier: Int, count: UInt64)] {

@@ -396,6 +396,10 @@ milestones = sorted(rows(nobody, "SELECT * FROM milestone"), key=lambda m: m["id
 check("the realm's six milestones are for all to read, its cities founded counted", ([m["id"] for m in milestones], milestones[0]["done"] >= 2 if milestones else False, [m["reached"] for m in milestones]), (list(range(1, 7)), True, [0] * 6))
 check("one not reached gives nothing", call(ada, "claim_milestone", 1), "The realm has not reached that milestone yet.")
 check("and what a player claimed is theirs alone to read", (rows(ada, "SELECT * FROM my_claims"), isinstance(rows(ada, "SELECT * FROM claim"), str)), ([], True))
+# The day's welcome: claimed once a day, the first of a run of days, read by its player alone.
+check("the day's welcome is claimed", call(bryn, "claim_welcome"), None)
+check("once a day", call(bryn, "claim_welcome"), "You have claimed today's welcome. Come again tomorrow.")
+check("and its player reads how many days in a row, as no one reads the table", ([w["streak"] for w in rows(bryn, "SELECT * FROM my_welcome")], isinstance(rows(bryn, "SELECT * FROM welcome"), str)), ([1], True))
 # The gates of the ridge: six, for all to read, held by the Unquiet as the realm opens; stormed only by an alliance's rally.
 gates = sorted(rows(nobody, "SELECT * FROM gate"), key=lambda gate: gate["id"])
 check("six gates stand in the ridge's passes, held by the Unquiet", [(gate["id"], gate["holder"], gate["fighter"]) for gate in gates], [(n, 0, 0) for n in range(1, 7)])

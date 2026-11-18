@@ -309,6 +309,7 @@ pub enum Refusal {
     NoSuchMilestone,
     MilestoneNotReached,
     MilestoneClaimed,
+    WelcomeClaimed,
     ShutOutAlready,
     NotShutOut,
     /// A player shuts out so many others at most.
@@ -594,6 +595,7 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchMilestone => "The realm has no such milestone.",
             Refusal::MilestoneNotReached => "The realm has not reached that milestone yet.",
             Refusal::MilestoneClaimed => "You have claimed what that milestone gave.",
+            Refusal::WelcomeClaimed => "You have claimed today's welcome. Come again tomorrow.",
             Refusal::ShutOutAlready => "You have shut them out already.",
             Refusal::NotShutOut => "You haven't shut them out.",
             Refusal::NoSuchLetter => "There is no such letter of yours.",

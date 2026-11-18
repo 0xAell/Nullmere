@@ -121,6 +121,9 @@ public struct LiveWorld: Equatable, Sendable {
     /// has claimed.
     public var milestones: [LiveMilestone] = []
     public var claimed: Set<UInt64> = []
+    /// The day of the realm the player last claimed the day's welcome on,
+    /// and how many days in a row they had then.
+    public var welcomed: LiveWelcome?
     /// What the Forge makes, by piece; and the player's gear.
     public var patterns: [Int: LivePattern] = [:]
     public var gear: [LiveGear] = []
@@ -229,6 +232,7 @@ public struct LiveWorld: Equatable, Sendable {
         marks = rows("my_marks", LiveMark.init).sorted { $0.id < $1.id }
         milestones = rows("milestone", LiveMilestone.init).sorted { $0.id < $1.id }
         claimed = Set((snapshot["my_claims"] ?? []).compactMap { Cells(row: $0).unsigned(2) })
+        welcomed = rows("my_welcome", LiveWelcome.init).first
         patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
         gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
         boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }
@@ -352,6 +356,32 @@ public struct LiveWorld: Equatable, Sendable {
 
     /// Whether the player is the Lord of the Mere.
     public var isLord: Bool { me.map { $0.id == lord } ?? false }
+
+    /// How many days the day's welcome grows over, in a row.
+    public static let welcomeDays: UInt64 = 7
+
+    /// Whether the day's welcome waits on the player to claim it today.
+    public func welcomeWaits(at seconds: Double) -> Bool {
+        me != nil && welcomed?.day != today(at: seconds)
+    }
+
+    /// The day in a row the welcome claimed now would count as: the day
+    /// after the last, to the seventh, or the first again.
+    public func welcomeStreak(at seconds: Double) -> UInt64 {
+        let today = today(at: seconds)
+        guard let welcomed else { return 1 }
+        if welcomed.day == today { return welcomed.streak }
+        return welcomed.day + 1 == today && welcomed.streak < LiveWorld.welcomeDays ? welcomed.streak + 1 : 1
+    }
+
+    /// What the day's welcome gives on a day of so many in a row: more
+    /// goods each day, and on the seventh an hour's haste.
+    public func welcomeGifts(_ streak: UInt64) -> String {
+        let day = min(max(streak, 1), LiveWorld.welcomeDays)
+        let goods = LiveGoods(grain: 1_000 * day, timber: 1_000 * day, stone: 500 * day)
+        guard day == LiveWorld.welcomeDays else { return goods.words }
+        return "\(goods.words), \(LiveWorld.inLine(wares[2]?.name ?? "an hour's haste"))"
+    }
 
     /// The milestones the realm has reached whose gifts the player has not claimed.
     public var milestonesToClaim: [LiveMilestone] { milestones.filter { $0.isReached && !claimed.contains($0.id) } }

@@ -401,8 +401,9 @@ final class LiveGameTests: XCTestCase {
         await held(whole(.day, of: claiming).frame(width: LiveSidePanel.width - 28)) {
             XCTAssertTrue(PressableButtons.press("Claim what the realm's milestone gave: Fifty cities founded in the realm."),
                           "Among \(PressableButtons.actions.keys.sorted())")
+            XCTAssertTrue(PressableButtons.press("Claim the day's welcome"), "Among \(PressableButtons.actions.keys.sorted())")
         }
-        XCTAssertEqual(claimingLine.asked.last, "claim milestone 1")
+        XCTAssertEqual(claimingLine.asked.suffix(2), ["claim milestone 1", "claim the welcome"])
         // And with nothing in them: no soldiers yet, no reports yet.
         let (empty, _) = await playing(LiveSample.rows())
         for side in [LiveGameView.Panel.troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
@@ -931,9 +932,12 @@ final class LiveGameTests: XCTestCase {
         later["ware"]?.append([n(11), .string("Summons to the Tavern"), .string("Taken to your Tavern."), n(0), n(5)])
         later["my_satchel"]?.append([n(1 << 8 | 11), n(1), n(11), n(1)])
         later["my_claims"] = [[n(1 << 32 | 1), n(1), n(1), n(2_010)]]
+        // Today's welcome claimed already, the third day in a row.
+        later["my_welcome"] = [[n(1), n(0), n(3)]]
         let (session, _) = await playing(later)
         XCTAssertEqual(session.world.daily?.hasOpened(1), true)
         XCTAssertTrue(session.world.milestonesToClaim.isEmpty, "the milestone reached, claimed")
+        XCTAssertFalse(session.world.welcomeWaits(at: 2_015), "today's welcome, claimed")
         XCTAssertEqual(session.world.summonses, 1)
         for part in [LiveGameView.Panel.day, .realm] {
             XCTAssertGreaterThan(try drawn(whole(part, of: session).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800, "\(part)")

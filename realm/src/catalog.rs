@@ -2140,3 +2140,14 @@ pub fn milestones() -> [(u64, Feat, u64, &'static str, Goods, Item, u64); 6] {
         (6, Feat::Cleared, 1_000, "A thousand barrows of the Unquiet cleared.", Goods::of(100_000, 100_000, 100_000, 0), Item::Haste480, 1),
     ]
 }
+
+/// How many days in a row the day's welcome grows over, then begins again.
+pub const WELCOME_DAYS: u64 = 7;
+
+/// What the day's welcome gives on a day of so many in a row (1 to
+/// `WELCOME_DAYS`): more goods each day, and on the last an hour's haste.
+pub fn welcome(streak: u64) -> (Goods, Option<(Item, u64)>) {
+    let day = streak.clamp(1, WELCOME_DAYS);
+    let goods = Goods::of(1_000 * day, 1_000 * day, 500 * day, 0);
+    (goods, (day == WELCOME_DAYS).then_some((Item::Haste60, 1)))
+}

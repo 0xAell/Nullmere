@@ -107,6 +107,20 @@ struct LiveDayPanel: View {
             }
         }
 
+        // The day's welcome: claimed once a day, more each day in a row, to the seventh.
+        let streak = world.welcomeStreak(at: seconds)
+        if world.welcomeWaits(at: seconds) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                LiveSmall(words: "The day's welcome, day \(streak) of \(LiveWorld.welcomeDays) in a row: \(world.welcomeGifts(streak)).")
+                Spacer(minLength: 0)
+                QuietButton(title: "Claim", prominent: true, enabled: session.asking == 0, name: "Claim the day's welcome") {
+                    Task { await session.claimWelcome() }
+                }
+            }
+        } else if world.me != nil {
+            LiveSmall(words: "Today's welcome claimed: day \(streak) of \(LiveWorld.welcomeDays) in a row. Come again tomorrow.", dim: true)
+        }
+
         // What the whole realm does together: how near each milestone
         // stands, and once reached, what it gives each player to claim.
         if !world.milestones.isEmpty {
