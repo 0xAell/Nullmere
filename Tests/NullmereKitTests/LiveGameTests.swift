@@ -365,6 +365,11 @@ final class LiveGameTests: XCTestCase {
         let (under, _) = await playing(threatened)
         XCTAssertEqual(under.world.threats(at: 2_015).map(\.words), ["Bryn's army of 300 reaches your city in 1:25."])
         XCTAssertGreaterThan(try drawn(LiveThreats(session: under, seconds: 2_015), width: 600, height: 80, as: "live-threats.png"), 100)
+        // Look at it: the map goes to where that army is now.
+        PressableButtons.isListening = true
+        _ = try drawn(LiveThreats(session: under, seconds: 2_015), width: 600, height: 80)
+        XCTAssertTrue(PressableButtons.press("Look at it: Bryn's army of 300 reaches your city in 1:25."), "Among \(PressableButtons.actions.keys.sorted())")
+        PressableButtons.isListening = false
         XCTAssertGreaterThan(try drawn(LiveDock(session: session, panel: binding), width: 640, height: 50), 100)
         // Four destinations: the House of four parts, the alliance, the realm of two, the mail.
         XCTAssertEqual(LiveDock.destinations.map(\.title), ["House", "Alliance", "Realm", "Mail"])
