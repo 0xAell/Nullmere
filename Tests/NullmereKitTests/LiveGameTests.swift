@@ -861,6 +861,21 @@ final class LiveGameTests: XCTestCase {
         session.selected = bryns
         XCTAssertGreaterThan(try drawn(LiveGameView(session: session), width: 1512, height: 982, as: "live-ally-card.png"), 800)
         session.selected = nil
+        // The grove marked by her alliance: the mark flagged over it on the
+        // map, beside Bryn's city, and said on the grove's card.
+        var marked = later
+        marked["my_marks"] = [[n(3), n(5), n(Int(LiveHex(q: 12, r: -2).packed)), .string("Take the grove"), n(2), n(2_000)]]
+        let (marking, markingLine) = await playing(marked)
+        marking.go(to: LiveHex(q: 12, r: -3))
+        let window = CGSize(width: 1512, height: 982)
+        XCTAssertEqual(marking.markLabels(in: window).map(\.words), ["Take the grove"])
+        XCTAssertGreaterThan(try drawn(LiveGameView(session: marking), width: window.width, height: window.height, as: "live-marks.png"), 800)
+        marking.selected = LiveHex(q: 12, r: -2)
+        XCTAssertEqual(marking.card(for: try XCTUnwrap(marking.selection)).lines.last, "Your alliance's mark: Take the grove")
+        // Ada leads her alliance: she may clear it from the palette.
+        let clear = try XCTUnwrap(marking.commands(at: 2_015).first { $0.act == .clearMark(3) })
+        _ = await marking.perform(clear)
+        XCTAssertEqual(markingLine.asked.last, "clear mark 3")
         // No one else in the realm: no one to write to, and that said.
         var alone = rows()
         alone["player"] = alone["player"]?.filter { $0.first == n(1) }
