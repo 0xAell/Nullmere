@@ -944,6 +944,12 @@ final class LiveGameTests: XCTestCase {
         XCTAssertEqual(named.phase, .opening)
         await named.open()
         XCTAssertEqual(named.phase, .lost)
+        // Lost, the play view says so, and Try again opens the realm afresh.
+        PressableButtons.isListening = true
+        _ = try drawn(LiveGameView(session: named), width: 800, height: 500)
+        XCTAssertTrue(PressableButtons.press("Try again"), "Among \(PressableButtons.actions.keys.sorted())")
+        PressableButtons.isListening = false
+        for _ in 0..<20 { await Task.yield() }
         XCTAssertNotNil(OnlineShell.session(in: ["NULLMERE_REBUILT_REALM": "http://127.0.0.1:9/nullmere-rebuilt"]), "Kept in the keychain where no file is named")
 
         // The smoke test's rehearsal: a name given where one is wanted,
