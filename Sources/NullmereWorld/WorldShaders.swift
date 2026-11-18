@@ -664,9 +664,20 @@ public enum WorldShaders {
         return colour;
     }
 
-    // The air between the eye and what it sees far off.
-    float3 nm_haze(float3 c, float distance NM_FRAME_ARGUMENT) {
+    // The air between the eye and what it sees far off, at a point of the
+    // world; and while the sun is low, at dawn and at dusk, a mist lying
+    // over the water and the low ground, thinning up the slopes and gone
+    // on the heights, none at noon nor by night.
+    float3 nm_haze(float3 c, float3 world NM_FRAME_ARGUMENT) {
+        float distance = length(world - frame.eye.xyz);
         float amount = 1.0 - exp(-max(distance - frame.haze.x, 0.0) * frame.haze.y);
+    #ifndef NM_NO_HAZE
+        float low = (1.0 - frame.keyColour.a) * frame.sun.w * (1.0 - smoothstep(0.08, 0.35, normalize(frame.sun.xyz).y));
+        if (low > 0.0) {
+            float lying = exp(-max(world.y, 0.0) / 0.18) * (1.0 - exp(-distance * 0.03));
+            amount = max(amount, low * 0.5 * lying);
+        }
+    #endif
         return mix(c, frame.hazeColour.rgb, clamp(amount, 0.0, frame.hazeColour.a));
     }
 
@@ -1029,7 +1040,7 @@ public enum WorldShaders {
         float kept = clamp(1.0 - 0.13 * beyond, 0.18, 1.0);
         lit = lit * kept + frame.hazeColour.rgb * (1.0 - kept) * frame.groundLight.a;
     #ifndef NM_NO_HAZE
-        lit = nm_haze(lit, distance(world, frame.eye.xyz) NM_FRAME_PASS);
+        lit = nm_haze(lit, world NM_FRAME_PASS);
     #endif
         return float4(nm_output(lit NM_FRAME_PASS), 1.0);
     }
@@ -1086,9 +1097,9 @@ public enum WorldShaders {
                 body *= 1.0 + 0.9 * (dot(wave, sun) - sun.y);
                 // Over the shallows, the sun the waves gather dances on the
                 // bed in a net of bright lines: two drifts of it crossing,
-                // brightest where it is shallowest, gone a third of a unit
-                // down.
-                float shallow = 1.0 - smoothstep(0.03, 0.35, depth);
+                // brightest where it is shallowest and the sun highest,
+                // gone a third of a unit down and as the sun sinks.
+                float shallow = (1.0 - smoothstep(0.03, 0.35, depth)) * smoothstep(0.1, 0.5, sun.y);
                 if (shallow > 0.0) {
                     float2 bed = (world.xz + frame.origin.xy) * 6.5;
                     float web = 1.0 - abs(nm_noise(bed + nm_drift(time, 0.11)) - nm_noise(bed * 1.3 + float2(5.2, 1.7) - nm_drift(time + 7.0, 0.09)));
@@ -1160,7 +1171,7 @@ public enum WorldShaders {
         float3 foam = max(pale * mix(0.72, 1.0, knowledge.y), colour);
         float cover = 1.0 - (1.0 - clear) * (1.0 - froth);
         colour = (colour * clear * (1.0 - froth) + foam * froth) / max(cover, 0.0001);
-        colour = nm_haze(colour, distance(world, frame.eye.xyz) NM_FRAME_PASS);
+        colour = nm_haze(colour, world NM_FRAME_PASS);
         return float4(nm_output(colour NM_FRAME_PASS), cover);
     }
 
@@ -1275,7 +1286,7 @@ public enum WorldShaders {
         if (watched < 0.75) {
             lit = nm_remembered(lit NM_FRAME_PASS);
         }
-        lit = nm_haze(lit, distance(world, frame.eye.xyz) NM_FRAME_PASS);
+        lit = nm_haze(lit, world NM_FRAME_PASS);
         // Fading, it covers as many of the pixel's samples as it is opaque.
         return float4(nm_output(lit NM_FRAME_PASS), params.y < 0.999 ? clamp(params.y, 0.0, 1.0) : 1.0);
     }
