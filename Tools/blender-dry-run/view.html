@@ -36,7 +36,8 @@ variants.forEach((variant, k) => {
         for (const vi of [face[0], face[i], face[i + 1]]) {
           const p = m.points[vi];
           pos.push(p[0] * scale, p[2] * scale, -p[1] * scale);
-          col.push(c[0], c[1], c[2]);
+          const k = (m.ao && params.get('ao') !== '0') ? 1 - (+(params.get('ao') || 0.6)) * (1 - m.ao[vi]) : 1;
+          col.push(c[0] * k, c[1] * k, c[2] * k);
         }
         tris++;
       }

@@ -158,6 +158,22 @@ final class MeshTests: XCTestCase {
         XCTAssertEqual(skinned.part2, 9)
         XCTAssertEqual(skinned.blend, 64)
         XCTAssertEqual(skinned.surface, .slate)
+        // How much of the sky it sees, in the material's byte above the
+        // material: none packed where it sees it all, as before there was any.
+        XCTAssertEqual(packed.occlusion, 1)
+        XCTAssertEqual(packed.normalMaterial >> 24, UInt32(Material.metal.rawValue))
+        for occlusion: Float in [0, 0.25, 0.5, 0.9, 1] {
+            var shaded = vertex
+            shaded.occlusion = occlusion
+            let back = PackedVertex(shaded)
+            XCTAssertEqual(back.material, .metal, "the material kept beside it")
+            XCTAssertEqual(back.occlusion, occlusion, accuracy: 0.5 / 31 + 1e-6)
+            XCTAssertEqual(back.normal, packed.normal)
+        }
+        XCTAssertEqual(PackedVertex.shade(0), 31)
+        XCTAssertEqual(PackedVertex.shade(1), 0)
+        XCTAssertEqual(PackedVertex.shade(-2), 31, "held to what the byte can hold")
+        XCTAssertTrue(Material.allCases.allSatisfy { $0.rawValue < 8 }, "every material fits the low three bits")
     }
 
     /// A vertex over a joint moves with its two parts as the GPU blends

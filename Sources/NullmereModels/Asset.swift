@@ -15,7 +15,8 @@ import Foundation
 /// third tier to the fifth, "helm@4" for the fourth alone, "helm@5,saltborn"
 /// for the fifth and for the variant named saltborn; "buckle!fine" only
 /// near, as the models built in code have their fine work. Cloth and leaves
-/// carry how far they move in the wind as an attribute, _SWAY. Its actions
+/// carry how far they move in the wind as an attribute, _SWAY; a building's
+/// corners how much of the open sky they see, _AO. Its actions
 /// are tagged the same way: "attack@warden" is the warden's strike, played
 /// by that variant in place of "attack".
 public enum Asset {
@@ -720,6 +721,7 @@ private struct Reader {
         let joints = skinned ? try primitive.attributes["JOINTS_0"].map { try integers($0).values } : nil
         let weights = skinned ? try primitive.attributes["WEIGHTS_0"].map { try floats($0).values } : nil
         let sway = try primitive.attributes["_SWAY"].map { try floats($0).values }
+        let occlusion = try primitive.attributes["_AO"].map { try floats($0).values }
         let material = primitive.material.flatMap { json.materials?.indices.contains($0) == true ? json.materials?[$0] : nil }
         let (kind, named) = Reader.kind(of: material?.name)
         // A grain given for its material, by name, in place of the one its name gives.
@@ -741,7 +743,8 @@ private struct Reader {
                 linear *= Vec3(values[i * width], values[i * width + 1], values[i * width + 2])
             }
             var vertex = MeshVertex(position: up.transformPoint(p), normal: n.normalized, color: given ?? Reader.srgb(linear), part: rigid,
-                                    material: kind, sway: min(max(sway.map { $0[i] } ?? 0, 0), 1), surface: surface)
+                                    material: kind, sway: min(max(sway.map { $0[i] } ?? 0, 0), 1), surface: surface,
+                                    occlusion: min(max(occlusion.map { $0[i] } ?? 1, 0), 1))
             if let joints, let weights, joints.count >= (i + 1) * 4, weights.count >= (i + 1) * 4 {
                 var pairs: [(joint: Int, weight: Float)] = []
                 for k in 0..<4 {

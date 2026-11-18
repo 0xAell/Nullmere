@@ -89,9 +89,13 @@ public struct MeshVertex: Equatable, Sendable {
     /// How much it moves with `part2` rather than `part`, 0 to 1; 0 for a
     /// vertex that moves with one part alone.
     public var blend: Float
+    /// How much of the open sky it sees past its own model, 1 all of it
+    /// (baked in Blender as _AO: Art/blender/building.py); the world draws
+    /// it the darker the less it sees, in a crevice, under the eaves.
+    public var occlusion: Float
 
     public init(position: Vec3, normal: Vec3, color: Vec3, part: UInt16 = 0, material: Material = .plain, sway: Float = 0,
-                surface: Surface = .smooth, part2: UInt16 = 0, blend: Float = 0) {
+                surface: Surface = .smooth, part2: UInt16 = 0, blend: Float = 0, occlusion: Float = 1) {
         self.position = position
         self.normal = normal
         self.color = color
@@ -101,6 +105,7 @@ public struct MeshVertex: Equatable, Sendable {
         self.surface = surface
         self.part2 = part2
         self.blend = blend
+        self.occlusion = occlusion
     }
 
     /// The transform it moves by, given each part's: its part's, or its two
@@ -121,6 +126,10 @@ public struct MeshVertex: Equatable, Sendable {
 /// A vertex as the GPU reads it: 24 bytes, matching `ModelVertex` in the
 /// world's shaders (`packed_float3 position; char4 normalMaterial;
 /// uchar4 colorSway; uchar part; uchar part2; uchar surface; uchar blend;`).
+/// The material's byte holds the material in its low three bits and how
+/// much of the sky the vertex does not see in its high five, in 31sts
+/// (`nm_materialOcclusion` reads it back): a vertex that sees all of it
+/// packs its material alone.
 public struct PackedVertex: Equatable, Sendable {
     public var x: Float
     public var y: Float
@@ -140,6 +149,12 @@ public struct PackedVertex: Equatable, Sendable {
     /// The most parts a model's rig may have: each vertex names its parts in a byte.
     public static let partsMost = 256
 
+    /// How much of the sky a vertex does not see, as its material's byte
+    /// holds it: 0 to 31.
+    public static func shade(_ occlusion: Float) -> UInt8 {
+        UInt8(clamping: Int(((1 - min(max(occlusion, 0), 1)) * 31).rounded()))
+    }
+
     /// A blend as the GPU reads it back, from its byte.
     public static func blendWeight(_ blend: Float) -> Float {
         Float(UInt8(clamping: Int((min(max(blend, 0), 1) * 255).rounded()))) / 255
@@ -156,7 +171,8 @@ public struct PackedVertex: Equatable, Sendable {
         func byte(_ value: Float) -> UInt32 {
             UInt32(UInt8(clamping: Int((min(max(value, 0), 1) * 255).rounded())))
         }
-        normalMaterial = signedByte(n.x) | signedByte(n.y) << 8 | signedByte(n.z) << 16 | UInt32(vertex.material.rawValue) << 24
+        let shade = UInt32(PackedVertex.shade(vertex.occlusion))
+        normalMaterial = signedByte(n.x) | signedByte(n.y) << 8 | signedByte(n.z) << 16 | (UInt32(vertex.material.rawValue) | shade << 3) << 24
         colorSway = byte(vertex.color.x) | byte(vertex.color.y) << 8 | byte(vertex.color.z) << 16 | byte(vertex.sway) << 24
         precondition(Int(vertex.part) < PackedVertex.partsMost && Int(vertex.part2) < PackedVertex.partsMost,
                      "a vertex names its parts in a byte")
@@ -173,7 +189,10 @@ public struct PackedVertex: Equatable, Sendable {
         return Vec3(value(0), value(8), value(16))
     }
 
-    public var material: Material? { Material(rawValue: UInt8(truncatingIfNeeded: normalMaterial >> 24)) }
+    public var material: Material? { Material(rawValue: UInt8(truncatingIfNeeded: normalMaterial >> 24) & 7) }
+
+    /// How much of the sky it sees, as the GPU reads it back.
+    public var occlusion: Float { 1 - Float(UInt8(truncatingIfNeeded: normalMaterial >> 24) >> 3) / 31 }
 
     public var color: Vec3 {
         func value(_ shift: UInt32) -> Float { Float(UInt8(truncatingIfNeeded: colorSway >> shift)) / 255 }

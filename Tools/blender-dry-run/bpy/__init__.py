@@ -14,12 +14,18 @@ from . import app  # noqa: F401
 # MARK: Meshes
 
 class MeshVertex:
-    __slots__ = ("co", "index", "groups")
+    __slots__ = ("co", "index", "groups", "_mesh")
 
-    def __init__(self, co, index):
+    def __init__(self, co, index, mesh=None):
         self.co = co
         self.index = index
         self.groups = []
+        self._mesh = mesh
+
+    @property
+    def normal(self):
+        """The mean of its faces' normals, as Blender keeps a vertex's."""
+        return self._mesh.vertex_normals()[self.index]
 
 
 class MeshPolygon:
@@ -98,13 +104,25 @@ class Mesh:
         self.attributes = Attributes(self)
         self.users = 1
 
+    def vertex_normals(self):
+        if getattr(self, "_normals", None) is None or len(self._normals) != len(self.vertices):
+            sums = [Vector((0, 0, 0)) for _ in self.vertices]
+            for p in self.polygons:
+                n = p.normal
+                for i in p.vertices:
+                    sums[i] = sums[i] + n
+            self._normals = [s.normalized() for s in sums]
+        return self._normals
+
     def set_geometry(self, points, faces):
-        self.vertices = [MeshVertex(Vector(p), i) for i, p in enumerate(points)]
+        self._normals = None
+        self.vertices = [MeshVertex(Vector(p), i, self) for i, p in enumerate(points)]
         self.polygons = [MeshPolygon(self, f, m, s, i) for i, (f, m, s) in enumerate(faces)]
         for a in self.attributes.values():
             a.data = (a.data + [AttributeValue() for _ in range(len(self.vertices))])[:len(self.vertices)]
 
     def transform(self, matrix):
+        self._normals = None
         for v in self.vertices:
             v.co = matrix @ v.co
 
@@ -592,6 +610,7 @@ def _write(path):
         m = obj.matrix_world
         points = [m @ v.co for v in mesh.vertices]
         sway = mesh.attributes.get("_SWAY")
+        ao = mesh.attributes.get("_AO")
         names = [mat.name if mat else "" for mat in mesh.materials]
         for mat in mesh.materials:
             if mat is not None:
@@ -603,6 +622,7 @@ def _write(path):
             "points": [[round(c, 5) for c in p] for p in points],
             "faces": [[p.vertices, names[p.material_index] if p.material_index < len(names) else ""] for p in mesh.polygons],
             "sway": [round(a.value, 3) for a in sway.data] if sway else None,
+            "ao": [round(a.value, 3) for a in ao.data] if ao else None,
         })
     with open(path, "w") as f:
         json.dump(out, f)

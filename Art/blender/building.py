@@ -245,9 +245,78 @@ def tagged(name, tags):
     return name + ("@" + ",".join(tags) if tags else "")
 
 
+# How far, in the world's units, a corner looks for what keeps the sky off
+# it, and in how many directions.
+OCCLUSION_REACH = 0.1
+OCCLUSION_RAYS = 32
+
+
+def sky_directions(count):
+    """`count` directions over the hemisphere about +z, spread evenly and
+    gathered toward the zenith as the light of an open sky falls (each
+    stands for an equal share of it): the same every time."""
+    golden = math.pi * (3 - math.sqrt(5))
+    out = []
+    for k in range(count):
+        r = math.sqrt((k + 0.5) / count)
+        a = k * golden
+        out.append(Vector((r * math.cos(a), r * math.sin(a), math.sqrt(max(0.0, 1 - r * r)))))
+    return out
+
+
+def bake_occlusion(variants):
+    """How much of the open sky each corner of the building sees past the
+    building itself, 1 all of it to 0 none, as the attribute _AO the game
+    reads (Asset.swift): looked for in `OCCLUSION_RAYS` directions over the
+    corner's own face, as far as `OCCLUSION_REACH`, among the pieces drawn
+    far off in the same variant (a level, a people) as the corner; for a
+    piece drawn in several, the mean. The ground is left out: the world's
+    shading darkens the foot of whatever stands on the land as it is
+    drawn."""
+    from mathutils.bvhtree import BVHTree
+    from person import drawn
+    meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
+    rays = int(os.environ.get("NULLMERE_OCCLUSION_RAYS", OCCLUSION_RAYS))
+    sky = sky_directions(rays)
+    reach = OCCLUSION_REACH * UNIT
+    trees = {}
+    for variant in variants:
+        points, faces = [], []
+        for obj in meshes:
+            if obj.name.endswith("!fine") or not drawn(obj.name, 1, variant):
+                continue
+            m = obj.matrix_world
+            base = len(points)
+            points += [m @ v.co for v in obj.data.vertices]
+            faces += [[base + i for i in p.vertices] for p in obj.data.polygons]
+        trees[variant] = BVHTree.FromPolygons(points, faces) if faces else None
+    for obj in meshes:
+        seen_in = [v for v in variants if drawn(obj.name, 1, v) and trees[v] is not None]
+        m = obj.matrix_world
+        turn = m.to_3x3()
+        attr = obj.data.attributes.get("_AO") or obj.data.attributes.new("_AO", "FLOAT", "POINT")
+        for i, v in enumerate(obj.data.vertices):
+            n = (turn @ v.normal).normalized()
+            if n.length < 0.5:
+                attr.data[i].value = 1.0
+                continue
+            # A frame about the normal, the sky's directions turned into it.
+            side = Vector((1, 0, 0)) if abs(n.x) < 0.9 else Vector((0, 1, 0))
+            t = n.cross(side).normalized()
+            b = n.cross(t)
+            origin = m @ v.co + n * 0.002 * UNIT
+            open_sky = 0.0
+            for variant in seen_in:
+                tree = trees[variant]
+                hits = sum(1 for d in sky if tree.ray_cast(origin, t * d.x + b * d.y + n * d.z, reach)[0] is not None)
+                open_sky += 1 - hits / len(sky)
+            attr.data[i].value = round(open_sky / len(seen_in), 3) if seen_in else 1.0
+
+
 def finish_building(path, variants):
-    """Every mesh cleaned, each variant's triangles far and near told, and
-    the building written out."""
+    """Every mesh cleaned, how much of the sky each corner sees baked in,
+    each variant's triangles far and near told, and the building written
+    out."""
     from person import drawn, triangles
     doubled = [obj.name for obj in bpy.context.scene.objects if obj.type == "MESH" and re.search(r"\.\d{3}$", obj.name)]
     if doubled:
@@ -255,6 +324,7 @@ def finish_building(path, variants):
     for obj in bpy.context.scene.objects:
         if obj.type == "MESH":
             clean(obj)
+    bake_occlusion(variants)
     for variant in variants:
         coarse = fine = 0
         for obj in bpy.context.scene.objects:

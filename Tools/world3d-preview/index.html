@@ -143,7 +143,7 @@ mat4 posing() {
 vec3 swayed() {
   float sway = colorSway.w / 255.0;
   vec3 local = position;
-  if (sway > 0.0) { local += nm_wind(local, sway, normalMaterial.w, frame.eye.w + iParams.z) * frame.world.w; }
+  if (sway > 0.0) { local += nm_wind(local, sway, nm_materialOcclusion(normalMaterial.w).x, frame.eye.w + iParams.z) * frame.world.w; }
   return local;
 }`;
 const modelVertex = header + posedVertex + `
@@ -158,12 +158,13 @@ void main() {
   gl_Position = watched > 0.25 ? frame.viewProjection * place : vec4(0.0, 0.0, 2.0, 1.0);
   vWorld = place.xyz;
   vNormal = normalize((model * (part * vec4(normalMaterial.xyz / 127.0, 0.0))).xyz);
-  vColour = nm_modelAlbedo(colorSway.xyz / 255.0, normalMaterial.w, surfaceBlend.x, iColour, iFlags);
+  vec2 materialOcclusion = nm_materialOcclusion(normalMaterial.w);
+  vColour = nm_modelAlbedo(colorSway.xyz / 255.0, materialOcclusion.x, surfaceBlend.x, iColour, iFlags) * nm_occluded(materialOcclusion.y);
   vLocalY = posed.y;
   vLocal = position;
   vLocalNormal = normalMaterial.xyz / 127.0;
   vSurface = surfaceBlend.x;
-  vMaterial = normalMaterial.w;
+  vMaterial = materialOcclusion.x;
   vParams = iParams;
   vWatched = watched;
 }`;

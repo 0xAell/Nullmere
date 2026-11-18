@@ -827,6 +827,23 @@ public enum WorldShaders {
     // works as its House's people build them (the flags' second byte, one
     // more than the people): their slates take the people's roofs, their
     // stone and timber lean to its walls.
+    // A model's material and how much of the sky it sees, from the byte its
+    // vertex packs them in (PackedVertex): the material in its low three
+    // bits, how much of the sky it does not see in 31sts in its high five.
+    // Given the byte as a signed number, as the vertex's char4 holds it.
+    float2 nm_materialOcclusion(float packedByte) {
+        float b = packedByte < 0.0 ? packedByte + 256.0 : packedByte;
+        float shade = floor(b / 8.0 + 0.001);
+        return float2(b - shade * 8.0, 1.0 - shade / 31.0);
+    }
+
+    // How much darker a model's corner is drawn for the sky it does not
+    // see (baked in Blender): a crevice, the eaves' shade, the yard under a
+    // cart, never to black.
+    float nm_occluded(float occlusion) {
+        return mix(1.0, occlusion, 0.55);
+    }
+
     float3 nm_modelAlbedo(float3 colour, float material, float surface, float4 tint, uint flags) {
         float3 albedo = nm_linear(colour);
         if ((material > 0.5 && material < 1.5) || (material > 3.5 && material < 4.5)) {
@@ -1502,7 +1519,8 @@ public enum WorldShaders {
         ModelInstance instance = instances[iid];
         char4 packedNormal = char4(v.normalMaterial);
         uchar4 packedColour = uchar4(v.colorSway);
-        float material = float(packedNormal.w);
+        float2 materialOcclusion = nm_materialOcclusion(float(packedNormal.w));
+        float material = materialOcclusion.x;
         float sway = float(packedColour.w) / 255.0;
         float time = frame.eye.w + instance.params.z;
         float3 local = float3(v.position);
@@ -1523,7 +1541,8 @@ public enum WorldShaders {
         out.position = watched > 0.25 ? frame.viewProjection * world : float4(0.0, 0.0, 2.0, 1.0);
         out.world = world.xyz;
         out.normal = normalize(normal);
-        out.colour = nm_modelAlbedo(float3(packedColour.xyz) / 255.0, material, float(v.surface), instance.colour, instance.flags);
+        out.colour = nm_modelAlbedo(float3(packedColour.xyz) / 255.0, material, float(v.surface), instance.colour, instance.flags)
+            * nm_occluded(materialOcclusion.y);
         out.localY = posed.y;
         out.local = float3(v.position);
         out.localNormal = float3(packedNormal.xyz) / 127.0;
@@ -1549,7 +1568,8 @@ public enum WorldShaders {
         ModelInstance instance = instances[iid];
         char4 packedNormal = char4(v.normalMaterial);
         uchar4 packedColour = uchar4(v.colorSway);
-        float material = float(packedNormal.w);
+        float2 materialOcclusion = nm_materialOcclusion(float(packedNormal.w));
+        float material = materialOcclusion.x;
         float sway = float(packedColour.w) / 255.0;
         float time = frame.eye.w + instance.params.z;
         float3 local = float3(v.position);
