@@ -51,6 +51,8 @@ public struct LiveCommand: Equatable, Identifiable, Sendable {
         case enterLists
         case challenge(UInt64)
         case claimPurse
+        /// Claim the next tier of merit of a deed.
+        case claimMerit(Int)
     }
 
     public let title: String
@@ -211,6 +213,9 @@ extension LiveSession {
         if world.purseWaits(at: seconds), let place = world.myEntry?.place, let words = world.purseWords(of: place) {
             all.append(LiveCommand(title: "Claim the Lists' purse for the \(LiveWords.ordinal(Int(place))) place: \(words)", act: .claimPurse))
         }
+        for merit in world.meritsToClaim {
+            all.append(LiveCommand(title: "Claim the merit \(merit.name), tier \(merit.tier): \(world.gifts(of: merit))", act: .claimMerit(merit.deed)))
+        }
         for milestone in world.milestonesToClaim {
             all.append(LiveCommand(title: "Claim what the realm's milestone gave: \(milestone.words)", act: .claimMilestone(milestone.id)))
         }
@@ -336,6 +341,7 @@ extension LiveSession {
         case .enterLists: await enterLists()
         case .challenge(let opponent): await challenge(opponent)
         case .claimPurse: await claimPurse()
+        case .claimMerit(let deed): await claimMerit(deed)
         }
         return nil
     }

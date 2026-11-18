@@ -98,6 +98,7 @@ public protocol LiveLine: AnyObject, Sendable {
     func enterLists(soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64) async throws
     func challenge(_ opponent: UInt64) async throws
     func claimPurse() async throws
+    func claimMerit(_ deed: Int) async throws
 }
 
 extension LiveClient: LiveLine {}
@@ -743,6 +744,9 @@ public final class LiveSession {
 
     /// Claims the Lists' purse of the player's place.
     public func claimPurse() async { await ask { try await $0.claimPurse() } }
+
+    /// Claims the next tier of merit of a deed.
+    public func claimMerit(_ deed: Int) async { await ask { try await $0.claimMerit(deed) } }
 
     /// One soldier of the first kind and tier standing ready: a scout.
     public var scoutParty: [(kind: Int, tier: Int, count: UInt64)] {

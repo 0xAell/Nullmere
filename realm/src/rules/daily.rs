@@ -79,6 +79,7 @@ pub(super) fn did(db: &mut impl Db, player: u64, deed: Deed, amount: u64) {
     } else {
         db.insert(row);
     }
+    super::recorded(db, player, deed, amount);
 }
 
 /// A player opens one of the day's chests: if they have earned the marks

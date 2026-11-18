@@ -36,6 +36,7 @@ mod prisoners;
 mod rally;
 mod road;
 mod lists;
+mod merits;
 mod shun;
 mod siege;
 mod spire;
@@ -77,6 +78,7 @@ pub use prisoners::*;
 pub use rally::*;
 pub use road::*;
 pub use lists::*;
+pub use merits::*;
 pub use shun::*;
 pub use siege::*;
 pub use spire::*;
@@ -324,6 +326,9 @@ pub enum Refusal {
     TooFarAbove(u64),
     NoChallengesLeft(u64),
     PurseClaimed,
+    NoSuchMerit,
+    MeritsClaimed,
+    MeritNotReached(u64, u64),
     ShutOutAlready,
     NotShutOut,
     /// A player shuts out so many others at most.
@@ -465,6 +470,9 @@ impl fmt::Display for Refusal {
             Refusal::RallyTooStrong(level) => return write!(f, "A rally of yours may go against a barrow of level {level} at most."),
             Refusal::AtPeace(left) => return write!(f, "That city is at peace for another {}.", crate::catalog::spoken(*left)),
             Refusal::RoadResting(left) => return write!(f, "Your soldiers rest from the road another {}.", crate::catalog::spoken(*left)),
+            Refusal::MeritNotReached(done, goal) => {
+                return write!(f, "You have done {} of the {} its next tier asks.", crate::catalog::grouped(*done), crate::catalog::grouped(*goal))
+            }
             Refusal::BandTooBig(most) => return write!(f, "Your band holds no more than {} soldiers. Raise your Keep for more.", crate::catalog::grouped(*most)),
             Refusal::TooFarAbove(reach) => return write!(f, "You may challenge only those up to {reach} places above you."),
             Refusal::NoChallengesLeft(tries) => return write!(f, "You have made all {tries} of today's challenges. Come again tomorrow."),
@@ -620,6 +628,8 @@ impl fmt::Display for Refusal {
             Refusal::NoSuchEntrant => "They are not in the Lists.",
             Refusal::NotAbove => "Challenge one above you in the Lists.",
             Refusal::PurseClaimed => "You have claimed today's purse. Come again tomorrow.",
+            Refusal::NoSuchMerit => "There is no such merit.",
+            Refusal::MeritsClaimed => "You have claimed every tier of that merit.",
             Refusal::ShutOutAlready => "You have shut them out already.",
             Refusal::NotShutOut => "You haven't shut them out.",
             Refusal::NoSuchLetter => "There is no such letter of yours.",

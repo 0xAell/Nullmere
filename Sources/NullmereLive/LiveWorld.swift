@@ -134,6 +134,10 @@ public struct LiveWorld: Equatable, Sendable {
     public var guards: [LiveGuard] = []
     public var purses: [LivePurse] = []
     public var tilt: LiveTilt?
+    /// The tiers of merit, by deed and tier; and the player's records of
+    /// their deeds, by deed.
+    public var merits: [LiveMerit] = []
+    public var records: [Int: LiveRecord] = [:]
     /// What the Forge makes, by piece; and the player's gear.
     public var patterns: [Int: LivePattern] = [:]
     public var gear: [LiveGear] = []
@@ -252,6 +256,8 @@ public struct LiveWorld: Equatable, Sendable {
         }
         purses = rows("purse", LivePurse.init).sorted { $0.first < $1.first }
         tilt = rows("my_tilt", LiveTilt.init).first
+        merits = rows("merit", LiveMerit.init).sorted { $0.deed != $1.deed ? $0.deed < $1.deed : $0.tier < $1.tier }
+        records = Dictionary(rows("my_records", LiveRecord.init).map { ($0.deed, $0) }, uniquingKeysWith: { _, new in new })
         patterns = Dictionary(rows("pattern", LivePattern.init).map { ($0.piece, $0) }, uniquingKeysWith: { _, new in new })
         gear = rows("my_gear", LiveGear.init).sorted { $0.id < $1.id }
         boons = rows("my_boons", LiveBoon.init).sorted { $0.id < $1.id }
@@ -522,6 +528,32 @@ public struct LiveWorld: Equatable, Sendable {
             room -= count
         }
         return band
+    }
+
+    /// The deeds there are merits for, in order.
+    public var meritDeeds: [Int] { Array(Set(merits.map(\.deed))).sorted() }
+
+    /// The next tier of merit of a deed for the player to reach: none once
+    /// they have claimed every tier.
+    public func nextMerit(of deed: Int) -> LiveMerit? {
+        let claimed = records[deed]?.claimed ?? 0
+        return merits.first { $0.deed == deed && $0.tier == claimed + 1 }
+    }
+
+    /// The tiers of merit the player has reached and not yet claimed, one
+    /// a deed at most.
+    public var meritsToClaim: [LiveMerit] {
+        meritDeeds.compactMap { deed in nextMerit(of: deed).flatMap { (records[deed]?.done ?? 0) >= $0.goal ? $0 : nil } }
+    }
+
+    /// What a tier of merit gives, in words.
+    public func gifts(of merit: LiveMerit) -> String {
+        var parts = [merit.gives.words]
+        if merit.items > 0, let ware = wares[merit.item] {
+            let name = LiveWorld.inLine(ware.name)
+            parts.append(merit.items == 1 ? name : "\(name) ×\(merit.items)")
+        }
+        return parts.joined(separator: ", ")
     }
 
     /// The mark of the player's alliance at a hex, if it has one there.

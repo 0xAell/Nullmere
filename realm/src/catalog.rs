@@ -2226,3 +2226,50 @@ pub fn lists_purse(place: u64) -> (Goods, u64) {
     let (_, _, goods, honour) = purses.iter().copied().find(|(first, last, _, _)| (*first..=*last).contains(&place)).unwrap_or(purses[4]);
     (goods, honour)
 }
+
+/// How many tiers of merit each deed has.
+pub const MERIT_TIERS: u32 = 4;
+
+/// A tier of merit (1 to `MERIT_TIERS`) of a deed: how much of it, done
+/// over all the player's days, reaches it, and what claiming it gives.
+pub fn merit(deed: Deed, tier: u32) -> (u64, Goods, Option<(Item, u64)>) {
+    let tier = tier.clamp(1, MERIT_TIERS);
+    let goals: [u64; 4] = match deed {
+        Deed::Train => [500, 5_000, 50_000, 250_000],
+        Deed::Gather => [50_000, 500_000, 5_000_000, 50_000_000],
+        Deed::Clear => [10, 100, 500, 2_000],
+        Deed::Begin => [20, 100, 400, 1_500],
+        Deed::Hasten => [10, 100, 500, 2_000],
+    };
+    let (each, item) = match tier {
+        1 => (5_000, None),
+        2 => (20_000, Some((Item::Haste60, 1))),
+        3 => (60_000, Some((Item::Haste480, 1))),
+        _ => (150_000, Some((Item::GreatTome, 1))),
+    };
+    (goals[tier as usize - 1], Goods::of(each, each, each / 2, 0), item)
+}
+
+impl Deed {
+    /// The merit's name for a lifetime of the deed.
+    pub fn merit_name(self) -> &'static str {
+        match self {
+            Deed::Train => "Drillmaster",
+            Deed::Gather => "Provider",
+            Deed::Clear => "Barrow-breaker",
+            Deed::Begin => "Builder",
+            Deed::Hasten => "Swift hand",
+        }
+    }
+
+    /// What a merit of the deed counts, as in "500 soldiers trained".
+    pub fn merit_words(self) -> &'static str {
+        match self {
+            Deed::Train => "soldiers set to train",
+            Deed::Gather => "goods brought home from the land",
+            Deed::Clear => "barrows of the Unquiet cleared",
+            Deed::Begin => "works begun",
+            Deed::Hasten => "works hastened",
+        }
+    }
+}

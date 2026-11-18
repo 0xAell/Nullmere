@@ -782,6 +782,43 @@ public struct LiveTilt: Equatable, Sendable {
     }
 }
 
+/// A tier of merit for a lifetime of one deed: its name and what it
+/// counts, how much of the deed reaches it, and what claiming it gives.
+public struct LiveMerit: Equatable, Sendable, Identifiable {
+    public let id: UInt64
+    public let deed: Int
+    public let tier: Int
+    public let name: String
+    public let words: String
+    public let goal: UInt64
+    public let gives: LiveGoods
+    public let item: Int
+    public let items: UInt64
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let id = cells.unsigned(0), let deed = cells.whole(1), let tier = cells.whole(2), let name = cells.text(3), let words = cells.text(4),
+              let goal = cells.unsigned(5), let grain = cells.unsigned(6), let timber = cells.unsigned(7), let stone = cells.unsigned(8),
+              let item = cells.whole(9), let items = cells.unsigned(10) else { return nil }
+        (self.id, self.deed, self.tier, self.name, self.words, self.goal) = (id, deed, tier, name, words, goal)
+        (self.gives, self.item, self.items) = (LiveGoods(grain: grain, timber: timber, stone: stone), item, items)
+    }
+}
+
+/// The player's record of one deed over all their days: how much of it
+/// they have done, and how many tiers of its merit they have claimed.
+public struct LiveRecord: Equatable, Sendable {
+    public let deed: Int
+    public let done: UInt64
+    public let claimed: Int
+
+    init?(_ row: [JSONValue]) {
+        let cells = Cells(row: row)
+        guard let deed = cells.whole(2), let done = cells.unsigned(3), let claimed = cells.whole(4) else { return nil }
+        (self.deed, self.done, self.claimed) = (deed, done, claimed)
+    }
+}
+
 /// One of the realm's milestones: how many of a feat of every player's
 /// reach it and how many the realm has done, when it was reached (0 while
 /// it is not), its words, and what each player may claim once it is.

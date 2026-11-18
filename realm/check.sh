@@ -555,6 +555,13 @@ check("the purse of the first place is claimed", call(bryn, "claim_purse"), None
 check("once a day, and the day is its player's alone to read",
       (call(bryn, "claim_purse"), [t["tries"] for t in rows(bryn, "SELECT * FROM my_tilt")], isinstance(rows(bryn, "SELECT * FROM tilt"), str)),
       ("You have claimed today's purse. Come again tomorrow.", [0], True))
+# Merits: the tiers for all to read; a player's record of their deeds theirs alone, their soldiers trained on it; a tier not reached not claimed.
+merits = sorted(rows(nobody, "SELECT * FROM merit"), key=lambda m: m["id"])
+check("twenty tiers of merit are for all to read, the first asking five hundred soldiers trained",
+      (len(merits), [(m["deed"], m["tier"], m["goal"], m["name"]) for m in merits[:1]]), (20, [(1, 1, 500, "Drillmaster")]))
+trained = [r["done"] for r in rows(bryn, "SELECT * FROM my_records") if r["deed"] == 1]
+check("a player's soldiers trained are on their record, theirs alone to read", (trained[:1] != [] and trained[0] >= 70, isinstance(rows(bryn, "SELECT * FROM record"), str)), (True, True))
+check("and a tier not reached is not claimed", str(call(bryn, "claim_merit", 1)).startswith("You have done "), True)
 
 # A player leaves the realm for good, their own name typed to be sure.
 leaver = someone()

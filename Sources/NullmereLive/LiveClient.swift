@@ -385,6 +385,9 @@ public final class LiveClient: @unchecked Sendable {
     /// Claims what the Lists' purse gives the player's place today.
     public func claimPurse() async throws { try await ask("claim_purse", []) }
 
+    /// Claims the next tier of merit of a deed.
+    public func claimMerit(_ deed: Int) async throws { try await ask("claim_merit", [.integer(UInt64(deed))]) }
+
     /// Claims what a milestone the realm has reached gives.
     public func claimMilestone(_ milestone: UInt64) async throws { try await ask("claim_milestone", [.integer(milestone)]) }
 

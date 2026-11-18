@@ -81,6 +81,7 @@ final class LiveClientTests: XCTestCase {
         try await client.enterLists(soldiers: soldiers, leader: 11)
         try await client.challenge(2)
         try await client.claimPurse()
+        try await client.claimMerit(1)
         // Commanders.
         try await client.hire()
         try await client.draw()
@@ -138,7 +139,7 @@ final class LiveClientTests: XCTestCase {
         let reducers = try Self.reducers()
         XCTAssertGreaterThan(reducers.count, 60, "the module's reducers are read")
         let requests = server.requests
-        XCTAssertEqual(requests.count, 86)
+        XCTAssertEqual(requests.count, 87)
         var asked: Set<String> = []
         for request in requests {
             let reducer = request.url.lastPathComponent

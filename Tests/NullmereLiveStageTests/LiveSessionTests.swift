@@ -1586,6 +1586,44 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertTrue(session.world.purseWaits(at: 1_000 + 86_400))
     }
 
+    /// Merits: how near each deed's next tier stands over all her days,
+    /// claimed from the palette once reached, and none once all are.
+    func testMeritsAreClaimedAsTheyAreReached() async throws {
+        var rows = LiveWindowTests.rows()
+        rows["ware"] = [[n(2), .string("An hour's haste"), .string("An hour sooner."), n(3_600), n(1)]]
+        func merit(_ deed: Int, _ tier: Int, _ name: String, _ words: String, goal: Int, each: Int, item: Int = 0) -> [JSONValue] {
+            [n(deed << 8 | tier), n(deed), n(tier), .string(name), .string(words), n(goal), n(each), n(each), n(each / 2), n(item), n(item == 0 ? 0 : 1)]
+        }
+        rows["merit"] = [merit(3, 1, "Barrow-breaker", "barrows of the Unquiet cleared", goal: 10, each: 5_000),
+                         merit(1, 2, "Drillmaster", "soldiers set to train", goal: 5_000, each: 20_000, item: 2),
+                         merit(1, 1, "Drillmaster", "soldiers set to train", goal: 500, each: 5_000)]
+        // She has trained 700 soldiers over her days, and cleared 3 barrows.
+        rows["my_records"] = [[n(1 << 8 | 1), n(1), n(1), n(700), n(0)], [n(1 << 8 | 3), n(1), n(3), n(3), n(0)]]
+        let line = StandInLine(rows: rows)
+        let session = session(line)
+        await session.open()
+        XCTAssertEqual(session.world.meritDeeds, [1, 3])
+        XCTAssertEqual(session.world.nextMerit(of: 1)?.tier, 1)
+        XCTAssertEqual(session.world.meritsToClaim.map(\.deed), [1], "the barrows' merit not yet reached")
+        XCTAssertEqual(session.world.gifts(of: try XCTUnwrap(session.world.nextMerit(of: 1))), "5,000 grain, 5,000 timber and 2,500 stone")
+        let claim = try XCTUnwrap(session.commands(at: 2_015).first { $0.act == .claimMerit(1) })
+        XCTAssertEqual(claim.title, "Claim the merit Drillmaster, tier 1: 5,000 grain, 5,000 timber and 2,500 stone")
+        _ = await session.perform(claim)
+        XCTAssertEqual(line.asked.last, "claim merit of deed 1")
+
+        // The first tier claimed: the second is next, not yet reached, and gives an hour's haste besides; then every tier claimed.
+        line.change { $0["my_records"] = [[self.n(1 << 8 | 1), self.n(1), self.n(1), self.n(700), self.n(1)]] }
+        session.refresh()
+        let second = try XCTUnwrap(session.world.nextMerit(of: 1))
+        XCTAssertEqual([second.tier, Int(second.goal)], [2, 5_000])
+        XCTAssertEqual(session.world.gifts(of: second), "20,000 grain, 20,000 timber and 10,000 stone, an hour's haste")
+        XCTAssertTrue(session.world.meritsToClaim.isEmpty)
+        XCTAssertFalse(session.commands(at: 2_015).contains { if case .claimMerit = $0.act { return true } else { return false } })
+        line.change { $0["my_records"] = [[self.n(1 << 8 | 1), self.n(1), self.n(1), self.n(9_000), self.n(2)]] }
+        session.refresh()
+        XCTAssertNil(session.world.nextMerit(of: 1), "every tier written is claimed")
+    }
+
     func testAnArmyChosenIsToldAndCanBeCalledHome() async throws {
         let line = StandInLine(rows: LiveWindowTests.rows())
         // Seventeen seconds along its way of twenty-four: on 11, -2.

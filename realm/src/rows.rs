@@ -1006,6 +1006,56 @@ pub struct Tilt {
 }
 row!(Tilt in tilt, by player);
 
+/// A tier of merit for a lifetime of one deed (`catalog::Deed`): its name
+/// and what it counts, how much of the deed reaches it, and what claiming
+/// it gives. For all to read. Keyed by deed and tier (`Merit::key`).
+#[spacetimedb::table(accessor = merit, public)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Merit {
+    #[primary_key]
+    pub id: u64,
+    pub deed: u8,
+    pub tier: u32,
+    pub name: String,
+    pub words: String,
+    pub goal: u64,
+    pub grain: u64,
+    pub timber: u64,
+    pub stone: u64,
+    pub item: u8,
+    pub items: u64,
+}
+row!(Merit in merit, by id);
+
+impl Merit {
+    pub fn key(deed: u8, tier: u32) -> u64 {
+        (deed as u64) << 8 | tier as u64
+    }
+}
+
+/// A player's record of one deed over all their days: how much of it they
+/// have done, and how many of its tiers of merit they have claimed. Theirs
+/// alone to read, through `my_records`. Keyed by player and deed
+/// (`Record::key`).
+#[spacetimedb::table(accessor = record)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Record {
+    #[primary_key]
+    pub key: u64,
+    #[index(btree)]
+    pub player: u64,
+    pub deed: u8,
+    pub done: u64,
+    pub claimed: u32,
+}
+row!(Record in record, by key, player);
+
+impl Record {
+    pub fn key(player: u64, deed: u8) -> u64 {
+        player << 8 | deed as u64
+    }
+}
+
 /// One of the realm's milestones: the feat it counts (`catalog::Feat`),
 /// how many of it reach it and how many the realm has done, when it was
 /// reached (0 while it is not), its words, and what every player may
@@ -1890,6 +1940,8 @@ pub trait Db:
     + Table<Guard>
     + Table<Purse>
     + Table<Tilt>
+    + Table<Merit>
+    + Table<Record>
     + Table<Gear>
     + Table<Pattern>
     + Table<Lore>
@@ -1978,6 +2030,8 @@ impl<
             + Table<Guard>
             + Table<Purse>
             + Table<Tilt>
+            + Table<Merit>
+            + Table<Record>
             + Table<Gear>
             + Table<Pattern>
             + Table<Lore>

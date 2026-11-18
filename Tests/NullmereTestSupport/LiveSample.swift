@@ -224,6 +224,7 @@ public final class StandInLine: LiveLine, @unchecked Sendable {
     }
     public func challenge(_ opponent: UInt64) async throws { try take("challenge \(opponent)") }
     public func claimPurse() async throws { try take("claim the purse") }
+    public func claimMerit(_ deed: Int) async throws { try take("claim merit of deed \(deed)") }
 }
 
 /// How many times something has been tried.
