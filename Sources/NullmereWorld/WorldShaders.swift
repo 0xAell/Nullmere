@@ -857,13 +857,14 @@ public enum WorldShaders {
 
     // How much of the key light reaches a point of the land past the land
     // itself, 0 none to 1 all: the heights grid walked toward the light in
-    // six lengthening strides, near enough three hexes, and wherever the
+    // four lengthening strides, near enough three hexes, and wherever the
     // land rises over the line from the point to the light, the less of
     // it the higher, softened the further off it rises, so a ridge's
     // shadow falls hard at its foot and blurs toward its end; the walk
     // ends once nothing of the light is left. Nothing when the light
     // stands overhead or under the horizon. (Ten strides of a shorter
-    // step cost the wide realm's frame too much on CI run 1000's Mac.)
+    // step cost the wide realm's frame too much on CI run 1000's Mac, and
+    // six of 1.75 left it at its limit, 16.71 ms of 16.7, in run 1174's.)
     float nm_landShadow(float3 world NM_FRAME_ARGUMENT NM_HEIGHTS_ARGUMENT) {
         float3 toward = normalize(frame.key.xyz);
         float across = length(toward.xz);
@@ -874,14 +875,14 @@ public enum WorldShaders {
         float rise = toward.y / across;
         float lit = 1.0;
         float t = 0.3;
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 4; i++) {
             float2 grid = (world.xz + way * t - frame.heights.xy) / frame.haze.w + 0.5;
             float over = NM_HEIGHT(grid / frame.heights.zw) - (world.y + rise * t);
             lit = min(lit, clamp(1.0 - over * 2.0 / t, 0.0, 1.0));
             if (lit <= 0.0) {
                 break;
             }
-            t *= 1.75;
+            t *= 2.4;
         }
         return lit;
     }
@@ -1117,7 +1118,10 @@ public enum WorldShaders {
                 // highest, gone a third of a unit down and well before dusk.
                 // (A finer net over every shallow, CI run 1171's pictures
                 // showed, read as scratches on the water.)
-                float shallow = (1.0 - smoothstep(0.03, 0.35, depth)) * smoothstep(0.35, 0.75, sun.y);
+                // Close to only, where a cell spans many pixels: further out
+                // they alias into scratches, and the wide views pay nothing.
+                float caustic = 1.0 - smoothstep(0.016, 0.026, max(fwidth(world.x), fwidth(world.z)));
+                float shallow = (1.0 - smoothstep(0.03, 0.35, depth)) * smoothstep(0.35, 0.75, sun.y) * caustic;
                 if (shallow > 0.0) {
                     float2 bed = (world.xz + frame.origin.xy) * 3.4;
                     float gathered = smoothstep(0.45, 0.75, nm_noise(bed * 0.22 + nm_drift(time, 0.02)));
