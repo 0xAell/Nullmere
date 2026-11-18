@@ -219,6 +219,7 @@ public struct LiveWindow: Sendable {
         case .forge: return 19
         case .wayhouse: return 9
         case .lodge: return 10
+        case .storehouse: return 6
         default: return nil
         }
     }
@@ -227,7 +228,7 @@ public struct LiveWindow: Sendable {
     static func opensAt(_ building: Int) -> Int {
         switch building {
         case 2, 3: return 1
-        case 4, 7: return 2
+        case 4, 6, 7: return 2
         case 11, 12: return 3
         case 14, 19: return 5
         case 9: return 6

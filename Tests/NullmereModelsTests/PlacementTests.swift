@@ -432,14 +432,17 @@ final class PlacementTests: XCTestCase {
                 let works = Set(grand.levels.keys.filter { $0 != .building(.walls) })
                 let sparse = HoldLayout.Plan(hex: hold.position, isSeat: true, levels: [.building(.granary): 2])
                 let plots = HoldLayout.plots(sparse, relief: relief, for: works)
-                guard HoldLayout.slots(grand, relief: relief).count >= HoldLayout.Work.order.count else {
+                let count = HoldLayout.slots(grand, relief: relief).count
+                guard count >= HoldLayout.Work.order.count - HoldLayout.Work.realmsOwn.count else {
                     XCTAssertTrue(plots.isEmpty, "no slot kept where they are shared")
                     continue
                 }
                 checked += 1
                 let everything = HoldLayout.pieces(grand, relief: relief)
                 XCTAssertFalse(plots.contains { $0.work == .building(.granary) }, "the granary stands already")
-                XCTAssertEqual(plots.count, works.count - 1)
+                // The realm's own works have theirs only where there is a slot for every work.
+                let kept = count >= HoldLayout.Work.order.count ? works : works.filter { !HoldLayout.Work.realmsOwn.contains($0) }
+                XCTAssertEqual(plots.count, kept.count - 1)
                 for plot in plots {
                     let level = grand.levels[plot.work] ?? 1
                     XCTAssertEqual(plot.position, everything.first { $0.key == plot.work.key(level: level) }?.position,

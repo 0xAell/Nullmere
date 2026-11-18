@@ -58,14 +58,26 @@ public enum HoldLayout {
         /// the works that draw on the land, each toward its own ground, the
         /// Infirmary, in the quiet away from the gate, and the Forge, near
         /// the gate for the companies it arms; last the works a keeper
-        /// alone raises, the Wayhouse on the road out and the Masons' Lodge.
+        /// alone raises, the Wayhouse on the road out and the Masons' Lodge;
+        /// after them the works of the realm's cities alone.
         static let order: [Work] = [.building(.moonspire), .building(.musterHall), .building(.beacon), .study,
                                     .building(.granary), .building(.sawpit), .building(.quarry), .building(.saltworks),
-                                    .building(.infirmary), .building(.forge)] + keepersOwn
+                                    .building(.infirmary), .building(.forge)] + keepersOwn + realmsOwn
 
         /// The works only a keeper raises: a hold the stewards keep never has
         /// them, so its other works keep the slots they always had.
         static let keepersOwn: [Work] = [.building(.wayhouse), .building(.lodge)]
+
+        /// The works only the realm's cities raise, buildings the realm has
+        /// that no hold had before it: last of all, so every other work
+        /// keeps the slot it always had, and where a hold's ground is short
+        /// of slots for every work, given one only once raised, as a
+        /// keeper's own are.
+        static let realmsOwn: [Work] = [.building(.storehouse)]
+
+        /// The works a hold need not keep a slot for while it has not
+        /// raised them, where its ground is short.
+        static let optional: [Work] = keepersOwn + realmsOwn
     }
 
     /// What a hold has, for its pieces to be laid out.
@@ -276,16 +288,29 @@ public enum HoldLayout {
     /// Where each of `works` not yet standing in a hold would stand once
     /// raised, on the land, in its plan: the slot kept for it while it is
     /// not there. None where the hold's ground has too few slots for every
-    /// work it could raise, so that slots are shared and none kept.
+    /// work it could raise but the realm's own, so that slots are shared and
+    /// none kept; none for the realm's own unless there is a slot for every
+    /// work; and none where a work stands already.
     public static func plots(_ plan: Plan, relief: Relief, for works: Set<Work>) -> [(work: Work, position: Vec3)] {
         let possible = Work.order.filter { $0 != .building(.moonspire) || plan.isSeat }
-        guard slots(plan, relief: relief).count >= possible.count else { return [] }
-        var full = plan
-        full.levels = Dictionary(uniqueKeysWithValues: possible.map { ($0, max(plan.levels[$0] ?? 0, 1)) })
-        full.rising = nil
         let present = Set(plan.levels.filter { $0.value > 0 }.map(\.key) + (plan.rising.map { [$0.work] } ?? []))
+        // With a slot for every work, each has its plot; with slots for all
+        // but the realm's own, all but theirs, which take what is left.
+        let count = slots(plan, relief: relief).count
+        let kept: [Work]
+        if count >= possible.count {
+            kept = possible
+        } else if count >= possible.count - Work.realmsOwn.count {
+            kept = possible.filter { !Work.realmsOwn.contains($0) || present.contains($0) }
+        } else {
+            return []
+        }
+        var full = plan
+        full.levels = Dictionary(uniqueKeysWithValues: kept.map { ($0, max(plan.levels[$0] ?? 0, 1)) })
+        full.rising = nil
+        let standing = Set(assign(plan, relief: relief).map(\.1.index))
         return assign(full, relief: relief).compactMap { work, slot in
-            guard works.contains(work), !present.contains(work) else { return nil }
+            guard works.contains(work), !present.contains(work), kept.contains(work), !standing.contains(slot.index) else { return nil }
             let y = lowest(relief, around: slot.position, radius: workRadius)
             return (work, Vec3(slot.position.x, y, slot.position.z))
         }
@@ -332,10 +357,11 @@ public enum HoldLayout {
         let slots = slots(plan, relief: relief)
         let possible = Work.order.filter { $0 != .building(.moonspire) || plan.isSeat }
         let present = Set(plan.levels.filter { $0.value > 0 }.map(\.key) + (plan.rising.map { [$0.work] } ?? []))
-        // Slots for every work but a keeper's own: each of the rest keeps
-        // its slot, and a keeper's own takes what is left.
+        // Slots for every work but a keeper's own and the realm's: each of
+        // the rest keeps its slot, and those raised of the others take what
+        // is left, in order.
         let wanted = slots.count >= possible.count ? possible
-            : slots.count >= possible.count - Work.keepersOwn.count ? possible.filter { !Work.keepersOwn.contains($0) || present.contains($0) }
+            : slots.count >= possible.count - Work.optional.count ? possible.filter { !Work.optional.contains($0) || present.contains($0) }
             : possible.filter(present.contains)
         let front = frontAngle(of: plan.hex)
         var free = slots
@@ -376,6 +402,8 @@ public enum HoldLayout {
         case .building(.forge): score += 10 - abs(around - 1.2)
         case .building(.wayhouse): score += 10 - abs(around - 0.6)
         case .building(.lodge): score += 10 - abs(around - 1.8)
+        // The Storehouse on the far side from the gate, out of a raider's way.
+        case .building(.storehouse): score += 10 - abs(around - 2.6)
         case .building(let kind):
             score += affinity(kind, terrain: relief.terrain(of: hex), feature: relief.map[hex]?.feature) * 10 + around * 0.2
         }

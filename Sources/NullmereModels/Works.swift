@@ -25,6 +25,7 @@ enum Works {
         case .forge: return Art.work(Art.forgeFile, level: level, name: name)
         case .wayhouse: return Art.work(Art.wayhouseFile, level: level, name: name)
         case .lodge: return Art.work(Art.lodgeFile, level: level, name: name)
+        case .storehouse: return Art.work(Art.storehouseFile, level: level, name: name)
         }
     }
 

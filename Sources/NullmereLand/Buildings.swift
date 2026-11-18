@@ -30,6 +30,9 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable, PlainCases {
     /// stone is laid: each level raises every work of the House sooner.
     /// Stewards raise none.
     case lodge
+    /// Where a city keeps its grain, timber, stone and moonsalt against the
+    /// lean months and the raiders: the realm's Storehouse.
+    case storehouse
 
     public var maxLevel: Int {
         switch self {
