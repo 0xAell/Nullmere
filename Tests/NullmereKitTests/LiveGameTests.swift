@@ -817,6 +817,37 @@ final class LiveGameTests: XCTestCase {
         XCTAssertEqual(line.asked.last, "leave the realm as Ada")
     }
 
+    /// The panels' later states, which the sample's first day holds none
+    /// of: a chest opened, a prize claimed, a summons kept, another's words
+    /// reported, and a realm with no one else in it to write to.
+    func testThePanelsLaterStatesAreDrawn() async throws {
+        var later = rows()
+        later["my_daily"] = [[n(1), n(0), n(60), n(1_200), n(0), n(1), n(0), n(1)]]
+        later["my_tallies"] = [[n(5), n(1), n(1), n(0), n(120), n(1)]]
+        later["ware"]?.append([n(11), .string("Summons to the Tavern"), .string("Taken to your Tavern."), n(0), n(5)])
+        later["my_satchel"]?.append([n(1 << 8 | 11), n(1), n(11), n(1)])
+        let (session, _) = await playing(later)
+        XCTAssertEqual(session.world.daily?.hasOpened(1), true)
+        XCTAssertEqual(session.world.summonses, 1)
+        for part in [LiveGameView.Panel.day, .realm] {
+            XCTAssertGreaterThan(try drawn(whole(part, of: session).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800, "\(part)")
+        }
+        // Bryn's words reported, then shown as reported.
+        await held(whole(.chat, of: session).frame(width: LiveSidePanel.width - 28)) {
+            let report = PressableButtons.actions.keys.sorted().first { $0.hasPrefix("Report ") }
+            XCTAssertNotNil(report, "Among \(PressableButtons.actions.keys.sorted())")
+            if let report { PressableButtons.press(report) }
+        }
+        XCTAssertTrue(session.hasReported(line: 11, withinAlliance: false))
+        XCTAssertGreaterThan(try drawn(whole(.chat, of: session).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 800)
+        // No one else in the realm: no one to write to, and that said.
+        var alone = rows()
+        alone["player"] = alone["player"]?.filter { $0.first == n(1) }
+        let (lonely, _) = await playing(alone)
+        XCTAssertTrue(lonely.world.players.values.allSatisfy { $0.id == lonely.world.me?.id })
+        XCTAssertGreaterThan(try drawn(whole(.reports, of: lonely).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 3_600), 300)
+    }
+
     /// The commander's looks and deeds as the model takes them, through
     /// its tools: each look shown, a deed put forward as one to do; the
     /// realm renewed for the next question; and what goes wrong with the
