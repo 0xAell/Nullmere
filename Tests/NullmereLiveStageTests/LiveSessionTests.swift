@@ -1404,6 +1404,8 @@ final class LiveSessionTests: XCTestCase {
         rows["season"] = [[n(1), n(1_000), n(2_420_200), n(0), .string(""), n(0)]]
         rows["march"] = rows["march"]?.filter { $0[1] != .number(1) }
         rows["my_commanders"] = [[n(11), n(1), .string("Corwen"), n(3), n(4), n(200), n(0)]]
+        // Forty spearmen of the first tier stand ready in her city.
+        rows["my_troops"] = [[n(7 << 16 | 1 << 8 | 1), n(7), n(1), n(1), n(40), n(0)]]
         let (well, altar, heart) = (LiveHex(q: 4, r: -6), LiveHex(q: 12, r: -8), LiveHex(q: 2, r: -9))
         rows["shrine"] = [[n(1), n(well.packed), n(LiveShrine.moonwell), n(0), .string(""), n(0), n(0)],
                           [n(2), n(altar.packed), n(LiveShrine.saltAltar), n(5), .string("[MERE] Keepers"), n(1_200), n(0)],
@@ -1445,7 +1447,7 @@ final class LiveSessionTests: XCTestCase {
                        "That holy site was taken lately. It may be stormed again in \(LiveWords.spoken(290_000 + 86_400 - 300_000)).")
         later.selected = well
         await later.press(call)
-        XCTAssertTrue(line.asked.last?.hasPrefix("rally at 4,-6 with ") == true, "\(line.asked)")
+        XCTAssertTrue(line.asked.last?.hasPrefix("rally at 4,-6 with 40 of 1.1 led by ") == true, "\(line.asked)")
     }
 
     /// Ada, who leads her alliance, marks the grove for it from the
