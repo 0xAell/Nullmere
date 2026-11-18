@@ -72,8 +72,12 @@ final class WorldRenderer {
     /// list: haze (the distance haze), fog (what the keeper knows), light
     /// (the moon and lamps), grain (the ground's grain), wash (the froth at
     /// the strand): each named NM_NO_<PART> to the compiler.
-    static var debugOptions: MTLCompileOptions? {
-        let parts = leftOut.intersection(["haze", "fog", "light", "grain", "wash"])
+    static var debugOptions: MTLCompileOptions? { options(leavingOut: leftOut) }
+
+    /// The compile options that leave out the shaders' own parts named
+    /// among `left`; nil where none of them is.
+    static func options(leavingOut left: Set<String>) -> MTLCompileOptions? {
+        let parts = left.intersection(["haze", "fog", "light", "grain", "wash"])
         guard !parts.isEmpty else { return nil }
         let options = MTLCompileOptions()
         options.preprocessorMacros = Dictionary(uniqueKeysWithValues: parts.map { ("NM_NO_\($0.uppercased())", NSNumber(value: 1)) })

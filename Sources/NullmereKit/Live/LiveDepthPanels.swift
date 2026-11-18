@@ -854,10 +854,9 @@ struct LiveRankingsPanel: View {
 /// as the menu is drawn, for a listening test to press it as a player
 /// would choose it ("Learn for Corwen: Archery").
 struct ChoiceMenu: View {
-    struct Choice: Identifiable {
+    struct Choice {
         let title: String
         let action: () -> Void
-        var id: String { title }
     }
 
     let title: String
@@ -869,7 +868,7 @@ struct ChoiceMenu: View {
     var body: some View {
         let _ = choices.forEach { PressableButtons.note("\(name ?? title): \($0.title)", enabled: true, $0.action) }
         Menu(title) {
-            ForEach(choices) { choice in
+            ForEach(choices, id: \.title) { choice in
                 Button(choice.title, action: choice.action)
             }
         }

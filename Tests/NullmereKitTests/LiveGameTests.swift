@@ -586,6 +586,10 @@ final class LiveGameTests: XCTestCase {
         spin(1.5)
 
         let map = try XCTUnwrap(find(WorldMetalView.self, in: host), "The Metal view is in the window")
+        // Its renderer made as the world's shader compiles, and a frame drawn by it.
+        for _ in 0..<200 where map.renderer == nil { spin(0.1) }
+        XCTAssertNotNil(map.renderer, "the world's renderer is made")
+        map.draw(map.bounds)
         XCTAssertEqual(map.radius, LiveSession.reach)
         XCTAssertNotNil(map.relief)
         // The whole palette, every player's sigil and every alliance's, its colours round again.
@@ -768,6 +772,76 @@ final class LiveGameTests: XCTestCase {
         spin(0.1)
     }
 
+    /// What can be pressed only in a state the other tests' realms are not
+    /// in, pressed there: a building raised with the builder free, soldiers
+    /// raised a tier, another commander taken on, an open alliance joined,
+    /// a phone's code asked for; the palette's way back to the launcher;
+    /// the card at the foot's buttons and Close.
+    func testWhatIsPressedOnlyInSomeStatesIsPressed() async throws {
+        // No work under way, a Barracks of the fifth level, Corwen alone, no phone's code.
+        var free = rows()
+        free["my_jobs"] = []
+        free["my_buildings"] = free["my_buildings"]?.map { $0[0] == n(24) ? [n(24), n(7), n(7), n(5)] : $0 }
+        free["my_commanders"] = free["my_commanders"].map { Array($0.prefix(1)) }
+        free["my_link"] = []
+        let (session, line) = await playing(free)
+        XCTAssertNil(session.world.hireBlock(at: 2_015), "a commander may be taken on")
+        await held(whole(.city, of: session).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.press("Upgrade Keep"), "Among \(PressableButtons.actions.keys.sorted())")
+        }
+        await held(whole(.troops, of: session).frame(width: LiveSidePanel.width - 28)) {
+            let raise = PressableButtons.actions.keys.sorted().first { $0.hasPrefix("Raise ") && $0.hasSuffix("to tier 2") }
+            XCTAssertNotNil(raise, "Among \(PressableButtons.actions.keys.sorted())")
+            if let raise { XCTAssertTrue(PressableButtons.press(raise)) }
+            XCTAssertTrue(PressableButtons.press("Take on another commander"), "Among \(PressableButtons.actions.keys.sorted())")
+        }
+        await held(whole(.day, of: session).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.press("Ask for a code to link a phone"), "Among \(PressableButtons.actions.keys.sorted())")
+        }
+        XCTAssertTrue(line.asked.contains { $0.hasPrefix("upgrade ") }, "\(line.asked)")
+        XCTAssertTrue(line.asked.contains { $0.hasPrefix("promote ") }, "\(line.asked)")
+        XCTAssertTrue(line.asked.contains("hire"), "\(line.asked)")
+        XCTAssertTrue(line.asked.contains("offer a link"), "\(line.asked)")
+
+        // In no alliance: an open one joined from the list.
+        var newcomer = rows()
+        newcomer["member"]?.removeAll { $0.first == n(1) }
+        let (joining, joiningLine) = await playing(newcomer)
+        await held(whole(.alliance, of: joining).frame(width: LiveSidePanel.width - 28)) {
+            let join = PressableButtons.actions.keys.sorted().first { $0.hasSuffix(": Wardens") }
+            XCTAssertNotNil(join, "Among \(PressableButtons.actions.keys.sorted())")
+            if let join { XCTAssertTrue(PressableButtons.press(join)) }
+        }
+        XCTAssertEqual(joiningLine.asked.last, "join alliance 6")
+
+        // The palette, given the way back, offers it when asked for, and takes it.
+        var left = false
+        await held(LivePaletteView(session: session, seconds: 2_015, open: { _ in }, leave: { left = true }) {}, width: 420, height: 320) {
+            XCTAssertTrue(PressableButtons.type("launcher", into: "What would you do?"), "Among \(PressableButtons.fields.keys.sorted())")
+            spin(0.3)
+            XCTAssertTrue(PressableButtons.press("Do: \(LivePaletteView.leaving.title)"), "Among \(PressableButtons.actions.keys.sorted())")
+        }
+        XCTAssertTrue(left, "the launcher, gone back to")
+
+        // The card at the foot: its own city's Buildings opens them, and Close lets it go.
+        var panel: LiveGameView.Panel?
+        let binding = Binding(get: { panel }, set: { panel = $0 })
+        session.selected = LiveHex(q: 10, r: -4)
+        let home = session.card(for: try XCTUnwrap(session.selection))
+        await held(LiveCardView(session: session, card: home, panel: binding), width: 640, height: 120) {
+            XCTAssertTrue(PressableButtons.press("Buildings"), "Among \(PressableButtons.actions.keys.sorted())")
+            XCTAssertTrue(PressableButtons.press("Close"))
+        }
+        XCTAssertEqual(panel, .city)
+        XCTAssertNil(session.selected)
+
+        // The map view as made with nothing but its session: full motion, sixty frames, native resolution.
+        let plain = LiveMapView(session: session, onFailure: {})
+        XCTAssertEqual(plain.motion, .full)
+        XCTAssertEqual(plain.frameRate, .sixty)
+        XCTAssertEqual(plain.quality, .native)
+    }
+
     /// What a player types and sends, typed and sent as they would in a
     /// window: an alliance founded, words said to the realm, a letter
     /// written to one chosen and to the alliance, a question put to a
@@ -941,6 +1015,10 @@ final class LiveGameTests: XCTestCase {
         XCTAssertEqual(talk.lines[2].text, "Do it, my lord.")
         XCTAssertEqual(talk.lines[3].command, deed)
         XCTAssertEqual(talk.lines[3].text, deed.title)
+        // Shown as the counsel shows them: the look, the answer, and the deed with Do it, pressed.
+        await held(LiveCounselView(counsel: talk, session: advised).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertTrue(PressableButtons.press("Do it: \(deed.title)"), "Among \(PressableButtons.actions.keys.sorted())")
+        }
 
         // A stand-in that fails: said, and nothing answered for it.
         let failing = LiveCounselSession(counsel: grounded, speaker: { _ in throw URLError(.timedOut) })

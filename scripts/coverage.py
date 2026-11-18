@@ -9,7 +9,8 @@ Prints a line per module under Sources/, and fails if any named module's
 coverage is under its floor, in percent. With --worst, also lists the N
 files with the most lines no test runs, where tests would do most good;
 with --lines, the lines themselves of the first N of those; with --every,
-every line no test runs in every file of that module. The lines are
+every line no test runs in every file of that module, and (COVERFUNCS)
+the lines of each of its functions no test called. The lines are
 reckoned from each file's segments as llvm-cov reckons its own count, and
 a COVERCHECK line says in how many files the two agree.
 """
@@ -57,6 +58,37 @@ def unrun_lines(segments):
     return sorted(line for line, count in line_counts(segments).items() if count == 0)
 
 
+def never_called(report, module):
+    """The functions of a module's files no test called, closures and
+    property initialisers among them, each by its file and the lines it
+    spans: llvm-cov counts a line of each function apart, so one of these
+    on a line that otherwise ran is unrun all the same. A function made
+    more than once (a generic one) counts as called where any of it was."""
+    called, spans = {}, {}
+    for data in report.get("data", []):
+        for function in data.get("functions", []):
+            regions = function.get("regions", [])
+            names = function.get("filenames", [])
+            if not regions or not names:
+                continue
+            first = regions[0]
+            path = names[first[5]] if len(first) > 5 and first[5] < len(names) else names[0]
+            if "/Sources/" not in path:
+                continue
+            name = path.split("/Sources/", 1)[1]
+            if not name.startswith(module + "/"):
+                continue
+            key = (name, first[0], first[1])
+            called[key] = called.get(key, False) or function.get("count", 0) > 0
+            spans[key] = (first[0], first[2])
+    found = {}
+    for key, ran in called.items():
+        if not ran:
+            start, end = spans[key]
+            found.setdefault(key[0], set()).update(range(start, end + 1))
+    return {name: sorted(lines) for name, lines in found.items()}
+
+
 def ranges(numbers, most=30):
     """1, 2, 3, 7 as "1-3, 7"."""
     spans = []
@@ -92,6 +124,14 @@ def self_test():
     gap = [[1, 1, 1, True, True], [2, 1, 0, True, True, True], [3, 1, 0, False, False]]
     assert line_counts(gap) == {1: 1, 2: 1, 3: 0}, line_counts(gap)
     assert line_counts([]) == {}
+    # Functions never called: a closure on line 9 alone, one from 12 to 14;
+    # one called, and a generic one called in one of its two makings.
+    root = "/w/Sources/"
+    def function(count, start, end, column=1):
+        return {"count": count, "filenames": [root + "Kit/View.swift"], "regions": [[start, column, end, 2, count, 0, 0, 0]]}
+    report = {"data": [{"functions": [function(0, 9, 9, 30), function(0, 12, 14), function(3, 20, 25), function(0, 30, 31), function(2, 30, 31),
+                                      {"count": 0, "filenames": [root + "Other/A.swift"], "regions": [[1, 1, 2, 2, 0, 0, 0, 0]]}]}]}
+    assert never_called(report, "Kit") == {"Kit/View.swift": [9, 12, 13, 14]}, never_called(report, "Kit")
     assert ranges([1, 2, 3, 7, 9, 10]) == "1-3, 7, 9-10"
     assert ranges(list(range(0, 100, 2)), most=2) == "0, 2, and 48 more"
     print("coverage self-test passed")
@@ -169,6 +209,9 @@ def main(argv):
         for missed, _, name, segments in ranked:
             if missed and name.startswith(every + "/"):
                 print(f"COVERLINES {name}: {ranges(unrun_lines(segments), most=10_000)}")
+    if every:
+        for name, lines in sorted(never_called(report, every).items()):
+            print(f"COVERFUNCS {name}: {ranges(lines, most=10_000)}")
     # Whether the lines reckoned here are llvm-cov's own: its count of each
     # file's unrun lines beside the count of those reckoned.
     differ = [(name, missed, len(unrun_lines(segments))) for missed, _, name, segments in ranked if missed != len(unrun_lines(segments))]

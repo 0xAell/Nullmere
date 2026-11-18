@@ -417,6 +417,15 @@ final class WorldRenderTests: XCTestCase {
         print("RENDER ridge: the highest hex, \(peak), at \(world.relief.height(of: peak))")
     }
 
+    /// The shaders' own parts a debug build may leave out, each named to the
+    /// compiler; passes it has no switch for are not.
+    func testTheShadersPartsAreLeftOutByName() throws {
+        XCTAssertNil(WorldRenderer.options(leavingOut: []))
+        XCTAssertNil(WorldRenderer.options(leavingOut: ["models", "water"]), "passes, not parts of the shaders")
+        let options = try XCTUnwrap(WorldRenderer.options(leavingOut: ["haze", "fog", "models"]))
+        XCTAssertEqual(options.preprocessorMacros as? [String: NSNumber], ["NM_NO_HAZE": 1, "NM_NO_FOG": 1])
+    }
+
     /// A load of carts on the road from Ada's city to the grove, staged
     /// from the realm's rows as the play view stages them and drawn by
     /// day at the view's opening zoom, then closer: a carter with a
