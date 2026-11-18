@@ -97,7 +97,7 @@ public enum LiveSchema {
         "entrant": .init(columns: ["player", "place", "leader", "set_at"], key: "player"),
         "guard": .init(columns: ["key", "player", "kind", "tier", "count"], key: "key"),
         "purse": .init(columns: ["id", "first", "last", "grain", "timber", "stone", "honour"], key: "id"),
-        "my_tilt": .init(columns: ["player", "day", "tries", "claimed"], key: "player"),
+        "my_tilt": .init(columns: ["player", "day", "tries", "claimed", "dawn_day", "dawn"], key: "player"),
         "merit": .init(columns: ["id", "deed", "tier", "name", "words", "goal", "grain", "timber", "stone", "item", "items"], key: "id"),
         "my_records": .init(columns: ["key", "player", "deed", "done", "claimed"], key: "key"),
         "deal": .init(columns: ["id", "item", "count", "grain", "timber", "stone", "moonsalt", "slot"], key: "id"),

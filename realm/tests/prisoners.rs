@@ -84,7 +84,7 @@ fn the_commander_keeping_a_city_is_taken_when_it_falls_and_ransomed_home() {
     assert_eq!(rules::defence_of(&db, his.id, bryn), rules::mastery(&db, his.id), "a prisoner keeps no city");
     rules::keep_troop(&mut db, Troop { id: Troop::key(his.id, Troops::Spearmen as u8, 1), city: his.id, kind: Troops::Spearmen as u8, tier: 1, ready: 100, wounded: 0 });
     let site = Table::<realm::rows::Site>::all(&db).into_iter().next().unwrap();
-    assert_eq!(db.call(|db| rules::send_led(db, bryn, Hex::unpacked(site.hex), March::GATHER, &spears(10), keeper.id)), Err(Refusal::CommanderAway(keeper.name.clone())));
+    assert_eq!(db.call(|db| rules::send_led(db, bryn, Hex::unpacked(site.hex), March::GATHER, &spears(10), keeper.id)), Err(Refusal::HeldPrisoner(keeper.name.clone())), "held, not away");
     // Both are told, in the storm's reports and in words of their own.
     assert!(said(&db, ada, Report::ATTACK).last().unwrap().ends_with(&format!(" {}, who kept the city, is your prisoner.", keeper.name)));
     assert!(said(&db, bryn, Report::DEFENCE).last().unwrap().ends_with(&format!(" {}, who kept it, was taken prisoner.", keeper.name)));

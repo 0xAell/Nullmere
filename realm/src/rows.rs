@@ -992,9 +992,11 @@ pub struct Purse {
 row!(Purse in purse, by id);
 
 /// A player's day in the Lists: the day of the realm, how many challenges
-/// they have made in it, and the day after the last they claimed the
-/// purse on (0 for never). Theirs alone to read, through `my_tilt`. Keyed
-/// by player.
+/// they have made in it, the day after the last they claimed the purse on
+/// (0 for never), and the place they held as that day's first challenge
+/// of theirs or against them was fought, with the day after it (`dawn_day`,
+/// 0 for never), which the day's purse is paid by. Theirs alone to read,
+/// through `my_tilt`. Keyed by player.
 #[spacetimedb::table(accessor = tilt)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Tilt {
@@ -1003,6 +1005,8 @@ pub struct Tilt {
     pub day: u64,
     pub tries: u64,
     pub claimed: u64,
+    pub dawn_day: u64,
+    pub dawn: u64,
 }
 row!(Tilt in tilt, by player);
 

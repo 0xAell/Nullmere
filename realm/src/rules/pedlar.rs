@@ -4,7 +4,7 @@
 //! stock, the item going into their satchel.
 
 use super::{asking, city_of, give, goods, set_goods, settle, today, Refusal};
-use crate::catalog::{self, Goods, Item};
+use crate::catalog;
 use crate::rows::{Bought, Db, Deal};
 use crate::store::Table;
 
@@ -21,7 +21,10 @@ pub fn write_deals(db: &mut impl Db) {
 pub fn buy_deal(db: &mut impl Db, player: u64, deal: u64) -> Result<Deal, Refusal> {
     asking(db, player)?;
     let city = city_of(db, player)?;
-    let row = Table::<Deal>::get(db, deal).ok_or(Refusal::NoSuchDeal)?;
+    // From the catalogue itself, not the rows written out for clients, so a
+    // realm opened before the pedlar came still takes his deals.
+    let (id, item, count, cost, slot) = catalog::pedlar_deals().into_iter().find(|(id, ..)| *id == deal).ok_or(Refusal::NoSuchDeal)?;
+    let row = Deal { id, item: item as u8, count, grain: cost.grain, timber: cost.timber, stone: cost.stone, moonsalt: cost.moonsalt, slot };
     let day = today(db);
     if row.slot != day % catalog::PEDLAR_DAYS {
         return Err(Refusal::NotOfferedToday);
@@ -31,8 +34,6 @@ pub fn buy_deal(db: &mut impl Db, player: u64, deal: u64) -> Result<Deal, Refusa
     if kept.as_ref().is_some_and(|bought| bought.day == day) {
         return Err(Refusal::DealTaken);
     }
-    let item = Item::of(row.item).ok_or(Refusal::NoSuchDeal)?;
-    let cost = Goods::of(row.grain, row.timber, row.stone, row.moonsalt);
     let mut stock = settle(db, city.id)?;
     let short = goods(&stock).short_of(cost);
     if !short.is_none() {
@@ -41,7 +42,7 @@ pub fn buy_deal(db: &mut impl Db, player: u64, deal: u64) -> Result<Deal, Refusa
     let left = goods(&stock).minus(cost);
     set_goods(&mut stock, left);
     db.update(stock);
-    give(db, player, item, row.count);
+    give(db, player, item, count);
     let bought = Bought { key, player, deal, day };
     if kept.is_some() {
         db.update(bought);

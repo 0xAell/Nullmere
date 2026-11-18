@@ -3,7 +3,7 @@
 //! places taken by winning and none lost, and the day's purse by place.
 
 use realm::catalog::{self, Goods, Troops};
-use realm::rows::{City, Entrant, Guard, Purse, Report, Stock, Troop};
+use realm::rows::{City, Commander, Entrant, Guard, Purse, Report, Stock, Troop};
 use realm::rules::{self, Asked, Refusal};
 use realm::store::{Mem, Seconds, Table};
 
@@ -175,4 +175,79 @@ fn the_purse_of_a_place_is_claimed_once_a_day() {
     assert_eq!(db.call(|db| rules::claim_purse(db, ada)), Err(Refusal::PurseClaimed));
     wait(&mut db, catalog::DAY);
     assert_eq!(db.call(|db| rules::claim_purse(db, ada)).map(|(_, honour)| honour), Ok(300));
+}
+
+#[test]
+fn a_first_place_passed_from_hand_to_hand_pays_its_purse_once_a_day() {
+    let (mut db, players, _) = realm(&["Ada", "Bryn", "Cole"]);
+    let (ada, bryn, cole) = (players[0], players[1], players[2]);
+    for player in [ada, bryn, cole] {
+        db.call(|db| rules::enter_lists(db, player, &band(Troops::Spearmen, 1, 100), 0)).unwrap();
+        wait(&mut db, 1);
+    }
+    // Ada, first, claims the first place's purse, then sets a band of one to be beaten.
+    assert_eq!(db.call(|db| rules::claim_purse(db, ada)).map(|(_, honour)| honour), Ok(300));
+    wait(&mut db, 1);
+    db.call(|db| rules::enter_lists(db, ada, &band(Troops::Spearmen, 1, 1), 0)).unwrap();
+    wait(&mut db, 1);
+    db.call(|db| rules::enter_lists(db, bryn, &band(Troops::Archers, 3, 1_000), 0)).unwrap();
+    wait(&mut db, 1);
+    assert_eq!(db.call(|db| rules::challenge(db, bryn, ada)), Ok(true));
+    assert_eq!([place(&db, ada), place(&db, bryn)], [2, 1]);
+    // Bryn holds the first place now, but was second as the day's challenge was fought: the second's purse.
+    wait(&mut db, 1);
+    assert_eq!(db.call(|db| rules::claim_purse(db, bryn)).map(|(_, honour)| honour), Ok(200));
+    // Cole, never challenged today, by the place he holds.
+    assert_eq!(db.call(|db| rules::claim_purse(db, cole)).map(|(_, honour)| honour), Ok(200));
+    // The next day, Bryn's first place pays.
+    wait(&mut db, catalog::DAY);
+    assert_eq!(db.call(|db| rules::claim_purse(db, bryn)).map(|(_, honour)| honour), Ok(300));
+}
+
+#[test]
+fn ten_places_up_may_be_challenged_and_no_further() {
+    let names = ["Ada", "Bryn", "Cole", "Dana", "Edda", "Finn", "Gwen", "Hal", "Ivo", "Jory", "Kit", "Lark"];
+    let (mut db, players, _) = realm(&names);
+    for player in &players {
+        db.call(|db| rules::enter_lists(db, *player, &band(Troops::Spearmen, 1, 100), 0)).unwrap();
+    }
+    // Kit, eleventh, may challenge Ada, first; Lark, twelfth, may not.
+    assert!(db.call(|db| rules::challenge(db, players[10], players[0])).is_ok());
+    wait(&mut db, 1);
+    let first = *players.iter().find(|player| place(&db, **player) == 1).unwrap();
+    let twelfth = *players.iter().find(|player| place(&db, **player) == 12).unwrap();
+    assert_eq!(db.call(|db| rules::challenge(db, twelfth, first)), Err(Refusal::TooFarAbove(catalog::LISTS_REACH)));
+}
+
+#[test]
+fn a_commander_held_prisoner_stands_under_no_band() {
+    let (mut db, players, _) = realm(&["Ada"]);
+    let ada = players[0];
+    let commander = rules::commanders_of(&db, ada).remove(0);
+    let mut held = Table::<Commander>::get(&db, commander.id).unwrap();
+    held.march = rules::HELD;
+    db.update(held);
+    assert_eq!(db.call(|db| rules::enter_lists(db, ada, &band(Troops::Spearmen, 1, 100), commander.id)), Err(Refusal::HeldPrisoner(commander.name.clone())));
+    // One out with an army may: the band is a likeness, kept as it was set.
+    let mut away = Table::<Commander>::get(&db, commander.id).unwrap();
+    away.march = 77;
+    db.update(away);
+    assert!(db.call(|db| rules::enter_lists(db, ada, &band(Troops::Spearmen, 1, 100), commander.id)).is_ok());
+}
+
+#[test]
+fn a_player_forgotten_leaves_the_lists_and_those_below_come_up() {
+    let (mut db, players, _) = realm(&["Ada", "Bryn", "Cole"]);
+    for player in &players {
+        db.call(|db| rules::enter_lists(db, *player, &band(Troops::Spearmen, 1, 100), 0)).unwrap();
+    }
+    db.call(|db| rules::forget(db, players[0])).unwrap();
+    assert!(Table::<Entrant>::get(&db, players[0]).is_none());
+    assert!(Table::<Guard>::by(&db, 0, players[0]).is_empty(), "their band gone");
+    assert_eq!([place(&db, players[1]), place(&db, players[2])], [1, 2]);
+    // And one entering after takes the place below them, with no gap and none twice.
+    let dana = db.call(|db| rules::join(db, "Dana")).unwrap().id;
+    let city = rules::city_of(&db, dana).unwrap();
+    rules::keep_troop(&mut db, Troop { id: Troop::key(city.id, 1, 1), city: city.id, kind: 1, tier: 1, ready: 100, wounded: 0 });
+    assert_eq!(db.call(|db| rules::enter_lists(db, dana, &band(Troops::Spearmen, 1, 100), 0)).unwrap().place, 3);
 }

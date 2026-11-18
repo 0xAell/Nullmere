@@ -9,7 +9,7 @@
 //! entrant claims a purse of goods and honour by their place.
 
 use super::march::wanted;
-use super::{asking, city_of, commanding, fight_learned, goods, honoured_for_lists, mastery, report, set_goods, settle, today, with_leading, Asked, Mastery, Refusal, MOST_ROUNDS};
+use super::{asking, city_of, commanding, fight_learned, goods, honoured_for_lists, mastery, report, set_goods, settle, today, with_leading, Asked, Mastery, Refusal, HELD, MOST_ROUNDS};
 use crate::catalog::{self, Goods, Troops, Unit};
 use crate::rows::{Commander, Db, Entrant, Guard, Player, Purse, Report, Tilt};
 use crate::store::Table;
@@ -34,7 +34,7 @@ pub fn band_of(db: &impl Db, player: u64) -> Vec<Unit> {
 /// A player's day in the Lists, begun afresh on a new day.
 pub fn tilt_of(db: &impl Db, player: u64) -> Tilt {
     let day = today(db);
-    let mut tilt = Table::<Tilt>::get(db, player).unwrap_or(Tilt { player, day, tries: 0, claimed: 0 });
+    let mut tilt = Table::<Tilt>::get(db, player).unwrap_or(Tilt { player, day, tries: 0, claimed: 0, dawn_day: 0, dawn: 0 });
     if tilt.day != day {
         (tilt.day, tilt.tries) = (day, 0);
     }
@@ -49,11 +49,21 @@ fn keep_tilt(db: &mut impl Db, tilt: Tilt) {
     }
 }
 
+/// The place a player held as the day's first challenge of theirs or
+/// against them was fought: kept the first time in a day, so the day's
+/// purse is paid by it, not by a place passed hand to hand that day.
+fn keep_dawn(tilt: &mut Tilt, place: u64) {
+    if tilt.dawn_day != tilt.day + 1 {
+        (tilt.dawn_day, tilt.dawn) = (tilt.day + 1, place);
+    }
+}
+
 /// What a band has beyond its numbers: what its city has learnt, and what
-/// the commander it stands under adds, while they are still its owner's.
+/// the commander it stands under adds, while they are still its owner's
+/// and not held prisoner.
 fn learnt(db: &impl Db, entrant: &Entrant) -> Mastery {
     let Ok(city) = city_of(db, entrant.player) else { return Mastery::default() };
-    match Table::<Commander>::get(db, entrant.leader).filter(|commander| commander.owner == entrant.player) {
+    match Table::<Commander>::get(db, entrant.leader).filter(|commander| commander.owner == entrant.player && commander.march != HELD) {
         Some(commander) => with_leading(mastery(db, city.id), commanding(db, &commander)),
         None => mastery(db, city.id),
     }
@@ -70,7 +80,10 @@ pub fn enter_lists(db: &mut impl Db, player: u64, asked: &[Asked], leader: u64) 
         return Err(Refusal::BandTooBig(most));
     }
     if leader != 0 {
-        Table::<Commander>::get(db, leader).filter(|commander| commander.owner == player).ok_or(Refusal::NoSuchCommander)?;
+        let commander = Table::<Commander>::get(db, leader).filter(|commander| commander.owner == player).ok_or(Refusal::NoSuchCommander)?;
+        if commander.march == HELD {
+            return Err(Refusal::HeldPrisoner(commander.name));
+        }
     }
     for guard in Table::<Guard>::by(db, 0, player) {
         Table::<Guard>::delete(db, guard.key);
@@ -108,6 +121,11 @@ pub fn challenge(db: &mut impl Db, player: u64, opponent: u64) -> Result<bool, R
     if tilt.tries >= catalog::LISTS_TRIES {
         return Err(Refusal::NoChallengesLeft(catalog::LISTS_TRIES));
     }
+    // The places both held as the day's first challenge of each is fought.
+    let mut met = tilt_of(db, opponent);
+    keep_dawn(&mut tilt, mine.place);
+    keep_dawn(&mut met, theirs.place);
+    keep_tilt(db, met);
     let (ours, foes) = (band_of(db, player), band_of(db, opponent));
     let learnt = [learnt(db, &mine), learnt(db, &theirs)];
     let mut rolls: Vec<u64> = (0..2 * MOST_ROUNDS).map(|_| db.chance()).collect();
@@ -180,6 +198,20 @@ fn name_of(db: &impl Db, player: u64) -> String {
     Table::<Player>::get(db, player).map(|row| row.name).unwrap_or_default()
 }
 
+/// A player forgotten leaves the Lists: their band goes, and everyone below
+/// them comes up a place, so the standing has no gap.
+pub(super) fn leave_lists(db: &mut impl Db, player: u64) {
+    let Some(gone) = Table::<Entrant>::get(db, player) else { return };
+    for guard in Table::<Guard>::by(db, 0, player) {
+        Table::<Guard>::delete(db, guard.key);
+    }
+    Table::<Entrant>::delete(db, player);
+    for mut below in Table::<Entrant>::all(db).into_iter().filter(|entrant| entrant.place > gone.place) {
+        below.place -= 1;
+        db.update(below);
+    }
+}
+
 /// A place in the standing in words: "1st", "12th", "23rd".
 fn placed(place: u64) -> String {
     let suffix = match (place % 10, place % 100) {
@@ -202,7 +234,11 @@ pub fn claim_purse(db: &mut impl Db, player: u64) -> Result<(Goods, u64), Refusa
     if tilt.claimed == tilt.day + 1 {
         return Err(Refusal::PurseClaimed);
     }
-    let (gives, honour) = catalog::lists_purse(entrant.place);
+    // By the place held as the day's first challenge was fought, where one
+    // has been: a place won today pays tomorrow, so no place's purse is
+    // paid twice in a day by passing it from hand to hand.
+    let place = if tilt.dawn_day == tilt.day + 1 { tilt.dawn } else { entrant.place };
+    let (gives, honour) = catalog::lists_purse(place);
     let mut stock = settle(db, city.id)?;
     let more = goods(&stock).plus(gives);
     set_goods(&mut stock, more);

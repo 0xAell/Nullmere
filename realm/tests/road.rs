@@ -150,3 +150,12 @@ fn a_commander_out_with_an_army_does_not_walk_the_road() {
     assert_eq!(db.call(|db| rules::walk_road(db, ada, &asked(Troops::Spearmen, 1, 36), commander.id)), Err(Refusal::CommanderAway(commander.name.clone())));
     assert!(Table::<Road>::get(&db, ada).is_none());
 }
+
+#[test]
+fn a_commander_held_prisoner_does_not_walk_the_road() {
+    let (mut db, ada, _, commander) = walker(&[(Troops::Spearmen, 1, 36)]);
+    let mut held = Table::<Commander>::get(&db, commander.id).unwrap();
+    held.march = rules::HELD;
+    db.update(held);
+    assert_eq!(db.call(|db| rules::walk_road(db, ada, &asked(Troops::Spearmen, 1, 36), commander.id)), Err(Refusal::HeldPrisoner(commander.name.clone())));
+}

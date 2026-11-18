@@ -124,6 +124,9 @@ pub fn hire(db: &mut impl Db, player: u64) -> Result<Commander, Refusal> {
 /// The commander a player names to lead an army: theirs, and in the city.
 pub(super) fn leader_for(db: &impl Db, player: u64, commander: u64) -> Result<Commander, Refusal> {
     let commander = Table::<Commander>::get(db, commander).filter(|commander| commander.owner == player).ok_or(Refusal::NoSuchCommander)?;
+    if commander.march == super::HELD {
+        return Err(Refusal::HeldPrisoner(commander.name));
+    }
     if commander.march != 0 {
         return Err(Refusal::CommanderAway(commander.name));
     }
