@@ -145,6 +145,28 @@ struct LiveDayPanel: View {
             }
         }
 
+        // The Barrow Road: the next stage, its host and what it gives the
+        // first time, walked with the soldiers that best it.
+        if let stage = world.nextStage {
+            let army = world.roadArmy(for: stage)
+            let resting = world.roadRests(at: seconds)
+            Caps("The Barrow Road", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    LiveSmall(words: "Stage \(stage.id) of \(world.stages.count): \(world.host(of: stage)). \(LiveWorld.kindNames[stage.bestedBy] ?? "Soldiers") best it; no more than \(LiveWords.grouped(stage.most)) may go.")
+                    LiveSmall(words: "None of yours are lost. The first time, it gives \(world.gifts(of: stage)).", dim: true)
+                }
+                Spacer(minLength: 0)
+                QuietButton(title: "Walk", prominent: true, enabled: resting == 0 && !army.isEmpty && session.asking == 0, name: "Walk the Barrow Road",
+                            why: army.isEmpty ? "No soldiers stand ready." : resting > 0 ? "Your soldiers rest from the road another \(LiveWords.spoken(resting))." : nil) {
+                    Task { await session.walkRoad() }
+                }
+            }
+        } else if !world.stages.isEmpty {
+            LiveSmall(words: "You have walked the whole of the Barrow Road.", dim: true)
+        }
+
         if let favour = world.favour {
             LiveSmall(words: "Favour: level \(favour.level), \(LiveWords.grouped(favour.points)) points.")
             if let words = world.favourWords {

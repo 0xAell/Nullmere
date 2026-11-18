@@ -119,6 +119,9 @@ final class LiveGameTests: XCTestCase {
         // The realm's milestones: fifty cities founded, reached; a hundred barrows cleared, 37 of them.
         rows["milestone"] = [[n(1), n(1), n(50), n(50), n(2_000), .string("Fifty cities founded in the realm."), n(20_000), n(20_000), n(20_000), n(2), n(1)],
                              [n(3), n(2), n(100), n(37), n(0), .string("A hundred barrows of the Unquiet cleared."), n(30_000), n(30_000), n(30_000), n(9), n(1)]]
+        // The Barrow Road's first two stages, never walked.
+        rows["stage"] = [[n(1), n(1), n(15), n(0), n(21), n(36), n(1_200), n(1_200), n(500), n(0), n(0), n(0)],
+                         [n(2), n(1), n(50), n(34), n(0), n(84), n(2_400), n(2_400), n(1_000), n(0), n(2), n(2)]]
         // A code asked for to link her phone, good until 2,600.
         rows["my_link"] = [[n(77), n(1), .string("ABCDE23456"), n(2_600)]]
         // Her devices: this Mac, and the phone she linked, away.
@@ -402,8 +405,22 @@ final class LiveGameTests: XCTestCase {
             XCTAssertTrue(PressableButtons.press("Claim what the realm's milestone gave: Fifty cities founded in the realm."),
                           "Among \(PressableButtons.actions.keys.sorted())")
             XCTAssertTrue(PressableButtons.press("Claim the day's welcome"), "Among \(PressableButtons.actions.keys.sorted())")
+            XCTAssertTrue(PressableButtons.press("Walk the Barrow Road"), "Among \(PressableButtons.actions.keys.sorted())")
         }
-        XCTAssertEqual(claimingLine.asked.suffix(2), ["claim milestone 1", "claim the welcome"])
+        XCTAssertEqual(claimingLine.asked.suffix(3), ["claim milestone 1", "claim the welcome", "walk the road with 36 of 1.1 led by 11"])
+        // The road walked a minute ago, its soldiers resting; and walked whole.
+        var rested = rows()
+        rested["my_road"] = [[n(1), n(1), n(2_000)]]
+        let (resting, restingLine) = await playing(rested)
+        XCTAssertEqual(resting.world.roadRests(at: 2_015), 45)
+        await held(whole(.day, of: resting).frame(width: LiveSidePanel.width - 28)) {
+            XCTAssertFalse(PressableButtons.press("Walk the Barrow Road"), "resting")
+        }
+        XCTAssertFalse(restingLine.asked.contains { $0.hasPrefix("walk the road") })
+        rested["my_road"] = [[n(1), n(2), n(2_000)]]
+        let (walked, _) = await playing(rested)
+        XCTAssertNil(walked.world.nextStage)
+        XCTAssertGreaterThan(try drawn(whole(.day, of: walked).frame(width: LiveSidePanel.width - 28), width: LiveSidePanel.width, height: 1_800), 800)
         // And with nothing in them: no soldiers yet, no reports yet.
         let (empty, _) = await playing(LiveSample.rows())
         for side in [LiveGameView.Panel.troops, .studies, .forge, .alliance, .day, .realm, .rankings, .chat, .reports] {
