@@ -417,6 +417,36 @@ final class WorldRenderTests: XCTestCase {
         print("RENDER ridge: the highest hex, \(peak), at \(world.relief.height(of: peak))")
     }
 
+    /// A seat close to by day, its keep, walls, works and town, and the
+    /// woods and meadow come up to its homes: the land's other pictures
+    /// draw the land alone, and the realm's change with every run, so this
+    /// is where the art of a city is seen on a Mac from one run to the
+    /// next, each building in its own shade where little sky reaches it
+    /// (plan 5.3). Kept as world-hold-close.
+    func testASeatIsDrawnCloseToByDay() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        let world = WorldRenderTests.world
+        let state = world.state
+        let stage = WorldStage(map: state.map, relief: world.relief)
+        let sights = state.holds.map { HoldSight(hold: $0, colour: WorldStage.colour(WorldRenderer.houseColours, sigil: $0.owner)) }
+        var scene = SceneFrame()
+        let holds = stage.holds(sights, time: 20, into: &scene)
+        scene.batches = holds.batches
+        scene.fixed = stage.furnish(occupied: [], holds: Set(state.holds.map(\.position)), grounds: stage.grounds(of: sights))
+        scene.fixedVersion = stage.furnitureVersion
+        scene.fixedRegions = stage.furnitureRegions
+        var camera = Camera(scale: 60)
+        camera.focus(on: state.holds[0].position)
+        let close = try draw(renderer, "seat", camera: camera, tiles: world.whole, scene: scene, daylight: .day)
+        let bare = try draw(renderer, "bare", camera: camera, tiles: world.whole, daylight: .day)
+        try keep([close], as: "world-hold-close")
+        let points = WorldRenderTests.width * WorldRenderTests.height / 4
+        let changed = WorldRenderTests.changed(close, bare)
+        print("RENDER seat close to: \(changed) of \(points) points drawn over the land")
+        XCTAssertGreaterThan(changed, points / 10, "The seat, its town and the land's furniture drawn over the land")
+    }
+
     /// The shaders' own parts a debug build may leave out, each named to the
     /// compiler; passes it has no switch for are not.
     func testTheShadersPartsAreLeftOutByName() throws {
