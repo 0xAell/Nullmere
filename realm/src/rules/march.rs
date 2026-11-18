@@ -156,7 +156,7 @@ pub(super) fn wanted(db: &impl Db, city: u64, asked: &[Asked]) -> Result<Vec<Ask
 pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: &[Asked], leader: u64) -> Result<March, Refusal> {
     asking(db, player)?;
     let city = city_of(db, player)?;
-    let realm = realm(db)?;
+    realm(db)?;
     // A rally takes energy only against a barrow, and gives up its own city's peace only against a city.
     let (mut takes_energy, mut breaks_peace) = (kind == March::HUNT, kind == March::ATTACK);
     let target = match kind {
@@ -200,10 +200,8 @@ pub(super) fn dispatch(db: &mut impl Db, player: u64, to: Hex, kind: u8, asked: 
         return Err(Refusal::NoFreeMarch(most));
     }
     let led: Option<Commander> = if leader == 0 { None } else { Some(leader_for(db, player, leader)?) };
-    let from = Hex::unpacked(city.hex);
     // No gate of the ridge but the player's alliance's own is passed.
-    let barred = super::gates_barred_to(db, player);
-    let way = land::way_by(realm.seed, realm.radius, from, to, |hex| barred.contains(&hex)).ok_or(Refusal::NoWay)?;
+    let way = super::way_for(db, player, Hex::unpacked(city.hex), to)?;
 
     if takes_energy {
         spend_energy(db, player, false);

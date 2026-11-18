@@ -49,6 +49,21 @@ pub fn gates_barred_to(db: &impl Db, player: u64) -> Vec<Hex> {
         .collect()
 }
 
+/// The way a player's army or carts take from one hex to another, through
+/// no gate of the ridge but those their alliance holds or has passage
+/// through. Where every gate is barred to them and the ridge lies between
+/// the two, there is none, and none is looked for: the search would cross
+/// all the land on its side, the dearer work, which a refusal would
+/// otherwise have paid for.
+pub(super) fn way_for(db: &impl Db, player: u64, from: Hex, to: Hex) -> Result<Vec<Hex>, Refusal> {
+    let realm = realm(db)?;
+    let barred = gates_barred_to(db, player);
+    if barred.len() >= land::gates(realm.radius).len() && land::lakeland(realm.radius, from) != land::lakeland(realm.radius, to) {
+        return Err(Refusal::NoWay);
+    }
+    land::way_by(realm.seed, realm.radius, from, to, |hex| barred.contains(&hex)).ok_or(Refusal::NoWay)
+}
+
 /// Whether an alliance holds a gate of the ridge.
 pub fn holds_gate(db: &impl Db, alliance: u64) -> bool {
     alliance != 0 && Table::<Gate>::all(db).iter().any(|gate| gate.holder == alliance)

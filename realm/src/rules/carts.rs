@@ -12,10 +12,9 @@
 //! them. If the city they were sent to is gone when they come to it, or is
 //! no longer an ally's, what they carry comes back to whoever sent it.
 
-use super::{allied, asking, building_of, city_at, city_of, gates_barred_to, goods, realm, report, set_goods, settle, Refusal, TIMER_MARCH};
+use super::{allied, asking, building_of, city_at, city_of, goods, realm, report, set_goods, settle, Refusal, TIMER_MARCH};
 use crate::catalog::{self, Building as Kind, Goods};
 use crate::hex::{self, Hex};
-use crate::land;
 use crate::rows::{City, Db, Haul, March, Player, Report};
 use crate::store::{Seconds, Table};
 
@@ -79,8 +78,7 @@ pub fn send_goods(db: &mut impl Db, player: u64, to: Hex, load: Goods) -> Result
         return Err(Refusal::CannotAfford(have.short_of(load)));
     }
     let realm = realm(db)?;
-    let barred = gates_barred_to(db, player);
-    let way = land::way_by(realm.seed, realm.radius, Hex::unpacked(city.hex), to, |hex| barred.contains(&hex)).ok_or(Refusal::NoWay)?;
+    let way = super::way_for(db, player, Hex::unpacked(city.hex), to)?;
     set_goods(&mut stock, have.minus(load));
     db.update(stock);
 

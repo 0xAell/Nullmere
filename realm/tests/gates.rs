@@ -263,3 +263,38 @@ fn a_rally_beaten_at_a_gate_leaves_it_held_and_one_finding_it_their_own_turns_ho
     }
     assert_eq!(Table::<Gate>::get(&db, id).unwrap().fighter, 0);
 }
+
+#[test]
+fn with_every_gate_barred_no_way_crosses_the_ridge_and_none_is_looked_for() {
+    // Searched in full, no way leads from the outer land into the lake
+    // country, nor out of it, through the ridge with all six gates barred:
+    // which is why the rules refuse such a way without searching.
+    let gates = land::gates(RADIUS);
+    let open = |hex: &Hex| land::ground(SEED, RADIUS, *hex).is_open();
+    let all = Hex::new(0, 0).within(RADIUS);
+    let inner: Vec<Hex> = all.iter().copied().filter(|hex| land::lakeland(RADIUS, *hex) && open(hex)).step_by(97).take(3).collect();
+    let outer: Vec<Hex> = all.iter().copied().filter(|hex| hex.length() >= land::outer_from(RADIUS) && open(hex)).step_by(211).take(3).collect();
+    assert_eq!((inner.len(), outer.len()), (3, 3));
+    for from in &outer {
+        for to in &inner {
+            assert!(land::way_by(SEED, RADIUS, *from, *to, |hex| gates.contains(&hex)).is_none(), "{from:?} to {to:?}");
+            assert!(land::way_by(SEED, RADIUS, *to, *from, |hex| gates.contains(&hex)).is_none(), "{to:?} to {from:?}");
+        }
+    }
+
+    // And the rules refuse at once an army or carts sent across it.
+    let (mut db, players, cities, _) = allies(&["Ada", "Bryn"], &[]);
+    let site = Table::<Site>::all(&db).into_iter().find(|site| land::lakeland(RADIUS, Hex::unpacked(site.hex))).unwrap();
+    assert_eq!(db.call(|db| rules::send(db, players[0], Hex::unpacked(site.hex), March::GATHER, &spears(100))), Err(Refusal::NoWay));
+    // With one gate held, the same army goes.
+    let mut gate = Table::<Gate>::get(&db, 1).unwrap();
+    gate.holder = realm::rules::member_of(&db, players[0]).unwrap().alliance;
+    db.update(gate);
+    let through = gate_near(&cities[0]);
+    let mut held = rules::gate_at(&db, through).unwrap();
+    held.holder = realm::rules::member_of(&db, players[0]).unwrap().alliance;
+    db.update(held);
+    let site = site_within(&db, &cities[0], through);
+    assert!(db.call(|db| rules::send(db, players[0], Hex::unpacked(site.hex), March::GATHER, &spears(100))).is_ok());
+    let _ = players[1];
+}
