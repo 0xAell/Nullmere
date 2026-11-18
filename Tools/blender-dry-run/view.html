@@ -48,12 +48,14 @@ variants.forEach((variant, k) => {
     g.computeVertexNormals();
     scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({vertexColors: true, flatShading: true, roughness: 0.9, side: THREE.DoubleSide})));
   }
+  if (params.get('ring') !== '0') {
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.328, 0.332, 64), new THREE.MeshBasicMaterial({color: 0xff5050, side: THREE.DoubleSide}));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.002; scene.add(ring);
+  }
   const yaw = +(params.get('yaw') || 0.5), tilt = +(params.get('tilt') || 0.9), dist = +(params.get('dist') || 1.25);
   const cam = new THREE.PerspectiveCamera(30, 300 / H, 0.01, 50);
   cam.position.set(Math.sin(yaw) * Math.sin(tilt) * dist, Math.cos(tilt) * dist + 0.1, Math.cos(yaw) * Math.sin(tilt) * dist);
-  cam.lookAt(0, 0.12, 0);
+  cam.lookAt(0, +(params.get('look') || 0.12), 0);
   renderer.setViewport(k * 300, 0, 300, H); renderer.setScissor(k * 300, 0, 300, H); renderer.setScissorTest(true);
   renderer.render(scene, cam);
   stats.push(`${variant}: ${tris} tris, reach ${reach.toFixed(3)}, top ${top.toFixed(3)}`);

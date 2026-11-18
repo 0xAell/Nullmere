@@ -131,6 +131,21 @@ class EditBone:
         self.use_deform = True
 
     @property
+    def children(self):
+        return [b for b in getattr(self, "_bones", {}).values() if b.parent is self]
+
+    @property
+    def children_recursive(self):
+        out = []
+        for child in self.children:
+            out += [child] + child.children_recursive
+        return out
+
+    @property
+    def length(self):
+        return (Vector(self.tail) - Vector(self.head)).length
+
+    @property
     def matrix_local(self):
         y = (Vector(self.tail) - Vector(self.head)).normalized()
         q = Vector((0, 1, 0)).rotation_difference(y).to_matrix().to_4x4()
@@ -141,8 +156,18 @@ class EditBone:
 class EditBones(dict):
     def new(self, name):
         b = EditBone(name)
+        b._bones = self
         self[name] = b
         return b
+
+    def remove(self, bone):
+        for other in self.values():
+            if other.parent is bone:
+                other.parent = None
+        self.pop(bone.name, None)
+
+    def get(self, name, default=None):
+        return dict.get(self, name, default)
 
     def __iter__(self):
         return iter(self.values())
@@ -240,19 +265,59 @@ class AnimationData:
 
 # MARK: Objects
 
+class VertexElement:
+    __slots__ = ("group", "weight")
+
+    def __init__(self, group, weight):
+        self.group, self.weight = group, weight
+
+
 class VertexGroup:
-    def __init__(self, name, index):
-        self.name, self.index = name, index
+    def __init__(self, name, index, owner=None):
+        self.name, self.index, self.owner = name, index, owner
 
     def add(self, indices, weight, mode):
-        pass
+        mesh = getattr(self.owner, "data", None)
+        if not isinstance(mesh, Mesh):
+            return
+        for i in indices:
+            if i >= len(mesh.vertices):
+                continue
+            groups = mesh.vertices[i].groups
+            found = next((g for g in groups if g.group == self.index), None)
+            if found is None:
+                groups.append(VertexElement(self.index, weight))
+            elif mode == "ADD":
+                found.weight += weight
+            else:
+                found.weight = weight
+
+    def weight(self, index):
+        for g in self.owner.data.vertices[index].groups:
+            if g.group == self.index:
+                return g.weight
+        raise RuntimeError("not in the group")
 
 
 class VertexGroups(list):
+    def __init__(self, owner=None):
+        super().__init__()
+        self.owner = owner
+        self._next = 0
+
     def new(self, name="Group"):
-        g = VertexGroup(name, len(self))
+        g = VertexGroup(name, self._next, self.owner)
+        self._next += 1
         self.append(g)
         return g
+
+    def remove(self, group):
+        if group in self:
+            list.remove(self, group)
+        mesh = getattr(self.owner, "data", None)
+        if isinstance(mesh, Mesh):
+            for v in mesh.vertices:
+                v.groups = [g for g in v.groups if g.group != group.index]
 
     def get(self, name, default=None):
         for g in self:
@@ -287,7 +352,7 @@ class Object:
         self.parent = None
         self.parent_type = "OBJECT"
         self.parent_bone = ""
-        self.vertex_groups = VertexGroups()
+        self.vertex_groups = VertexGroups(self)
         self.modifiers = Modifiers()
         self.selected = False
         self.animation_data = None
