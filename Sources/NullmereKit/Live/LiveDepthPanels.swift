@@ -193,6 +193,29 @@ struct LiveDayPanel: View {
             }
         }
 
+        // The pedlar: the deals he brings today, each taken once.
+        let dealing = world.dealsToday(at: seconds)
+        if !dealing.isEmpty {
+            Caps("The pedlar", size: LiveType.small)
+                .foregroundStyle(LiveEmphasis.secondary)
+        }
+        ForEach(dealing) { deal in
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    LiveSmall(words: "Sells \(world.dealWords(of: deal)).")
+                    LiveSmall(words: "For \(deal.cost.words).", dim: true)
+                }
+                Spacer(minLength: 0)
+                if world.taken(deal, at: seconds) {
+                    LiveSmall(words: "Taken", dim: true)
+                } else {
+                    QuietButton(title: "Buy", enabled: session.asking == 0, name: "Buy from the pedlar: \(world.dealWords(of: deal))") {
+                        Task { await session.buyDeal(deal.id) }
+                    }
+                }
+            }
+        }
+
         if let favour = world.favour {
             LiveSmall(words: "Favour: level \(favour.level), \(LiveWords.grouped(favour.points)) points.")
             if let words = world.favourWords {
