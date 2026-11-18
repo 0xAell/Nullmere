@@ -586,8 +586,11 @@ final class LiveGameTests: XCTestCase {
         spin(1.5)
 
         let map = try XCTUnwrap(find(WorldMetalView.self, in: host), "The Metal view is in the window")
-        // Its renderer made as the world's shader compiles, and a frame drawn by it.
-        for _ in 0..<200 where map.renderer == nil { spin(0.1) }
+        // Its renderer made as the world's shader compiles, and a frame drawn by
+        // it. Waited for by suspending, not by spinning the run loop: the
+        // compile hands its renderer back on the main queue, which a test
+        // running on the main actor holds while it spins.
+        for _ in 0..<200 where map.renderer == nil { try await Task.sleep(nanoseconds: 100_000_000) }
         XCTAssertNotNil(map.renderer, "the world's renderer is made")
         map.draw(map.bounds)
         XCTAssertEqual(map.radius, LiveSession.reach)
