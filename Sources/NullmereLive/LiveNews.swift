@@ -3,7 +3,8 @@ import Foundation
 /// What a piece of news is, for the sound that tells it: a building
 /// raised, soldiers trained or healed, a study learnt, an army home, a
 /// fight won or lost, any other report, a letter, allies' help, an ally's
-/// rally, a gift, and an army set out against the player's city.
+/// rally, a gift (an ally's, or the realm's for a milestone reached), and
+/// an army set out against the player's city.
 public enum LiveTold: Equatable, Sendable, CaseIterable {
     case raised, trained, healed, learnt, home, won, lost, report, letter, helped, rally, gift, threat
 }
@@ -74,6 +75,13 @@ extension LiveWorld {
         let gifts = Set(before.boons.map(\.id))
         for boon in after.boons where !gifts.contains(boon.id) {
             told.append(("A gift from \(after.shownName(of: boon.giver) ?? "an ally")'s barrow: \(boon.goods.words).", .gift))
+        }
+        // A milestone the whole realm has just reached, its gift not yet claimed.
+        if !before.milestones.isEmpty {
+            let reached = Set(before.milestones.filter(\.isReached).map(\.id))
+            for milestone in after.milestones where milestone.isReached && !reached.contains(milestone.id) && !after.claimed.contains(milestone.id) {
+                told.append(("The realm reached a milestone: \(milestone.words) Claim what it gives in Today.", .gift))
+            }
         }
         let threatened = Set(before.threats(at: seconds).map(\.id))
         for threat in after.threats(at: seconds) where !threatened.contains(threat.id) && threat.march.state == LiveMarch.going {

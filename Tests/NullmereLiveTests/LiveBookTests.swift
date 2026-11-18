@@ -259,6 +259,20 @@ final class LiveBookTests: XCTestCase {
         let gifted = LiveWorld(snapshot: later)
         XCTAssertEqual(gifted.boons.map { [Int($0.giver), $0.level, $0.expires] }, [[2, 4, 90_000]])
         XCTAssertEqual(gifted.boonGoods, LiveGoods(grain: 800, timber: 800, stone: 800))
+        // The realm reaches a milestone: told once, as a gift to claim; not
+        // where it was reached already, nor where the milestones were not yet read.
+        func milestone(done: Int, reached: Int) -> [JSONValue] {
+            [n(1), n(1), n(50), n(Double(done)), n(Double(reached)), .string("Fifty cities founded in the realm."), n(20_000), n(20_000), n(20_000), n(2), n(1)]
+        }
+        var nearly = rows()
+        nearly["milestone"] = [milestone(done: 49, reached: 0)]
+        var reached = rows()
+        reached["milestone"] = [milestone(done: 50, reached: 2_020)]
+        XCTAssertEqual(LiveWorld.told(from: LiveWorld(snapshot: nearly), to: LiveWorld(snapshot: reached), at: 2_030).map(\.words),
+                       ["The realm reached a milestone: Fifty cities founded in the realm. Claim what it gives in Today."])
+        XCTAssertEqual(LiveWorld.told(from: LiveWorld(snapshot: nearly), to: LiveWorld(snapshot: reached), at: 2_030).map(\.kind), [.gift])
+        XCTAssertTrue(LiveWorld.news(from: LiveWorld(snapshot: reached), to: LiveWorld(snapshot: reached), at: 2_030).isEmpty)
+        XCTAssertTrue(LiveWorld.news(from: before, to: LiveWorld(snapshot: reached), at: 2_030).isEmpty, "before, none were read")
         // Nothing new, nothing told; nor before there is a city to tell of.
         XCTAssertTrue(LiveWorld.news(from: before, to: before, at: 2_030).isEmpty)
         XCTAssertTrue(LiveWorld.news(from: LiveWorld(snapshot: [:]), to: before, at: 2_030).isEmpty)

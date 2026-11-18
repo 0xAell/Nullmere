@@ -750,7 +750,10 @@ final class LiveGameTests: XCTestCase {
     /// A view held in a window while a test types into its fields and
     /// presses what it draws, as a player would; what the presses set
     /// going is let run after.
-    private func held(_ view: some View, width: CGFloat = LiveSidePanel.width, height: CGFloat = 3_600, act: () -> Void) async {
+    private func held(_ view: some View, width: CGFloat? = nil, height: CGFloat = 3_600, act: () -> Void) async {
+        // The side panel's width where none is given: read here, on the main
+        // actor, rather than in a default argument, which is not.
+        let width = width ?? LiveSidePanel.width
         PressableButtons.isListening = true
         defer { PressableButtons.isListening = false }
         let size = NSSize(width: width, height: height)
