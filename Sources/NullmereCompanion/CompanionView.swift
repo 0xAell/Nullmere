@@ -89,7 +89,8 @@ struct CompanionLink: View {
 
 /// The player's realm as the phone shows it: their city and its stores,
 /// the task in hand, what stands idle, what threatens them, their armies
-/// out and the day's chests; and the few things a phone does about them.
+/// out, what waits on them today and the day's chests; and the few things
+/// a phone does about them.
 struct CompanionHome: View {
     let session: LiveSession
 
@@ -186,6 +187,55 @@ struct CompanionHome: View {
                                         .buttonStyle(.borderless)
                                         .disabled(session.asking > 0)
                                 }
+                            }
+                        }
+                    }
+                }
+                // What waits on the player today, each done with a touch:
+                // the day's welcome, the Lists' purse, a merit reached, and
+                // the Barrow Road's next stage while their soldiers are rested.
+                let streak = world.welcomeStreak(at: seconds)
+                let welcome = world.welcomeWaits(at: seconds)
+                let purse = world.purseWaits(at: seconds) ? world.myEntry.flatMap { world.purseWords(of: $0.place) } : nil
+                let merits = world.meritsToClaim
+                let stage = world.nextStage
+                if welcome || purse != nil || !merits.isEmpty || stage != nil {
+                    Section("Today") {
+                        if welcome {
+                            HStack {
+                                Text(verbatim: "The day's welcome, day \(streak) of \(LiveWorld.welcomeDays): \(world.welcomeGifts(streak))")
+                                Spacer()
+                                Button("Claim") { Task { await session.claimWelcome() } }
+                                    .buttonStyle(.borderless)
+                                    .disabled(session.asking > 0)
+                            }
+                        }
+                        if let purse {
+                            HStack {
+                                Text(verbatim: "The Lists' purse: \(purse)")
+                                Spacer()
+                                Button("Claim") { Task { await session.claimPurse() } }
+                                    .buttonStyle(.borderless)
+                                    .disabled(session.asking > 0)
+                            }
+                        }
+                        ForEach(merits) { merit in
+                            HStack {
+                                Text(verbatim: "\(merit.name), tier \(merit.tier): \(world.gifts(of: merit))")
+                                Spacer()
+                                Button("Claim") { Task { await session.claimMerit(merit.deed) } }
+                                    .buttonStyle(.borderless)
+                                    .disabled(session.asking > 0)
+                            }
+                        }
+                        if let stage {
+                            let resting = world.roadRests(at: seconds)
+                            HStack {
+                                Text(verbatim: "The Barrow Road, stage \(stage.id) of \(world.stages.count): \(world.host(of: stage))")
+                                Spacer()
+                                Button(resting > 0 ? "Resting" : "Walk") { Task { await session.walkRoad() } }
+                                    .buttonStyle(.borderless)
+                                    .disabled(resting > 0 || world.roadArmy(for: stage).isEmpty || session.asking > 0)
                             }
                         }
                     }
