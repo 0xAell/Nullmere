@@ -15,8 +15,8 @@ for a hold has dozens, each facing +z toward the lane it stands on:
 - the well, a ring of stone with dark water, a windlass under a little
   roof, a bucket on its rope;
 - the field, ridged furrows of grain swaying in the wind, fenced about;
-- a length of lane, a unit long, trodden earth with flat stones set in it,
-  stretched to the length it runs;
+- a length of lane, a unit long, trodden earth worn into two ruts by the
+  carts' wheels, stretched to the length it runs;
 - a market stall, its awning in the House's colour, a sack, a basket of
   salt and loaves on its board.
 Every door is in the House's colour, every window lit at night; the stage
@@ -191,9 +191,13 @@ join(tagged("fence", tag), fence)
 
 tag = ["lane"]
 # Trodden earth a unit long, crowned along its middle and worn down to the
-# grass at its edges, so lengths laid end to end read as one way; a few
-# flat stones set low in it near its middle, never at its ends (made long,
-# for a length of lane is laid squeezed to a third or less of a unit).
+# grass at its edges, so lengths laid end to end read as one way; along it
+# the two ruts the carts' wheels wear, darker, from end to end, so a road
+# of many lengths runs on unbroken. (It bore three flat stones, which a
+# length laid squeezed to a third of a unit or less set so close and so
+# even that a long road read as a highway's dashed line: run 1218's
+# pictures of the realm, every hold's ways so.)
+RUTS = 0.018
 section = [(-0.05, -0.05), (-0.05, -0.002), (-0.032, 0.004), (0.032, 0.004), (0.05, -0.002), (0.05, -0.05)]
 
 
@@ -210,8 +214,8 @@ def lane_strip(bm):
 
 
 lane = [mesh_object("earth", lane_strip, yard)]
-for index, (x, dz) in enumerate(((-0.17, -0.012), (0.04, 0.01), (0.21, -0.006))):
-    lane.append(block("stone", (x - 0.07, 0.003, dz - 0.016), (x + 0.07, 0.006, dz + 0.016), stone if index % 2 == 0 else pale_stone))
+for side in (-1, 1):
+    lane.append(block("rut", (-0.5, 0.0032, side * RUTS - 0.004), (0.5, 0.0045, side * RUTS + 0.004), loam))
 join(tagged("lane", tag), lane)
 
 # MARK: The stall
