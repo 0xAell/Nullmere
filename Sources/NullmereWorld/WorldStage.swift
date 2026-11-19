@@ -1706,7 +1706,7 @@ public final class WorldStage: @unchecked Sendable {
     public static let roadStep: Float = 0.3
 
     /// The roads the carts wear between a House's holds: lengths of lane,
-    /// trodden earth with flat stones set in it as a town's own, laid along
+    /// trodden earth worn into two ruts as a town's own, laid along
     /// each way the carts go, from beyond one hold's walls through the heart
     /// of every hex between to beyond the other's, each length lying on the
     /// ground under it. None between holds side by side, whose towns meet.

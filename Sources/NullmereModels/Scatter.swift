@@ -192,7 +192,10 @@ public enum Scatter {
                      Recipe(furnishing: .birch, count: 1...1, scale: 0.85...1.1, chance: 0.25),
                      Recipe(furnishing: .fern, count: 1...3, scale: 0.8...1.2, closeness: 0.6)]
         case .barrow:
-            list += [Recipe(furnishing: .barrowMound, count: 1...1, scale: 0.8...1.0, chance: 0.6, central: true),
+            // A mound in about a third of the downs' hexes, some smaller
+            // and older: at three in five, each near the size of the last,
+            // the downs stood in rows of like domes (run 1217's pictures).
+            list += [Recipe(furnishing: .barrowMound, count: 1...1, scale: 0.65...1.0, chance: 0.35, central: true),
                      Recipe(furnishing: .standingStone, count: 1...2, scale: 0.8...1.2, chance: 0.45),
                      Recipe(furnishing: .grass, count: 2...3, scale: 0.8...1.2), Recipe(furnishing: .boulder, count: 0...1, scale: 0.6...1.0),
                      Recipe(furnishing: .heather, count: 1...2, scale: 0.8...1.2)]

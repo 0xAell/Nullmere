@@ -24,7 +24,8 @@ public enum Town: String, CaseIterable, Sendable {
     /// A strip field: ridged furrows of grain, fenced about.
     case field
     /// A length of lane, a unit long from x = -0.5 to 0.5: trodden earth
-    /// with flat stones set in it, stretched to the length it runs.
+    /// worn into two ruts by the carts' wheels, stretched to the length it
+    /// runs.
     case lane
     /// A stall at a seat's market, its awning in the House's colour.
     case stall
