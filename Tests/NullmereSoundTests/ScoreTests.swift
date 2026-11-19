@@ -80,6 +80,40 @@ final class ScoreTests: XCTestCase {
         XCTAssertEqual(Theme.of(.war).chords, Score.warChords)
     }
 
+    /// The score's own air: as a mood begins, and every few chords after,
+    /// the same line in the mood's own mode and voice, the realm's peace on
+    /// the harp in D minor, each lake's title in its own; never at war nor
+    /// at the eaten moon, whose lines wander alone.
+    func testTheScoreHasItsOwnAir() {
+        let peace = written(.peace, seconds: 120)
+        let air = Score.phrase.map { Score.melody[$0.place] }
+        XCTAssertEqual(Array(peace.playedNotes.prefix(air.count)), air, "Heard as the score begins")
+        func heard(_ line: [Int], in notes: [Int]) -> Int {
+            guard notes.count >= line.count else { return 0 }
+            return (0...(notes.count - line.count)).filter { Array(notes[$0..<($0 + line.count)]) == line }.count
+        }
+        XCTAssertGreaterThanOrEqual(heard(air, in: peace.playedNotes), 2, "and again some chords on")
+        XCTAssertEqual(peace.phrases, heard(air, in: peace.playedNotes), "each time it is due, and the wandering line never by chance")
+        XCTAssertGreaterThan(peace.playedNotes.count, air.count * peace.phrases, "the line wanders between")
+        for lake in Lake.allCases {
+            let score = written(.title(lake), seconds: 60)
+            let own = Score.phrase.map { Theme.of(.title(lake)).melody[$0.place] }
+            XCTAssertEqual(Array(score.playedNotes.prefix(own.count)), own, "\(lake)'s title begins with the air in its own mode")
+        }
+        for mood in [Score.Mood.war, .eclipse] {
+            XCTAssertEqual(written(mood, seconds: 120).phrases, 0, "\(mood): no air")
+        }
+        // A mood begun anew: its air is due again, peace's after a war.
+        var score = Score()
+        score.compose(seconds: 30)
+        score.mood = .war
+        score.compose(seconds: 20)
+        XCTAssertEqual(heard(air, in: score.playedNotes), 1, "heard as peace began, not at war")
+        score.mood = .peace
+        score.compose(seconds: 20)
+        XCTAssertEqual(heard(air, in: score.playedNotes), 2, "peace come again, its air with it")
+    }
+
     /// While the drowned age walks the score turns strange: glass bells far
     /// apart, each answered on the harp a tritone above, no chord rolled
     /// and no drum, every note from the scale of tones and half tones.
@@ -117,8 +151,13 @@ final class ScoreTests: XCTestCase {
         let war = written(.war, seconds: 120)
         XCTAssertGreaterThanOrEqual(war.hornCalls, 4, "The horns call as war begins and as its chords change")
         XCTAssertLessThan(war.hornCalls, war.chordChanges, "Not at every change")
-        XCTAssertEqual(war.calledNotes.count, 3 * war.hornCalls)
-        for call in stride(from: 0, to: war.calledNotes.count, by: 3) {
+        // As war begins, war's own call: the root twice, the fifth, the
+        // minor third and home; every call after, root, fifth and octave.
+        XCTAssertEqual(war.calledNotes.count, Score.warCall.count + 3 * (war.hornCalls - 1))
+        let opening = Array(war.calledNotes.prefix(Score.warCall.count))
+        XCTAssertEqual(opening.map { $0 - opening[0] }, Score.warCall.map(\.step), "War's own call: \(opening)")
+        XCTAssertTrue((Score.callFloor..<(Score.callFloor + 12)).contains(opening[0]), "Where the horns were recorded: \(opening)")
+        for call in stride(from: Score.warCall.count, to: war.calledNotes.count, by: 3) {
             let notes = Array(war.calledNotes[call..<(call + 3)])
             XCTAssertEqual(notes.map { $0 - notes[0] }, [0, 7, 12], "Root, fifth, octave: \(notes)")
             XCTAssertTrue(Score.warChords.contains { chord in chord.contains { ($0 - notes[0]) % 12 == 0 } }, "On a war chord's root")
