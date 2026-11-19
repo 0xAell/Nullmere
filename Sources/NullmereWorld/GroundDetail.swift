@@ -4,19 +4,21 @@ import Foundation
 /// again and again (the shaders' `NM_DETAIL`): in its red, the clumps of a
 /// meadow's grass, bright where they stand and dark in the gaps between; in
 /// its green, the grit and pebbles of bare earth, sand and stone; in its
-/// blue, a mottle across the whole. Each channel's mean is a half, so laid
-/// over a colour as a swing about one it changes no mean; and drawn far
-/// off, its smaller levels, each the mean of four of the larger, leave the
-/// mean alone. It tiles: its right edge runs on into its left and its foot
-/// into its head. The same every time.
+/// blue, a mottle across the whole. Each of those channels' mean is a half,
+/// so laid over a colour as a swing about one it changes no mean; and drawn
+/// far off, its smaller levels, each the mean of four of the larger, leave
+/// the mean alone. In its alpha, a dry salt pan's crust: polygons, their
+/// rims raised and bright, their floors dark, read by the shaders' salt
+/// only. It tiles: its right edge runs on into its left and its foot into
+/// its head. The same every time.
 public enum GroundDetail {
     /// Its pixels across, and down.
     public static let side = 128
     /// How many times it is laid across a unit of the land.
     public static let perUnit: Float = 2
 
-    /// Its pixels, four bytes each (red, green, blue, and alpha full), row
-    /// by row.
+    /// Its pixels, four bytes each (red, green, blue, and the crust in its
+    /// alpha), row by row.
     public static let pixels: [UInt8] = make()
 
     /// Its levels for drawing far off: itself, then each half the side of
@@ -29,12 +31,18 @@ public enum GroundDetail {
     static let stones = 16
     /// How far each channel swings about its mean.
     static let swing: Float = 0.18
+    /// Of the salt's crust, the polygons' middles a tile holds across, and
+    /// how far either side of an edge between two its rim reaches, in
+    /// cells.
+    static let crust = 4
+    static let rimWidth: Float = 0.035
 
     static func make() -> [UInt8] {
         let n = side
         var red = [Float](repeating: 0, count: n * n)
         var green = [Float](repeating: 0, count: n * n)
         var blue = [Float](repeating: 0, count: n * n)
+        var alpha = [UInt8](repeating: 0, count: n * n)
         for y in 0..<n {
             for x in 0..<n {
                 let u = (Float(x) + 0.5) / Float(n), v = (Float(y) + 0.5) / Float(n)
@@ -42,6 +50,7 @@ public enum GroundDetail {
                 red[i] = 0.62 * clump(u, v, cells: clumps.coarse, seed: 11) + 0.38 * clump(u, v, cells: clumps.fine, seed: 23)
                 green[i] = 0.8 * pebble(u, v, cells: stones, seed: 37) + 0.2 * value(u, v, lattice: 32, seed: 41)
                 blue[i] = 0.5 * value(u, v, lattice: 4, seed: 53) + 0.3 * value(u, v, lattice: 8, seed: 59) + 0.2 * value(u, v, lattice: 16, seed: 61)
+                alpha[i] = UInt8(min(max(rim(u, v, cells: crust, seed: 71), 0), 1) * 255 + 0.5)
             }
         }
         let r = levelled(red), g = levelled(green), b = levelled(blue)
@@ -50,6 +59,7 @@ public enum GroundDetail {
             out[i * 4] = r[i]
             out[i * 4 + 1] = g[i]
             out[i * 4 + 2] = b[i]
+            out[i * 4 + 3] = alpha[i]
         }
         return out
     }
@@ -122,6 +132,43 @@ public enum GroundDetail {
         let (d, which) = nearest(u, v, cells: cells, seed: seed)
         let stone: Float = 1 - min(max((d - 0.18) / 0.12, 0), 1)
         return stone * (0.55 + 0.45 * which)
+    }
+
+    /// How far a point lies from the nearest edge of the polygon it is in,
+    /// the polygons each about the middle nearest them of those scattered
+    /// one to a cell over `cells` cells across, wrapping; in cells. Measured
+    /// to the line halfway between its own middle and each other's, so where
+    /// two middles lie close together only the line between them is near.
+    static func border(_ u: Float, _ v: Float, cells: Int, seed: UInt32) -> Float {
+        let x = u * Float(cells), y = v * Float(cells)
+        let cx = Int(x.rounded(.down)), cy = Int(y.rounded(.down))
+        var middles: [SIMD2<Float>] = []
+        for dy in -2...2 {
+            for dx in -2...2 {
+                let gx = cx + dx, gy = cy + dy
+                middles.append(SIMD2(Float(gx) + 0.05 + 0.9 * hash(gx, gy, period: cells, seed: seed),
+                                     Float(gy) + 0.05 + 0.9 * hash(gx, gy, period: cells, seed: seed &+ 7)))
+            }
+        }
+        let point = SIMD2(x, y)
+        func squared(_ d: SIMD2<Float>) -> Float { d.x * d.x + d.y * d.y }
+        let own = middles.min { squared($0 - point) < squared($1 - point) }!
+        var nearest = Float.infinity
+        for other in middles {
+            let across = other - own
+            let length = squared(across).squareRoot()
+            guard length > 1e-6 else { continue }
+            let halfway = (own + other) * 0.5 - point
+            nearest = min(nearest, (halfway.x * across.x + halfway.y * across.y) / length)
+        }
+        return nearest
+    }
+
+    /// A salt pan's crust: full on its polygons' edges, falling away either
+    /// side within `rimWidth`, nothing on their floors.
+    static func rim(_ u: Float, _ v: Float, cells: Int, seed: UInt32) -> Float {
+        let edge = border(u, v, cells: cells, seed: seed) / rimWidth
+        return Float(exp(Double(-edge * edge)))
     }
 
     /// Each level half the side of the one before, each pixel the mean of

@@ -85,6 +85,8 @@ public enum WorldShaders {
     // How many times the ground's detail is laid across a unit of the land
     // (GroundDetail.perUnit).
     NM_CONST float kDetailPerUnit = 2.0;
+    // A salt pan's crust under the sun: a warm grey, set down from the glare.
+    NM_CONST float3 kSaltCrust = float3(0.5, 0.485, 0.45);
     NM_CONST float kTau = 6.2831853;
     // SceneClock's period, after which the map's clock starts over: every
     // motion below comes round a whole number of times in it, so none
@@ -335,18 +337,21 @@ public enum WorldShaders {
         // Salt: the palest, least coloured ground. Under the sun it stood a
         // blank glare (run 991's pictures: a salt flat at 227, 223, 211,
         // read as a cloud; run 1018's, at 228 to 237 under the brighter
-        // day, as snow beside grass at 72 to 127). It is set lower, toward
-        // a warm grey, and crusted: its crust patchy and thin dark cracks
-        // wandering through it, plain enough to read as a flat of salt.
+        // day, as snow beside grass at 72 to 127; run 1217's, at 220, 214,
+        // 201, still read as a mist beside the meadows). It is set lower,
+        // toward a warm grey, and crusted as a dry salt pan is: patchy, and
+        // broken into polygons, their rims raised white and their floors a
+        // little grey (the detail's alpha, GroundDetail's crust), fading to
+        // their mean before they are smaller than a pixel.
         // Only where there is salt: the palest ground but snow, and warm
         // where snow is blue (by the linear colours the land is lit by, in
         // which salt's least is near half; at the 0.62 asked before, no
         // salt ever was, and none of this was drawn).
-        float salt = smoothstep(0.38, 0.44, least) * smoothstep(0.03, 0.08, albedo.r - albedo.b) * (1.0 - growth);
+        float salt = smoothstep(0.12, 0.44, least) * smoothstep(0.03, 0.08, albedo.r - albedo.b) * (1.0 - 0.5 * growth) * smoothstep(-0.03, 0.0, world.y);
         if (salt > 0.0) {
-            float crack = 1.0 - smoothstep(0.0, 0.035, abs(nm_noise(p * 1.7 + float2(5.0, 13.0)) - 0.5));
             float crust = 0.84 + 0.2 * nm_fbm2(p * 2.6 + float2(31.0, 2.0));
-            shown *= mix(float3(1.0), float3(0.72, 0.7, 0.66) * crust * (1.0 - 0.35 * crack), salt);
+            float rims = 0.86 + 0.6 * fine.a;
+            shown *= mix(float3(1.0), kSaltCrust * crust * rims, salt);
         }
         // Blades and grit, close to: as the grain's octaves, only while
         // they are two pixels across or more, fading in by four. They were
@@ -938,9 +943,13 @@ public enum WorldShaders {
         // every pixel reads it, so the levels it is read from are known; its
         // pattern is the world's, the same wherever the window lies. Read
         // twice, the second time larger and turned, and the two met, so its
-        // tiles never line up into a quilt.
+        // tiles never line up into a quilt: its colours each the two's mean,
+        // the salt's crust (its alpha) the two networks of rims laid one
+        // over the other, the polygons of each cut by the other's.
         float2 q = (p + frame.origin.xy) * kDetailPerUnit;
-        float4 fine = 0.5 * (NM_DETAIL(q) + NM_DETAIL(float2(0.48 * q.x - 0.43 * q.y, 0.43 * q.x + 0.48 * q.y) + float2(0.31, 0.77)));
+        float4 laid = NM_DETAIL(q);
+        float4 turned = NM_DETAIL(float2(0.48 * q.x - 0.43 * q.y, 0.43 * q.x + 0.48 * q.y) + float2(0.31, 0.77));
+        float4 fine = float4(0.5 * (laid.rgb + turned.rgb), max(laid.a, turned.a));
         int2 h = nm_hexRound(nm_axial(p));
         float3 edge = nm_hexEdge(p, h);
         float pixel = max(fwidth(p.x), fwidth(p.y));
