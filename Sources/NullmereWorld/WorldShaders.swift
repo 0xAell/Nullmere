@@ -71,11 +71,20 @@ public enum WorldShaders {
     #define NM_HEIGHTS_PASS , heights
     #define NM_HEIGHT(uv) heights.sample(nm_smoothSampler, uv).r
     constexpr sampler nm_smoothSampler(filter::linear, address::clamp_to_edge);
+    // The ground's detail close to (GroundDetail), laid over the land again
+    // and again, its smaller levels drawn far off.
+    #define NM_DETAIL_ARGUMENT , texture2d<float> groundDetail
+    #define NM_DETAIL_PASS , groundDetail
+    #define NM_DETAIL(uv) groundDetail.sample(nm_detailSampler, uv)
+    constexpr sampler nm_detailSampler(filter::linear, mip_filter::linear, address::repeat);
     #define NM_DISCARD discard_fragment()
     #define NM_ARRAY6(type, name, a, b, c, d, e, f) constant type name[6] = { a, b, c, d, e, f };
 
     // BEGIN SCENE
     NM_CONST float kRoot3 = 1.7320508;
+    // How many times the ground's detail is laid across a unit of the land
+    // (GroundDetail.perUnit).
+    NM_CONST float kDetailPerUnit = 2.0;
     NM_CONST float kTau = 6.2831853;
     // SceneClock's period, after which the map's clock starts over: every
     // motion below comes round a whole number of times in it, so none
@@ -287,7 +296,7 @@ public enum WorldShaders {
     // before it is smaller than a pixel. `day` is how much of this the
     // hour shows: all of it under the sun, none of it by the moon, whose
     // land is drawn as it always was.
-    float3 nm_ground(float3 world, float3 n, float3 albedo, float pixel, float day, float3 dayGround) {
+    float3 nm_ground(float3 world, float3 n, float3 albedo, float pixel, float day, float3 dayGround, float4 fine) {
         float2 p = world.xz;
         float3 grain = nm_grainTint(p, pixel);
         float3 c = albedo * grain;
@@ -309,6 +318,12 @@ public enum WorldShaders {
         // at 95, 166, 29). A quarter of the way back toward its own grey,
         // as bright as before, a meadow reads as grass.
         shown = mix(float3(dot(shown, float3(0.2126, 0.7152, 0.0722))), shown, 0.75);
+        // The ground's detail close to (GroundDetail): a meadow's grass in
+        // clumps, bright where they stand and dark in the gaps; bare earth,
+        // sand and stone in grit and pebbles; a mottle over all. Each is a
+        // swing about one, and drawn far off its levels leave only the mean.
+        float3 swing = (fine.rgb * 2.0 - 1.0) * 1.4;
+        shown *= (1.0 + 0.26 * swing.r * growth) * (1.0 + 0.26 * swing.g * (1.0 - growth)) * (1.0 + 0.06 * swing.b);
         // Stone's beds across a slope, broken where the rock is sound; their
         // noise is worked out only where there is stone on a slope.
         float steep = clamp((1.0 - n.y) * 3.0, 0.0, 1.0);
@@ -914,10 +929,18 @@ public enum WorldShaders {
     // the grass's tussocks; a constant where it is called, so a function
     // that passes false holds none of it.
     float4 nm_landShade(float3 world, float3 normal, float3 colour, float2 knows, float3 dayGround, bool detail
-                        NM_FRAME_ARGUMENT NM_TEXTURE_ARGUMENT NM_SHADOW_ARGUMENT NM_PALETTE_ARGUMENT NM_HEIGHTS_ARGUMENT) {
+                        NM_FRAME_ARGUMENT NM_TEXTURE_ARGUMENT NM_SHADOW_ARGUMENT NM_PALETTE_ARGUMENT NM_HEIGHTS_ARGUMENT
+                        NM_DETAIL_ARGUMENT) {
         float time = frame.eye.w;
         float radius = frame.world.x;
         float2 p = world.xz;
+        // The ground's detail, read before anything here may turn back, where
+        // every pixel reads it, so the levels it is read from are known; its
+        // pattern is the world's, the same wherever the window lies. Read
+        // twice, the second time larger and turned, and the two met, so its
+        // tiles never line up into a quilt.
+        float2 q = (p + frame.origin.xy) * kDetailPerUnit;
+        float4 fine = 0.5 * (NM_DETAIL(q) + NM_DETAIL(float2(0.48 * q.x - 0.43 * q.y, 0.43 * q.x + 0.48 * q.y) + float2(0.31, 0.77)));
         int2 h = nm_hexRound(nm_axial(p));
         float3 edge = nm_hexEdge(p, h);
         float pixel = max(fwidth(p.x), fwidth(p.y));
@@ -970,7 +993,7 @@ public enum WorldShaders {
             // Its pattern is the world's: the same wherever the window lies.
             float day = frame.groundLight.a * clamp((frame.skyLight.a - 1.0) / 7.0, 0.0, 1.0);
             float3 grounded = world + float3(frame.origin.x, 0.0, frame.origin.y);
-            float3 albedo = nm_ground(grounded, n, colour, pixel, day, dayGround);
+            float3 albedo = nm_ground(grounded, n, colour, pixel, day, dayGround, fine);
             if (detail) {
                 // Tussocks: under the sun a meadow's grass has a small relief
                 // of its own, a third of a hex or so across, that the light
@@ -1427,8 +1450,10 @@ public enum WorldShaders {
                                      texture2d<float, access::read> tiles [[texture(0)]],
                                      texture2d<float> heights [[texture(1)]],
                                      depth2d<float> shadows [[texture(2)]],
-                                     texture2d<float, access::read> housePalette [[texture(3)]]) {
-        return nm_landShade(in.world, in.normal, in.colour, float2(in.known, in.watched), in.dayGround, false, frame, tiles, shadows, housePalette, heights);
+                                     texture2d<float, access::read> housePalette [[texture(3)]],
+                                     texture2d<float> groundDetail [[texture(4)]]) {
+        return nm_landShade(in.world, in.normal, in.colour, float2(in.known, in.watched), in.dayGround, false, frame, tiles, shadows, housePalette, heights,
+                            groundDetail);
     }
 
     fragment float4 nm_land_day_fragment(LandOut in [[stage_in]],
@@ -1436,8 +1461,10 @@ public enum WorldShaders {
                                          texture2d<float, access::read> tiles [[texture(0)]],
                                          texture2d<float> heights [[texture(1)]],
                                          depth2d<float> shadows [[texture(2)]],
-                                         texture2d<float, access::read> housePalette [[texture(3)]]) {
-        return nm_landShade(in.world, in.normal, in.colour, float2(in.known, in.watched), in.dayGround, true, frame, tiles, shadows, housePalette, heights);
+                                         texture2d<float, access::read> housePalette [[texture(3)]],
+                                         texture2d<float> groundDetail [[texture(4)]]) {
+        return nm_landShade(in.world, in.normal, in.colour, float2(in.known, in.watched), in.dayGround, true, frame, tiles, shadows, housePalette, heights,
+                            groundDetail);
     }
 
     // MARK: The still water

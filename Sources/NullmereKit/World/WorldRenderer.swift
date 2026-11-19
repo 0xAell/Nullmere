@@ -129,6 +129,8 @@ final class WorldRenderer {
     private var tiles: (any MTLTexture)?
     /// Each House's colour as the land's shader reads it (see `HousePalette`).
     private let housePalette: any MTLTexture
+    /// The ground's detail close to, with its smaller levels (GroundDetail).
+    private let groundDetail: any MTLTexture
     private(set) var land: Land?
     private var meshes: [ModelKey: GPUMesh] = [:]
     /// What stands still, as the GPU holds it, and the version it was sent at.
@@ -191,6 +193,19 @@ final class WorldRenderer {
         guard let housePalette = device.makeTexture(descriptor: colours) else { throw Failure.noTexture }
         housePalette.label = "Nullmere Houses' colours"
         self.housePalette = housePalette
+        let detail = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: GroundDetail.side,
+                                                              height: GroundDetail.side, mipmapped: true)
+        detail.usage = .shaderRead
+        detail.storageMode = .shared
+        guard let groundDetail = device.makeTexture(descriptor: detail) else { throw Failure.noTexture }
+        groundDetail.label = "Nullmere ground's detail"
+        for (level, pixels) in GroundDetail.levels.enumerated() where level < groundDetail.mipmapLevelCount {
+            let side = GroundDetail.side >> level
+            pixels.withUnsafeBytes { bytes in
+                groundDetail.replace(region: MTLRegionMake2D(0, 0, side, side), mipmapLevel: level, withBytes: bytes.baseAddress!, bytesPerRow: side * 4)
+            }
+        }
+        self.groundDetail = groundDetail
         guard let commandQueue = device.makeCommandQueue() else { throw Failure.noCommandQueue }
         commandQueue.label = "Nullmere world"
         let solidDescriptor = MTLDepthStencilDescriptor()
@@ -369,6 +384,7 @@ final class WorldRenderer {
         // The land's heights, which the land's shading walks for the shadows
         // the land casts, and the water's for its depth.
         encoder.setFragmentTexture(land.heights, index: 1)
+        encoder.setFragmentTexture(groundDetail, index: 4)
 
         // By day, from dusk to dawn's end, the land and the water drawn with
         // the day's relief and waves; by night without them.

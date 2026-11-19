@@ -269,6 +269,7 @@ final class WorldPreviewTests: XCTestCase {
             "indices": mesh.indices.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString(),
             "heights": terrain.heights.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString(),
             "columns": terrain.columns, "rows": terrain.rows, "side": TileTexture.side(for: world.map), "frames": frames,
+            "detail": Data(GroundDetail.pixels).base64EncodedString(), "detailSide": GroundDetail.side,
             "models": WorldPreviewTests.meshes(for: fought).merging(WorldPreviewTests.meshes(for: unquiet)) { kept, _ in kept },
             "viewport": [Double(WorldPreviewTests.viewport.width), Double(WorldPreviewTests.viewport.height)],
         ]
