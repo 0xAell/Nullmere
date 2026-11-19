@@ -530,9 +530,9 @@ extension HoldLayout {
     static let gateRoom: Float = 0.17
 
     /// The ground a plan's hold stands on as it is drawn (`Footprint`):
-    /// its keep, its walls and the ward within them, every work standing
-    /// or rising and each slot one may yet stand in, its lanes as laid and
-    /// its town's lots.
+    /// its keep, its walls and the ward within them (kept from trees before
+    /// the walls stand), every work standing or rising and each slot one may
+    /// yet stand in, its lanes as laid and its town's lots.
     public static func footprint(_ plan: Plan, relief: Relief) -> Footprint {
         let centre = Relief.centre(of: plan.hex)
         let k = grandeur
@@ -546,6 +546,9 @@ extension HoldLayout {
         let standing = assign(plan, relief: relief)
         let taken = Set(standing.map(\.1.index))
         var spots = standing.map { spot($0.1.position, workRadius, tallOnly: false) }
+        // The ward and the walls' ground kept from trees before the walls stand,
+        // so none crowds the keep or stands where they are to be raised.
+        if !walled { spots.append(Footprint.Spot(x: centre.x, z: centre.z, radius: (ringLane + laneHalfWidth) * k, tallOnly: true)) }
         spots += reservedSlots(plan, relief: relief).slots.filter { !taken.contains($0.index) }.map { spot($0.position, workRadius, tallOnly: true) }
         spots += lots(plan, relief: relief).map { spot($0.position, $0.piece.footprint + lotRoom, tallOnly: false) }
         let angles = laneAngles(of: plan.hex)

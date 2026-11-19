@@ -144,6 +144,10 @@ final class TownTests: XCTestCase {
                         if ground.clear(x: at.x, z: at.z, radius: 0.01, tall: false) { heathered += 1 } else { bare += 1 }
                     }
                     guard plan == young else { continue }
+                    // No tree within its walls' ring before they stand, heather where no lot is.
+                    let front = HoldLayout.laneAngles(of: plan.hex)[0] + .pi / 12
+                    let ward = drawn(centre.x + 0.9 * Float(cos(Double(front))), centre.z + 0.9 * Float(sin(Double(front))))
+                    XCTAssertFalse(ground.clear(x: ward.x, z: ward.z, radius: 0.01, tall: true), "No tree within the walls' ring")
                     // About a young hold, the woods come close.
                     for step in 0..<72 {
                         let angle = Float(step) * 2 * .pi / 72

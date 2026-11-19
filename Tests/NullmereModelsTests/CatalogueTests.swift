@@ -510,6 +510,28 @@ final class CatalogueTests: XCTestCase {
         XCTAssertGreaterThan(buildings, 60)
     }
 
+    /// Every figure, a company's, a commander's, the Unquiet's or the
+    /// townsfolk's, is shaded likewise but nearer: under its arms, its
+    /// helm's brim and its shield (Art/blender/person.py), open to the sky
+    /// on its shoulders and its head.
+    func testFiguresAreShadedUnderTheirArmsAndBrims() {
+        var figures = 0
+        for key in CatalogueTests.keys {
+            switch key {
+            case .figure, .signature, .wild, .commander, .folk: break
+            default: continue
+            }
+            let vertices = Library.model(key).mesh.vertices
+            XCTAssertTrue(vertices.allSatisfy { (0...1).contains($0.occlusion) }, "\(key)")
+            let shaded = Float(vertices.filter { $0.occlusion < 0.8 }.count) / Float(vertices.count)
+            let open = Float(vertices.filter { $0.occlusion >= 0.9 }.count) / Float(vertices.count)
+            XCTAssertGreaterThan(shaded, 0.1, "\(key) is shaded where its own body hides the sky")
+            XCTAssertGreaterThan(open, 0.2, "\(key) sees the sky elsewhere")
+            figures += 1
+        }
+        XCTAssertGreaterThan(figures, 20)
+    }
+
     func testPiecesSayWhereTheyStand() {
         let piece = Piece(key: .scaffold, transform: .translation(Vec3(1, 2, 3)), hex: Hex(4, 5))
         XCTAssertEqual(piece.position, Vec3(1, 2, 3))
