@@ -10,10 +10,11 @@ import NullmereLand
 /// horns call over them as war begins and now and then as the chord
 /// changes. Over the launcher, the title theme of the lake the keeper's
 /// realm last lay on, each lake in its own mode and its own voice, harp or
-/// glockenspiel. Over all of it but the eaten moon and war, the score's own
-/// air, written (`phrase`, and over the launcher the title's, `titlePhrase`),
-/// heard as each begins and every few chords after, each in its own mode
-/// and voice; and war's own call on the horns as war begins (`warCall`). It renders on the audio thread inside `Synth`, from
+/// glockenspiel. Over all of it but the eaten moon, an air written for it
+/// (the realm's `phrase` at peace, war's `warPhrase`, the title's
+/// `titlePhrase` over the launcher), heard as each begins and every few
+/// chords after, each in its own mode and voice; and war's own call on the
+/// horns as war begins (`warCall`). It renders on the audio thread inside `Synth`, from
 /// its own seeded generator, so the same seed always plays the same music.
 public struct Score {
     public enum Mood: Equatable, Sendable {
@@ -89,11 +90,20 @@ public struct Score {
     static let titlePhrase: [(place: Int, at: Float, strength: Float)] = [
         (0, 0, 0.55), (3, 0.7, 0.6), (4, 1.2, 0.65), (5, 1.6, 0.75), (7, 2.4, 0.85), (6, 3.2, 0.7), (5, 3.8, 0.65),
     ]
-    /// The air a mood sings: the title's over the launcher, the realm's own
-    /// at peace.
+    /// War's own air, written: on the march's steps, the home note struck
+    /// twice and stepping up to the fourth and back, falling at the last
+    /// below it; plucked hard, as war's harp is.
+    static let warPhrase: [(place: Int, at: Float, strength: Float)] = [
+        (3, 0, 0.75), (3, 0.3, 0.7), (4, 0.6, 0.8), (5, 1.2, 0.85), (4, 1.8, 0.75), (3, 2.4, 0.8), (1, 3.0, 0.85),
+    ]
+    /// The air a mood sings: the title's over the launcher, war's at war,
+    /// the realm's own at peace.
     static func air(of mood: Mood) -> [(place: Int, at: Float, strength: Float)] {
-        if case .title = mood { return titlePhrase }
-        return phrase
+        switch mood {
+        case .title: return titlePhrase
+        case .war: return warPhrase
+        default: return phrase
+        }
     }
     /// The horns the score blows, as many as may sound at once: war's own
     /// call whole, and the tail of the last as the next begins.
@@ -426,7 +436,7 @@ struct Theme {
     static let peace = Theme(chords: Score.chords, melody: Score.melody, chordLength: 9, chordSpread: 6, bellGap: 3.5)
     /// War: darker strings, the harp plucked harder and duller, seldom rolled.
     static let war = Theme(chords: Score.warChords, melody: Score.melody, chordLength: 7, chordSpread: 6, bellGap: 2.5,
-                           corner: 900, brightness: 0.3, roll: 0.25, sings: false)
+                           corner: 900, brightness: 0.3, roll: 0.25)
 
     /// The eaten moon, while the drowned age walks: chords of stacked minor
     /// thirds and tritones, low and slow; a line from the scale of tones

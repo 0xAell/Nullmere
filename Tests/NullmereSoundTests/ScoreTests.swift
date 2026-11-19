@@ -105,18 +105,23 @@ final class ScoreTests: XCTestCase {
         }
         // Every note of an air or a call has a voice of its own to sound in,
         // so none takes another's before it is heard.
-        XCTAssertLessThanOrEqual(max(Score.phrase.count, Score.titlePhrase.count), Glockenspiel.bars - 1)
-        XCTAssertLessThanOrEqual(max(Score.phrase.count, Score.titlePhrase.count), Harp.voices - 3)
+        let longest = [Score.phrase, Score.titlePhrase, Score.warPhrase].map(\.count).max() ?? 0
+        XCTAssertLessThanOrEqual(longest, Glockenspiel.bars - 1)
+        XCTAssertLessThanOrEqual(longest, Harp.voices - 3)
         XCTAssertLessThanOrEqual(Score.warCall.count, Score.hornVoices - 1)
-        for mood in [Score.Mood.war, .eclipse] {
-            XCTAssertEqual(written(mood, seconds: 120).phrases, 0, "\(mood): no air")
-        }
+        // At war, war's own air on the harp, its march's steps; none at the eaten moon.
+        let war = written(.war, seconds: 60)
+        let marching = Score.warPhrase.map { Score.melody[$0.place] }
+        XCTAssertEqual(Array(war.playedNotes.prefix(marching.count)), marching, "War begins with its own air")
+        XCTAssertNotEqual(marching, air, "not the realm's")
+        XCTAssertTrue(Score.warPhrase.allSatisfy { abs(($0.at / Score.step).rounded() * Score.step - $0.at) < 1e-4 }, "on the march's steps")
+        XCTAssertEqual(written(.eclipse, seconds: 120).phrases, 0, "The eaten moon: no air")
         // A mood begun anew: its air is due again, peace's after a war.
         var score = Score()
         score.compose(seconds: 30)
         score.mood = .war
         score.compose(seconds: 20)
-        XCTAssertEqual(heard(air, in: score.playedNotes), 1, "heard as peace began, not at war")
+        XCTAssertEqual(heard(air, in: score.playedNotes), 1, "heard as peace began, and at war war's own")
         score.mood = .peace
         score.compose(seconds: 20)
         XCTAssertEqual(heard(air, in: score.playedNotes), 2, "peace come again, its air with it")
