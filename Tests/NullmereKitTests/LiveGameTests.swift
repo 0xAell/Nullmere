@@ -242,7 +242,8 @@ final class LiveGameTests: XCTestCase {
             XCTAssertTrue(PressableButtons.press(challenge), "Among \(PressableButtons.actions.keys.sorted())")
             XCTAssertTrue(PressableButtons.press("Set your band in the Lists anew"), "Among \(PressableButtons.actions.keys.sorted())")
         }
-        XCTAssertEqual(line.asked.suffix(3), ["claim the purse", "challenge 2", "enter the lists with 40 of 1.1 led by 12"])
+        // Each press asks in a task of its own, so in whichever order the three run.
+        XCTAssertEqual(Set(line.asked.suffix(3)), ["claim the purse", "challenge 2", "enter the lists with 40 of 1.1 led by 12"])
         // Her challenges spent today: none to press.
         var spent = rows()
         spent["my_tilt"] = [[n(1), n(0), n(5), n(1)]]
@@ -458,7 +459,8 @@ final class LiveGameTests: XCTestCase {
             XCTAssertFalse(PressableButtons.actions.keys.contains { $0.hasPrefix("Buy from the pedlar: 3 ×") }, "taken today")
             XCTAssertFalse(PressableButtons.actions.keys.contains { $0.hasPrefix("Walk the Barrow Road") || $0.hasPrefix("Claim the merit") }, "those are feats")
         }
-        XCTAssertEqual(claimingLine.asked.suffix(2), ["claim the welcome", "buy deal 1"])
+        // Each press asks in a task of its own, so in whichever order the two run.
+        XCTAssertEqual(Set(claimingLine.asked.suffix(2)), ["claim the welcome", "buy deal 1"])
         // The realm's milestones, the Barrow Road and the merits in the Feats part.
         // Hers to claim: she had been a day in the realm when it was reached, her Keep at the fifth level.
         var claimable = rows()
@@ -471,7 +473,7 @@ final class LiveGameTests: XCTestCase {
             XCTAssertTrue(PressableButtons.press("Walk the Barrow Road"), "Among \(PressableButtons.actions.keys.sorted())")
             XCTAssertTrue(PressableButtons.press("Claim the merit Drillmaster, tier 1"), "Among \(PressableButtons.actions.keys.sorted())")
         }
-        XCTAssertEqual(featingLine.asked.suffix(3), ["claim milestone 1", "walk the road with 36 of 1.1 led by 11", "claim merit of deed 1"])
+        XCTAssertEqual(Set(featingLine.asked.suffix(3)), ["claim milestone 1", "walk the road with 36 of 1.1 led by 11", "claim merit of deed 1"])
         // The road walked a minute ago, its soldiers resting; and walked whole.
         var rested = rows()
         rested["my_road"] = [[n(1), n(1), n(2_000)]]
