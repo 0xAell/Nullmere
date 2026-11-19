@@ -485,6 +485,54 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertGreaterThan(changed, points / 50, "The company drawn over the land")
     }
 
+    /// A salt flat close to by day: its crust broken into polygons, their
+    /// rims raised and pale and their floors a little grey, set down from
+    /// the glare it stood at (plan 1.5). The realm's pictures catch salt
+    /// only where a city chances to stand beside it, and the test world's
+    /// lake has none by its seats; so a pan of it is laid here on dry land,
+    /// two hexes about a hex four out from the first seat, the same from
+    /// one run to the next. Kept as world-salt-close: the pan at the
+    /// opening's zoom, then nearer.
+    func testASaltFlatIsCrustedCloseToByDay() throws {
+        let world = WorldRenderTests.world
+        var map = world.state.map
+        let seat = world.state.holds[0].position
+        func dry(_ hex: Hex) -> Bool { map[hex].map { !$0.terrain.isWater } ?? false }
+        let middle = try XCTUnwrap(map.hexes.first { $0.distance(to: seat) == 4 && dry($0) && $0.neighbors.allSatisfy(dry) })
+        for hex in middle.spiral(2) where dry(hex) {
+            guard var tile = map[hex] else { continue }
+            tile.terrain = .saltFlat
+            map.set(hex, tile)
+        }
+        let renderer = try renderer()
+        try renderer.setLand(TerrainMesh.shared(for: map), for: map)
+        let ground = TileTexture.Ground(map: map)
+        var tiles = ground.bytes
+        for offset in ground.offsets {
+            tiles[offset + 1] |= 2 * TileTexture.seenStep
+        }
+        var camera = Camera(scale: 64)
+        camera.focus(on: middle)
+        let pan = try draw(renderer, "salt", camera: camera, tiles: tiles, daylight: .day)
+        var nearer = camera
+        nearer.scale = 150
+        let near = try draw(renderer, "salt near", camera: nearer, tiles: tiles, daylight: .day)
+        try keep([pan, near], as: "world-salt-close")
+        // The pan's middle: a quarter of the near frame about its centre.
+        var values: [Double] = []
+        for y in stride(from: WorldRenderTests.height * 3 / 8, to: WorldRenderTests.height * 5 / 8, by: 2) {
+            for x in stride(from: WorldRenderTests.width * 3 / 8, to: WorldRenderTests.width * 5 / 8, by: 2) {
+                values.append(near.luminance(x, y))
+            }
+        }
+        let mean = values.reduce(0, +) / Double(values.count)
+        let spread = (values.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(values.count)).squareRoot()
+        print("RENDER salt close to: mean \(String(format: "%.1f", mean)), spread \(String(format: "%.1f", spread)) of \(values.count) points")
+        XCTAssertLessThan(mean, 215, "set down from the glare")
+        XCTAssertGreaterThan(mean, 110, "still the palest ground")
+        XCTAssertGreaterThan(spread, 2, "crusted, not a blank sheet")
+    }
+
     /// The shaders' own parts a debug build may leave out, each named to the
     /// compiler; passes it has no switch for are not.
     func testTheShadersPartsAreLeftOutByName() throws {
