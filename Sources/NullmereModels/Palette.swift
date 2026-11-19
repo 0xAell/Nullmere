@@ -23,8 +23,10 @@ enum Palette {
     static let slate = Vec3(0.23, 0.24, 0.28)
     static let thatch = Vec3(0.47, 0.41, 0.29)
     static let earth = Vec3(0.24, 0.21, 0.18)
-    /// Ground trodden hard round a work.
-    static let yard = Vec3(0.31, 0.29, 0.25)
+    /// Ground trodden hard round a work, a warm earth: in a dark grey
+    /// (0.31, 0.29, 0.25) every work stood on a disc of paving beside the
+    /// grass (CI runs 1218 to 1223).
+    static let yard = Vec3(0.37, 0.31, 0.24)
     static let loam = Vec3(0.15, 0.13, 0.11)
     /// A way the carts wear, its earth trodden to a warm brown and its ruts
     /// a shade darker: in the yard's grey with the loam's near-black ruts,

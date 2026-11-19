@@ -13,7 +13,10 @@ enum Works {
     static func trade(_ kind: BuildingKind, level: Int, name: String) -> Model {
         switch kind {
         case .granary: return Art.work(Art.granaryFile, level: level, name: name)
-        case .sawpit: return Art.work(Art.sawpitFile, level: level, name: name)
+        // The sawyers' clearing trodden earth with sawdust in it, as their
+        // yard: in the loam, near black, it stood a pit of soot by every hold.
+        case .sawpit: return Art.work(Art.sawpitFile, level: level, name: name,
+                                      colours: ["plain_earth_loam": Palette.yard.mix(Palette.timberPale, 0.3)])
         case .quarry: return Art.work(Art.quarryFile, level: level, name: name)
         case .saltworks: return Art.work(Art.saltworksFile, level: level, name: name)
         case .musterHall: return Art.work(Art.musterHallFile, level: level, name: name)

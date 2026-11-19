@@ -48,6 +48,22 @@ final class CatalogueTests: XCTestCase {
         1 - Float(a.intersection(b).count) / Float(max(a.union(b).count, 1))
     }
 
+    /// Every work stands on trodden earth, warm and never near black: the
+    /// sawpit's clearing in the loam stood a pit of soot beside every hold,
+    /// and the other works' yards in their grey stood as paving (CI runs
+    /// 1218 to 1223).
+    func testEveryWorkStandsOnWarmTroddenEarth() {
+        XCTAssertGreaterThan(Palette.yard.x - Palette.yard.z, 0.1, "the yard warm, not grey")
+        let clearing = Palette.yard.mix(Palette.timberPale, 0.3)
+        for level in [1, 10, 25] {
+            let sawpit = Library.model(.work(.sawpit, level: level)).mesh.vertices
+            XCTAssertFalse(sawpit.contains { $0.color == Palette.loam }, "the sawpit's clearing no pit of soot at \(level)")
+            XCTAssertTrue(sawpit.contains { $0.color == clearing }, "but trodden earth with sawdust in it at \(level)")
+            let tavern = Library.model(.work(.tavern, level: level)).mesh.vertices
+            XCTAssertTrue(tavern.contains { $0.color == Palette.yard }, "a work's yard its trodden earth at \(level)")
+        }
+    }
+
     func testTheCatalogueNamesEveryModelOnce() {
         let keys = CatalogueTests.keys
         XCTAssertEqual(Set(keys).count, keys.count, "each key once")
