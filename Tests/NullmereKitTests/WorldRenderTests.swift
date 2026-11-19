@@ -440,7 +440,11 @@ final class WorldRenderTests: XCTestCase {
         camera.focus(on: state.holds[0].position)
         let close = try draw(renderer, "seat", camera: camera, tiles: world.whole, scene: scene, daylight: .day)
         let bare = try draw(renderer, "bare", camera: camera, tiles: world.whole, daylight: .day)
-        try keep([close], as: "world-hold-close")
+        // And as near as a keeper may come to it, its works' shade to be judged.
+        var nearer = camera
+        nearer.scale = 150
+        let near = try draw(renderer, "seat near", camera: nearer, tiles: world.whole, scene: scene, daylight: .day)
+        try keep([close, near], as: "world-hold-close")
         let points = WorldRenderTests.width * WorldRenderTests.height / 4
         let changed = WorldRenderTests.changed(close, bare)
         print("RENDER seat close to: \(changed) of \(points) points drawn over the land")
