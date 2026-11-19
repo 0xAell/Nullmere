@@ -26,6 +26,11 @@ enum Palette {
     /// Ground trodden hard round a work.
     static let yard = Vec3(0.31, 0.29, 0.25)
     static let loam = Vec3(0.15, 0.13, 0.11)
+    /// A way the carts wear, its earth trodden to a warm brown and its ruts
+    /// a shade darker: in the yard's grey with the loam's near-black ruts,
+    /// every road between holds read as a railway (CI run 1222's pictures).
+    static let lane = Vec3(0.43, 0.35, 0.25)
+    static let rut = Vec3(0.37, 0.30, 0.21)
     static let moonsalt = Vec3(0.88, 0.91, 0.95)
     static let saltCrust = Vec3(0.80, 0.83, 0.86)
 

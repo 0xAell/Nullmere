@@ -143,10 +143,16 @@ enum Art {
     /// by the name the game gives it: its homes, well, fields, lanes and
     /// market stalls.
     static func town(_ piece: Town, name: String) -> Model {
-        let colours = withBuildingColours([
+        var own: [String: Vec3] = [
             "plain_thatch_cap": Palette.thatch.mix(Palette.bark, 0.3), "plain_water": Palette.loam,
             "plain_clay": Palette.madder.mix(Palette.earth, 0.4),
-        ])
+        ]
+        // A lane's earth and ruts their own, warm (a field keeps its loam).
+        if piece == .lane {
+            own["plain_earth_yard"] = Palette.lane
+            own["plain_earth_loam"] = Palette.rut
+        }
+        let colours = withBuildingColours(own)
         return model(townFile, tier: 1, variant: piece.rawValue, name: name, order: [], scale: buildingScale, colours: colours)
     }
 

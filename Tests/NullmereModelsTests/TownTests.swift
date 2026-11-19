@@ -27,6 +27,25 @@ final class TownTests: XCTestCase {
         return HoldLayout.Plan(hex: hex, isSeat: seat, levels: levels, heritage: heritage)
     }
 
+    /// A lane is trodden earth, warm, its two ruts only a shade darker:
+    /// laid in the yard's grey with the loam's near-black ruts, every road
+    /// between holds read as a railway (CI run 1222's pictures). A field
+    /// keeps its dark loam.
+    func testALaneIsWarmEarthItsRutsAShadeDarker() {
+        let colours = Library.model(.town(.lane)).mesh.vertices.map(\.color)
+        XCTAssertTrue(colours.contains(Palette.lane), "its earth")
+        XCTAssertTrue(colours.contains(Palette.rut), "its ruts")
+        XCTAssertFalse(colours.contains(Palette.yard), "not the yard's grey")
+        XCTAssertFalse(colours.contains(Palette.loam), "nor the loam's near-black")
+        for colour in colours {
+            XCTAssertGreaterThan(colour.x - colour.z, 0.12, "warm, not grey")
+        }
+        func luma(_ c: Vec3) -> Float { 0.2126 * c.x + 0.7152 * c.y + 0.0722 * c.z }
+        XCTAssertGreaterThan(luma(Palette.rut) / luma(Palette.lane), 0.8, "ruts a shade darker, not rails")
+        XCTAssertLessThan(luma(Palette.rut), luma(Palette.lane))
+        XCTAssertTrue(Library.model(.town(.field)).mesh.vertices.contains { $0.color == Palette.loam }, "a field's loam as it was")
+    }
+
     func testEachPieceIsSmallStandsOnTheGroundAndHomesAreLitWithTheirHousesDoor() {
         for piece in Town.allCases {
             let model = Library.model(.town(piece))
