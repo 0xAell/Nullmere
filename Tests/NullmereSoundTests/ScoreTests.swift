@@ -95,11 +95,19 @@ final class ScoreTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(heard(air, in: peace.playedNotes), 2, "and again some chords on")
         XCTAssertEqual(peace.phrases, heard(air, in: peace.playedNotes), "each time it is due, and the wandering line never by chance")
         XCTAssertGreaterThan(peace.playedNotes.count, air.count * peace.phrases, "the line wanders between")
+        // Over the launcher the title's own air, not the realm's: in each
+        // lake's own mode and voice.
+        XCTAssertNotEqual(Score.titlePhrase.map(\.place), Score.phrase.map(\.place), "The title its own air")
         for lake in Lake.allCases {
             let score = written(.title(lake), seconds: 60)
-            let own = Score.phrase.map { Theme.of(.title(lake)).melody[$0.place] }
-            XCTAssertEqual(Array(score.playedNotes.prefix(own.count)), own, "\(lake)'s title begins with the air in its own mode")
+            let own = Score.titlePhrase.map { Theme.of(.title(lake)).melody[$0.place] }
+            XCTAssertEqual(Array(score.playedNotes.prefix(own.count)), own, "\(lake)'s title begins with its air in its own mode")
         }
+        // Every note of an air or a call has a voice of its own to sound in,
+        // so none takes another's before it is heard.
+        XCTAssertLessThanOrEqual(max(Score.phrase.count, Score.titlePhrase.count), Glockenspiel.bars - 1)
+        XCTAssertLessThanOrEqual(max(Score.phrase.count, Score.titlePhrase.count), Harp.voices - 3)
+        XCTAssertLessThanOrEqual(Score.warCall.count, Score.hornVoices - 1)
         for mood in [Score.Mood.war, .eclipse] {
             XCTAssertEqual(written(mood, seconds: 120).phrases, 0, "\(mood): no air")
         }

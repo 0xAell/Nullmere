@@ -11,9 +11,9 @@ import NullmereLand
 /// changes. Over the launcher, the title theme of the lake the keeper's
 /// realm last lay on, each lake in its own mode and its own voice, harp or
 /// glockenspiel. Over all of it but the eaten moon and war, the score's own
-/// air, written (`phrase`), heard as each begins and every few chords after,
-/// each in its own mode and voice; and war's own call on the horns as war
-/// begins (`warCall`). It renders on the audio thread inside `Synth`, from
+/// air, written (`phrase`, and over the launcher the title's, `titlePhrase`),
+/// heard as each begins and every few chords after, each in its own mode
+/// and voice; and war's own call on the horns as war begins (`warCall`). It renders on the audio thread inside `Synth`, from
 /// its own seeded generator, so the same seed always plays the same music.
 public struct Score {
     public enum Mood: Equatable, Sendable {
@@ -82,6 +82,22 @@ public struct Score {
         (3, 0, 0.6), (5, 0.55, 0.65), (6, 0.85, 0.7), (7, 1.15, 0.8), (6, 1.9, 0.7), (5, 2.3, 0.65), (3, 3.3, 0.6),
     ]
     static let phraseEvery = 4
+    /// The title's own air, written: over the launcher in place of the
+    /// realm's, broader and slower, up from the home note by the fourth and
+    /// the fifth to the octave's root and down to rest on the fifth, as a
+    /// door left open; in each lake's own mode and voice.
+    static let titlePhrase: [(place: Int, at: Float, strength: Float)] = [
+        (0, 0, 0.55), (3, 0.7, 0.6), (4, 1.2, 0.65), (5, 1.6, 0.75), (7, 2.4, 0.85), (6, 3.2, 0.7), (5, 3.8, 0.65),
+    ]
+    /// The air a mood sings: the title's over the launcher, the realm's own
+    /// at peace.
+    static func air(of mood: Mood) -> [(place: Int, at: Float, strength: Float)] {
+        if case .title = mood { return titlePhrase }
+        return phrase
+    }
+    /// The horns the score blows, as many as may sound at once: war's own
+    /// call whole, and the tail of the last as the next begins.
+    static let hornVoices = 6
     /// The march the drums keep at war: eight steps a bar, each struck this
     /// hard (nothing is no stroke), the bar's first and middle on the low
     /// drum, the rest on the high.
@@ -135,7 +151,7 @@ public struct Score {
         bells = Glockenspiel(sampleRate: sampleRate)
         lowDrum = Drum(.great, sampleRate: sampleRate)
         highDrum = Drum(.field, sampleRate: sampleRate)
-        horns = Horns(sampleRate: sampleRate)
+        horns = Horns(sampleRate: sampleRate, voices: Score.hornVoices)
         // Room enough up front that the audio thread never has to find more.
         current.reserveCapacity(6)
         previous.reserveCapacity(6)
@@ -153,7 +169,7 @@ public struct Score {
         bells = Glockenspiel(sampleRate: sampleRate)
         lowDrum = Drum(.great, sampleRate: sampleRate)
         highDrum = Drum(.field, sampleRate: sampleRate)
-        horns = Horns(sampleRate: sampleRate)
+        horns = Horns(sampleRate: sampleRate, voices: Score.hornVoices)
         current = current.map { Bowed(frequency: $0.frequency, corner: $0.corner, sampleRate: sampleRate, bass: $0.bass) }
         previous.removeAll(keepingCapacity: true)
         crossfade = 1
@@ -227,7 +243,8 @@ public struct Score {
     /// theme answers its notes; the wandering line rests a while after.
     private mutating func sing(_ theme: Theme) {
         let melody = theme.melody
-        for note in Score.phrase {
+        let air = Score.air(of: mood)
+        for note in air {
             let midi = melody[min(note.place, melody.count - 1)]
             let pan = Float(midi - 69) / 24
             switch theme.voice {
@@ -244,7 +261,7 @@ public struct Score {
             if playedNotes.count < 4096 { playedNotes.append(midi) }
             lastNote = midi
         }
-        bellClock = (Score.phrase.last?.at ?? 0) + theme.bellGap + 2
+        bellClock = (air.last?.at ?? 0) + theme.bellGap + 2
         phraseChord = chordChanges
         phrases += 1
     }
