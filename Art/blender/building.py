@@ -264,34 +264,37 @@ def sky_directions(count):
     return out
 
 
-def bake_occlusion(variants):
-    """How much of the open sky each corner of the building sees past the
-    building itself, 1 all of it to 0 none, as the attribute _AO the game
-    reads (Asset.swift): looked for in `OCCLUSION_RAYS` directions over the
-    corner's own face, as far as `OCCLUSION_REACH`, among the pieces drawn
-    far off in the same variant (a level, a people) as the corner; for a
-    piece drawn in several, the mean. The ground is left out: the world's
-    shading darkens the foot of whatever stands on the land as it is
-    drawn."""
+def bake_occlusion(looks, reach=None):
+    """How much of the open sky each corner of the building, or the figure,
+    sees past the model itself, 1 all of it to 0 none, as the attribute _AO
+    the game reads (Asset.swift): looked for in `OCCLUSION_RAYS` directions
+    over the corner's own face, as far as `reach` in Blender's units (for a
+    building `OCCLUSION_REACH` of the world's), among the pieces drawn far
+    off in the same look as the corner; for a piece drawn in several, the
+    mean. `looks`: a building's variants (a level, a people), each drawn at
+    the first tier, or a figure's (tier, variant) pairs. The ground is left
+    out: the world's shading darkens the foot of whatever stands on the
+    land as it is drawn."""
     from mathutils.bvhtree import BVHTree
     from person import drawn
     meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
     rays = int(os.environ.get("NULLMERE_OCCLUSION_RAYS", OCCLUSION_RAYS))
     sky = sky_directions(rays)
-    reach = OCCLUSION_REACH * UNIT
+    reach = OCCLUSION_REACH * UNIT if reach is None else reach
+    looks = [look if isinstance(look, tuple) else (1, look) for look in looks]
     trees = {}
-    for variant in variants:
+    for look in looks:
         points, faces = [], []
         for obj in meshes:
-            if obj.name.endswith("!fine") or not drawn(obj.name, 1, variant):
+            if obj.name.endswith("!fine") or not drawn(obj.name, *look):
                 continue
             m = obj.matrix_world
             base = len(points)
             points += [m @ v.co for v in obj.data.vertices]
             faces += [[base + i for i in p.vertices] for p in obj.data.polygons]
-        trees[variant] = BVHTree.FromPolygons(points, faces) if faces else None
+        trees[look] = BVHTree.FromPolygons(points, faces) if faces else None
     for obj in meshes:
-        seen_in = [v for v in variants if drawn(obj.name, 1, v) and trees[v] is not None]
+        seen_in = [look for look in looks if drawn(obj.name, *look) and trees[look] is not None]
         m = obj.matrix_world
         turn = m.to_3x3()
         attr = obj.data.attributes.get("_AO") or obj.data.attributes.new("_AO", "FLOAT", "POINT")
@@ -306,8 +309,8 @@ def bake_occlusion(variants):
             b = n.cross(t)
             origin = m @ v.co + n * 0.002 * UNIT
             open_sky = 0.0
-            for variant in seen_in:
-                tree = trees[variant]
+            for look in seen_in:
+                tree = trees[look]
                 hits = sum(1 for d in sky if tree.ray_cast(origin, t * d.x + b * d.y + n * d.z, reach)[0] is not None)
                 open_sky += 1 - hits / len(sky)
             attr.data[i].value = round(open_sky / len(seen_in), 3) if seen_in else 1.0

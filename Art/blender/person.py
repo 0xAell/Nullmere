@@ -15,6 +15,11 @@ import re
 
 from common import *
 
+# How far, in Blender's units, a corner of a figure looks for what keeps the
+# sky off it: a seventh of a man's height, under his arms, his helm's brim
+# and his shield, between his legs, never across the field.
+OCCLUSION_REACH = 0.25
+
 
 class Palette:
     """The materials people are made of and wear, in sRGB as chosen."""
@@ -634,8 +639,10 @@ class Person:
     # MARK: Out
 
     def finish(self, path, looks):
-        """Every mesh cleaned, each look's triangles far and near told, and
-        the figure written out. `looks`: (tier, variant or None) pairs."""
+        """Every mesh cleaned, how much of the sky each corner sees baked in
+        (as a building's is, but nearer: `OCCLUSION_REACH`), each look's
+        triangles far and near told, and the figure written out. `looks`:
+        (tier, variant or None) pairs."""
         doubled = [obj.name for obj in bpy.context.scene.objects if obj.type == "MESH" and re.search(r"\.\d{3}$", obj.name)]
         if doubled:
             # Blender's suffix for a name taken: the tags would not read.
@@ -646,6 +653,8 @@ class Person:
         for obj in bpy.context.scene.objects:
             if obj.type == "MESH":
                 clean(obj)
+        from building import bake_occlusion
+        bake_occlusion(looks, reach=OCCLUSION_REACH)
         for tier, variant in looks:
             coarse = fine = 0
             for obj in bpy.context.scene.objects:
