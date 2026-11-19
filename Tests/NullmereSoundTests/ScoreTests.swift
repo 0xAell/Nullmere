@@ -113,6 +113,8 @@ final class ScoreTests: XCTestCase {
         let war = written(.war, seconds: 60)
         let marching = Score.warPhrase.map { Score.melody[$0.place] }
         XCTAssertEqual(Array(war.playedNotes.prefix(marching.count)), marching, "War begins with its own air")
+        let call = Score.warCall.last.map { $0.at + $0.hold } ?? 0
+        XCTAssertGreaterThan(Score.warAirWait, call + 1, "once war's call has fallen away")
         XCTAssertNotEqual(marching, air, "not the realm's")
         XCTAssertTrue(Score.warPhrase.allSatisfy { abs(($0.at / Score.step).rounded() * Score.step - $0.at) < 1e-4 }, "on the march's steps")
         XCTAssertEqual(written(.eclipse, seconds: 120).phrases, 0, "The eaten moon: no air")

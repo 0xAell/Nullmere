@@ -96,6 +96,9 @@ public struct Score {
     static let warPhrase: [(place: Int, at: Float, strength: Float)] = [
         (3, 0, 0.75), (3, 0.3, 0.7), (4, 0.6, 0.8), (5, 1.2, 0.85), (4, 1.8, 0.75), (3, 2.4, 0.8), (1, 3.0, 0.85),
     ]
+    /// How long after war begins its air is first heard: once war's call,
+    /// its last note held, has fallen away.
+    static let warAirWait: Float = 4.6
     /// The air a mood sings: the title's over the launcher, war's at war,
     /// the realm's own at peace.
     static func air(of mood: Mood) -> [(place: Int, at: Float, strength: Float)] {
@@ -321,9 +324,11 @@ public struct Score {
             phrases = 0
             if mood == .war {
                 // War begun: the chords turn to war's at once, and the
-                // horns call it.
+                // horns call it; the harp takes up war's air once the call
+                // has fallen away.
                 chordClock = 0
                 nextChord(calling: true)
+                bellClock = Score.warAirWait
             }
         }
         chordClock += dt
