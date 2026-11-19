@@ -196,6 +196,17 @@ final class LiveWindowTests: XCTestCase {
         XCTAssertEqual(fighting.position.z, mound.z, accuracy: 1e-4)
         XCTAssertEqual(fighting.clip, .attack)
         XCTAssertEqual(fighting.heading, -.pi / 2, accuracy: 1e-3)
+        // Massed in its fight, a figure for so many of its soldiers, its ranks
+        // reeling by turns under the foe's blows; those on the march or at
+        // work stand in their formation, untouched.
+        let soldiers = try XCTUnwrap(world.marches[6]).soldiers
+        XCTAssertEqual(fighting.throng, Formation.throngCount(fighting.key, troops: Int(soldiers)))
+        XCTAssertGreaterThan(fighting.throng, 0)
+        XCTAssertTrue(fighting.struck)
+        XCTAssertEqual(mine.throng, 0)
+        XCTAssertFalse(mine.struck)
+        XCTAssertEqual(theirs.throng, 0)
+        XCTAssertFalse(theirs.struck)
         XCTAssertEqual(theirs.heading, atan2(Float(grove.x - Relief.centre(of: Hex(1, 2)).x), Float(grove.z - Relief.centre(of: Hex(1, 2)).z)), accuracy: 1e-3,
                        "and the army at work faces its grove")
 

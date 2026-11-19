@@ -315,9 +315,17 @@ public struct LiveWindow: Sendable {
             // Carts carry no army: a carter and their handcart go with them.
             let key: ModelKey = march.kind == LiveMarch.carts ? .folk(variant: Folk.timberCarter) : .figure(kind, tier: tier)
             let ground = max(relief.height(atX: place.x, z: place.z), Relief.waterline)
-            return CompanyPose(unit: Int(march.id), key: key, sigil: LiveWindow.sigil(of: march.owner), health: 100,
-                               hex: hex, position: Vec3(place.x, ground, place.z), heading: heading, clip: clip,
-                               clipTime: Float(seconds.truncatingRemainder(dividingBy: 3_600)), isOwn: own)
+            var pose = CompanyPose(unit: Int(march.id), key: key, sigil: LiveWindow.sigil(of: march.owner), health: 100,
+                                   hex: hex, position: Vec3(place.x, ground, place.z), heading: heading, clip: clip,
+                                   clipTime: Float(seconds.truncatingRemainder(dividingBy: 3_600)), isOwn: own)
+            if march.state == LiveMarch.fighting {
+                // In a fight it stands massed, a figure for so many of its
+                // soldiers, its ranks striking and reeling by turns under the
+                // foe's blows (`Formation.throngCount`, `Clip.hit`).
+                pose.throng = Formation.throngCount(key, troops: Int(min(march.soldiers, UInt64(Int32.max))))
+                pose.struck = true
+            }
+            return pose
         }
     }
 
