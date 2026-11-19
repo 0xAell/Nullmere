@@ -451,6 +451,40 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertGreaterThan(changed, points / 10, "The seat, its town and the land's furniture drawn over the land")
     }
 
+    /// A company in a fight close to by day, as the realm's armies fight:
+    /// massed, a figure for so many of its soldiers, its ranks striking and
+    /// reeling by turns, each figure in its baked shade (plans 5.3, 5.4).
+    /// The realm's pictures catch a fight only by chance; this one is the
+    /// same from one run to the next. Kept as world-fight-close.
+    func testACompanyFightsCloseToByDay() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        let world = WorldRenderTests.world
+        let state = world.state
+        let seat = state.holds[0].position
+        let field = try XCTUnwrap(state.map.hexes.first { $0.distance(to: seat) == 3 && !(state.map[$0]?.terrain.isWater ?? true) })
+        let stage = WorldStage(map: state.map, relief: world.relief)
+        let centre = Relief.centre(of: field)
+        var pose = CompanyPose(unit: 7, key: .figure(.spear, tier: 3), sigil: 1, health: 100, hex: field,
+                               position: Vec3(centre.x, max(world.relief.height(of: field), Relief.waterline), centre.z),
+                               heading: 0.6, clip: .attack, clipTime: 1.3, isOwn: true)
+        pose.throng = Formation.throngCount(pose.key, troops: 12_000)
+        pose.struck = true
+        var scene = SceneFrame()
+        let company = stage.companies([pose], houses: WorldRenderer.houseColours, into: &scene)
+        scene.batches = company
+        var camera = Camera(scale: 150)
+        camera.focus(on: field)
+        let fight = try draw(renderer, "fight", camera: camera, tiles: world.whole, scene: scene, daylight: .day)
+        let bare = try draw(renderer, "field", camera: camera, tiles: world.whole, daylight: .day)
+        try keep([fight], as: "world-fight-close")
+        let points = WorldRenderTests.width * WorldRenderTests.height / 4
+        let changed = WorldRenderTests.changed(fight, bare)
+        print("RENDER fight close to: \(pose.throng) figures, \(changed) of \(points) points drawn over the land")
+        XCTAssertGreaterThan(pose.throng, 20, "massed")
+        XCTAssertGreaterThan(changed, points / 50, "The company drawn over the land")
+    }
+
     /// The shaders' own parts a debug build may leave out, each named to the
     /// compiler; passes it has no switch for are not.
     func testTheShadersPartsAreLeftOutByName() throws {
