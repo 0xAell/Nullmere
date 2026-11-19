@@ -1,0 +1,49 @@
+diff archer.glb: nodes 216 -> 216, meshes 195 -> 195, points 9977 -> 9977, actions 6 -> 6
+same archery.glb
+same archive.glb
+same beacon.glb
+diff carters.glb: nodes 82 -> 82, meshes 61 -> 61, points 4084 -> 4084, actions 6 -> 6
+diff colossus.glb: nodes 67 -> 67, meshes 48 -> 48, points 1588 -> 1588, actions 6 -> 6
+diff commanders.glb: nodes 197 -> 197, meshes 173 -> 173, points 7106 -> 7106, actions 9 -> 9
+same embassy.glb
+same fixture-arm.glb
+diff folk.glb: nodes 133 -> 133, meshes 114 -> 114, points 5644 -> 5644, actions 36 -> 36
+same forge.glb
+diff founder.glb: nodes 73 -> 73, meshes 52 -> 52, points 2834 -> 2834, actions 6 -> 6
+same furies.glb
+same furnishings.glb
+same granary.glb
+same hall.glb
+diff hollow.glb: nodes 68 -> 68, meshes 49 -> 49, points 1690 -> 1690, actions 6 -> 6
+same infirmary.glb
+same keep.glb
+same lairs.glb
+diff lantern.glb: nodes 71 -> 71, meshes 52 -> 52, points 2595 -> 2595, actions 6 -> 6
+same lodge.glb
+same lyceum.glb
+diff mangonel.glb: nodes 167 -> 167, meshes 144 -> 144, points 13994 -> 13994, actions 6 -> 6
+same market.glb
+same marks.glb
+same moonspire.glb
+same motte.glb
+same musterhall.glb
+same props.glb
+same quarry.glb
+same raising.glb
+diff rider.glb: nodes 209 -> 209, meshes 185 -> 185, points 7464 -> 7464, actions 6 -> 6
+same saltworks.glb
+same sawpit.glb
+same scoutcamp.glb
+same seat.glb
+same shrines.glb
+same sites.glb
+diff spearman.glb: nodes 171 -> 171, meshes 152 -> 152, points 8478 -> 8478, actions 6 -> 6
+same storehouse.glb
+same stores.glb
+same tavern.glb
+diff thornwight.glb: nodes 62 -> 62, meshes 43 -> 43, points 1452 -> 1452, actions 6 -> 6
+same tokens.glb
+same town.glb
+same walls.glb
+same wayhouse.glb
+48 models: 36 the same to the byte, 0 failed
