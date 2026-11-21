@@ -82,3 +82,10 @@ Blender-authored unit models landed through the day: spearman, archer, lantern-b
 - Just after midnight Claude pushed bf5db75 (lanes and roads drawn whole, not in dashes), faa955c (StageTests count a seat's lanes as the test world has them) and f5f560a (plan: woods and meadow up to a city seen on Metal), tip ~1:03 AM.
 - CI: the main CI runs on faa955c and f5f560a finished green; the Realm rules run on bf5db75 failed before the follow-up fix.
 - Still open: the ad blocker is not yet called done; on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
+
+
+## 2026-11-21
+
+- Development has been paused since Nov 19 at ael's call. Main tip is still cafaf2d (works stand on trodden earth: yards warmed, the sawpit's clearing no longer a pit of soot).
+- CI: the CI and Realm rules runs on cafaf2d both finished green.
+- Still open: the ad blocker is not yet called done; on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
