@@ -146,8 +146,11 @@ struct LiveBuildings: View {
                     LiveProgress(part: job.progress(at: seconds), left: Int(job.left(at: seconds).rounded(.up)))
                 } else if let next = line.next {
                     LiveSmall(words: "\(next.cost.sentence), \(LiveWords.spoken(next.seconds))")
-                    if let block = line.block, block != .buildersBusy {
+                    if let block = line.block, block != .buildersBusy, block.words != line.shortageWords {
                         LiveSmall(words: block.words, dim: true)
+                    }
+                    if let shortage = line.shortageWords {
+                        LiveSmall(words: shortage, dim: true)
                     }
                 } else if let block = line.block {
                     LiveSmall(words: block.words, dim: true)

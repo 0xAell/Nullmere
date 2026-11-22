@@ -124,6 +124,7 @@ final class LiveBookTests: XCTestCase {
         XCTAssertEqual(try line("Sawmill").job?.level, 2)
         XCTAssertEqual(try line("Barracks").block, .training("Barracks"))
         XCTAssertEqual(try line("Wall").block, .buildersBusy)
+        XCTAssertEqual(try line("Wall").shortageWords, "You need 500 stone more.")
         XCTAssertEqual(try line("Hospital").block, .needsKeep(3))
         XCTAssertNil(try line("Hospital").building)
         XCTAssertEqual(try line("Hospital").level, 0)

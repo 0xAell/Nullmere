@@ -143,6 +143,12 @@ public struct LiveBuildingLine: Equatable, Identifiable, Sendable {
     public let next: LiveBlueprint?
     /// Why it can't be built or raised now; nil where it can be asked.
     public let block: LiveBlock?
+    /// Shortage in stored goods, even when another prerequisite comes first.
+    public let missing: LiveGoods
+
+    public var shortageWords: String? {
+        missing.isNone ? nil : LiveBlock.short(missing).words
+    }
 }
 
 /// The soldiers of one kind and tier a city has, wherever they are.
@@ -233,7 +239,7 @@ extension LiveWorld {
                 } else if !have.covers(first.cost) {
                     block = .short(have.short(of: first.cost))
                 }
-                return LiveBuildingLine(kind: kind, name: first.name, building: nil, level: 0, job: nil, next: first, block: block)
+                return LiveBuildingLine(kind: kind, name: first.name, building: nil, level: 0, job: nil, next: first, block: block, missing: have.short(of: first.cost))
             }
             let job = jobs.first { $0.kind == LiveJob.raise && $0.subject == building.id }
             let next = blueprint(kind, level: building.level + 1)
@@ -253,7 +259,8 @@ extension LiveWorld {
             } else if let next, !have.covers(next.cost) {
                 block = .short(have.short(of: next.cost))
             }
-            return LiveBuildingLine(kind: kind, name: first.name, building: building, level: building.level, job: job, next: next, block: block)
+            return LiveBuildingLine(kind: kind, name: first.name, building: building, level: building.level, job: job, next: next, block: block,
+                                    missing: next.map { have.short(of: $0.cost) } ?? LiveGoods())
         }
         return lines.filter { $0.building != nil } + lines.filter { $0.building == nil }
     }
