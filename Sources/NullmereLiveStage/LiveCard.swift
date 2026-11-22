@@ -215,6 +215,7 @@ extension LiveSession {
                 var lines = ["Not built yet."]
                 if let does = LiveWorld.buildingWords(kind) { lines.append(does) }
                 if let first = line.next { lines.append("Building it takes \(first.cost.words), \(LiveWords.spoken(first.seconds)).") }
+                if let completion = line.completionWords { lines.append(completion) }
                 if let shortage = line.shortageWords, shortage != line.block?.words { lines.append(shortage) }
                 return LiveCard(title: line.name, lines: lines,
                                 buttons: [.init(title: "Build", act: .build(kind), why: line.block?.words), .init(title: "Buildings", act: .city, why: nil)])
@@ -234,6 +235,7 @@ extension LiveSession {
             } else {
                 lines.append(line.block?.words ?? "It is at its highest level.")
             }
+            if let completion = line.completionWords { lines.append(completion) }
             buttons.append(.init(title: "Buildings", act: .city, why: nil))
             return LiveCard(title: line.name, lines: lines, buttons: buttons)
 

@@ -118,6 +118,7 @@ final class LiveBookTests: XCTestCase {
         // One builder, and the Sawmill has it: everything else waits on that
         // unless something stops it sooner.
         XCTAssertEqual(try line("Keep").block, .buildersBusy)
+        XCTAssertEqual(try line("Keep").completionWords, "On completion: +20 city power")
         XCTAssertEqual(try line("Keep").next?.cost, LiveGoods(timber: 900, stone: 300))
         XCTAssertEqual(try line("Farm").block, .needsKeep(3), "nothing rises above the Keep")
         XCTAssertEqual(try line("Sawmill").block, .rising("Sawmill"))

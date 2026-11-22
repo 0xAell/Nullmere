@@ -155,6 +155,9 @@ struct LiveBuildings: View {
                 } else if let block = line.block {
                     LiveSmall(words: block.words, dim: true)
                 }
+                if let completion = line.completionWords {
+                    LiveSmall(words: completion)
+                }
             }
             .accessibilityElement(children: .contain)
         }

@@ -141,6 +141,7 @@ public struct LiveBuildingLine: Equatable, Identifiable, Sendable {
     /// What its next level costs and gives: its first where the city has
     /// none; nil at its highest.
     public let next: LiveBlueprint?
+    public let current: LiveBlueprint?
     /// Why it can't be built or raised now; nil where it can be asked.
     public let block: LiveBlock?
     /// Shortage in stored goods, even when another prerequisite comes first.
@@ -148,6 +149,17 @@ public struct LiveBuildingLine: Equatable, Identifiable, Sendable {
 
     public var shortageWords: String? {
         missing.isNone ? nil : LiveBlock.short(missing).words
+    }
+
+    /// The gains from the catalogue for finishing the next level.
+    public var completionWords: String? {
+        guard let next, level == 0 || current != nil else { return nil }
+        let hourly = (current?.hourly ?? LiveGoods()).short(of: next.hourly)
+        let power = current?.power ?? 0
+        var gains: [String] = []
+        if next.power > power { gains.append("+\(LiveWords.grouped(next.power - power)) city power") }
+        if !hourly.isNone { gains.append("+\(hourly.words) per hour") }
+        return gains.isEmpty ? nil : "On completion: " + gains.joined(separator: ", ")
     }
 }
 
@@ -239,7 +251,7 @@ extension LiveWorld {
                 } else if !have.covers(first.cost) {
                     block = .short(have.short(of: first.cost))
                 }
-                return LiveBuildingLine(kind: kind, name: first.name, building: nil, level: 0, job: nil, next: first, block: block, missing: have.short(of: first.cost))
+                return LiveBuildingLine(kind: kind, name: first.name, building: nil, level: 0, job: nil, next: first, current: nil, block: block, missing: have.short(of: first.cost))
             }
             let job = jobs.first { $0.kind == LiveJob.raise && $0.subject == building.id }
             let next = blueprint(kind, level: building.level + 1)
@@ -259,7 +271,8 @@ extension LiveWorld {
             } else if let next, !have.covers(next.cost) {
                 block = .short(have.short(of: next.cost))
             }
-            return LiveBuildingLine(kind: kind, name: first.name, building: building, level: building.level, job: job, next: next, block: block,
+            return LiveBuildingLine(kind: kind, name: first.name, building: building, level: building.level, job: job, next: next,
+                                    current: blueprint(kind, level: building.level), block: block,
                                     missing: next.map { have.short(of: $0.cost) } ?? LiveGoods())
         }
         return lines.filter { $0.building != nil } + lines.filter { $0.building == nil }
