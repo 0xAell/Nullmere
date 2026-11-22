@@ -118,6 +118,12 @@ struct CompanionHome: View {
                         Text(verbatim: "\(city.name), Keep \(city.keep), power \(LiveWords.grouped(city.power))")
                         if let stock = world.stock {
                             Text(verbatim: stock.goods(at: seconds).words)
+                            let incoming = world.incomingArmyGoods
+                            if !incoming.isNone {
+                                Text(verbatim: "Incoming from armies: \(incoming.words). These goods are still on the road.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }

@@ -731,6 +731,18 @@ public struct LiveWorld: Equatable, Sendable {
     /// another from being sent, or the city from moving.
     public var myArmies: [LiveMarch] { myMarches.filter { $0.kind != LiveMarch.carts } }
 
+    /// Goods carried home by armies. Outbound trade carts deliver to an ally.
+    public var incomingArmyGoods: LiveGoods {
+        let returning = Set(myArmies.filter { $0.state == LiveMarch.returning }.map(\.id))
+        return hauls.reduce(into: LiveGoods()) { total, haul in
+            guard returning.contains(haul.march) else { return }
+            total.grain += haul.goods.grain
+            total.timber += haul.goods.timber
+            total.stone += haul.goods.stone
+            total.moonsalt += haul.goods.moonsalt
+        }
+    }
+
     /// The player's loads of carts on the road.
     public var myCarts: [LiveMarch] { myMarches.filter { $0.kind == LiveMarch.carts } }
 

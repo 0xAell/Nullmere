@@ -22,6 +22,21 @@ final class LiveWorldTests: XCTestCase {
         XCTAssertEqual(LiveHex(q: 2, r: 2).centre.y, 3, accuracy: 1e-12)
     }
 
+    func testIncomingGoodsCountReturningArmiesOnly() {
+        let world = LiveWorld(snapshot: [
+            "me": [[n(1), n(99), .string("Ada"), n(1_000), .bool(true), n(1_010)]],
+            "march": [
+                [n(3), n(1), n(7), n(1), n(3), n(0), n(0), n(0), n(1), n(2), n(20), .string("")],
+                [n(4), n(1), n(7), n(9), n(1), n(0), n(0), n(0), n(1), n(2), n(0), .string("")],
+            ],
+            "my_hauls": [
+                [n(3), n(1), n(0), n(240), n(0), n(0)],
+                [n(4), n(1), n(80), n(0), n(0), n(0)],
+            ],
+        ])
+        XCTAssertEqual(world.incomingArmyGoods, LiveGoods(timber: 240))
+    }
+
     func testRowsAreReadIntoAWorld() throws {
         let hex = LiveHex(q: 12, r: -30)
         let snapshot: [String: [[JSONValue]]] = [

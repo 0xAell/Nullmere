@@ -560,6 +560,10 @@ These principles carry forward [Warpkeep's realm covenant](https://github.com/0x
 
 ## The watch
 
+On Mac and in the companion app, incoming goods show separately from stored
+goods. Only returning armies count toward that incoming amount. Goods sent
+to allies on trade carts are tracked separately.
+
 - **The watch.** Each turn is a watch. Your orders take effect as you give
   them; say you're ready (⌘↩) when they're given. The watch turns when
   every keeper there is ready, or when its time runs out, three minutes;

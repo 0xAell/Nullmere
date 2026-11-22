@@ -597,16 +597,27 @@ struct LiveTopBar: View {
             }
             if let stock = session.world.stock {
                 let goods = stock.goods(at: seconds).parts
+                let incoming = session.world.incomingArmyGoods.parts
                 ForEach(Array(Self.stores.enumerated()), id: \.offset) { index, store in
-                    HStack(spacing: 5) {
-                        ResourceGlyph(resource: store, size: 11)
-                        Text(verbatim: LiveWords.grouped(goods[index]))
-                            .font(.nm(LiveType.body, weight: .medium))
-                            .monospacedDigit()
-                            .foregroundStyle(goods[index] >= stock.holds ? Palette.bad : LiveEmphasis.primary)
+                    let stored = "\(LiveWords.grouped(goods[index])) \(LiveWords.goods[index])"
+                    let onTheWay = "\(LiveWords.grouped(incoming[index])) incoming, carried by armies and not yet in stores"
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 5) {
+                            ResourceGlyph(resource: store, size: 11)
+                            Text(verbatim: LiveWords.grouped(goods[index]))
+                                .font(.nm(LiveType.body, weight: .medium))
+                                .monospacedDigit()
+                                .foregroundStyle(goods[index] >= stock.holds ? Palette.bad : LiveEmphasis.primary)
+                        }
+                        if incoming[index] > 0 {
+                            Text(verbatim: "+\(LiveWords.grouped(incoming[index])) incoming")
+                                .font(.nm(LiveType.small))
+                                .foregroundStyle(LiveEmphasis.secondary)
+                                .help(onTheWay)
+                        }
                     }
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(LiveWords.grouped(goods[index])) \(LiveWords.goods[index])")
+                    .accessibilityLabel(incoming[index] > 0 ? "\(stored), \(onTheWay)" : stored)
                     .accessibilityAddTraits(.isStaticText)
                 }
             }
