@@ -5,6 +5,7 @@ the one the rules hold: the realm keeps them, and its stewards play by them too.
 
 - [The launcher](#the-launcher)
 - [Entering the realm](#entering-the-realm)
+- [Conduct in the realm](#conduct-in-the-realm)
 - [The watch](#the-watch)
 - [The land and its holds](#the-land-and-its-holds)
 - [Armies and battle](#armies-and-battle)
@@ -543,7 +544,25 @@ a vote on the realm's law to cast.
   Mac's Let every phone go unlinks them all. A phone the realm no longer
   links is told so as it next comes in, and asks for a new code.
 
+## Conduct in the realm
+
+The realm is shared. Play hard within its rules and keep rivalries between
+Houses in the game. Respect the people behind the Houses. Leave threats,
+harassment, impersonation and sharing someone's private information out of play.
+
+Disagreement about the game and its rules is welcome. If a chat line crosses
+a boundary, report it from the line's menu or its VoiceOver actions. The
+realm passes the line and surrounding context to the steward, who can remove
+it or bar a keeper. If you find a flaw that could harm the realm or its
+players, contact the project privately at ael@mail.grokbot.com.
+
+These principles carry forward [Warpkeep's realm covenant](https://github.com/0xAell/Warpkeep/blob/b9af2aa/public/social-contract/index.html).
+
 ## The watch
+
+On Mac and in the companion app, incoming goods show separately from stored
+goods. Only returning armies count toward that incoming amount. Goods sent
+to allies on trade carts are tracked separately.
 
 - **The watch.** Each turn is a watch. Your orders take effect as you give
   them; say you're ready (⌘↩) when they're given. The watch turns when

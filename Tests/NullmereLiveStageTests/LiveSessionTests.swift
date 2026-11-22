@@ -25,6 +25,41 @@ final class LiveSessionTests: XCTestCase {
         LiveSession(line: line) { seconds }
     }
 
+    func testLostOrderReplyReusesTheExactRequestKey() async throws {
+        let attempts = Tries()
+        let server = StubHTTP.serve { _ in
+            if attempts.next() == 1 { throw URLError(.networkConnectionLost) }
+            return StubHTTP.Answer()
+        }
+        let transport = SpacetimeHTTP(server: server.address, database: "test", session: server.session)
+        let client = LiveClient(transport: transport, credentials: .init(identity: "keeper", token: "test-token"))
+        try await client.upgrade(building: 21)
+
+        let requests = server.requests
+        XCTAssertEqual(requests.map { $0.url.lastPathComponent }, ["upgrade_once", "upgrade_once"])
+        XCTAssertEqual(requests.first?.body, requests.last?.body)
+        let request = try XCTUnwrap(requests.first)
+        let arguments = try XCTUnwrap(JSONSerialization.jsonObject(with: request.body) as? [Any])
+        XCTAssertEqual(arguments.count, 3)
+        XCTAssertEqual(arguments.first as? Int, 21)
+        XCTAssertEqual((arguments.last as? String)?.count, 32)
+    }
+
+    func testOldRealmReceivesOneLegacyOrderAfterUnknownReducer() async throws {
+        let server = StubHTTP.serve { request in
+            if request.url.lastPathComponent == "upgrade_once" {
+                return StubHTTP.Answer(status: 404, text: "No such reducer")
+            }
+            return StubHTTP.Answer()
+        }
+        let transport = SpacetimeHTTP(server: server.address, database: "test", session: server.session)
+        let client = LiveClient(transport: transport, credentials: .init(identity: "keeper", token: "test-token"))
+        try await client.upgrade(building: 21)
+        let requests = server.requests
+        XCTAssertEqual(requests.map { $0.url.lastPathComponent }, ["upgrade_once", "upgrade"])
+        XCTAssertEqual(requests.last?.text, "[21]")
+    }
+
     func testASessionOpensOnTheRealmAndAsksANameOfWhoHasNone() async throws {
         // A realm that can't be reached.
         let nowhere = session(StandInLine(reachable: false))
@@ -337,7 +372,7 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(session.selection, .work(7, in: city))
         let plot = session.card(for: try XCTUnwrap(session.selection))
         XCTAssertEqual(plot.title, "Barracks")
-        XCTAssertEqual(plot.lines, ["Not built yet.", "Trains spearmen.", "Building it takes 100 timber, 10 seconds."])
+        XCTAssertEqual(plot.lines, ["Not built yet.", "Trains spearmen.", "Building it takes 100 timber, 10 seconds.", "On completion: +20 city power"])
         XCTAssertEqual((1...19).compactMap(LiveWorld.buildingWords).count, 19, "every building of the catalogue says what it does")
         XCTAssertNil(LiveWorld.buildingWords(20))
         XCTAssertEqual(plot.buttons.map(\.title), ["Build", "Buildings"])
@@ -1920,10 +1955,12 @@ final class LiveSessionTests: XCTestCase {
         line.refuse(nil)
         await session.build(4)
         XCTAssertNil(session.said)
-        // A line that drops says so plainly.
+        // A lost reply may follow a committed order. Never replay it here.
+        line.clear()
         line.drop()
         await session.build(4)
-        XCTAssertEqual(session.said, "The realm could not be reached. Try again in a moment.")
+        XCTAssertEqual(line.asked, ["build 4"])
+        XCTAssertEqual(session.said, "The realm did not confirm this order. Check the order’s result in the realm before sending it again.")
         XCTAssertEqual(session.asking, 0)
     }
 }

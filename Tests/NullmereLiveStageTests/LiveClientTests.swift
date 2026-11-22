@@ -21,7 +21,7 @@ final class LiveClientTests: XCTestCase {
     private static func reducers() throws -> [String: [String]] {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let module = try String(contentsOf: root.appendingPathComponent("realm/src/module.rs"), encoding: .utf8)
-        let pattern = try NSRegularExpression(pattern: #"#\[reducer\]\s*pub fn (\w+)\(ctx: &ReducerContext([^)]*)\)"#)
+        let pattern = try NSRegularExpression(pattern: #"#\[reducer\]\s*pub fn (\w+)\(\s*ctx: &ReducerContext([^)]*)\)"#)
         var found: [String: [String]] = [:]
         for match in pattern.matches(in: module, range: NSRange(module.startIndex..., in: module)) {
             guard let name = Range(match.range(at: 1), in: module), let taken = Range(match.range(at: 2), in: module) else { continue }
@@ -165,8 +165,15 @@ final class LiveClientTests: XCTestCase {
                 }
             }
         }
-        // What no player asks: the realm's own clock, and what its keeper does.
-        XCTAssertEqual(Set(reducers.keys).subtracting(asked).sorted(), ["bar_player", "dismiss_report", "fire", "forget_player", "set_pace", "take_away"])
+        // Older realms still use the original forms. Check that removing
+        // the receipt arguments gives each legacy reducer's wire signature.
+        let legacy = ["send", "send_goods", "speed_up", "train", "upgrade"]
+        for reducer in legacy {
+            let original = try XCTUnwrap(reducers[reducer])
+            XCTAssertEqual(reducers[reducer + "_once"], original + ["i64", "String"])
+        }
+        let administrative = ["bar_player", "dismiss_report", "fire", "forget_player", "set_pace", "take_away"]
+        XCTAssertEqual(Set(reducers.keys).subtracting(asked), Set(administrative + legacy))
     }
 
     /// Without a subscription the realm is read table by table, every

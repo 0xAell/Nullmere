@@ -50,7 +50,8 @@ $SPACETIME publish --server "$SERVER" --bin-path "$WASM" --yes --delete-data "$D
 
 echo "== Playing it through"
 python3 -I - "$HOST" "$DB" "$SPACETIME" "$SERVER" <<'PY'
-import json, sys, urllib.request, urllib.error
+import json, sys, time, urllib.request, urllib.error, uuid
+from concurrent.futures import ThreadPoolExecutor
 
 host, db, spacetime, server = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 failures = []
@@ -141,13 +142,30 @@ keep = next(b for b in buildings if b["kind"] == 1)
 farm = next(b for b in buildings if b["kind"] == 2)
 check("nothing rises above the Keep", call(ada, "upgrade", farm["id"]), "Raise your Keep to level 2 first.")
 check("another player can't raise it", call(bryn, "upgrade", keep["id"]), "That is not yours.")
-check("the Keep begins to rise", call(ada, "upgrade", keep["id"]), None)
+issued, nonce = int(time.time()), uuid.uuid4().hex
+def raise_keep():
+    return call(ada, "upgrade_once", keep["id"], issued, nonce)
+with ThreadPoolExecutor(max_workers=2) as pool:
+    first, second = pool.submit(raise_keep), pool.submit(raise_keep)
+    check("simultaneous copies acknowledge one upgrade", [first.result(), second.result()], [None, None])
+check("a key cannot authorize another building",
+      call(ada, "upgrade_once", farm["id"], issued, nonce),
+      "This request key belongs to another order.")
+check("an expired order cannot be applied",
+      call(ada, "upgrade_once", keep["id"], issued - 301, nonce),
+      "This order has expired or your device clock is out of sync.")
 jobs = rows(ada, "SELECT * FROM my_jobs")
 check("a job is under way, eight seconds long", [(j["kind"], j["subject"], j["level"], j["ends"] - j["started"]) for j in jobs], [(1, keep["id"], 2, 8)])
 check("its cost is paid as it begins", rows(ada, "SELECT * FROM my_stock")[0]["timber"] in range(8000 - 620, 8000 - 620 + 10), True)
 check("and nothing else rises above the Keep meanwhile", call(ada, "upgrade", farm["id"]), "Raise your Keep to level 2 first.")
 check("and not the same thing twice", call(ada, "upgrade", keep["id"]), "Your Keep is already being built.")
-import time
+keep_job = jobs[0]
+haste = (keep_job["id"], int(time.time()), uuid.uuid4().hex)
+check("hastening moves construction ahead", call(ada, "speed_up_once", *haste), None)
+hastened = next(job for job in rows(ada, "SELECT * FROM my_jobs") if job["id"] == keep_job["id"])
+check("hastening changes the deadline", hastened["ends"] < keep_job["ends"], True)
+check("retrying hastening acknowledges the first order", call(ada, "speed_up_once", *haste), None)
+check("the deadline only changes once", rows(ada, "SELECT * FROM my_jobs")[0]["ends"], hastened["ends"])
 deadline = time.time() + 30
 while time.time() < deadline and rows(ada, "SELECT * FROM my_jobs"):
     time.sleep(1)
@@ -183,7 +201,9 @@ until("which stands", lambda: (mine(bryn, 7) or {}).get("level") == 1)
 barracks = mine(bryn, 7)
 check("more than a batch holds is refused", call(bryn, "train", barracks["id"], 1, 51), "At most 50 at once.")
 check("a tier not yet open is refused", call(bryn, "train", barracks["id"], 2, 10), "Raise your Barracks to level 5 first.")
-check("twenty spearmen go into training", call(bryn, "train", barracks["id"], 1, 20), None)
+training = (barracks["id"], 1, 20, int(time.time()), uuid.uuid4().hex)
+check("twenty spearmen go into training", call(bryn, "train_once", *training), None)
+check("retrying training accepts the first batch", call(bryn, "train_once", *training), None)
 check("one batch at a time", call(bryn, "train", barracks["id"], 1, 5), "Your Barracks is already training troops.")
 until("and stand ready", lambda: [(t["kind"], t["tier"], t["ready"]) for t in rows(bryn, "SELECT * FROM my_troops")] == [(1, 1, 20)])
 check("only their owner counts them", rows(ada, "SELECT * FROM my_troops"), [])
@@ -206,10 +226,12 @@ check("nothing is gathered where nothing lies", call(bryn, "send", home[0], home
 check("more than stand ready can't be sent", call(bryn, "send", *unpacked(sites[0]["hex"]), 1, [{"kind": 1, "tier": 1, "count": 21}], 0), "You have only 20 tier 1 Spearmen ready.")
 site, sent = None, "There is no way there over open ground."
 for site in sites[:20]:
-    sent = call(bryn, "send", *unpacked(site["hex"]), 1, [{"kind": 1, "tier": 1, "count": 20}], 0)
+    dispatch = (*unpacked(site["hex"]), 1, [{"kind": 1, "tier": 1, "count": 20}], 0, int(time.time()), uuid.uuid4().hex)
+    sent = call(bryn, "send_once", *dispatch)
     if sent != "There is no way there over open ground.":
         break
 check("an army sets out for the nearest site", sent, None)
+check("retrying a dispatch accepts the original march", call(bryn, "send_once", *dispatch), None)
 before = rows(bryn, "SELECT * FROM my_stock")[0]
 marches = rows(nobody, "SELECT * FROM march")
 check("everyone sees it on the map", [(m["kind"], m["state"], m["soldiers"], m["target"]) for m in marches], [(1, 1, 20, site["id"])])
@@ -590,6 +612,39 @@ check("types their own name to", call(leaver, "leave_realm", "Ada of the Lake"),
 check("and leaves, forgotten, their device let go", (call(leaver, "leave_realm", " lea  leaving"), rows(leaver, "SELECT * FROM me"), rows(leaver, "SELECT * FROM my_devices")), (None, [], []))
 check("their city stands under the name they are given", sorted(c["name"] for c in rows(nobody, "SELECT * FROM city") if c["name"].startswith("Forgotten #")), sorted(p["name"] for p in rows(nobody, "SELECT id, name FROM player") if p["name"].startswith("Forgotten #")))
 check("and whoever comes back on that device joins anew", call(leaver, "join", "Lea Leaving"), None)
+
+# Trade receipt: two allied cities, one dispatch, one debit.
+def check_cart_replay(sender, recipient):
+    def pace(value):
+        subprocess.run(shlex.split(spacetime) + ["call", "--server", server, db, "set_pace", str(value)],
+                       capture_output=True, text=True, check=True)
+
+    pace(600)
+    for level in range(mine(sender, 1)["level"] + 1, 6):
+        if level >= 4:
+            if not mine(sender, 12):
+                check("the trade test builds a Wall", call(sender, "build", 12), None)
+                until("the first Wall stands", lambda: (mine(sender, 12) or {}).get("level") == 1)
+            for wall_level in range(mine(sender, 12)["level"] + 1, level):
+                check("the Wall is raised", call(sender, "upgrade", mine(sender, 12)["id"]), None)
+                until("the Wall finishes", lambda: mine(sender, 12)["level"] == wall_level, 10)
+        check("the trade test raises its Keep", call(sender, "upgrade", mine(sender, 1)["id"]), None)
+        until("the Keep reaches the required level", lambda: mine(sender, 1)["level"] == level, 10)
+    check("an Embassy begins", call(sender, "build", 15), None)
+    until("the Embassy stands", lambda: (mine(sender, 15) or {}).get("level") == 1)
+    check("an alliance is founded for trade", call(sender, "found_alliance", "Cart Test", "CART"), None)
+    alliance = next(row for row in rows(nobody, "SELECT * FROM alliance") if row["tag"] == "CART")
+    check("the recipient joins the alliance", call(recipient, "join_alliance", alliance["id"]), None)
+    pace(1)
+    target = unpacked(rows(recipient, "SELECT * FROM my_city")[0]["hex"])
+    request = (*target, 1000, 0, 0, 0, int(time.time()), uuid.uuid4().hex)
+    check("a trade cart sets out", call(sender, "send_goods_once", *request), None)
+    paid = rows(sender, "SELECT * FROM my_stock")
+    check("replaying the cart acknowledges the first dispatch", call(sender, "send_goods_once", *request), None)
+    check("the cart replay makes no second debit", rows(sender, "SELECT * FROM my_stock"), paid)
+    check("one cart carries the shipment", [haul["grain"] for haul in rows(sender, "SELECT * FROM my_hauls")], [900])
+
+check_cart_replay(ada, bryn)
 
 if failures:
     # Each again at the foot, where a log's tail finds it.

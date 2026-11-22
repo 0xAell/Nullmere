@@ -97,6 +97,7 @@ public struct LiveGameView: View {
     @State private var panel: Panel?
     @State private var palette = false
     @State private var cannotDraw = false
+    @State private var lighterMap = false
 
     public init(session: LiveSession, display: LauncherSettings = LauncherSettings(defaults: .standard), leave: (() -> Void)? = nil) {
         self.session = session
@@ -124,11 +125,24 @@ public struct LiveGameView: View {
                 }
             case .naming, .playing:
                 if cannotDraw {
-                    LiveNotice(title: "The world can't be drawn", words: "This Mac's graphics could not draw it.", button: nil) {}
+                    LiveNotice(title: "The world can't be drawn",
+                               words: "Try drawing the map with lighter settings.",
+                               button: "Retry map", back: leave) {
+                        lighterMap = true
+                        cannotDraw = false
+                    }
                 } else {
                     let items = session.mapItems()
-                    LiveMapView(session: session, motion: display.motion.resolved(systemReducesMotion: reduceMotion), frameRate: display.frameRate,
-                                quality: display.quality, onFailure: { cannotDraw = true })
+                    LiveMapView(session: session, motion: display.motion.resolved(systemReducesMotion: reduceMotion),
+                                frameRate: lighterMap ? .thirty : display.frameRate,
+                                quality: lighterMap ? .efficient : display.quality,
+                                onFailure: { cannotDraw = true }, onFaltering: {
+                                    if lighterMap {
+                                        cannotDraw = true
+                                    } else {
+                                        lighterMap = true
+                                    }
+                                })
                         .ignoresSafeArea()
                         .accessibilityElement(children: .contain)
                         .accessibilityLabel("The realm's map")
@@ -597,16 +611,27 @@ struct LiveTopBar: View {
             }
             if let stock = session.world.stock {
                 let goods = stock.goods(at: seconds).parts
+                let incoming = session.world.incomingArmyGoods.parts
                 ForEach(Array(Self.stores.enumerated()), id: \.offset) { index, store in
-                    HStack(spacing: 5) {
-                        ResourceGlyph(resource: store, size: 11)
-                        Text(verbatim: LiveWords.grouped(goods[index]))
-                            .font(.nm(LiveType.body, weight: .medium))
-                            .monospacedDigit()
-                            .foregroundStyle(goods[index] >= stock.holds ? Palette.bad : LiveEmphasis.primary)
+                    let stored = "\(LiveWords.grouped(goods[index])) \(LiveWords.goods[index])"
+                    let onTheWay = "\(LiveWords.grouped(incoming[index])) incoming, carried by armies and not yet in stores"
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 5) {
+                            ResourceGlyph(resource: store, size: 11)
+                            Text(verbatim: LiveWords.grouped(goods[index]))
+                                .font(.nm(LiveType.body, weight: .medium))
+                                .monospacedDigit()
+                                .foregroundStyle(goods[index] >= stock.holds ? Palette.bad : LiveEmphasis.primary)
+                        }
+                        if incoming[index] > 0 {
+                            Text(verbatim: "+\(LiveWords.grouped(incoming[index])) incoming")
+                                .font(.nm(LiveType.small))
+                                .foregroundStyle(LiveEmphasis.secondary)
+                                .help(onTheWay)
+                        }
                     }
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(LiveWords.grouped(goods[index])) \(LiveWords.goods[index])")
+                    .accessibilityLabel(incoming[index] > 0 ? "\(stored), \(onTheWay)" : stored)
                     .accessibilityAddTraits(.isStaticText)
                 }
             }

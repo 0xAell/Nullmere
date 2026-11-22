@@ -1,5 +1,75 @@
 # What Nullmere Online carries over from Warpkeep
 
+## November 2026 implementation review
+
+Play now enters the real-time Rust module under `realm/`. The historical
+plan below describes an earlier Swift steward and should be read in that
+context. The current client subscribes to realm rows and calls reducers over
+HTTP. Nullmere already has its own hex atlas, city economy, original Metal
+presentation, alliance systems and battle reports.
+
+One Warpkeep pattern still worth adapting is the command receipt.
+Warpkeep's `spacetimedb/gameplay04/commands.ts` checks retained receipts
+against the keep's command sequence before applying a command. Nullmere's
+`realm/src/module.rs` originally applied reducers such as `upgrade`, `train`
+and `send` without a client-supplied receipt key. A lost response can
+therefore leave the player unsure whether a command committed.
+The Mac now distinguishes that case from a realm refusal and warns the
+player to check what happened before sending the order again.
+
+Building upgrades, construction hastening, troop training, marching orders
+and trade cart dispatches now use receipts.
+Each short-lived request key binds to the authenticated device, player and
+exact order. The order and its receipt commit together. The client retries
+once with the same key after a timeout or lost connection. Older realms
+still accept the original one-shot reducers. The realm checks exercise
+simultaneous upgrade requests, expired and conflicting keys, and replays
+of training and marching orders. Other orders still use the original path.
+
+Warpkeep's community covenant also informs the player guide's
+[conduct section](PLAYING.md#conduct-in-the-realm). It connects the principle
+of keeping rivalry inside the game to the realm's existing reporting tools.
+
+### Player and renderer carryover
+
+| Warpkeep behavior | Nullmere implementation |
+| --- | --- |
+| Distinguish pending goods from spendable stock | Mac and companion show returning army cargo separately. Trade carts to allies are excluded. |
+| Show what a building needs and what it gives | Building list and map cards use realm catalogue costs, shortages, power and hourly output. The building list can select a nearby open gathering site for a missing resource. |
+| Lower rendering cost after repeated graphics faults | The Mac map drops to Efficient at 30 fps for the session. If the map still fails, Retry map rebuilds the view with those settings while keeping the player's realm session. |
+| Bound work while hidden or with reduced motion | Nullmere already has frame caps, reduced motion and occlusion handling in its Metal views. |
+| Keep terrain decisions authoritative | The Rust realm generates land and determines routes. The client draws its own terrain from realm rows. |
+
+### Tree assets and placement
+
+Warpkeep's [v3 runtime tree manifest](https://github.com/0xAell/Warpkeep/blob/b9af2aa797343309e17b632f72ff76dc6ec1b08d/public/models/greater-realm/biome-trees/v3/manifest.json)
+records mobile and near variants. For comparison, Nullmere's counts below
+come from loading its furnishing meshes through `NullmereModels.Library`
+and counting their indexed triangles.
+
+| Nullmere furnishing | Triangles | Comparable Warpkeep tree | Mobile / near triangles |
+| --- | ---: | --- | ---: |
+| Fir | 42 | Snow fir | 277 / 1,098 |
+| Elder tree | 232 | Old growth giant | 263 / 822 |
+| Birch | 158 | | |
+| Dead tree | 59 | | |
+
+A Blackwood hex places six to nine firs. Replacing those with Warpkeep's
+mobile snow fir would raise the fir geometry from 252–378 to 1,662–2,493
+triangles per hex before any other furnishings or render passes. These
+counts describe geometry, not frame time or visual quality.
+
+Keep the native meshes for the dense forest. Nullmere already uses the
+portable parts of Warpkeep's approach: repeatable terrain-dependent
+placement, batched decoration and selective updates when armies or holds
+change the ground. The detailed Warpkeep trees are a candidate for isolated
+landmarks, subject to a side-by-side render under Nullmere's night lighting.
+Their [source record](https://github.com/0xAell/Warpkeep/blob/b9af2aa797343309e17b632f72ff76dc6ec1b08d/ASSETS-LICENSE.md#greater-realm-biome-trees--2026-09-28)
+identifies the original project-authored v3 meshes separately from the
+external studies that informed their design.
+
+## Original October plan
+
 > **A plan, written on 24 October 2026, before Nullmere was built.** It is
 > kept as written. Where the build went another way:
 >

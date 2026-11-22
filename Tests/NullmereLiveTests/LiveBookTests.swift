@@ -118,12 +118,14 @@ final class LiveBookTests: XCTestCase {
         // One builder, and the Sawmill has it: everything else waits on that
         // unless something stops it sooner.
         XCTAssertEqual(try line("Keep").block, .buildersBusy)
+        XCTAssertEqual(try line("Keep").completionWords, "On completion: +20 city power")
         XCTAssertEqual(try line("Keep").next?.cost, LiveGoods(timber: 900, stone: 300))
         XCTAssertEqual(try line("Farm").block, .needsKeep(3), "nothing rises above the Keep")
         XCTAssertEqual(try line("Sawmill").block, .rising("Sawmill"))
         XCTAssertEqual(try line("Sawmill").job?.level, 2)
         XCTAssertEqual(try line("Barracks").block, .training("Barracks"))
         XCTAssertEqual(try line("Wall").block, .buildersBusy)
+        XCTAssertEqual(try line("Wall").shortageWords, "You need 500 stone more.")
         XCTAssertEqual(try line("Hospital").block, .needsKeep(3))
         XCTAssertNil(try line("Hospital").building)
         XCTAssertEqual(try line("Hospital").level, 0)

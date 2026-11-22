@@ -721,6 +721,21 @@ public struct LiveWorld: Equatable, Sendable {
     /// How many of the player's reports are unread.
     public var unread: Int { reports.filter { !$0.read }.count }
 
+    /// Nearest known, unoccupied gathering site for each resource.
+    public func nearbyGatheringSites() -> [Int: LiveSite] {
+        guard let home = city?.hex else { return [:] }
+        var nearest: [Int: LiveSite] = [:]
+        for site in sites.values where site.left > 0 && site.gatherer == 0 {
+            guard places[site.hex]?.id == site.id, places[site.hex]?.kind == LivePlace.site else { continue }
+            let rank = (site.hex.distance(to: home), site.id)
+            if let other = nearest[site.kind], (other.hex.distance(to: home), other.id) <= rank {
+                continue
+            }
+            nearest[site.kind] = site
+        }
+        return nearest
+    }
+
     /// The player's own marches.
     public var myMarches: [LiveMarch] {
         guard let me else { return [] }
@@ -730,6 +745,18 @@ public struct LiveWorld: Equatable, Sendable {
     /// The player's armies out, their carts not among them: what keeps
     /// another from being sent, or the city from moving.
     public var myArmies: [LiveMarch] { myMarches.filter { $0.kind != LiveMarch.carts } }
+
+    /// Goods carried home by armies. Outbound trade carts deliver to an ally.
+    public var incomingArmyGoods: LiveGoods {
+        let returning = Set(myArmies.filter { $0.state == LiveMarch.returning }.map(\.id))
+        return hauls.reduce(into: LiveGoods()) { total, haul in
+            guard returning.contains(haul.march) else { return }
+            total.grain += haul.goods.grain
+            total.timber += haul.goods.timber
+            total.stone += haul.goods.stone
+            total.moonsalt += haul.goods.moonsalt
+        }
+    }
 
     /// The player's loads of carts on the road.
     public var myCarts: [LiveMarch] { myMarches.filter { $0.kind == LiveMarch.carts } }

@@ -590,6 +590,8 @@ public final class LiveSession {
     /// What is said when the realm can't be asked at all.
     public static let unreached = "The realm could not be reached. Try again in a moment."
 
+    private static let orderUnconfirmed = "The realm did not confirm this order. Check the order’s result in the realm before sending it again."
+
     /// Asks something of the realm, its refusal kept in `said`; whether
     /// it was done.
     @discardableResult
@@ -607,7 +609,9 @@ public final class LiveSession {
         } catch let refusal as LiveRefusal {
             said = refusal.words
         } catch {
-            said = LiveSession.unreached
+            // The reducer may have committed before the reply was lost.
+            refresh()
+            said = LiveSession.orderUnconfirmed
         }
         return false
     }
