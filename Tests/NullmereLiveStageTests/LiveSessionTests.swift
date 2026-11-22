@@ -372,7 +372,7 @@ final class LiveSessionTests: XCTestCase {
         XCTAssertEqual(session.selection, .work(7, in: city))
         let plot = session.card(for: try XCTUnwrap(session.selection))
         XCTAssertEqual(plot.title, "Barracks")
-        XCTAssertEqual(plot.lines, ["Not built yet.", "Trains spearmen.", "Building it takes 100 timber, 10 seconds."])
+        XCTAssertEqual(plot.lines, ["Not built yet.", "Trains spearmen.", "Building it takes 100 timber, 10 seconds.", "On completion: +20 city power"])
         XCTAssertEqual((1...19).compactMap(LiveWorld.buildingWords).count, 19, "every building of the catalogue says what it does")
         XCTAssertNil(LiveWorld.buildingWords(20))
         XCTAssertEqual(plot.buttons.map(\.title), ["Build", "Buildings"])
