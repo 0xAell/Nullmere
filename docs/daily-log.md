@@ -95,3 +95,6 @@ Blender-authored unit models landed through the day: spearman, archer, lantern-b
 - Development remains paused since Nov 19 at ael's call. Main tip is 28694d2 (Daily log: Nov 21). Last game commit is still cafaf2d (Works stand on trodden earth: yards warmed, the sawpit no pit of soot); no new Claude pushes since Nov 19.
 - CI: the CI and Realm rules runs on cafaf2d both finished green. No CI or Realm rules run on 28694d2.
 - Still open: the ad blocker is not yet called done; on-device Apple model answers and the companion app on a real iPhone remain unverified on hardware.
+
+- Update ~11 PM: Development remains paused since Nov 19 at ael's call. Main tip is still a8b1d77 (Carry Warpkeep gameplay and reliability patterns into Nullmere).
+- CI: the CI and Realm rules runs on a8b1d77 both finished green.
