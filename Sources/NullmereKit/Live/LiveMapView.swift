@@ -31,6 +31,7 @@ struct LiveMapView: NSViewRepresentable {
     var frameRate: FrameRateCap = .sixty
     var quality: RenderQuality = .native
     let onFailure: () -> Void
+    var onFaltering: () -> Void = {}
 
     /// Which window's land the view was last given.
     final class Kept {
@@ -42,6 +43,7 @@ struct LiveMapView: NSViewRepresentable {
     func makeNSView(context: Context) -> WorldMetalView {
         let view = WorldMetalView()
         view.onFailure = onFailure
+        view.onFaltering = onFaltering
         view.onClick = { [weak session] hex, ray in session?.choose(local: hex, ray: ray) }
         view.onCameraChange = { [weak session] camera in session?.moved(camera) }
         view.cursor = { _ in .pointingHand }

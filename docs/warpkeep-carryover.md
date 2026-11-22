@@ -29,6 +29,16 @@ Warpkeep's community covenant also informs the player guide's
 [conduct section](PLAYING.md#conduct-in-the-realm). It connects the principle
 of keeping rivalry inside the game to the realm's existing reporting tools.
 
+### Player and renderer carryover
+
+| Warpkeep behavior | Nullmere implementation |
+| --- | --- |
+| Distinguish pending goods from spendable stock | Mac and companion show returning army cargo separately. Trade carts to allies are excluded. |
+| Show what a building needs and what it gives | Building list and map cards use realm catalogue costs, shortages, power and hourly output. The building list can select a nearby open gathering site for a missing resource. |
+| Lower rendering cost after repeated graphics faults | The Mac map drops to Efficient at 30 fps for the session. If the map still fails, Retry map rebuilds the view with those settings while keeping the player's realm session. |
+| Bound work while hidden or with reduced motion | Nullmere already has frame caps, reduced motion and occlusion handling in its Metal views. |
+| Keep terrain decisions authoritative | The Rust realm generates land and determines routes. The client draws its own terrain from realm rows. |
+
 ## Original October plan
 
 > **A plan, written on 24 October 2026, before Nullmere was built.** It is
