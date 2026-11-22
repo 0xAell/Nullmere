@@ -25,6 +25,41 @@ final class LiveSessionTests: XCTestCase {
         LiveSession(line: line) { seconds }
     }
 
+    func testLostOrderReplyReusesTheExactRequestKey() async throws {
+        let attempts = Tries()
+        let server = StubHTTP.serve { _ in
+            if attempts.next() == 1 { throw URLError(.networkConnectionLost) }
+            return StubHTTP.Answer()
+        }
+        let transport = SpacetimeHTTP(server: server.address, database: "test", session: server.session)
+        let client = LiveClient(transport: transport, credentials: .init(identity: "keeper", token: "test-token"))
+        try await client.upgrade(building: 21)
+
+        let requests = server.requests
+        XCTAssertEqual(requests.map { $0.url.lastPathComponent }, ["upgrade_once", "upgrade_once"])
+        XCTAssertEqual(requests.first?.body, requests.last?.body)
+        let request = try XCTUnwrap(requests.first)
+        let arguments = try XCTUnwrap(JSONSerialization.jsonObject(with: request.body) as? [Any])
+        XCTAssertEqual(arguments.count, 3)
+        XCTAssertEqual(arguments.first as? Int, 21)
+        XCTAssertEqual((arguments.last as? String)?.count, 32)
+    }
+
+    func testOldRealmReceivesOneLegacyOrderAfterUnknownReducer() async throws {
+        let server = StubHTTP.serve { request in
+            if request.url.lastPathComponent == "upgrade_once" {
+                return StubHTTP.Answer(status: 404, text: "No such reducer")
+            }
+            return StubHTTP.Answer()
+        }
+        let transport = SpacetimeHTTP(server: server.address, database: "test", session: server.session)
+        let client = LiveClient(transport: transport, credentials: .init(identity: "keeper", token: "test-token"))
+        try await client.upgrade(building: 21)
+        let requests = server.requests
+        XCTAssertEqual(requests.map { $0.url.lastPathComponent }, ["upgrade_once", "upgrade"])
+        XCTAssertEqual(requests.last?.text, "[21]")
+    }
+
     func testASessionOpensOnTheRealmAndAsksANameOfWhoHasNone() async throws {
         // A realm that can't be reached.
         let nowhere = session(StandInLine(reachable: false))
