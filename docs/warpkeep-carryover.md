@@ -39,6 +39,34 @@ of keeping rivalry inside the game to the realm's existing reporting tools.
 | Bound work while hidden or with reduced motion | Nullmere already has frame caps, reduced motion and occlusion handling in its Metal views. |
 | Keep terrain decisions authoritative | The Rust realm generates land and determines routes. The client draws its own terrain from realm rows. |
 
+### Tree assets and placement
+
+Warpkeep's [v3 runtime tree manifest](https://github.com/0xAell/Warpkeep/blob/b9af2aa797343309e17b632f72ff76dc6ec1b08d/public/models/greater-realm/biome-trees/v3/manifest.json)
+records mobile and near variants. For comparison, Nullmere's counts below
+come from loading its furnishing meshes through `NullmereModels.Library`
+and counting their indexed triangles.
+
+| Nullmere furnishing | Triangles | Comparable Warpkeep tree | Mobile / near triangles |
+| --- | ---: | --- | ---: |
+| Fir | 42 | Snow fir | 277 / 1,098 |
+| Elder tree | 232 | Old growth giant | 263 / 822 |
+| Birch | 158 | | |
+| Dead tree | 59 | | |
+
+A Blackwood hex places six to nine firs. Replacing those with Warpkeep's
+mobile snow fir would raise the fir geometry from 252–378 to 1,662–2,493
+triangles per hex before any other furnishings or render passes. These
+counts describe geometry, not frame time or visual quality.
+
+Keep the native meshes for the dense forest. Nullmere already uses the
+portable parts of Warpkeep's approach: repeatable terrain-dependent
+placement, batched decoration and selective updates when armies or holds
+change the ground. The detailed Warpkeep trees are a candidate for isolated
+landmarks, subject to a side-by-side render under Nullmere's night lighting.
+Their [source record](https://github.com/0xAell/Warpkeep/blob/b9af2aa797343309e17b632f72ff76dc6ec1b08d/ASSETS-LICENSE.md#greater-realm-biome-trees--2026-09-28)
+identifies the original project-authored v3 meshes separately from the
+external studies that informed their design.
+
 ## Original October plan
 
 > **A plan, written on 24 October 2026, before Nullmere was built.** It is
