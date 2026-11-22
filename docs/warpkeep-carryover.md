@@ -1,5 +1,36 @@
 # What Nullmere Online carries over from Warpkeep
 
+## November 2026 implementation review
+
+Play now enters the real-time Rust module under `realm/`. The historical
+plan below describes an earlier Swift steward and should be read in that
+context. The current client subscribes to realm rows and calls reducers over
+HTTP. Nullmere already has its own hex atlas, city economy, original Metal
+presentation, alliance systems and battle reports.
+
+One Warpkeep pattern still worth adapting is the command receipt.
+Warpkeep's `spacetimedb/gameplay04/commands.ts` checks retained receipts
+against the keep's command sequence before applying a command. Nullmere's
+`realm/src/module.rs` originally applied reducers such as `upgrade`, `train`
+and `send` without a client-supplied receipt key. A lost response can
+therefore leave the player unsure whether a command committed.
+The Mac now distinguishes that case from a realm refusal and warns the
+player to check what happened before sending the order again.
+
+Building upgrades, troop training and marching orders now use receipts.
+Each short-lived request key binds to the authenticated device, player and
+exact order. The order and its receipt commit together. The client retries
+once with the same key after a timeout or lost connection. Older realms
+still accept the original one-shot reducers. The realm checks exercise
+simultaneous upgrade requests, expired and conflicting keys, and replays
+of training and marching orders. Other orders still use the original path.
+
+Warpkeep's community covenant also informs the player guide's
+[conduct section](PLAYING.md#conduct-in-the-realm). It connects the principle
+of keeping rivalry inside the game to the realm's existing reporting tools.
+
+## Original October plan
+
 > **A plan, written on 24 October 2026, before Nullmere was built.** It is
 > kept as written. Where the build went another way:
 >

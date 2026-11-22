@@ -102,6 +102,22 @@ public final class LiveClient: @unchecked Sendable {
         }
     }
 
+    /// Retry only orders whose reducer can recognize the same request.
+    /// Older realms retain their original one-shot behavior.
+    private func askOnce(_ reducer: String, _ arguments: [ReducerArgument]) async throws {
+        let issued = Int64(Date().timeIntervalSince1970)
+        let nonce = UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        let keyed = arguments + [.signed(issued), .string(nonce)]
+        do {
+            try await ask(reducer + "_once", keyed)
+        } catch let error as SpacetimeError where error.status == 404 && error.description == SpacetimeError.unknownRequest {
+            try await ask(reducer, arguments)
+        } catch let error as URLError where error.code == .timedOut || error.code == .networkConnectionLost {
+            try Task.checkCancellation()
+            try await ask(reducer + "_once", keyed)
+        }
+    }
+
     /// Joins the realm under a name: a city is founded for the player.
     public func join(name: String) async throws { try await ask("join", [.string(name)]) }
 
@@ -109,11 +125,11 @@ public final class LiveClient: @unchecked Sendable {
     public func build(_ kind: Int) async throws { try await ask("build", [.integer(UInt64(kind))]) }
 
     /// Raises one of the player's buildings a level.
-    public func upgrade(building: UInt64) async throws { try await ask("upgrade", [.integer(building)]) }
+    public func upgrade(building: UInt64) async throws { try await askOnce("upgrade", [.integer(building)]) }
 
     /// Trains a batch of soldiers of a tier in a training building.
     public func train(building: UInt64, tier: Int, count: UInt64) async throws {
-        try await ask("train", [.integer(building), .integer(UInt64(tier)), .integer(count)])
+        try await askOnce("train", [.integer(building), .integer(UInt64(tier)), .integer(count)])
     }
 
     /// Raises soldiers of a kind ready in the player's city from one tier to
@@ -126,21 +142,21 @@ public final class LiveClient: @unchecked Sendable {
     /// of the player's commanders (by their number) or under none.
     public func gather(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
         let records = soldiers.map { ["kind": UInt64($0.kind), "tier": UInt64($0.tier), "count": $0.count] }
-        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(1), .records(records), .integer(leader)])
+        try await askOnce("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(1), .records(records), .integer(leader)])
     }
 
     /// Sends soldiers from the player's city to clear the barrow of the
     /// Unquiet at a hex.
     public func hunt(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
         let records = soldiers.map { ["kind": UInt64($0.kind), "tier": UInt64($0.tier), "count": $0.count] }
-        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(2), .records(records), .integer(leader)])
+        try await askOnce("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(2), .records(records), .integer(leader)])
     }
 
     /// Sends soldiers from the player's city against another player's
     /// city at a hex.
     public func attack(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
         let records = soldiers.map { ["kind": UInt64($0.kind), "tier": UInt64($0.tier), "count": $0.count] }
-        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(3), .records(records), .integer(leader)])
+        try await askOnce("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(3), .records(records), .integer(leader)])
     }
 
     /// Has some of the player's wounded of a kind and tier healed.
@@ -204,23 +220,23 @@ public final class LiveClient: @unchecked Sendable {
 
     /// Sends scouts from the player's city to see another player's city.
     public func scout(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws {
-        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(4), records(soldiers), .integer(0)])
+        try await askOnce("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(4), records(soldiers), .integer(0)])
     }
 
     /// Sends scouts from the player's city to find what the cairn at a hex holds.
     public func explore(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)]) async throws {
-        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(7), records(soldiers), .integer(0)])
+        try await askOnce("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(7), records(soldiers), .integer(0)])
     }
 
     /// Sends soldiers from the player's city against another player's army
     /// gathering at the site at a hex.
     public func raid(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
-        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(8), records(soldiers), .integer(leader)])
+        try await askOnce("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(8), records(soldiers), .integer(leader)])
     }
 
     /// Sends soldiers from the player's city to stay in an ally's.
     public func reinforce(at hex: LiveHex, soldiers: [(kind: Int, tier: Int, count: UInt64)], leader: UInt64 = 0) async throws {
-        try await ask("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(5), records(soldiers), .integer(leader)])
+        try await askOnce("send", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(5), records(soldiers), .integer(leader)])
     }
 
     /// Calls a rally of the player's alliance against the barrow or the

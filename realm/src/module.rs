@@ -31,6 +31,19 @@ pub struct Account {
     pub player: u64,
 }
 
+/// Successful retryable orders, private to the realm. The timestamp in
+/// the key is also checked on replay, so deleting old rows cannot reopen
+/// an expired order.
+#[table(accessor = order_receipt)]
+pub struct OrderReceipt {
+    #[primary_key]
+    pub key: String,
+    #[index(btree)]
+    pub device: Identity,
+    pub expires: i64,
+    pub order: String,
+}
+
 /// How many connections an identity has open. A player's client keeps a
 /// subscription open while it runs, and each thing it asks over HTTP is a
 /// connection of its own that opens and closes: a player is here while
@@ -429,6 +442,61 @@ pub fn upgrade(ctx: &ReducerContext, building: u64) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::upgrade(&mut Stdb(ctx), player, building)))
 }
 
+/// Upgrade with a receipt so a lost response can be retried safely.
+#[reducer]
+pub fn upgrade_once(ctx: &ReducerContext, building: u64, issued: i64, nonce: String) -> Result<(), String> {
+    receipted(ctx, issued, &nonce, format!("upgrade:{building}"), |player| {
+        said(rules::upgrade(&mut Stdb(ctx), player, building))
+    })
+}
+
+/// Train with a receipt so retrying cannot buy a second batch.
+#[reducer]
+pub fn train_once(ctx: &ReducerContext, building: u64, tier: u32, count: u64, issued: i64, nonce: String) -> Result<(), String> {
+    receipted(ctx, issued, &nonce, format!("train:{building}:{tier}:{count}"), |player| {
+        said(rules::train(&mut Stdb(ctx), player, building, tier, count))
+    })
+}
+
+fn receipted(
+    ctx: &ReducerContext,
+    issued: i64,
+    nonce: &str,
+    order: String,
+    apply: impl FnOnce(u64) -> Result<(), String>,
+) -> Result<(), String> {
+    const LIFETIME: i64 = 300;
+    let now = ctx.timestamp.to_micros_since_unix_epoch().div_euclid(1_000_000);
+    if issued < now - LIFETIME || issued > now + 30 {
+        return Err("This order has expired or your device clock is out of sync.".into());
+    }
+    if nonce.len() != 32 || !nonce.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err("This order has an invalid request key.".into());
+    }
+    let player = caller(ctx).map_err(|refusal| refusal.to_string())?;
+    let device = ctx.sender();
+    let key = format!("{device}:{player}:{issued}:{}", nonce.to_ascii_lowercase());
+    let receipts = ctx.db.order_receipt();
+    if let Some(receipt) = receipts.key().find(&key) {
+        return if receipt.order == order { Ok(()) } else { Err("This request key belongs to another order.".into()) };
+    }
+    let mut active = 0;
+    for receipt in receipts.device().filter(device).collect::<Vec<_>>() {
+        if receipt.expires < now {
+            receipts.key().delete(receipt.key);
+        } else {
+            active += 1;
+        }
+    }
+    if active >= 128 {
+        return Err("Too many recent orders. Wait a moment before placing another.".into());
+    }
+    // The game change and the receipt commit or roll back together.
+    apply(player)?;
+    receipts.insert(OrderReceipt { key, device, expires: issued + LIFETIME, order });
+    Ok(())
+}
+
 /// Hasten a building being raised in the caller's city: a quarter of what
 /// is left of it, for a speedup's goods.
 #[reducer]
@@ -464,8 +532,37 @@ pub struct Soldiers {
 /// by their number, or under none with 0.
 #[reducer]
 pub fn send(ctx: &ReducerContext, q: i32, r: i32, order: u8, soldiers: Vec<Soldiers>, leader: u64) -> Result<(), String> {
+    said(caller(ctx).and_then(|player| send_order(ctx, player, q, r, order, &soldiers, leader)))
+}
+
+/// Send a march with a receipt so a replay cannot dispatch another army.
+#[reducer]
+pub fn send_once(
+    ctx: &ReducerContext, q: i32, r: i32, order: u8, soldiers: Vec<Soldiers>, leader: u64,
+    issued: i64, nonce: String,
+) -> Result<(), String> {
+    use std::fmt::Write as _;
+
+    // The client normally supplies at most twenty troop kind and tier
+    // combinations. Bound the fingerprint even for calls from other clients.
+    if soldiers.len() > 64 {
+        return Err("This order lists too many troop groups.".into());
+    }
+    let mut fingerprint = format!("send:{q}:{r}:{order}:{leader}");
+    for troop in &soldiers {
+        write!(&mut fingerprint, ":{}:{}:{}", troop.kind, troop.tier, troop.count)
+            .expect("writing to a String cannot fail");
+    }
+    receipted(ctx, issued, &nonce, fingerprint, |player| {
+        said(send_order(ctx, player, q, r, order, &soldiers, leader))
+    })
+}
+
+fn send_order(
+    ctx: &ReducerContext, player: u64, q: i32, r: i32, order: u8, soldiers: &[Soldiers], leader: u64,
+) -> Result<March, Refusal> {
     let asked: Vec<rules::Asked> = soldiers.iter().map(|s| rules::Asked { kind: s.kind, tier: s.tier, count: s.count }).collect();
-    said(caller(ctx).and_then(|player| rules::send_led(&mut Stdb(ctx), player, Hex::new(q, r), order, &asked, leader)))
+    rules::send_led(&mut Stdb(ctx), player, Hex::new(q, r), order, &asked, leader)
 }
 
 /// Call a rally of the caller's alliance against the barrow or the city at a hex,

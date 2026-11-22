@@ -50,7 +50,8 @@ $SPACETIME publish --server "$SERVER" --bin-path "$WASM" --yes --delete-data "$D
 
 echo "== Playing it through"
 python3 -I - "$HOST" "$DB" "$SPACETIME" "$SERVER" <<'PY'
-import json, sys, urllib.request, urllib.error
+import json, sys, time, urllib.request, urllib.error, uuid
+from concurrent.futures import ThreadPoolExecutor
 
 host, db, spacetime, server = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 failures = []
@@ -141,13 +142,23 @@ keep = next(b for b in buildings if b["kind"] == 1)
 farm = next(b for b in buildings if b["kind"] == 2)
 check("nothing rises above the Keep", call(ada, "upgrade", farm["id"]), "Raise your Keep to level 2 first.")
 check("another player can't raise it", call(bryn, "upgrade", keep["id"]), "That is not yours.")
-check("the Keep begins to rise", call(ada, "upgrade", keep["id"]), None)
+issued, nonce = int(time.time()), uuid.uuid4().hex
+def raise_keep():
+    return call(ada, "upgrade_once", keep["id"], issued, nonce)
+with ThreadPoolExecutor(max_workers=2) as pool:
+    first, second = pool.submit(raise_keep), pool.submit(raise_keep)
+    check("simultaneous copies acknowledge one upgrade", [first.result(), second.result()], [None, None])
+check("a key cannot authorize another building",
+      call(ada, "upgrade_once", farm["id"], issued, nonce),
+      "This request key belongs to another order.")
+check("an expired order cannot be applied",
+      call(ada, "upgrade_once", keep["id"], issued - 301, nonce),
+      "This order has expired or your device clock is out of sync.")
 jobs = rows(ada, "SELECT * FROM my_jobs")
 check("a job is under way, eight seconds long", [(j["kind"], j["subject"], j["level"], j["ends"] - j["started"]) for j in jobs], [(1, keep["id"], 2, 8)])
 check("its cost is paid as it begins", rows(ada, "SELECT * FROM my_stock")[0]["timber"] in range(8000 - 620, 8000 - 620 + 10), True)
 check("and nothing else rises above the Keep meanwhile", call(ada, "upgrade", farm["id"]), "Raise your Keep to level 2 first.")
 check("and not the same thing twice", call(ada, "upgrade", keep["id"]), "Your Keep is already being built.")
-import time
 deadline = time.time() + 30
 while time.time() < deadline and rows(ada, "SELECT * FROM my_jobs"):
     time.sleep(1)
@@ -183,7 +194,9 @@ until("which stands", lambda: (mine(bryn, 7) or {}).get("level") == 1)
 barracks = mine(bryn, 7)
 check("more than a batch holds is refused", call(bryn, "train", barracks["id"], 1, 51), "At most 50 at once.")
 check("a tier not yet open is refused", call(bryn, "train", barracks["id"], 2, 10), "Raise your Barracks to level 5 first.")
-check("twenty spearmen go into training", call(bryn, "train", barracks["id"], 1, 20), None)
+training = (barracks["id"], 1, 20, int(time.time()), uuid.uuid4().hex)
+check("twenty spearmen go into training", call(bryn, "train_once", *training), None)
+check("retrying training accepts the first batch", call(bryn, "train_once", *training), None)
 check("one batch at a time", call(bryn, "train", barracks["id"], 1, 5), "Your Barracks is already training troops.")
 until("and stand ready", lambda: [(t["kind"], t["tier"], t["ready"]) for t in rows(bryn, "SELECT * FROM my_troops")] == [(1, 1, 20)])
 check("only their owner counts them", rows(ada, "SELECT * FROM my_troops"), [])
@@ -206,10 +219,12 @@ check("nothing is gathered where nothing lies", call(bryn, "send", home[0], home
 check("more than stand ready can't be sent", call(bryn, "send", *unpacked(sites[0]["hex"]), 1, [{"kind": 1, "tier": 1, "count": 21}], 0), "You have only 20 tier 1 Spearmen ready.")
 site, sent = None, "There is no way there over open ground."
 for site in sites[:20]:
-    sent = call(bryn, "send", *unpacked(site["hex"]), 1, [{"kind": 1, "tier": 1, "count": 20}], 0)
+    dispatch = (*unpacked(site["hex"]), 1, [{"kind": 1, "tier": 1, "count": 20}], 0, int(time.time()), uuid.uuid4().hex)
+    sent = call(bryn, "send_once", *dispatch)
     if sent != "There is no way there over open ground.":
         break
 check("an army sets out for the nearest site", sent, None)
+check("retrying a dispatch accepts the original march", call(bryn, "send_once", *dispatch), None)
 before = rows(bryn, "SELECT * FROM my_stock")[0]
 marches = rows(nobody, "SELECT * FROM march")
 check("everyone sees it on the map", [(m["kind"], m["state"], m["soldiers"], m["target"]) for m in marches], [(1, 1, 20, site["id"])])

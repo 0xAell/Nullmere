@@ -120,7 +120,23 @@ final class LiveRealmTests: XCTestCase {
         // Raising the Keep: paid at once, done by the database's own timer, pushed as it happens.
         let keep = try XCTUnwrap(world.building(1))
         let cost = try XCTUnwrap(world.blueprint(1, level: 2))
-        try await ada.upgrade(building: keep.id)
+        let transport = SpacetimeHTTP(server: server, database: database)
+        let request: [ReducerArgument] = [
+            .signed(Int64(Date().timeIntervalSince1970)),
+            .string(UUID().uuidString.replacingOccurrences(of: "-", with: "")),
+        ]
+        let args: [ReducerArgument] = [.integer(keep.id)] + request
+        let token = ada.credentials.token
+        try await transport.call("upgrade_once", args, token: token)
+        // Pretend the first reply went missing. The same request succeeds
+        // without raising the Keep a second time or charging again.
+        try await transport.call("upgrade_once", args, token: token)
+        do {
+            try await transport.call("upgrade_once", [.integer(farm.id)] + request, token: token)
+            XCTFail("A request key must not authorize a different order")
+        } catch let error as SpacetimeError {
+            XCTAssertTrue(error.description.contains("belongs to another order"))
+        }
         await eventually("the job is pushed") { seen.job { $0.subject == keep.id } != nil }
         let job = try XCTUnwrap(seen.job { $0.subject == keep.id })
         XCTAssertEqual([job.kind, Int(job.subject), job.level], [LiveJob.raise, Int(keep.id), 2])
@@ -177,15 +193,25 @@ final class LiveRealmTests: XCTestCase {
         XCTAssertGreaterThan(sites.count, 100, "Sites scattered over the land")
         var sent: LiveSite?
         for site in sites.prefix(20) where site.gatherer == 0 {
-            let why = await refusal { try await ada.gather(at: site.hex, soldiers: [(kind: 1, tier: 1, count: 20)]) }
-            if why == nil {
-                sent = site
-                break
+            let args: [ReducerArgument] = [
+                .signed(Int64(site.hex.q)), .signed(Int64(site.hex.r)), .integer(1),
+                .records([["kind": 1, "tier": 1, "count": 20]]), .integer(0),
+                .signed(Int64(Date().timeIntervalSince1970)),
+                .string(UUID().uuidString.replacingOccurrences(of: "-", with: "")),
+            ]
+            do {
+                try await transport.call("send_once", args, token: token)
+            } catch let error as SpacetimeError {
+                XCTAssertEqual(error.description, "There is no way there over open ground.")
+                continue
             }
-            XCTAssertEqual(why, "There is no way there over open ground.", "The only reason a near site can't be reached")
+            try await transport.call("send_once", args, token: token)
+            sent = site
+            break
         }
         let site = try XCTUnwrap(sent, "An army set out for a site nearby")
         await eventually("the march is on the map for everyone") { bryn.world.marches.values.contains { $0.target == site.id } }
+        XCTAssertEqual(ada.world.myMarches.count, 1, "Replaying a dispatch creates only one march")
         let march = try XCTUnwrap(ada.world.myMarches.first)
         XCTAssertEqual(march.route.first, city.hex)
         XCTAssertEqual(march.route.last, site.hex)

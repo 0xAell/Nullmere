@@ -1920,10 +1920,12 @@ final class LiveSessionTests: XCTestCase {
         line.refuse(nil)
         await session.build(4)
         XCTAssertNil(session.said)
-        // A line that drops says so plainly.
+        // A lost reply may follow a committed order. Never replay it here.
+        line.clear()
         line.drop()
         await session.build(4)
-        XCTAssertEqual(session.said, "The realm could not be reached. Try again in a moment.")
+        XCTAssertEqual(line.asked, ["build 4"])
+        XCTAssertEqual(session.said, "The realm did not confirm this order. Check the order’s result in the realm before sending it again.")
         XCTAssertEqual(session.asking, 0)
     }
 }
