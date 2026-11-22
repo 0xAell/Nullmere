@@ -613,6 +613,39 @@ check("and leaves, forgotten, their device let go", (call(leaver, "leave_realm",
 check("their city stands under the name they are given", sorted(c["name"] for c in rows(nobody, "SELECT * FROM city") if c["name"].startswith("Forgotten #")), sorted(p["name"] for p in rows(nobody, "SELECT id, name FROM player") if p["name"].startswith("Forgotten #")))
 check("and whoever comes back on that device joins anew", call(leaver, "join", "Lea Leaving"), None)
 
+# Trade receipt: two allied cities, one dispatch, one debit.
+def check_cart_replay(sender, recipient):
+    def pace(value):
+        subprocess.run(shlex.split(spacetime) + ["call", "--server", server, db, "set_pace", str(value)],
+                       capture_output=True, text=True, check=True)
+
+    pace(600)
+    for level in range(mine(sender, 1)["level"] + 1, 6):
+        if level >= 4:
+            if not mine(sender, 12):
+                check("the trade test builds a Wall", call(sender, "build", 12), None)
+                until("the first Wall stands", lambda: (mine(sender, 12) or {}).get("level") == 1)
+            for wall_level in range(mine(sender, 12)["level"] + 1, level):
+                check("the Wall is raised", call(sender, "upgrade", mine(sender, 12)["id"]), None)
+                until("the Wall finishes", lambda: mine(sender, 12)["level"] == wall_level, 10)
+        check("the trade test raises its Keep", call(sender, "upgrade", mine(sender, 1)["id"]), None)
+        until("the Keep reaches the required level", lambda: mine(sender, 1)["level"] == level, 10)
+    check("an Embassy begins", call(sender, "build", 15), None)
+    until("the Embassy stands", lambda: (mine(sender, 15) or {}).get("level") == 1)
+    check("an alliance is founded for trade", call(sender, "found_alliance", "Cart Test", "CART"), None)
+    alliance = next(row for row in rows(nobody, "SELECT * FROM alliance") if row["tag"] == "CART")
+    check("the recipient joins the alliance", call(recipient, "join_alliance", alliance["id"]), None)
+    pace(1)
+    target = unpacked(rows(recipient, "SELECT * FROM my_city")[0]["hex"])
+    request = (*target, 1000, 0, 0, 0, int(time.time()), uuid.uuid4().hex)
+    check("a trade cart sets out", call(sender, "send_goods_once", *request), None)
+    paid = rows(sender, "SELECT * FROM my_stock")
+    check("replaying the cart acknowledges the first dispatch", call(sender, "send_goods_once", *request), None)
+    check("the cart replay makes no second debit", rows(sender, "SELECT * FROM my_stock"), paid)
+    check("one cart carries the shipment", [haul["grain"] for haul in rows(sender, "SELECT * FROM my_hauls")], [900])
+
+check_cart_replay(ada, bryn)
+
 if failures:
     # Each again at the foot, where a log's tail finds it.
     for what, got, wanted in failures:
