@@ -768,13 +768,15 @@ final class LiveGameTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         var display = LauncherSettings(defaults: defaults)
         display.motion = .still
-        display.frameRate = .thirty
-        display.quality = .efficient
+        display.frameRate = .sixty
+        display.quality = .balanced
         let size = NSSize(width: 800, height: 500)
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         let host = NSHostingView(rootView: LiveGameView(session: session, display: display).frame(width: size.width, height: size.height))
         window.contentView = host
+        PressableButtons.isListening = true
+        defer { PressableButtons.isListening = false }
         window.orderFrontRegardless()
         defer { window.close() }
         host.layoutSubtreeIfNeeded()
@@ -782,8 +784,50 @@ final class LiveGameTests: XCTestCase {
 
         let map = try XCTUnwrap(find(WorldMetalView.self, in: host), "The Metal view is in the window")
         XCTAssertEqual(map.motion, .still, "Still, as the launcher's Motion says")
+        XCTAssertEqual(map.frameRateCap, .sixty)
+        XCTAssertEqual(map.quality, .balanced)
+
+        for _ in 0..<WorldMetalView.faultsToStepDown { map.gpuFaulted() }
+        spin(0.3)
         XCTAssertEqual(map.frameRateCap, .thirty)
         XCTAssertEqual(map.quality, .efficient)
+
+        for _ in 0..<WorldMetalView.faultsToStepDown { map.gpuFaulted() }
+        spin(0.3)
+        XCTAssertNil(find(WorldMetalView.self, in: host))
+        XCTAssertTrue(PressableButtons.press("Retry map"))
+        spin(0.3)
+        let retried = try XCTUnwrap(find(WorldMetalView.self, in: host))
+        XCTAssertFalse(retried === map, "Retry creates a fresh map")
+        XCTAssertEqual(retried.quality, .efficient)
+        XCTAssertEqual(session.phase, .playing)
+
+        try XCTUnwrap(retried.onFailure)()
+        spin(0.3)
+        XCTAssertNil(find(WorldMetalView.self, in: host))
+    }
+
+    func testIncomingGoodsAndBuildingGatheringShortcut() async throws {
+        var supplied = rows()
+        supplied["my_stock"]?[0][2] = n(0)
+        supplied["my_stock"]?[0][7] = n(0)
+        supplied["march"]?[0][4] = n(LiveMarch.returning)
+        supplied["march"]?.removeAll { $0.first == n(4) }
+        supplied["my_hauls"] = [[n(3), n(1), n(0), n(240), n(0), n(0)]]
+        supplied["site"]?[0][5] = n(0)
+        let (session, line) = await playing(supplied)
+        XCTAssertEqual(session.world.incomingArmyGoods, LiveGoods(timber: 240))
+        XCTAssertGreaterThan(try drawn(LiveTopBar(session: session, seconds: 2_015), width: 700, height: 100), 100)
+
+        var closed = false
+        let before = line.asked
+        await held(LiveBuildings(session: session, seconds: 2_015, close: { closed = true })) {
+            XCTAssertTrue(PressableButtons.press("Find timber"))
+        }
+        XCTAssertTrue(closed)
+        XCTAssertEqual(session.selected, LiveHex(q: 12, r: -2))
+        guard case .site = session.selection else { return XCTFail("The gathering site should be selected") }
+        XCTAssertEqual(line.asked, before, "Selecting a gathering site does not issue an order")
     }
 
     /// Counsel with a commander: a stand-in speaking for the model, the
