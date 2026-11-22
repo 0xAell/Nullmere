@@ -42,7 +42,7 @@ struct LiveSidePanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     switch panel {
-                    case .city: LiveBuildings(session: session, seconds: seconds)
+                    case .city: LiveBuildings(session: session, seconds: seconds, close: close)
                     case .troops:
                         LiveCommanders(session: session, seconds: seconds)
                         LiveTroops(session: session, seconds: seconds)
@@ -111,9 +111,11 @@ struct LiveProgress: View {
 struct LiveBuildings: View {
     let session: LiveSession
     let seconds: Double
+    var close: () -> Void = {}
 
     var body: some View {
         let lines = session.world.buildingLines(at: seconds)
+        let nearby = session.world.nearbyGatheringSites()
         // The builders at work hold back every other building alike: said
         // once over them all, not under each.
         if lines.contains(where: { $0.block == .buildersBusy }) {
@@ -151,6 +153,15 @@ struct LiveBuildings: View {
                     }
                     if let shortage = line.shortageWords {
                         LiveSmall(words: shortage, dim: true)
+                        ForEach(line.missing.parts.indices, id: \.self) { index in
+                            if line.missing.parts[index] > 0, let site = nearby[index + 1] {
+                                QuietButton(title: "Find \(LiveWords.goods[index])") {
+                                    session.go(to: site.hex)
+                                    session.selected = site.hex
+                                    close()
+                                }
+                            }
+                        }
                     }
                 } else if let block = line.block {
                     LiveSmall(words: block.words, dim: true)

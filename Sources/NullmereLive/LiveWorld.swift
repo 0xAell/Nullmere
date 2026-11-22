@@ -721,6 +721,21 @@ public struct LiveWorld: Equatable, Sendable {
     /// How many of the player's reports are unread.
     public var unread: Int { reports.filter { !$0.read }.count }
 
+    /// Nearest known, unoccupied gathering site for each resource.
+    public func nearbyGatheringSites() -> [Int: LiveSite] {
+        guard let home = city?.hex else { return [:] }
+        var nearest: [Int: LiveSite] = [:]
+        for site in sites.values where site.left > 0 && site.gatherer == 0 {
+            guard places[site.hex]?.id == site.id, places[site.hex]?.kind == LivePlace.site else { continue }
+            let rank = (site.hex.distance(to: home), site.id)
+            if let other = nearest[site.kind], (other.hex.distance(to: home), other.id) <= rank {
+                continue
+            }
+            nearest[site.kind] = site
+        }
+        return nearest
+    }
+
     /// The player's own marches.
     public var myMarches: [LiveMarch] {
         guard let me else { return [] }
