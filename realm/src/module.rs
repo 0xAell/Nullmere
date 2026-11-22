@@ -504,6 +504,14 @@ pub fn speed_up(ctx: &ReducerContext, job: u64) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::speed_up(&mut Stdb(ctx), player, job)))
 }
 
+/// Hasten construction without spending the goods again after a lost reply.
+#[reducer]
+pub fn speed_up_once(ctx: &ReducerContext, job: u64, issued: i64, nonce: String) -> Result<(), String> {
+    receipted(ctx, issued, &nonce, format!("speed_up:{job}"), |player| {
+        said(rules::speed_up(&mut Stdb(ctx), player, job))
+    })
+}
+
 /// Train a batch of troops of a tier in one of the caller's training
 /// buildings.
 #[reducer]
@@ -1023,6 +1031,19 @@ pub fn use_item(ctx: &ReducerContext, item: u8, job: u64) -> Result<(), String> 
 #[reducer]
 pub fn send_goods(ctx: &ReducerContext, q: i32, r: i32, grain: u64, timber: u64, stone: u64, moonsalt: u64) -> Result<(), String> {
     said(caller(ctx).and_then(|player| rules::send_goods(&mut Stdb(ctx), player, Hex::new(q, r), crate::catalog::Goods::of(grain, timber, stone, moonsalt))).map(|_| ()))
+}
+
+/// Send the same load once, even when a client repeats the request.
+#[reducer]
+pub fn send_goods_once(
+    ctx: &ReducerContext, q: i32, r: i32, grain: u64, timber: u64, stone: u64, moonsalt: u64,
+    issued: i64, nonce: String,
+) -> Result<(), String> {
+    let load = crate::catalog::Goods::of(grain, timber, stone, moonsalt);
+    let order = format!("send_goods:{q}:{r}:{grain}:{timber}:{stone}:{moonsalt}");
+    receipted(ctx, issued, &nonce, order, |player| {
+        said(rules::send_goods(&mut Stdb(ctx), player, Hex::new(q, r), load))
+    })
 }
 
 /// Open so many of a crate of goods the caller keeps into their city.

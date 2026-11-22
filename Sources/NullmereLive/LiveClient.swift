@@ -298,7 +298,7 @@ public final class LiveClient: @unchecked Sendable {
     // MARK: The day's work, items and contests
 
     /// Hastens a work under way in the player's city, for goods.
-    public func speedUp(job: UInt64) async throws { try await ask("speed_up", [.integer(job)]) }
+    public func speedUp(job: UInt64) async throws { try await askOnce("speed_up", [.integer(job)]) }
 
     /// Uses one of the player's items on a work under way.
     public func useItem(_ item: Int, on job: UInt64) async throws { try await ask("use_item", [.integer(UInt64(item)), .integer(job)]) }
@@ -326,7 +326,7 @@ public final class LiveClient: @unchecked Sendable {
 
     /// Sends a load of goods by cart to the city of an ally at a hex.
     public func sendGoods(to hex: LiveHex, _ goods: LiveGoods) async throws {
-        try await ask("send_goods", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(goods.grain), .integer(goods.timber), .integer(goods.stone), .integer(goods.moonsalt)])
+        try await askOnce("send_goods", [.signed(Int64(hex.q)), .signed(Int64(hex.r)), .integer(goods.grain), .integer(goods.timber), .integer(goods.stone), .integer(goods.moonsalt)])
     }
 
     /// Opens so many of the player's crates of goods into their city.

@@ -159,6 +159,13 @@ check("a job is under way, eight seconds long", [(j["kind"], j["subject"], j["le
 check("its cost is paid as it begins", rows(ada, "SELECT * FROM my_stock")[0]["timber"] in range(8000 - 620, 8000 - 620 + 10), True)
 check("and nothing else rises above the Keep meanwhile", call(ada, "upgrade", farm["id"]), "Raise your Keep to level 2 first.")
 check("and not the same thing twice", call(ada, "upgrade", keep["id"]), "Your Keep is already being built.")
+keep_job = jobs[0]
+haste = (keep_job["id"], int(time.time()), uuid.uuid4().hex)
+check("hastening moves construction ahead", call(ada, "speed_up_once", *haste), None)
+hastened = next(job for job in rows(ada, "SELECT * FROM my_jobs") if job["id"] == keep_job["id"])
+check("hastening changes the deadline", hastened["ends"] < keep_job["ends"], True)
+check("retrying hastening acknowledges the first order", call(ada, "speed_up_once", *haste), None)
+check("the deadline only changes once", rows(ada, "SELECT * FROM my_jobs")[0]["ends"], hastened["ends"])
 deadline = time.time() + 30
 while time.time() < deadline and rows(ada, "SELECT * FROM my_jobs"):
     time.sleep(1)

@@ -17,7 +17,8 @@ therefore leave the player unsure whether a command committed.
 The Mac now distinguishes that case from a realm refusal and warns the
 player to check what happened before sending the order again.
 
-Building upgrades, troop training and marching orders now use receipts.
+Building upgrades, construction hastening, troop training, marching orders
+and trade cart dispatches now use receipts.
 Each short-lived request key binds to the authenticated device, player and
 exact order. The order and its receipt commit together. The client retries
 once with the same key after a timeout or lost connection. Older realms
