@@ -9,17 +9,22 @@
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
 const [data, out, query] = process.argv.slice(2);
-const root = __dirname;
+const assets = new Map([
+  ['/view.html', [path.join(__dirname, 'view.html'), 'text/html']],
+  ['/model.json', [path.resolve(data), 'application/json']],
+  ['/node_modules/three/build/three.module.js', [path.join(__dirname, 'node_modules/three/build/three.module.js'), 'text/javascript']],
+]);
 const server = http.createServer((req, res) => {
-  const url = decodeURIComponent(req.url.split('?')[0]);
-  const file = url === '/model.json' ? path.resolve(data) : path.join(root, url);
+  const asset = assets.get(req.url.split('?', 1)[0]);
+  if (!asset) { res.statusCode = 404; res.end(); return; }
+  const [file, contentType] = asset;
   fs.readFile(file, (err, body) => {
     if (err) { res.statusCode = 404; res.end(); return; }
-    res.setHeader('Content-Type', file.endsWith('.html') ? 'text/html' : file.endsWith('.js') ? 'text/javascript' : 'application/json');
+    res.setHeader('Content-Type', contentType);
     res.end(body);
   });
 });
-server.listen(0, async () => {
+server.listen(0, '127.0.0.1', async () => {
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1500, height: 360 } });
   page.on('pageerror', e => console.log('pageerror:', e.message));
