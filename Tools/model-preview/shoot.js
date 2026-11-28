@@ -6,17 +6,21 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const [data, out, query] = process.argv.slice(2);
-const root = path.resolve(__dirname);
+const assets = new Map([
+  ['/index.html', [path.join(__dirname, 'index.html'), 'text/html']],
+  ['/models.json', [path.resolve(data), 'application/json']],
+]);
 const server = http.createServer((req, res) => {
-  const name = decodeURIComponent(req.url.split('?')[0]);
-  const file = name === '/models.json' ? path.resolve(data) : path.join(root, name);
+  const asset = assets.get(req.url.split('?', 1)[0]);
+  if (!asset) { res.statusCode = 404; res.end(); return; }
+  const [file, contentType] = asset;
   fs.readFile(file, (err, body) => {
     if (err) { res.statusCode = 404; res.end(); return; }
-    res.setHeader('Content-Type', file.endsWith('.html') ? 'text/html' : 'application/json');
+    res.setHeader('Content-Type', contentType);
     res.end(body);
   });
 });
-server.listen(0, async () => {
+server.listen(0, '127.0.0.1', async () => {
   const port = server.address().port;
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
